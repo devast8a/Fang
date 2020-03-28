@@ -1,0 +1,13 @@
+trait Foo
+trait Bar
+
+class Qux
+
+extend class Qux
+    impl Foo
+    impl Bar
+
+
+fn test(foo: Foo, bar: Bar){}
+
+test(Qux{}, Qux{})

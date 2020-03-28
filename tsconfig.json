@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "experimentalDecorators": true,
+        "sourceMap": true,
+        "jsx": "react",
+        "jsxFactory": "createElement",
+        "lib": [
+            "DOM",
+            "es2017",
+            "esnext.asynciterable"
+        ],
+        "module": "commonjs",
+        "outDir": "build",
+        "rootDir": ".",
+        "target": "ES6",
+        "types": [
+            "node"
+        ]
+    }
+}
