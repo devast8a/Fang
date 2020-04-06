@@ -64,7 +64,19 @@ function select(obj: any, ...keys: any[]){
     return obj;
 };
 
-export function STAR(node: Node){
+interface List<Element, Separator> {
+    tag: Tag.LIST;
+    begin: Node;
+    begin_ws: Node;
+    elements: Element[];
+    separators: Separator[];
+    all: (Element | Separator)[];
+    end_ws: Node;
+    end: Node;
+}
+
+// Converts the matched AST of a STAR macro call into a List
+export function STAR(node: Node): List<Node, Node>{
     node = node[0];
 
     var all = [];
@@ -85,15 +97,11 @@ export function STAR(node: Node){
     }
 }
 
-// TODO: This was just copied from STAR, fix this up
-export function PLUS(node: Node){
+// Converts the matched AST of a PLUS macro call into a List
+export function PLUS(node: Node): List<Node, Node>{
     node = node[0];
 
-    var all = [];
-    if (node[2] !== null) {
-        all.push(select(node, 2, 0));
-        all = all.concat(...select(node, 2, 1));
-    }
+    const all = [node[2]].concat(...node[3]);
 
     return {
         tag: Tag.LIST,
@@ -102,7 +110,7 @@ export function PLUS(node: Node){
         elements: all.filter((_, i) => i % 2 == 0),
         separators: all.filter((_, i) => i % 2 == 1),
         all: all,
-        end_ws: select(node, 2, 2),
-        end: select(node, 3),
-    }
+        end_ws: select(node, 4),
+        end: select(node, 5),
+    };
 }
