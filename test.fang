@@ -1,13 +1,22 @@
-trait Foo
-trait Bar
+trait Trait
+class Class
+fn Function()
 
-class Qux
+trait TextWriter {
+    fn writeLn(self, Format)
+    fn format()
+}
 
-extend class Qux
-    impl Foo
-    impl Bar
+val stdout = JsConsoleTextWriter{}
+val stdout = JsConsole{}
 
 
-fn test(foo: Foo, bar: Bar){}
+fn foo(){
+    print("Hello")
+}
 
-test(Qux{}, Qux{})
+fn bar(){
+    val name: Str = "Charlie"
+    val breed = "Husky"
+    mut age: Int
+}

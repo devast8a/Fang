@@ -4,13 +4,6 @@
         "esModuleInterop": true,
         "experimentalDecorators": true,
         "sourceMap": true,
-        "jsx": "react",
-        "jsxFactory": "createElement",
-        "lib": [
-            "DOM",
-            "es2017",
-            "esnext.asynciterable"
-        ],
         "module": "commonjs",
         "outDir": "build",
         "rootDir": ".",

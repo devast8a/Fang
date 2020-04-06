@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "description": "The Fang Programming Language",
   "dependencies": {
+    "@types/moo": "^0.5.3",
     "@types/node": "^13.9.5",
     "chalk": "^3.0.0",
     "moo": "^0.5.1",
