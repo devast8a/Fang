@@ -41,30 +41,42 @@ export type Member =
     | Trait
     | Variable;
 
-export class Class implements IThing, IType {
+// All things that are allowed to be generic
+type Generic = Class | Function | Trait;
+interface IGeneric {
+    generic_parameters: Type[];
+}
+
+export class Class implements IThing, IType, IGeneric {
     public tag: Tag.Class = Tag.Class;
     public name: string;
     public id: string;
 
     public traits: Map<string, Trait>;
     public members: Map<string, Member>;
+
+    public generic_parameters: Type[];
 }
 
-export class Function implements IThing, IType {
+export class Function implements IThing, IType, IGeneric {
     public tag: Tag.Function = Tag.Function;
     public name: string;
     public id: string;
 
     public parameters: Variable[];
+
+    public generic_parameters: Type[];
 }
 
-export class Trait implements IThing, IType {
+export class Trait implements IThing, IType, IGeneric {
     public tag: Tag.Trait = Tag.Trait;
     public name: string;
     public id: string;
 
     public traits: Map<string, Trait>;
     public members: Map<string, Member>;
+
+    public generic_parameters: Type[];
 }
 
 export class Variable implements IThing, IType {

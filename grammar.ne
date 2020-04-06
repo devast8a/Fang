@@ -38,12 +38,13 @@ declare_function -> df
 
 stmt -> declare_function
 
-df              -> dfKeyword dfName dfParameters dfReturnType:? dfBody:? {% p.Function %}
+df              -> dfKeyword dfName dfParameters dfReturnType:? dfGeneric:? dfBody:? {% p.Function %}
 dfKeyword       -> "fn" __
 dfName          -> %identifier _
 dfParameters    -> STAR["(", dfParameter, COMMA, ")"]           {% p.STAR %}
 dfParameter     -> declare_function_parameter
 dfReturnType    -> _ ":" _ type
+dfGeneric       -> _ declare_generic
 dfBody          -> _ dfBodyList
 dfBodyList      -> BODY[stmt] {% p.STAR %}
 
@@ -55,16 +56,26 @@ dfp             -> dfpKeyword:* type
 dfpKeyword      -> "own" __
 dfpKeyword      -> "mut" __
 
+## Declare/Generic #################################################################################
+declare_generic -> dgKeyword dgParameters dgWhere:*
+
+dgKeyword       -> "generic"
+dgParameters    -> PLUS["<", dgParameter, COMMA, ">"] {% p.PLUS %}
+dgParameter     -> %identifier
+dgWhere         -> _ "where" __ dgWhereQuery
+dgWhereQuery    -> %identifier __ "impl" __ type
+
 ## Declare/Trait ###################################################################################
 declare_trait -> dt
 
 stmt -> declare_trait
 
-dt              -> dtKeyword dtName dtImplements:* dtBody:? {% p.Trait %}
+dt              -> dtKeyword dtName dtImplements:* dtGeneric:? dtBody:? {% p.Trait %}
 dtKeyword       -> "trait" __
 dtKeyword       -> "class" __
 dtName          -> %identifier
 dtImplements    -> __ "impl" __ type
+dtGeneric       -> __ declare_generic
 dtBody          -> _ dtBodyList
 dtBodyList      -> BODY[stmt] {% p.STAR %}
 
@@ -151,16 +162,25 @@ literal_string -> %string_double_quote
 atom -> literal_string
 
 ## Type ############################################################################################
-type            -> tAtom tLifetime:? {% p.type %}
+type            -> tExpr tLifetime:? {% p.type %}
 
+tExpr           -> tAtom
 tAtom           -> %identifier
 tLifetime       -> _ %lifetime
+
+## Type/IndexDot ###################################################################################
+type_index_dot  -> tExpr tidSymbol tidName
+
+tidSymbol       -> _ "." _
+tidName         -> %identifier
+
+tExpr           -> type_index_dot
 
 ## Type/Generic ####################################################################################
 type_generic    -> tgTarget tgParameters
 
-atom            -> type_generic
-
-tgTarget        -> tAtom
+tgTarget        -> tExpr
 tgParameters    -> STAR["<", tgParameter, COMMA, ">"]
 tgParameter     -> type
+
+tExpr           -> type_generic

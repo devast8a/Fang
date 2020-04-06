@@ -15,8 +15,8 @@ export function Class(node: Node, state: State){
     obj.members = new Map;
 
     // Collect members
-    if(node[3] !== null){
-        for(const member of node[3][1].elements){
+    if(node[4] !== null){
+        for(const member of node[4][1].elements){
             const parsed = state.parse(member) as Ast.Member;
             obj.members.set(parsed.id, parsed);
         }
@@ -77,8 +77,8 @@ export function Trait(node: Node, state: State){
     obj.members = new Map;
 
     // Collect members
-    if(node[3] !== null){
-        for(const member of node[3][1].elements){
+    if(node[4] !== null){
+        for(const member of node[4][1].elements){
             const parsed = state.parse(member) as Ast.Member;
             obj.members.set(parsed.id, parsed)
         }
