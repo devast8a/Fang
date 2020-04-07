@@ -1,5 +1,5 @@
 import * as Ast from "./ast";
-import { State } from './compile';
+import { Compiler } from './compile';
 import { canSubType } from './type_api';
 
 // TODO: "id" fields should be unique, use some kind of name mangling scheme to guarantee this
@@ -7,7 +7,7 @@ import { canSubType } from './type_api';
 type Node = any[];
 
 //// Class
-export function Class(node: Node, state: State){
+export function Class(node: Node, compiler: Compiler){
     const obj = new Ast.Class();
 
     // obj.ast = node.data;
@@ -18,14 +18,14 @@ export function Class(node: Node, state: State){
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
-            const parsed = state.parse(member) as Ast.Member;
+            const parsed = compiler.parse(member) as Ast.Member;
             obj.members.set(parsed.id, parsed);
         }
     }
 
     // Collect implemented traits
     for(const impl of node[2]){
-        const type = state.get_type(impl[3]);
+        const type = compiler.get_type(impl[3]);
 
         // TODO: Create better error handling system
         if(type === undefined){
@@ -41,12 +41,12 @@ export function Class(node: Node, state: State){
         obj.traits.set(type.id, type);
     }
 
-    state.types.set(obj.id, obj);
+    compiler.types.set(obj.id, obj);
     return obj;
 }
 
 //// Function
-export function Function(node: Node, state: State){
+export function Function(node: Node, compiler: Compiler){
     const obj = new Ast.Function();
 
     // obj.ast = node.data;
@@ -68,12 +68,12 @@ export function Function(node: Node, state: State){
         }
     }
 
-    state.types.set(obj.id, obj);
+    compiler.types.set(obj.id, obj);
     return obj;
 }
 
 //// Trait
-export function Trait(node: Node, state: State){
+export function Trait(node: Node, compiler: Compiler){
     const obj = new Ast.Trait();
 
     //obj.ast = node.data;
@@ -84,7 +84,7 @@ export function Trait(node: Node, state: State){
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
-            const parsed = state.parse(member) as Ast.Member;
+            const parsed = compiler.parse(member) as Ast.Member;
             obj.members.set(parsed.id, parsed)
         }
     }
@@ -94,21 +94,21 @@ export function Trait(node: Node, state: State){
         throw new Error("Traits can not yet implement traits")
     }
 
-    state.types.set(obj.id, obj);
+    compiler.types.set(obj.id, obj);
     return obj;
 }
 
 //// Variable
-export function Variable(node: Node){
+export function Variable(node: Node, compiler: Compiler){
     return new Ast.Variable();
 }
 
 //// ExCall
-export function ExCall(node: Node){
+export function ExCall(node: Node, compiler: Compiler){
     return new Ast.ExCall();
 }
 
 //// ExConstruct
-export function ExConstruct(node: Node){
+export function ExConstruct(node: Node, compiler: Compiler){
     return new Ast.ExConstruct();
 }

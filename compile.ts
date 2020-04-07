@@ -49,7 +49,7 @@ class Source {
     public content: string;
 }
 
-export class State {
+export class Compiler {
     public types = new Map<string, Type>();
 
     public parse(node: any): Thing{
@@ -90,7 +90,7 @@ parser.feed(source.content);
 if(parser.results.length > 1){
     console.error("! AMBIGUOUS GRAMMAR !")
 } else {
-    const state = new State();
+    const state = new Compiler();
     for(const node of parser.results[0]){
         state.parse(node);
     }
