@@ -1,5 +1,6 @@
 import * as Ast from "./ast";
 import { State } from './compile';
+import { canSubType } from './type_api';
 
 // TODO: "id" fields should be unique, use some kind of name mangling scheme to guarantee this
 
@@ -26,12 +27,16 @@ export function Class(node: Node, state: State){
     for(const impl of node[2]){
         const type = state.get_type(impl[3]);
 
-        if(type === undefined || type.tag !== Ast.Tag.Trait){
-            // TODO: Create better error handling system
-            throw new Error("Types can only impl trait")
+        // TODO: Create better error handling system
+        if(type === undefined){
+            throw new Error("Type does not exist");
         }
-
-        //console.log(T.couldImplement(obj, type));
+        if(type.tag !== Ast.Tag.Trait){
+            throw new Error("Types can only impl trait");
+        }
+        if(!canSubType(obj, type)){
+            throw new Error("Can not subtype trait");
+        }
 
         obj.traits.set(type.id, type);
     }

@@ -1,22 +1,7 @@
-trait Trait
-class Class
-fn Function()
-
-trait TextWriter {
-    fn writeLn(self, Format)
-    fn format()
+trait Foo {
+    fn foo()
 }
 
-val stdout = JsConsoleTextWriter{}
-val stdout = JsConsole{}
+class Bar impl Foo {
 
-
-fn foo(){
-    print("Hello")
-}
-
-fn bar(){
-    val name: Str = "Charlie"
-    val breed = "Husky"
-    mut age: Int
 }
