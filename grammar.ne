@@ -63,7 +63,7 @@ dgKeyword       -> "generic"
 dgParameters    -> PLUS["<", dgParameter, COMMA, ">"] {% p.PLUS %}
 dgParameter     -> %identifier
 dgWhere         -> _ "where" __ dgWhereQuery
-dgWhereQuery    -> %identifier __ "impl" __ type
+dgWhereQuery    -> %identifier __ "is" __ type
 
 ## Declare/Trait ###################################################################################
 declare_trait -> dt
@@ -130,23 +130,23 @@ econArguments   -> STAR["{", econArgument, COMMA, "}"] {% p.STAR %}
 econArgument    -> expr
 econArgument    -> %identifier _ ":" _ expr
 
-## Expression/Index ################################################################################
-expression_index -> eiTarget eiIndex
+## Expression/IndexBracket #########################################################################
+expression_index_bracket -> eibTarget eibIndex
 
-eiTarget        -> atom
-eiIndex         -> PLUS["[", expr, COMMA, "]"] {% p.PLUS %}
+eibTarget       -> atom
+eibIndex        -> PLUS["[", expr, COMMA, "]"] {% p.PLUS %}
 # Work around to fix editor syntax highlighting ==> "[]
 
-atom            -> expression_index
+atom            -> expression_index_bracket
 
-## Expression/Member ###############################################################################
-expression_member -> emTarget emSymbol emName
+## Expression/IndexDot #############################################################################
+expression_index_dot -> eidTarget eidSymbol eidName
 
-emTarget        -> atom
-emSymbol        -> _ "." _
-emName          -> %identifier
+eidTarget       -> atom
+eidSymbol       -> _ "." _
+eidName         -> %identifier
 
-atom            -> expression_member
+atom            -> expression_index_dot
 
 ## Literal/Integer #################################################################################
 literal_integer -> %integer_bin
