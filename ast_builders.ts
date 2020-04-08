@@ -2,6 +2,10 @@ import * as Ast from "./ast";
 import { Compiler } from './compile';
 import { canSubType } from './type_api';
 
+const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
+const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
+const IMPL_TARGET_NOT_SUBTYPE       = "$0 tried to implement $1, but $0 [does not implement some member of $1].";
+
 // TODO: "id" fields should be unique, use some kind of name mangling scheme to guarantee this
 
 type Node = any[];
@@ -10,7 +14,7 @@ type Node = any[];
 export function Class(node: Node, compiler: Compiler){
     const obj = new Ast.Class();
 
-    // obj.ast = node.data;
+    obj.ast = node;
     obj.name = node[1].text;
     obj.id = obj.name;
     obj.members = new Map;
@@ -29,16 +33,26 @@ export function Class(node: Node, compiler: Compiler){
 
         // TODO: Create better error handling system
         if(type === undefined){
-            throw new Error("Type does not exist");
+            compiler.error(
+                IMPL_TARGET_DOES_NOT_EXIST,
+                [node[1].value, impl[3].data[0].value],
+                [impl[3].data[0]]
+            );
+        } else if(type.tag !== Ast.Tag.Trait){
+            compiler.error(
+                IMPL_TARGET_NOT_A_TRAIT,
+                [node[1].value, impl[3].data[0].value],
+                [impl[3].data[0], type.ast]
+            );
+        } else if(!canSubType(obj, type)){
+            compiler.error(
+                IMPL_TARGET_NOT_SUBTYPE,
+                [node[1].value, impl[3].data[0].value],
+                [impl[3].data[0], type.ast]
+            );
+        } else {
+            obj.traits.set(type.id, type);
         }
-        if(type.tag !== Ast.Tag.Trait){
-            throw new Error("Types can only impl trait");
-        }
-        if(!canSubType(obj, type)){
-            throw new Error("Can not subtype trait");
-        }
-
-        obj.traits.set(type.id, type);
     }
 
     compiler.types.set(obj.id, obj);
@@ -49,7 +63,7 @@ export function Class(node: Node, compiler: Compiler){
 export function Function(node: Node, compiler: Compiler){
     const obj = new Ast.Function();
 
-    // obj.ast = node.data;
+    obj.ast = node;
     obj.name = node[1][0].text;
     obj.id = obj.name;
 
@@ -68,7 +82,7 @@ export function Function(node: Node, compiler: Compiler){
         }
     }
 
-    compiler.types.set(obj.id, obj);
+    //compiler.types.set(obj.id, obj);
     return obj;
 }
 
@@ -76,7 +90,7 @@ export function Function(node: Node, compiler: Compiler){
 export function Trait(node: Node, compiler: Compiler){
     const obj = new Ast.Trait();
 
-    //obj.ast = node.data;
+    obj.ast = node;
     obj.name = node[1].text;
     obj.id = obj.name;
     obj.members = new Map;

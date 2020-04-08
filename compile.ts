@@ -49,8 +49,35 @@ class Source {
     public content: string;
 }
 
+function levenshteinDistance(a: string, b: string){
+    return levenshteinDistance_(a, b, a.length, b.length);
+}
+
+function levenshteinDistance_(a: string, b: string, i: number, j: number){
+    // TODO: Optimize this function
+    if(Math.min(i, j) === 0){
+        return Math.max(i, j);
+    }
+
+    return Math.min(
+        levenshteinDistance_(a, b, i - 1, j) + 1,
+        levenshteinDistance_(a, b, i, j - 1) + 1,
+        levenshteinDistance_(a, b, i - 1, j - 1) + (a.charAt(i) === b.charAt(j) ? 0 : 1),
+    );
+}
+
+let errors = [];
+
 export class Compiler {
     public types = new Map<string, Type>();
+
+    public error(format: string, args: string[], highlight?: any[]) {
+        errors.push({
+            format: format,
+            args: args,
+            highlight: highlight,
+        });
+    }
 
     public parse(node: any): Thing{
         switch(node.tag){
@@ -93,5 +120,64 @@ if(parser.results.length > 1){
     const state = new Compiler();
     for(const node of parser.results[0]){
         state.parse(node);
+    }
+
+    while(errors.length > 0){
+        let {format, args, highlight} = errors.pop();
+
+        let color = true;
+
+        // Find the most likely word
+        const incorrect = args[1];
+
+        let types = Array.from(state.types.values())
+            .map(type => [type.name, levenshteinDistance(type.name, incorrect)])
+            .sort((a, b) => a[1] - b[1]);
+
+        args.push(types[0][0]);
+
+        // Color each of the arguments
+        if(color){
+            args = args.map(x => chalk.whiteBright(x));
+        }
+
+        const target = highlight[0];
+
+        // First line components
+        let banner    = "!";
+        let path      = source.path;
+        let line      = target.line;
+        let col       = target.col;
+        let message   = format.replace(/\$(\d+)/g, (_, index)=> `'${args[index]}'`);
+
+        // Color each of the first line components
+        if(color){
+            banner  = chalk.bgRedBright.whiteBright(banner);
+            path    = chalk.blueBright(path);
+            line    = chalk.greenBright(line);
+            col     = chalk.greenBright(col);
+        }
+
+        // First line
+        console.log(`${banner} ${message} (${path}:${line}:${col})`);
+        console.log();
+
+        // Context...
+        const begin = target.col - 1;
+        const end = begin + target.text.length;
+        const src = source.content.split(/(\r\n|\r|\n)/g);
+
+        let content = src[target.line * 2 - 2]
+        content = content.slice(0, begin) +
+            chalk.redBright(content.slice(begin, end)) +
+            content.slice(end);
+
+        console.log(target.line + ":     " + content);
+
+        if(errors.length > 0){
+            console.log();
+            console.log();
+            console.log();
+        }
     }
 }

@@ -8,7 +8,12 @@ export enum Tag {
     ExConstruct,
 }
 
+// TODO: Make the parser strongly typed
+type Node = any;
+
 interface IThing {
+    ast: Node;
+
     tag: Tag;
     name: string;
     id: string;
@@ -48,6 +53,8 @@ interface IGeneric {
 }
 
 export class Class implements IThing, IType, IGeneric {
+    public ast: Node;
+
     public tag: Tag.Class = Tag.Class;
     public name: string;
     public id: string;
@@ -59,6 +66,8 @@ export class Class implements IThing, IType, IGeneric {
 }
 
 export class Function implements IThing, IType, IGeneric {
+    public ast: Node;
+
     public tag: Tag.Function = Tag.Function;
     public name: string;
     public id: string;
@@ -69,6 +78,8 @@ export class Function implements IThing, IType, IGeneric {
 }
 
 export class Trait implements IThing, IType, IGeneric {
+    public ast: Node;
+
     public tag: Tag.Trait = Tag.Trait;
     public name: string;
     public id: string;
@@ -80,6 +91,8 @@ export class Trait implements IThing, IType, IGeneric {
 }
 
 export class Variable implements IThing, IType {
+    public ast: Node;
+
     public tag: Tag.Variable = Tag.Variable;
     public name: string;
     public id: string;
@@ -88,6 +101,8 @@ export class Variable implements IThing, IType {
 }
 
 export class ExCall implements IThing, IExpression {
+    public ast: Node;
+
     public tag: Tag.ExCall = Tag.ExCall;
     public name: string;
     public id: string;
@@ -99,6 +114,8 @@ export class ExCall implements IThing, IExpression {
 }
 
 export class ExConstruct implements IThing, IExpression {
+    public ast: Node;
+
     public tag: Tag.ExCall = Tag.ExCall;
     public name: string;
     public id: string;

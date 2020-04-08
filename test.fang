@@ -1,7 +1,21 @@
-trait Foo {
-    fn foo()
+trait TextWriter {
+
 }
 
-class Bar impl Foo {
+trait XyzXyz {
+
+}
+
+trait Foobar {
+
+}
+
+class Foo impl TexWriter
+{
+
+}
+
+class Bar impl XyzXy
+{
 
 }
