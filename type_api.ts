@@ -6,9 +6,13 @@ export function canSubType(child: Type, parent: Type){
         return true;
     }
 
-    if(parent.tag === Tag.Function || child.tag === Tag.Function){
-        // TODO: Support subtype on functions
-        throw new Error('canSubType called on function');
+    if(parent.tag === Tag.Function){
+        if(child.tag === Tag.Function){
+            return canSubTypeFunction(child, parent);
+        }
+        throw new Error('Not Implemented Yet: canSubType called with function and non-function');
+    } else if(child.tag === Tag.Function){
+        throw new Error('Not Implemented Yet: canSubType called with function and non-function');
     }
 
     for(const [id, pm] of parent.members){
@@ -22,6 +26,30 @@ export function canSubType(child: Type, parent: Type){
         const pt = (pm.tag === Tag.Variable ? pm.type : pm);
 
         if(!canSubType(ct, pt)){
+            return false;
+        }
+    }
+
+    return true;
+}
+
+export function canSubTypeFunction(child: Function, parent: Function){
+    if(child === parent){
+        return true;
+    }
+
+    if(child.parameters.length !== parent.parameters.length){
+        return false;
+    }
+
+    // TODO: Check subtype relationships here
+    if(!canSubType(child.return_type, parent.return_type)){
+        return false;
+    }
+
+    for(let i = 0; i < child.parameters.length; i++){
+        // TODO: Check subtype relationships here
+        if(!canSubType(child.parameters[i].type, parent.parameters[i].type)){
             return false;
         }
     }

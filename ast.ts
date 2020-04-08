@@ -73,6 +73,7 @@ export class Function implements IThing, IType, IGeneric {
     public id: string;
 
     public parameters: Variable[];
+    public return_type: Type;
 
     public generic_parameters: Type[];
 }
