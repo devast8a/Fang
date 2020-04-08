@@ -4,7 +4,7 @@ import { canSubType } from './type_api';
 
 const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
 const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
-const IMPL_TARGET_NOT_SUBTYPE       = "$0 tried to implement $1, but $0 [does not implement some member of $1].";
+const IMPL_TARGET_NOT_SUBTYPE       = "$0 is missing $2 required to implement $1";
 
 // TODO: "id" fields should be unique, use some kind of name mangling scheme to guarantee this
 
@@ -47,7 +47,7 @@ export function Class(node: Node, compiler: Compiler){
         } else if(!canSubType(obj, type)){
             compiler.error(
                 IMPL_TARGET_NOT_SUBTYPE,
-                [node[1].value, impl[3].data[0].value],
+                [node[1].value, impl[3].data[0].value, "<not implemented>"],
                 [impl[3].data[0], type.ast]
             );
         } else {
