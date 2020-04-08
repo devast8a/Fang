@@ -42,14 +42,14 @@ export function canSubTypeFunction(child: Function, parent: Function){
         return false;
     }
 
-    // TODO: Check subtype relationships here
+    //TODO: use isSubType here
     if(!canSubType(child.return_type, parent.return_type)){
         return false;
     }
 
     for(let i = 0; i < child.parameters.length; i++){
-        // TODO: Check subtype relationships here
-        if(!canSubType(child.parameters[i].type, parent.parameters[i].type)){
+        //TODO: use isSubType here
+        if(!canSubType(parent.parameters[i].type, child.parameters[i].type)){
             return false;
         }
     }
