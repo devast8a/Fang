@@ -18,6 +18,7 @@ export function Class(node: Node, compiler: Compiler){
     obj.name = node[1].text;
     obj.id = obj.name;
     obj.members = new Map;
+    obj.traits = new Map;
 
     // Collect members
     if(node[4] !== null){
