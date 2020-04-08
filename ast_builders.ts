@@ -13,13 +13,8 @@ type Node = any[];
 
 //// Class
 export function Class(node: Node, compiler: Compiler){
-    const obj = new Ast.Class();
-
-    obj.ast = node;
-    obj.name = node[1].text;
-    obj.id = obj.name;
-    obj.members = new Map;
-    obj.traits = new Map;
+    const name = node[1].text;
+    const obj = new Ast.Class(node, name, name);
 
     // Collect members
     if(node[4] !== null){
@@ -62,43 +57,37 @@ export function Class(node: Node, compiler: Compiler){
 }
 
 function Parameter(node: any, compiler: Compiler){
-    const parameter = new Ast.Variable();
-    parameter.ast = node.data;
+    let type: Ast.Type | undefined;
+    let name: string;
 
-    // TODO: Properly set id
     if(node.tag === Tag.PARAMETER_TYPE){
         // [Keyword, Type]
-        parameter.name   = undefined;
-        parameter.id     = undefined;
-        parameter.type   = compiler.get_type(node.data[1]);
+        name = "";
+        type = compiler.get_type(node.data[1]);
     } else {
         // [Keyword, Name, _, _, _, Type]
-        parameter.name   = node.data[1].value;
-        parameter.id     = undefined;
-        parameter.type   = compiler.get_type(node.data[5]);
+        name = node.data[1].value;
+        type = compiler.get_type(node.data[5]);
     }
 
-    return parameter;
+    if(type === undefined){
+        throw new Error("Not implemented");
+    }
+
+    return new Ast.Variable(node, name, type, name);
 }
 
 //// Function
 export function Function(node: Node, compiler: Compiler){
-    const obj = new Ast.Function();
-
-    obj.ast = node;
-    obj.name = node[1][0].text;
-    obj.id = obj.name;
+    const name = node[1][0].text;
+    const obj = new Ast.Function(node, name, name);
 
     // Collect parameters
-    const parameters = [];
     for(const parameterNode of node[2].elements){
-        const parameter = Parameter(parameterNode, compiler);
-        parameters.push(parameter);
+        obj.parameters.push(Parameter(parameterNode, compiler));
     }
-    obj.parameters = parameters;
 
     // Collect statements
-    const statements = [];
     if(node[5] !== null){
         for(const statement of node[5][1].elements){
             console.log(compiler.parse(statement));
@@ -111,12 +100,9 @@ export function Function(node: Node, compiler: Compiler){
 
 //// Trait
 export function Trait(node: Node, compiler: Compiler){
-    const obj = new Ast.Trait();
+    const name = node[1].text;
 
-    obj.ast = node;
-    obj.name = node[1].text;
-    obj.id = obj.name;
-    obj.members = new Map;
+    const obj = new Ast.Trait(node, name, name);
 
     // Collect members
     if(node[4] !== null){
@@ -137,15 +123,15 @@ export function Trait(node: Node, compiler: Compiler){
 
 //// Variable
 export function Variable(node: Node, compiler: Compiler){
-    return new Ast.Variable();
+    throw new Error("Not implemented yet");
 }
 
 //// ExCall
 export function ExCall(node: Node, compiler: Compiler){
-    return new Ast.ExCall();
+    throw new Error("Not implemented yet");
 }
 
 //// ExConstruct
 export function ExConstruct(node: Node, compiler: Compiler){
-    return new Ast.ExConstruct();
+    throw new Error("Not implemented yet");
 }

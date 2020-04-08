@@ -1,6 +1,9 @@
 @{%
-import lexer from './lexer';
+import lex from './lexer';
 import * as p from './post';
+
+// Subvert type system
+const lexer = lex as any;
 %}
 
 @preprocessor typescript

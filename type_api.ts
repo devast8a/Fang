@@ -42,9 +42,11 @@ export function canSubTypeFunction(child: Function, parent: Function){
         return false;
     }
 
-    //TODO: use isSubType here
-    if(!canSubType(child.return_type, parent.return_type)){
-        return false;
+    if(child.return_type !== undefined && parent.return_type !== undefined){
+        //TODO: use isSubType here
+        if(!canSubType(child.return_type, parent.return_type)){
+            return false;
+        }
     }
 
     for(let i = 0; i < child.parameters.length; i++){

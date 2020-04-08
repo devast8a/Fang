@@ -8,7 +8,7 @@ import { Thing, Type } from './ast';
 // Create a Parser object from our grammar.
 const compiled = nearley.Grammar.fromCompiled(grammar);
 
-function first(data){return data[0];}
+function first(data: any){return data[0];}
 
 // Simplify our AST a bit. If our rule only has one thing it matches on,
 //  don't create a new deeper set of nodes.
@@ -53,7 +53,7 @@ function levenshteinDistance(a: string, b: string){
     return levenshteinDistance_(a, b, a.length, b.length);
 }
 
-function levenshteinDistance_(a: string, b: string, i: number, j: number){
+function levenshteinDistance_(a: string, b: string, i: number, j: number): number {
     // TODO: Optimize this function
     if(Math.min(i, j) === 0){
         return Math.max(i, j);
@@ -66,7 +66,7 @@ function levenshteinDistance_(a: string, b: string, i: number, j: number){
     );
 }
 
-let errors = [];
+let errors = new Array<any>();
 
 export class Compiler {
     public types = new Map<string, Type>();
@@ -92,7 +92,8 @@ export class Compiler {
             //  It should be removed much earlier in parsing, but we're waiting until we have a better idea how everything
             //  will pan out.
             case AstTag.WHITESPACE: {
-                return;
+                // TODO: Avoid subverting type system
+                return undefined as any;
             }
 
             default: {
@@ -131,14 +132,14 @@ if(parser.results.length > 1){
         const incorrect = args[1];
 
         let types = Array.from(state.types.values())
-            .map(type => [type.name, levenshteinDistance(type.name, incorrect)])
-            .sort((a, b) => a[1] - b[1]);
+            .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
+            .sort((a, b) => a.distance - b.distance);
 
-        args.push(types[0][0]);
+        args.push(types[0].name);
 
         // Color each of the arguments
         if(color){
-            args = args.map(x => chalk.whiteBright(x));
+            args = args.map((x:string) => chalk.whiteBright(x));
         }
 
         const target = highlight[0];
@@ -148,7 +149,7 @@ if(parser.results.length > 1){
         let path      = source.path;
         let line      = target.line;
         let col       = target.col;
-        let message   = format.replace(/\$(\d+)/g, (_, index)=> `'${args[index]}'`);
+        let message   = format.replace(/\$(\d+)/g, (_: any, index: number)=> `'${args[index]}'`);
 
         // Color each of the first line components
         if(color){

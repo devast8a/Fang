@@ -15,8 +15,6 @@ interface IThing {
     ast: Node;
 
     tag: Tag;
-    name: string;
-    id: string;
 }
 export type Thing =
       Class
@@ -27,6 +25,8 @@ export type Thing =
     | ExConstruct;
 
 interface IType {
+    name: string;
+    id: string;
 }
 export type Type =
       Class
@@ -34,7 +34,7 @@ export type Type =
     | Trait;
 
 interface IExpression {
-    resultType: Type;
+    resultType: Type | undefined;
 }
 export type Expression =
       ExCall
@@ -59,10 +59,16 @@ export class Class implements IThing, IType, IGeneric {
     public name: string;
     public id: string;
 
-    public traits: Map<string, Trait>;
-    public members: Map<string, Member>;
+    public traits   = new Map<string, Trait>();
+    public members  = new Map<string, Member>();
 
-    public generic_parameters: Type[];
+    public generic_parameters = new Array<Type>();
+
+    public constructor(ast: Node, name: string, id: string){
+        this.ast = ast;
+        this.name = name;
+        this.id = id;
+    }
 }
 
 export class Function implements IThing, IType, IGeneric {
@@ -72,10 +78,16 @@ export class Function implements IThing, IType, IGeneric {
     public name: string;
     public id: string;
 
-    public parameters: Variable[];
-    public return_type: Type;
+    public parameters       = new Array<Variable>();
+    public return_type: Type | undefined;
 
-    public generic_parameters: Type[];
+    public generic_parameters = new Array<Type>();
+
+    public constructor(ast: Node, name: string, id: string){
+        this.ast = ast;
+        this.name = name;
+        this.id = id;
+    }
 }
 
 export class Trait implements IThing, IType, IGeneric {
@@ -85,10 +97,16 @@ export class Trait implements IThing, IType, IGeneric {
     public name: string;
     public id: string;
 
-    public traits: Map<string, Trait>;
-    public members: Map<string, Member>;
+    public traits   = new Map<string, Trait>();
+    public members  = new Map<string, Member>();
 
-    public generic_parameters: Type[];
+    public generic_parameters = new Array<Type>();
+
+    public constructor(ast: Node, name: string, id: string){
+        this.ast = ast;
+        this.name = name;
+        this.id = id;
+    }
 }
 
 export class Variable implements IThing, IType {
@@ -99,30 +117,43 @@ export class Variable implements IThing, IType {
     public id: string;
 
     public type: Type;
+
+    public constructor(ast: Node, name: string, type: Type, id: string){
+        this.ast = ast;
+        this.name = name;
+        this.id = id;
+        this.type = type;
+    }
 }
 
 export class ExCall implements IThing, IExpression {
     public ast: Node;
 
     public tag: Tag.ExCall = Tag.ExCall;
-    public name: string;
-    public id: string;
 
-    public resultType: Type;
+    public resultType: Type | undefined;
 
     public target: Function;        // TODO: Going forward this shouldn't be restricted to Function
-    public arguments: Expression[];
+    public arguments = new Array<Expression>();
+
+    public constructor(ast: Node, target: Function){
+        this.ast = ast;
+        this.target = target;
+    }
 }
 
 export class ExConstruct implements IThing, IExpression {
     public ast: Node;
 
     public tag: Tag.ExCall = Tag.ExCall;
-    public name: string;
-    public id: string;
 
-    public resultType: Type;
+    public resultType: Type | undefined;
 
     public target: Type;
-    public arguments: Expression[];
+    public arguments = new Array<Expression>();
+
+    public constructor(ast: Node, target: Type){
+        this.ast = ast;
+        this.target = target;
+    }
 }
