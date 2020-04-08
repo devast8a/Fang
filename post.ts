@@ -9,6 +9,8 @@ export enum Tag {
     WHITESPACE,
     TYPE,
     LIST,
+    PARAMETER_NAME_TYPE,
+    PARAMETER_TYPE,
 }
 
 function builder<T>(builder: (node: Node, state: Compiler) => T){
@@ -51,6 +53,20 @@ export function type(node: Node){
         tag: Tag.TYPE,
         data: node,
     };
+}
+
+export function parameterNameType(node: Node){
+    return {
+        tag: Tag.PARAMETER_NAME_TYPE,
+        data: node,
+    }
+}
+
+export function parameterType(node: Node){
+    return {
+        tag: Tag.PARAMETER_TYPE,
+        data: node,
+    }
 }
 
 function select(obj: any, ...keys: any[]){

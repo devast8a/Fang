@@ -1,6 +1,7 @@
 import * as Ast from "./ast";
 import { Compiler } from './compile';
 import { canSubType } from './type_api';
+import { Tag } from './post';
 
 const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
 const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
@@ -60,6 +61,26 @@ export function Class(node: Node, compiler: Compiler){
     return obj;
 }
 
+function Parameter(node: any, compiler: Compiler){
+    const parameter = new Ast.Variable();
+    parameter.ast = node.data;
+
+    // TODO: Properly set id
+    if(node.tag === Tag.PARAMETER_TYPE){
+        // [Keyword, Type]
+        parameter.name   = undefined;
+        parameter.id     = undefined;
+        parameter.type   = compiler.get_type(node.data[1]);
+    } else {
+        // [Keyword, Name, _, _, _, Type]
+        parameter.name   = node.data[1].value;
+        parameter.id     = undefined;
+        parameter.type   = compiler.get_type(node.data[5]);
+    }
+
+    return parameter;
+}
+
 //// Function
 export function Function(node: Node, compiler: Compiler){
     const obj = new Ast.Function();
@@ -70,16 +91,17 @@ export function Function(node: Node, compiler: Compiler){
 
     // Collect parameters
     const parameters = [];
-    for(const parameter of node[2].elements){
-        // TODO: Redo parameter collection
+    for(const parameterNode of node[2].elements){
+        const parameter = Parameter(parameterNode, compiler);
+        parameters.push(parameter);
     }
     obj.parameters = parameters;
 
     // Collect statements
     const statements = [];
-    if(node[4] !== null){
-        for(const statement of node[4][1].elements){
-            //console.log(state.parse(statement));
+    if(node[5] !== null){
+        for(const statement of node[5][1].elements){
+            console.log(compiler.parse(statement));
         }
     }
 

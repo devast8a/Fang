@@ -51,8 +51,8 @@ dfBodyList      -> BODY[stmt] {% p.STAR %}
 ## Declare/Function/Parameter ######################################################################
 declare_function_parameter -> dfp
 
-dfp             -> dfpKeyword:* %identifier _ ":" _ type
-dfp             -> dfpKeyword:* type
+dfp             -> dfpKeyword:* %identifier _ ":" _ type {% p.parameterNameType %}
+dfp             -> dfpKeyword:* type                     {% p.parameterType %}     
 dfpKeyword      -> "own" __
 dfpKeyword      -> "mut" __
 
