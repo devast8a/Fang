@@ -40,6 +40,7 @@ export const Function       = builder(AstBuilder.Function);
 export const Variable       = builder(AstBuilder.Variable);
 export const ExCall         = builder(AstBuilder.ExCall);
 export const ExConstruct    = builder(AstBuilder.ExConstruct);
+export const LiteralString  = builder(AstBuilder.LiteralString);
 
 export function whitespace(node: Node){
     return {

@@ -3,7 +3,8 @@ import chalk from "chalk";
 import grammar from "./grammar";
 import * as fs from "fs";
 import { Tag as AstTag } from './post';
-import { Thing, Type } from './ast';
+import { Thing, Type, Class, Function } from './ast';
+import target_c_gcc from './codegen';
 
 // Create a Parser object from our grammar.
 const compiled = nearley.Grammar.fromCompiled(grammar);
@@ -69,8 +70,6 @@ function levenshteinDistance_(a: string, b: string, i: number, j: number): numbe
 let errors = new Array<any>();
 
 export class Compiler {
-    public types = new Map<string, Type>();
-
     public error(format: string, args: string[], highlight?: any[]) {
         errors.push({
             format: format,
@@ -102,9 +101,15 @@ export class Compiler {
         }
     }
 
-    public get_type(node: any){
-        const name = node.data[0].text;
-        return this.types.has(name) ? this.types.get(name) : undefined;
+    public types = new Map<string, Type>();
+    public functions = new Map<string, Function>();
+
+    public lookup_type(node: any){
+        return this.types.get(node.data[0].value);
+    }
+
+    public lookup_function(node: any) {
+        return this.functions.get(node.value)
     }
 };
 
@@ -118,11 +123,24 @@ parser.feed(source.content);
 if(parser.results.length > 1){
     console.error("! AMBIGUOUS GRAMMAR !")
 } else {
-    const state = new Compiler();
+    const compiler = new Compiler();
+    compiler.types.set("none", new Class("", "void", "void"));
+    compiler.functions.set("printLn", new Function("", "puts", "puts"));
+
     for(const node of parser.results[0]){
-        state.parse(node);
+        compiler.parse(node);
     }
 
+    const target = new target_c_gcc();
+    compiler.functions.delete("printLn");
+    for(const func of compiler.functions.values()){
+        target.compileFunction(func);
+    }
+
+    const output = target.output.join("");
+    fs.writeFileSync("build/test.c", output);
+
+    // Display errors
     while(errors.length > 0){
         let {format, args, highlight} = errors.pop();
 
@@ -131,7 +149,7 @@ if(parser.results.length > 1){
         // Find the most likely word
         const incorrect = args[1];
 
-        let types = Array.from(state.types.values())
+        let types = Array.from(compiler.types.values())
             .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
             .sort((a, b) => a.distance - b.distance);
 

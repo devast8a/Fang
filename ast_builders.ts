@@ -26,7 +26,7 @@ export function Class(node: Node, compiler: Compiler){
 
     // Collect implemented traits
     for(const impl of node[2]){
-        const type = compiler.get_type(impl[3]);
+        const type = compiler.lookup_type(impl[3]);
 
         // TODO: Create better error handling system
         if(type === undefined){
@@ -63,11 +63,11 @@ function Parameter(node: any, compiler: Compiler){
     if(node.tag === Tag.PARAMETER_TYPE){
         // [Keyword, Type]
         name = "";
-        type = compiler.get_type(node.data[1]);
+        type = compiler.lookup_type(node.data[1]);
     } else {
         // [Keyword, Name, _, _, _, Type]
         name = node.data[1].value;
-        type = compiler.get_type(node.data[5]);
+        type = compiler.lookup_type(node.data[5]);
     }
 
     if(type === undefined){
@@ -87,14 +87,23 @@ export function Function(node: Node, compiler: Compiler){
         obj.parameters.push(Parameter(parameterNode, compiler));
     }
 
+    // Return type
+    if(node[3] === null){
+        throw new Error("You must supply return types for now, sorry");
+    }
+    obj.return_type = compiler.lookup_type(node[3][3]);
+
     // Collect statements
     if(node[5] !== null){
         for(const statement of node[5][1].elements){
-            console.log(compiler.parse(statement));
+            obj.body.push(compiler.parse(statement) as Ast.Expression);
         }
     }
 
-    //compiler.types.set(obj.id, obj);
+    // TODO: Support scoping
+    compiler.types.set(obj.id, obj);
+    compiler.functions.set(obj.id, obj);
+
     return obj;
 }
 
@@ -114,10 +123,11 @@ export function Trait(node: Node, compiler: Compiler){
 
     // Collect traits
     if(node[2].length !== 0){
-        throw new Error("Traits can not yet implement traits")
+        throw new Error("Not implemented yet"); // TODO: Implement error
     }
 
     compiler.types.set(obj.id, obj);
+
     return obj;
 }
 
@@ -128,10 +138,28 @@ export function Variable(node: Node, compiler: Compiler){
 
 //// ExCall
 export function ExCall(node: Node, compiler: Compiler){
-    throw new Error("Not implemented yet");
+    const call = new Ast.ExCall(node, null as any);
+
+    const func = compiler.lookup_function(node[0]);
+    if(func === undefined){
+        throw new Error("Not implemented yet"); // TODO: Implement error
+    }
+    call.target = func;
+
+    call.result_type = func.return_type;
+
+    for(const argument of node[1].elements){
+        call.arguments.push(compiler.parse(argument) as Ast.Expression);
+    }
+
+    return call;
 }
 
 //// ExConstruct
 export function ExConstruct(node: Node, compiler: Compiler){
     throw new Error("Not implemented yet");
+}
+
+export function LiteralString(node: Node, compiler: Compiler){
+    return new Ast.ExConstant(node, null as any, node[0].value);
 }

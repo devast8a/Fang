@@ -1,21 +1,3 @@
-trait TextWriter {
-
-}
-
-trait XyzXyz {
-
-}
-
-trait Foobar {
-
-}
-
-class Foo impl TexWriter
-{
-
-}
-
-class Bar impl XyzXy
-{
-
+fn main(): none {
+    printLn("Hello World!")
 }

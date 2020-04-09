@@ -6,6 +6,7 @@ export enum Tag {
     
     ExCall,
     ExConstruct,
+    ExConstant
 }
 
 // TODO: Make the parser strongly typed
@@ -34,10 +35,11 @@ export type Type =
     | Trait;
 
 interface IExpression {
-    resultType: Type | undefined;
+    result_type: Type | undefined;
 }
 export type Expression =
       ExCall
+    | ExConstant
     | ExConstruct;
 
 export type Member =
@@ -78,9 +80,9 @@ export class Function implements IThing, IType, IGeneric {
     public name: string;
     public id: string;
 
-    public parameters       = new Array<Variable>();
-    public return_type: Type | undefined;
-
+    public return_type: Type | undefined = undefined;
+    public parameters = new Array<Variable>();
+    public body = new Array<Expression>();
     public generic_parameters = new Array<Type>();
 
     public constructor(ast: Node, name: string, id: string){
@@ -131,7 +133,7 @@ export class ExCall implements IThing, IExpression {
 
     public tag: Tag.ExCall = Tag.ExCall;
 
-    public resultType: Type | undefined;
+    public result_type: Type | undefined;
 
     public target: Function;        // TODO: Going forward this shouldn't be restricted to Function
     public arguments = new Array<Expression>();
@@ -142,12 +144,26 @@ export class ExCall implements IThing, IExpression {
     }
 }
 
+export class ExConstant implements IThing, IExpression {
+    public ast: any;
+    public tag: Tag.ExConstant = Tag.ExConstant;
+
+    public result_type: Type | undefined;
+    public value: any;
+
+    public constructor(ast: Node, type: Type, value: any){
+        this.ast = ast;
+        this.result_type = type;
+        this.value = value;
+    }
+}
+
 export class ExConstruct implements IThing, IExpression {
     public ast: Node;
 
     public tag: Tag.ExCall = Tag.ExCall;
 
-    public resultType: Type | undefined;
+    public result_type: Type | undefined;
 
     public target: Type;
     public arguments = new Array<Expression>();

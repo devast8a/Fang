@@ -160,7 +160,7 @@ literal_integer -> %integer_hex
 atom -> literal_integer
 
 ## Literal/String ##################################################################################
-literal_string -> %string_double_quote
+literal_string -> %string_double_quote {% p.LiteralString %}
 
 atom -> literal_string
 
