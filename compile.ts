@@ -116,9 +116,9 @@ if(parser.results.length > 1){
 
     // Do this binding within the language itself
     const scope = new Scope();
-    (scope as any).types.set("none", new Class("", "void", "void"));
-    (scope as any).types.set("str", new Class("", "char*", "char*"));
-    (scope as any).functions.set("writeLn", new Function("", "puts", "puts"));
+    (scope as any).types.set("none", new Class("", "void", "void", scope));
+    (scope as any).types.set("str", new Class("", "char*", "char*", scope));
+    (scope as any).functions.set("writeLn", new Function("", "puts", "puts", scope));
 
     for(const node of parser.results[0]){
         compiler.parse(node, scope);

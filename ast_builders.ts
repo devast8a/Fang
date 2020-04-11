@@ -14,12 +14,12 @@ type Node = any[];
 //// Class
 export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1].text;
-    const obj = new Ast.Class(node, name, name);
+    const obj = new Ast.Class(node, name, name, scope);
 
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
-            const parsed = compiler.parse(member, scope) as Ast.Member;
+            const parsed = compiler.parse(member, obj.scope) as Ast.Member;
             obj.members.set(parsed.id, parsed);
         }
     }
@@ -84,17 +84,17 @@ function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
 //// Function
 export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1][0].text;
-    const obj = new Ast.Function(node, name, name);
+    const obj = new Ast.Function(node, name, name, scope);
 
     // Collect parameters
     for(const parameterNode of node[2].elements){
-        const parameter = Parameter(parameterNode, compiler, scope);
+        const parameter = Parameter(parameterNode, compiler, obj.scope);
         if(parameter !== undefined){
             obj.parameters.push(parameter);
             
             // TODO: Better support here
             if(parameter.name){
-                scope.declareVariable(parameter);
+                obj.scope.declareVariable(parameter);
             }
         }
     }
@@ -109,7 +109,7 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
     // Collect statements
     if(node[5] !== null){
         for(const statement of node[5][1].elements){
-            const stmt = compiler.parse(statement, scope);
+            const stmt = compiler.parse(statement, obj.scope);
             if(stmt !== undefined){
                 obj.body.push(stmt as Ast.Expression);
             }
@@ -125,13 +125,13 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
 export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1].text;
 
-    const obj = new Ast.Trait(node, name, name);
+    const obj = new Ast.Trait(node, name, name, scope);
 
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
-            const parsed = compiler.parse(member, scope) as Ast.Member;
-            obj.members.set(parsed.id, parsed)
+            const parsed = compiler.parse(member, obj.scope) as Ast.Member;
+            obj.members.set(parsed.id, parsed);
         }
     }
 
@@ -142,7 +142,6 @@ export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
     }
 
     scope.declareTrait(obj);
-    //scope.types.set(obj.id, obj);
 
     return obj;
 }

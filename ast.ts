@@ -67,7 +67,11 @@ export class Class implements IThing, IType, IGeneric {
 
     public generic_parameters = new Array<Type>();
 
-    public constructor(ast: Node, name: string, id: string){
+    public scope: Scope;
+
+    public constructor(ast: Node, name: string, id: string, parentScope: Scope){
+        this.scope = new Scope(parentScope);
+
         this.ast = ast;
         this.name = name;
         this.id = id;
@@ -84,9 +88,13 @@ export class Function implements IThing, IType, IGeneric {
     public return_type: Type | undefined = undefined;
     public parameters = new Array<Variable>();
     public body = new Array<Expression>();
+    public scope: Scope;
+
     public generic_parameters = new Array<Type>();
 
-    public constructor(ast: Node, name: string, id: string){
+    public constructor(ast: Node, name: string, id: string, parentScope: Scope){
+        this.scope = new Scope(parentScope);
+
         this.ast = ast;
         this.name = name;
         this.id = id;
@@ -105,7 +113,11 @@ export class Trait implements IThing, IType, IGeneric {
 
     public generic_parameters = new Array<Type>();
 
-    public constructor(ast: Node, name: string, id: string){
+    public scope: Scope;
+
+    public constructor(ast: Node, name: string, id: string, parentScope: Scope){
+        this.scope = new Scope(parentScope);
+
         this.ast = ast;
         this.name = name;
         this.id = id;
