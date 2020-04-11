@@ -1,6 +1,7 @@
 // Setup code from ast_builders in a suitable way for nearley to use.
 import * as AstBuilder from "./ast_builders";
 import { Compiler } from './compile';
+import { Scope } from './ast';
 
 type Node = any;
 
@@ -13,7 +14,7 @@ export enum Tag {
     PARAMETER_TYPE,
 }
 
-function builder<T>(builder: (node: Node, state: Compiler) => T){
+function builder<T>(builder: (node: Node, state: Compiler, scope: Scope) => T){
     return function(node: Node){
         return {
             tag: Tag.NODE,

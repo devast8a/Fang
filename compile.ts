@@ -3,7 +3,7 @@ import chalk from "chalk";
 import grammar from "./grammar";
 import * as fs from "fs";
 import { Tag as AstTag } from './post';
-import { Thing, Type, Class, Function, Variable } from './ast';
+import { Thing, Type, Class, Function, Variable, Scope } from './ast';
 import TargetCGcc from './codegen';
 
 // Create a Parser object from our grammar.
@@ -78,13 +78,13 @@ export class Compiler {
         });
     }
 
-    public parse(node: any): Thing{
+    public parse(node: any, scope: Scope): Thing{
         switch(node.tag){
             // Run the AST builders on each Nearley node
             // See: ast_builders for the code that is actually run to build each AST Node
             // See: post for the code that wraps Nearley nodes with AST builders (in particular post.builder)
             case AstTag.NODE: {
-                return node.builder(node.data, this);
+                return node.builder(node.data, this, scope);
             }
 
             // Ignore whitespace, this whitespace comes primarily from the whitespace between elements in statement lists.
@@ -99,22 +99,6 @@ export class Compiler {
                 throw new Error(`Unknown node tag: ${node.tag}`);
             }
         }
-    }
-
-    public types = new Map<string, Type>();
-    public functions = new Map<string, Function>();
-    public variables = new Map<string, Variable>();
-
-    public lookupType(node: any){
-        return this.types.get(node.data[0].value);
-    }
-
-    public lookupFunction(node: any) {
-        return this.functions.get(node.value);
-    }
-
-    public lookupVariable(node: any) {
-        return this.variables.get(node.value);
     }
 };
 
@@ -131,22 +115,26 @@ if(parser.results.length > 1){
     const compiler = new Compiler();
 
     // Do this binding within the language itself
-    compiler.types.set("none", new Class("", "void", "void"));
-    compiler.types.set("str", new Class("", "char*", "char*"));
-    compiler.functions.set("writeLn", new Function("", "puts", "puts"));
+    const scope = new Scope();
+    (scope as any).types.set("none", new Class("", "void", "void"));
+    (scope as any).types.set("str", new Class("", "char*", "char*"));
+    (scope as any).functions.set("writeLn", new Function("", "puts", "puts"));
 
     for(const node of parser.results[0]){
-        compiler.parse(node);
+        compiler.parse(node, scope);
     }
 
-    const target = new TargetCGcc();
-    compiler.functions.delete("writeLn");
-    for(const func of compiler.functions.values()){
-        target.compileFunction(func);
-    }
+    if(errors.length === 0){
+        const target = new TargetCGcc();
+        (scope as any).functions.delete("writeLn");
 
-    const output = target.output.join("");
-    fs.writeFileSync("build/test.c", output);
+        for(const func of (scope as any).functions.values()){
+            target.compileFunction(func);
+        }
+
+        const output = target.output.join("");
+        fs.writeFileSync("build/test.c", output);
+    }
 
     // Display errors
     while(errors.length > 0){
@@ -155,14 +143,15 @@ if(parser.results.length > 1){
         let color = true;
 
         // Find the most likely word
-        const incorrect = args[1];
-        if(incorrect !== undefined){
-            let types = Array.from(compiler.types.values())
-                .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
-                .sort((a, b) => a.distance - b.distance);
+        //const incorrect = args[1];
+        //if(incorrect !== undefined){
+        //    let types = Array.from(compiler.types.values())
+        //        .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
+        //        .sort((a, b) => a.distance - b.distance);
 
-            args.push(types[0].name);
-        }
+        //    args.push(types[0].name);
+        //}
+        args.push("???");
 
         // Color each of the arguments
         if(color){

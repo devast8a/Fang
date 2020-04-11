@@ -12,21 +12,21 @@ const IMPL_TARGET_NOT_SUBTYPE       = "$0 is missing $2 required to implement $1
 type Node = any[];
 
 //// Class
-export function Class(node: Node, compiler: Compiler){
+export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1].text;
     const obj = new Ast.Class(node, name, name);
 
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
-            const parsed = compiler.parse(member) as Ast.Member;
+            const parsed = compiler.parse(member, scope) as Ast.Member;
             obj.members.set(parsed.id, parsed);
         }
     }
 
     // Collect implemented traits
     for(const impl of node[2]){
-        const type = compiler.lookupType(impl[3]);
+        const type = scope.lookupType(impl[3].data[0].value);
 
         // TODO: Create better error handling system
         if(type === undefined){
@@ -52,11 +52,11 @@ export function Class(node: Node, compiler: Compiler){
         }
     }
 
-    compiler.types.set(obj.id, obj);
+    scope.declareClass(obj);
     return obj;
 }
 
-function Parameter(node: any, compiler: Compiler) {
+function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
     // TODO: Find a better way of failing the current compilation unit
 
     let typeNode: any;
@@ -72,7 +72,7 @@ function Parameter(node: any, compiler: Compiler) {
         typeNode = node.data[5];
     }
 
-    const type = compiler.lookupType(typeNode);
+    const type = scope.lookupType(typeNode.data[0].value);
     if(type === undefined){
         compiler.error("$0 does not exist, did you mean $1", [typeNode.data[0].value, '???'], [typeNode.data[0]]);
         return
@@ -82,19 +82,19 @@ function Parameter(node: any, compiler: Compiler) {
 }
 
 //// Function
-export function Function(node: Node, compiler: Compiler){
+export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1][0].text;
     const obj = new Ast.Function(node, name, name);
 
     // Collect parameters
     for(const parameterNode of node[2].elements){
-        const parameter = Parameter(parameterNode, compiler);
+        const parameter = Parameter(parameterNode, compiler, scope);
         if(parameter !== undefined){
             obj.parameters.push(parameter);
             
             // TODO: Better support here
             if(parameter.name){
-                compiler.variables.set(parameter.name, parameter);
+                scope.declareVariable(parameter);
             }
         }
     }
@@ -104,27 +104,25 @@ export function Function(node: Node, compiler: Compiler){
         compiler.error("All functions must declare return types", [], [node[1][0]]);
         return;
     }
-    obj.return_type = compiler.lookupType(node[3][3]);
+    obj.return_type = scope.lookupType(node[3][3].data[0].value);
 
     // Collect statements
     if(node[5] !== null){
         for(const statement of node[5][1].elements){
-            const stmt = compiler.parse(statement);
+            const stmt = compiler.parse(statement, scope);
             if(stmt !== undefined){
                 obj.body.push(stmt as Ast.Expression);
             }
         }
     }
 
-    // TODO: Support scoping
-    compiler.types.set(obj.id, obj);
-    compiler.functions.set(obj.id, obj);
+    scope.declareFunction(obj);
 
     return obj;
 }
 
 //// Trait
-export function Trait(node: Node, compiler: Compiler){
+export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1].text;
 
     const obj = new Ast.Trait(node, name, name);
@@ -132,7 +130,7 @@ export function Trait(node: Node, compiler: Compiler){
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
-            const parsed = compiler.parse(member) as Ast.Member;
+            const parsed = compiler.parse(member, scope) as Ast.Member;
             obj.members.set(parsed.id, parsed)
         }
     }
@@ -143,7 +141,8 @@ export function Trait(node: Node, compiler: Compiler){
         return;
     }
 
-    compiler.types.set(obj.id, obj);
+    scope.declareTrait(obj);
+    //scope.types.set(obj.id, obj);
 
     return obj;
 }
@@ -154,7 +153,7 @@ export function Variable(node: Node, compiler: Compiler){
 }
 
 //// ExCall
-export function ExCall(node: Node, compiler: Compiler){
+export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
     const call = new Ast.ExCall(node, null as any);
 
     // TODO: Split call types into their respective categories
@@ -164,7 +163,7 @@ export function ExCall(node: Node, compiler: Compiler){
     //  - expression.method(foo, bar)
 
     const name = node[0].data[0];
-    const func = compiler.lookupFunction(name);
+    const func = scope.lookupFunction(name.value);
     if(func === undefined){
         compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
         // TODO: Support better error bail out
@@ -175,7 +174,7 @@ export function ExCall(node: Node, compiler: Compiler){
     call.result_type = func.return_type;
 
     for(const argument of node[1].elements){
-        const expression = compiler.parse(argument) as Ast.Expression; 
+        const expression = compiler.parse(argument, scope) as Ast.Expression; 
         if(expression !== undefined){
             call.arguments.push(expression);
         }
@@ -190,9 +189,9 @@ export function ExConstruct(node: Node, compiler: Compiler){
 }
 
 //// ExVariable
-export function ExVariable(node: Node, compiler: Compiler){
+export function ExVariable(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[0];
-    const variable = compiler.lookupVariable(name);
+    const variable = scope.lookupVariable(name.value);
     if(variable === undefined){
         compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
         return;
