@@ -4,7 +4,7 @@ import grammar from "./grammar";
 import * as fs from "fs";
 import { Tag as AstTag } from './post';
 import { Thing, Type, Class, Function, Variable } from './ast';
-import target_c_gcc from './codegen';
+import TargetCGcc from './codegen';
 
 // Create a Parser object from our grammar.
 const compiled = nearley.Grammar.fromCompiled(grammar);
@@ -105,15 +105,15 @@ export class Compiler {
     public functions = new Map<string, Function>();
     public variables = new Map<string, Variable>();
 
-    public lookup_type(node: any){
+    public lookupType(node: any){
         return this.types.get(node.data[0].value);
     }
 
-    public lookup_function(node: any) {
+    public lookupFunction(node: any) {
         return this.functions.get(node.value);
     }
 
-    public lookup_variable(node: any) {
+    public lookupVariable(node: any) {
         return this.variables.get(node.value);
     }
 };
@@ -139,7 +139,7 @@ if(parser.results.length > 1){
         compiler.parse(node);
     }
 
-    const target = new target_c_gcc();
+    const target = new TargetCGcc();
     compiler.functions.delete("writeLn");
     for(const func of compiler.functions.values()){
         target.compileFunction(func);

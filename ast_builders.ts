@@ -26,7 +26,7 @@ export function Class(node: Node, compiler: Compiler){
 
     // Collect implemented traits
     for(const impl of node[2]){
-        const type = compiler.lookup_type(impl[3]);
+        const type = compiler.lookupType(impl[3]);
 
         // TODO: Create better error handling system
         if(type === undefined){
@@ -72,7 +72,7 @@ function Parameter(node: any, compiler: Compiler) {
         typeNode = node.data[5];
     }
 
-    const type = compiler.lookup_type(typeNode);
+    const type = compiler.lookupType(typeNode);
     if(type === undefined){
         compiler.error("$0 does not exist, did you mean $1", [typeNode.data[0].value, '???'], [typeNode.data[0]]);
         return
@@ -104,7 +104,7 @@ export function Function(node: Node, compiler: Compiler){
         compiler.error("All functions must declare return types", [], [node[1][0]]);
         return;
     }
-    obj.return_type = compiler.lookup_type(node[3][3]);
+    obj.return_type = compiler.lookupType(node[3][3]);
 
     // Collect statements
     if(node[5] !== null){
@@ -164,7 +164,7 @@ export function ExCall(node: Node, compiler: Compiler){
     //  - expression.method(foo, bar)
 
     const name = node[0].data[0];
-    const func = compiler.lookup_function(name);
+    const func = compiler.lookupFunction(name);
     if(func === undefined){
         compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
         // TODO: Support better error bail out
@@ -192,7 +192,7 @@ export function ExConstruct(node: Node, compiler: Compiler){
 //// ExVariable
 export function ExVariable(node: Node, compiler: Compiler){
     const name = node[0];
-    const variable = compiler.lookup_variable(name);
+    const variable = compiler.lookupVariable(name);
     if(variable === undefined){
         compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
         return;

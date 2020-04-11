@@ -1,7 +1,7 @@
 // Code generation step
 import { Tag, Class, Function, ExCall, Expression, ExConstant, ExVariable } from './ast';
 
-export class target_c_gcc {
+export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];
 
     public compileFunction(node: Function){
@@ -72,4 +72,4 @@ export class target_c_gcc {
     }
 }
 
-export default target_c_gcc;
+export default TargetCGcc;
