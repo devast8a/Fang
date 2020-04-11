@@ -105,6 +105,9 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
         return;
     }
     obj.return_type = scope.lookupType(node[3][3].data[0].value);
+    if(obj.return_type === undefined){
+        compiler.error("$0 does not exist, did you mean $1", [node[3][3].data[0].value, '???'], [node[3][3].data[0]]);
+    }
 
     // Collect statements
     if(node[5] !== null){
@@ -188,6 +191,11 @@ export function ExConstruct(node: Node, compiler: Compiler){
 }
 
 //// ExVariable
+export function ExReturn(node: Node, compiler: Compiler, scope: Ast.Scope){
+    return new Ast.ExReturn(node, compiler.parse(node[1][1], scope) as Ast.Expression);
+}
+
+//// ExVariable
 export function ExVariable(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[0];
     const variable = scope.lookupVariable(name.value);
@@ -197,6 +205,10 @@ export function ExVariable(node: Node, compiler: Compiler, scope: Ast.Scope){
     }
 
     return new Ast.ExVariable(node, variable);
+}
+
+export function LiteralInteger(node: Node, compiler: Compiler){
+    return new Ast.ExConstant(node, null as any, node[0].value);
 }
 
 export function LiteralString(node: Node, compiler: Compiler){

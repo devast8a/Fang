@@ -151,11 +151,19 @@ eidName         -> %identifier
 
 atom            -> expression_index_dot
 
+## Expression/IndexDot #############################################################################
+expression_return -> erKeyword erValue:? {% p.ExReturn %}
+
+erKeyword       -> "return"
+erValue         -> __ atom
+
+stmt -> expression_return
+
 ## Literal/Integer #################################################################################
-literal_integer -> %integer_bin
-literal_integer -> %integer_oct
-literal_integer -> %integer_dec
-literal_integer -> %integer_hex
+literal_integer -> %integer_bin {% p.LiteralInteger %}
+literal_integer -> %integer_oct {% p.LiteralInteger %}
+literal_integer -> %integer_dec {% p.LiteralInteger %}
+literal_integer -> %integer_hex {% p.LiteralInteger %}
 
 atom -> literal_integer
 

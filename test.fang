@@ -1,7 +1,7 @@
-fn foo(x: str): none {
-    writeLn(x)
+fn foo(): int {
+    return 100
 }
 
 fn main(): none {
-    foo("Hello")
+    writeLn("%d\n", foo())
 }

@@ -118,7 +118,8 @@ if(parser.results.length > 1){
     const scope = new Scope();
     (scope as any).types.set("none", new Class("", "void", "void", scope));
     (scope as any).types.set("str", new Class("", "char*", "char*", scope));
-    (scope as any).functions.set("writeLn", new Function("", "puts", "puts", scope));
+    (scope as any).types.set("int", new Class("", "int", "int", scope));
+    (scope as any).functions.set("writeLn", new Function("", "printf", "printf", scope));
 
     for(const node of parser.results[0]){
         compiler.parse(node, scope);

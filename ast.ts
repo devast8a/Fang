@@ -6,7 +6,8 @@ export enum Tag {
     ExCall,
     ExConstruct,
     ExConstant,
-    ExVariable
+    ExVariable,
+    ExReturn
 }
 
 // TODO: Make the parser strongly typed
@@ -41,7 +42,8 @@ export type Expression =
       ExCall
     | ExConstant
     | ExConstruct
-    | ExVariable;
+    | ExVariable
+    | ExReturn;
 
 export type Member =
       Class
@@ -174,7 +176,7 @@ export class ExConstant implements IThing, IExpression {
 export class ExConstruct implements IThing, IExpression {
     public ast: Node;
 
-    public tag: Tag.ExCall = Tag.ExCall;
+    public tag: Tag.ExConstruct = Tag.ExConstruct;
 
     public result_type: Type | undefined;
 
@@ -184,6 +186,22 @@ export class ExConstruct implements IThing, IExpression {
     public constructor(ast: Node, target: Type){
         this.ast = ast;
         this.target = target;
+    }
+}
+
+export class ExReturn implements IThing, IExpression {
+    public ast: Node;
+
+    public tag: Tag.ExReturn = Tag.ExReturn;
+
+    public result_type: Type | undefined;
+    public value: Expression;
+
+    public constructor(ast: Node, value: Expression){
+        this.ast = ast;
+
+        this.value = value;
+        this.result_type = value.result_type;
     }
 }
 
