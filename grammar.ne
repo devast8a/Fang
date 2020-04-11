@@ -111,7 +111,7 @@ unaryExpr         -> unaryOp atom
 unaryExpr         -> atom unaryOp
 unaryExpr         -> atom
 
-atom            -> %identifier
+atom            -> %identifier                              {% p.ExVariable %}
 atom            -> "(" expr ")"
 
 ## Expression/Call #################################################################################

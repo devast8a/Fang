@@ -1,5 +1,5 @@
 // Code generation step
-import { Tag, Class, Function, ExCall, Expression, ExConstant } from './ast';
+import { Tag, Class, Function, ExCall, Expression, ExConstant, ExVariable } from './ast';
 
 export class target_c_gcc {
     public output = ["#include <stdio.h>\n"];
@@ -35,8 +35,15 @@ export class target_c_gcc {
         switch(expression.tag){
             case Tag.ExCall: return this.compileExCall(expression as ExCall);
             case Tag.ExConstant: return this.compileExConstant(expression as ExConstant);
+            case Tag.ExVariable: return this.compileExVariable(expression as ExVariable);
             default: throw new Error("Incomplete switch statement (compileExpression)")
         }
+    }
+
+    public compileExVariable(node: ExVariable) {
+        const output = this.output;
+
+        output.push(node.variable.id);
     }
 
     public compileExCall(node: ExCall){

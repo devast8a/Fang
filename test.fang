@@ -1,3 +1,7 @@
+fn foo(x: str): none {
+    writeLn(x)
+}
+
 fn main(): none {
-    printLn("Hello World!")
+    foo("Hello")
 }

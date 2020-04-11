@@ -3,7 +3,7 @@ import chalk from "chalk";
 import grammar from "./grammar";
 import * as fs from "fs";
 import { Tag as AstTag } from './post';
-import { Thing, Type, Class, Function } from './ast';
+import { Thing, Type, Class, Function, Variable } from './ast';
 import target_c_gcc from './codegen';
 
 // Create a Parser object from our grammar.
@@ -103,13 +103,18 @@ export class Compiler {
 
     public types = new Map<string, Type>();
     public functions = new Map<string, Function>();
+    public variables = new Map<string, Variable>();
 
     public lookup_type(node: any){
         return this.types.get(node.data[0].value);
     }
 
     public lookup_function(node: any) {
-        return this.functions.get(node.value)
+        return this.functions.get(node.value);
+    }
+
+    public lookup_variable(node: any) {
+        return this.variables.get(node.value);
     }
 };
 
@@ -124,15 +129,18 @@ if(parser.results.length > 1){
     console.error("! AMBIGUOUS GRAMMAR !")
 } else {
     const compiler = new Compiler();
+
+    // Do this binding within the language itself
     compiler.types.set("none", new Class("", "void", "void"));
-    compiler.functions.set("printLn", new Function("", "puts", "puts"));
+    compiler.types.set("str", new Class("", "char*", "char*"));
+    compiler.functions.set("writeLn", new Function("", "puts", "puts"));
 
     for(const node of parser.results[0]){
         compiler.parse(node);
     }
 
     const target = new target_c_gcc();
-    compiler.functions.delete("printLn");
+    compiler.functions.delete("writeLn");
     for(const func of compiler.functions.values()){
         target.compileFunction(func);
     }
@@ -148,12 +156,13 @@ if(parser.results.length > 1){
 
         // Find the most likely word
         const incorrect = args[1];
+        if(incorrect !== undefined){
+            let types = Array.from(compiler.types.values())
+                .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
+                .sort((a, b) => a.distance - b.distance);
 
-        let types = Array.from(compiler.types.values())
-            .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
-            .sort((a, b) => a.distance - b.distance);
-
-        args.push(types[0].name);
+            args.push(types[0].name);
+        }
 
         // Color each of the arguments
         if(color){

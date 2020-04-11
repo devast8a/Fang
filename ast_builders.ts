@@ -56,22 +56,26 @@ export function Class(node: Node, compiler: Compiler){
     return obj;
 }
 
-function Parameter(node: any, compiler: Compiler){
-    let type: Ast.Type | undefined;
+function Parameter(node: any, compiler: Compiler) {
+    // TODO: Find a better way of failing the current compilation unit
+
+    let typeNode: any;
     let name: string;
 
     if(node.tag === Tag.PARAMETER_TYPE){
         // [Keyword, Type]
         name = "";
-        type = compiler.lookup_type(node.data[1]);
+        typeNode = node.data[1];
     } else {
         // [Keyword, Name, _, _, _, Type]
         name = node.data[1].value;
-        type = compiler.lookup_type(node.data[5]);
+        typeNode = node.data[5];
     }
 
+    const type = compiler.lookup_type(typeNode);
     if(type === undefined){
-        throw new Error("Not implemented");
+        compiler.error("$0 does not exist, did you mean $1", [typeNode.data[0].value, '???'], [typeNode.data[0]]);
+        return
     }
 
     return new Ast.Variable(node, name, type, name);
@@ -84,7 +88,15 @@ export function Function(node: Node, compiler: Compiler){
 
     // Collect parameters
     for(const parameterNode of node[2].elements){
-        obj.parameters.push(Parameter(parameterNode, compiler));
+        const parameter = Parameter(parameterNode, compiler);
+        if(parameter !== undefined){
+            obj.parameters.push(parameter);
+            
+            // TODO: Better support here
+            if(parameter.name){
+                compiler.variables.set(parameter.name, parameter);
+            }
+        }
     }
 
     // Return type
@@ -97,7 +109,10 @@ export function Function(node: Node, compiler: Compiler){
     // Collect statements
     if(node[5] !== null){
         for(const statement of node[5][1].elements){
-            obj.body.push(compiler.parse(statement) as Ast.Expression);
+            const stmt = compiler.parse(statement);
+            if(stmt !== undefined){
+                obj.body.push(stmt as Ast.Expression);
+            }
         }
     }
 
@@ -142,10 +157,17 @@ export function Variable(node: Node, compiler: Compiler){
 export function ExCall(node: Node, compiler: Compiler){
     const call = new Ast.ExCall(node, null as any);
 
-    const func = compiler.lookup_function(node[0]);
+    // TODO: Split call types into their respective categories
+    //  - symbol(foo, bar)
+    //  - symbol.method(foo, bar)
+    //  - expression(foo, bar)
+    //  - expression.method(foo, bar)
+
+    const name = node[0].data[0];
+    const func = compiler.lookup_function(name);
     if(func === undefined){
-        compiler.error("$0 does not exist, did you mean $1", [node[0], "???"], [node[0]]);
-        // TODO: Support better bailing out
+        compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
+        // TODO: Support better error bail out
         return;
     }
     call.target = func;
@@ -153,7 +175,10 @@ export function ExCall(node: Node, compiler: Compiler){
     call.result_type = func.return_type;
 
     for(const argument of node[1].elements){
-        call.arguments.push(compiler.parse(argument) as Ast.Expression);
+        const expression = compiler.parse(argument) as Ast.Expression; 
+        if(expression !== undefined){
+            call.arguments.push(expression);
+        }
     }
 
     return call;
@@ -162,6 +187,18 @@ export function ExCall(node: Node, compiler: Compiler){
 //// ExConstruct
 export function ExConstruct(node: Node, compiler: Compiler){
     throw new Error("Not implemented yet");
+}
+
+//// ExVariable
+export function ExVariable(node: Node, compiler: Compiler){
+    const name = node[0];
+    const variable = compiler.lookup_variable(name);
+    if(variable === undefined){
+        compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
+        return;
+    }
+
+    return new Ast.ExVariable(node, variable);
 }
 
 export function LiteralString(node: Node, compiler: Compiler){

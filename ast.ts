@@ -3,10 +3,10 @@ export enum Tag {
     Function,
     Trait,
     Variable,
-    
     ExCall,
     ExConstruct,
-    ExConstant
+    ExConstant,
+    ExVariable
 }
 
 // TODO: Make the parser strongly typed
@@ -40,7 +40,8 @@ interface IExpression {
 export type Expression =
       ExCall
     | ExConstant
-    | ExConstruct;
+    | ExConstruct
+    | ExVariable;
 
 export type Member =
       Class
@@ -171,5 +172,20 @@ export class ExConstruct implements IThing, IExpression {
     public constructor(ast: Node, target: Type){
         this.ast = ast;
         this.target = target;
+    }
+}
+
+// TODO: Look at removing this and replacing it directly with Variable
+export class ExVariable implements IThing, IExpression {
+    public ast: any;
+    public tag: Tag.ExVariable = Tag.ExVariable;
+
+    public result_type: Type | undefined;
+    public variable: Variable;
+
+    public constructor(ast: Node, variable: Variable){
+        this.ast = ast;
+        this.variable = variable;
+        this.result_type = variable.type;
     }
 }
