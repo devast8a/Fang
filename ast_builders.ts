@@ -89,7 +89,8 @@ export function Function(node: Node, compiler: Compiler){
 
     // Return type
     if(node[3] === null){
-        throw new Error("You must supply return types for now, sorry");
+        compiler.error("All functions must declare return types", [], [node[1][0]]);
+        return;
     }
     obj.return_type = compiler.lookup_type(node[3][3]);
 
@@ -123,7 +124,8 @@ export function Trait(node: Node, compiler: Compiler){
 
     // Collect traits
     if(node[2].length !== 0){
-        throw new Error("Not implemented yet"); // TODO: Implement error
+        compiler.error("Traits can not implement other traits", [], [node[1]]);
+        return;
     }
 
     compiler.types.set(obj.id, obj);
@@ -142,7 +144,9 @@ export function ExCall(node: Node, compiler: Compiler){
 
     const func = compiler.lookup_function(node[0]);
     if(func === undefined){
-        throw new Error("Not implemented yet"); // TODO: Implement error
+        compiler.error("$0 does not exist, did you mean $1", [node[0], "???"], [node[0]]);
+        // TODO: Support better bailing out
+        return;
     }
     call.target = func;
 
