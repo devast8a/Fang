@@ -38,40 +38,26 @@ for(const rule of compiled.rules){
     }
 }
 
-const parser = new nearley.Parser(compiled);
-
 class Source {
     public constructor(path: string, content: string){
         this.path = path;
         this.content = content;
     }
 
+    public static async fromFile(path: string){
+        const content = await fs.promises.readFile(path, "utf8");
+        return new Source(path, content);
+    }
+
     public path: string;
     public content: string;
 }
 
-function levenshteinDistance(a: string, b: string){
-    return levenshteinDistance_(a, b, a.length, b.length);
-}
-
-function levenshteinDistance_(a: string, b: string, i: number, j: number): number {
-    // TODO: Optimize this function
-    if(Math.min(i, j) === 0){
-        return Math.max(i, j);
-    }
-
-    return Math.min(
-        levenshteinDistance_(a, b, i - 1, j) + 1,
-        levenshteinDistance_(a, b, i, j - 1) + 1,
-        levenshteinDistance_(a, b, i - 1, j - 1) + (a.charAt(i) === b.charAt(j) ? 0 : 1),
-    );
-}
-
-let errors = new Array<any>();
-
 export class Compiler {
+    private errors = new Array<any>();
+
     public error(format: string, args: string[], highlight?: any[]) {
-        errors.push({
+        this.errors.push({
             format: format,
             args: args,
             highlight: highlight,
@@ -100,102 +86,129 @@ export class Compiler {
             }
         }
     }
-};
 
-const path = process.argv[2];
-const content = fs.readFileSync(path, "utf8");
+    public compile(source: Source){
+        const parser = new nearley.Parser(compiled);
+        parser.feed(source.content);
 
-const source = new Source(path, content);
+        if(parser.results.length > 1){
+            console.error("! AMBIGUOUS GRAMMAR !")
+            return;
+        }
 
-parser.feed(source.content);
+        // TODO: Support binding to target within the language itself
+        const scope = new Scope();
+        (scope as any).types.set("none", new Class("", "void", "void", scope));
+        (scope as any).types.set("str", new Class("", "char*", "char*", scope));
+        (scope as any).types.set("int", new Class("", "int", "int", scope));
+        (scope as any).functions.set("writeLn", new Function("", "printf", "printf", scope));
 
-if(parser.results.length > 1){
-    console.error("! AMBIGUOUS GRAMMAR !")
-} else {
-    const compiler = new Compiler();
+        for(const node of parser.results[0]){
+            this.parse(node, scope);
+        }
 
-    // Do this binding within the language itself
-    const scope = new Scope();
-    (scope as any).types.set("none", new Class("", "void", "void", scope));
-    (scope as any).types.set("str", new Class("", "char*", "char*", scope));
-    (scope as any).types.set("int", new Class("", "int", "int", scope));
-    (scope as any).functions.set("writeLn", new Function("", "printf", "printf", scope));
-
-    for(const node of parser.results[0]){
-        compiler.parse(node, scope);
-    }
-
-    if(errors.length === 0){
-        const target = new TargetCGcc();
+        // TODO: Hack to avoid outputting writeLn
         (scope as any).functions.delete("writeLn");
 
-        for(const func of (scope as any).functions.values()){
-            target.compileFunction(func);
+        if(this.errors.length === 0){
+            const target = new TargetCGcc();
+            for(const func of (scope as any).functions.values()){
+                target.compileFunction(func);
+            }
+
+            const output = target.output.join("");
+            fs.writeFileSync("build/test.c", output);
         }
 
-        const output = target.output.join("");
-        fs.writeFileSync("build/test.c", output);
+        // Display errors
+        while(this.errors.length > 0){
+            let {format, args, highlight} = this.errors.pop();
+
+            let color = true;
+
+            // Find the most likely word
+            //const incorrect = args[1];
+            //if(incorrect !== undefined){
+            //    let types = Array.from(compiler.types.values())
+            //        .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
+            //        .sort((a, b) => a.distance - b.distance);
+
+            //    args.push(types[0].name);
+            //}
+            args.push("???");
+
+            // Color each of the arguments
+            if(color){
+                args = args.map((x:string) => chalk.whiteBright(x));
+            }
+
+            const target = highlight[0];
+
+            // First line components
+            let banner    = "!";
+            let path      = source.path;
+            let line      = target.line;
+            let col       = target.col;
+            let message   = format.replace(/\$(\d+)/g, (_: any, index: number)=> `'${args[index]}'`);
+
+            // Color each of the first line components
+            if(color){
+                banner  = chalk.bgRedBright.whiteBright(banner);
+                path    = chalk.blueBright(path);
+                line    = chalk.greenBright(line);
+                col     = chalk.greenBright(col);
+            }
+
+            // First line
+            console.log(`${banner} ${message} (${path}:${line}:${col})`);
+            console.log();
+
+            // Context...
+            const begin = target.col - 1;
+            const end = begin + target.text.length;
+            const src = source.content.split(/(\r\n|\r|\n)/g);
+
+            let content = src[target.line * 2 - 2]
+            content = content.slice(0, begin) +
+                chalk.redBright(content.slice(begin, end)) +
+                content.slice(end);
+
+            console.log(target.line + ":     " + content);
+
+            if(this.errors.length > 0){
+                console.log();
+                console.log();
+                console.log();
+            }
+        }
+    }
+};
+
+async function main(){
+    const compiler = new Compiler();
+    const source = await Source.fromFile(process.argv[2]);
+    compiler.compile(source);
+}
+
+main();
+
+//const path = process.argv[2];
+//const content = fs.readFileSync(path, "utf8");
+//const source = new Source(path, content);
+
+function levenshteinDistance(a: string, b: string){
+    return levenshteinDistance_(a, b, a.length, b.length);
+}
+
+function levenshteinDistance_(a: string, b: string, i: number, j: number): number {
+    // TODO: Optimize this function
+    if(Math.min(i, j) === 0){
+        return Math.max(i, j);
     }
 
-    // Display errors
-    while(errors.length > 0){
-        let {format, args, highlight} = errors.pop();
-
-        let color = true;
-
-        // Find the most likely word
-        //const incorrect = args[1];
-        //if(incorrect !== undefined){
-        //    let types = Array.from(compiler.types.values())
-        //        .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
-        //        .sort((a, b) => a.distance - b.distance);
-
-        //    args.push(types[0].name);
-        //}
-        args.push("???");
-
-        // Color each of the arguments
-        if(color){
-            args = args.map((x:string) => chalk.whiteBright(x));
-        }
-
-        const target = highlight[0];
-
-        // First line components
-        let banner    = "!";
-        let path      = source.path;
-        let line      = target.line;
-        let col       = target.col;
-        let message   = format.replace(/\$(\d+)/g, (_: any, index: number)=> `'${args[index]}'`);
-
-        // Color each of the first line components
-        if(color){
-            banner  = chalk.bgRedBright.whiteBright(banner);
-            path    = chalk.blueBright(path);
-            line    = chalk.greenBright(line);
-            col     = chalk.greenBright(col);
-        }
-
-        // First line
-        console.log(`${banner} ${message} (${path}:${line}:${col})`);
-        console.log();
-
-        // Context...
-        const begin = target.col - 1;
-        const end = begin + target.text.length;
-        const src = source.content.split(/(\r\n|\r|\n)/g);
-
-        let content = src[target.line * 2 - 2]
-        content = content.slice(0, begin) +
-            chalk.redBright(content.slice(begin, end)) +
-            content.slice(end);
-
-        console.log(target.line + ":     " + content);
-
-        if(errors.length > 0){
-            console.log();
-            console.log();
-            console.log();
-        }
-    }
+    return Math.min(
+        levenshteinDistance_(a, b, i - 1, j) + 1,
+        levenshteinDistance_(a, b, i, j - 1) + 1,
+        levenshteinDistance_(a, b, i - 1, j - 1) + (a.charAt(i) === b.charAt(j) ? 0 : 1),
+    );
 }
