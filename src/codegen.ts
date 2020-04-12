@@ -55,6 +55,15 @@ export class TargetCGcc {
     public compileExCall(node: ExCall){
         const output = this.output;
 
+        if(node.target.id[0] === '$'){
+            // TODO: Create a better way of representing various calls to operators
+            const operator = node.target.id.replace("$infix", "");
+            this.compileExpression(node.arguments[0]);
+            output.push(operator);
+            this.compileExpression(node.arguments[1]);
+            return;
+        }
+
         // TODO: Extend to non-function calls
         output.push(node.target.id)
         output.push("(");

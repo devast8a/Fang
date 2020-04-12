@@ -102,13 +102,15 @@ export class Compiler {
         (scope as any).types.set("str", new Class("", "char*", "char*", scope));
         (scope as any).types.set("int", new Class("", "int", "int", scope));
         (scope as any).functions.set("writeLn", new Function("", "printf", "printf", scope));
+        (scope as any).functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
 
         for(const node of parser.results[0]){
             this.parse(node, scope);
         }
 
-        // TODO: Hack to avoid outputting writeLn
+        // TODO: Remove hack to avoid outputting compiler defined functions
         (scope as any).functions.delete("writeLn");
+        (scope as any).functions.delete("$infix+");
 
         if(this.errors.length === 0){
             const target = new TargetCGcc();

@@ -190,9 +190,41 @@ export function ExConstruct(node: Node, compiler: Compiler){
     throw new Error("Not implemented yet");
 }
 
-//// ExVariable
+// ExOpInfix
+export function ExOpInfix(node: Node, compiler: Compiler, scope: Ast.Scope){
+    const func = scope.lookupFunction("$infix+");
+
+    if(func === undefined){
+        compiler.error("Could not find operator", [], [node[2][0][0]]);
+        return;
+    }
+
+    const call = new Ast.ExCall(node, func);
+
+    call.arguments.push(compiler.parse(node[0], scope) as Ast.Expression);
+    call.arguments.push(compiler.parse(node[4], scope) as Ast.Expression);
+
+    return call;
+}
+
+// ExOpInfix
+export function ExOpPostfix(node: Node, compiler: Compiler){
+    throw new Error("Not implemented yet");
+}
+
+// ExOpInfix
+export function ExOpPrefix(node: Node, compiler: Compiler){
+    throw new Error("Not implemented yet");
+}
+
+//// ExReturn
 export function ExReturn(node: Node, compiler: Compiler, scope: Ast.Scope){
-    return new Ast.ExReturn(node, compiler.parse(node[1][1], scope) as Ast.Expression);
+    const expression = compiler.parse(node[1][1], scope) as Ast.Expression;
+    if(expression === undefined){
+        return;
+    }
+
+    return new Ast.ExReturn(node, expression);
 }
 
 //// ExVariable

@@ -104,11 +104,11 @@ expr            -> binaryExpr
 binaryOp        -> (%operator | ">" | "<"):+
 unaryOp         -> %operator (%operator | ">" | "<"):*
 
-binaryExpr        -> unaryExpr __ binaryOp __ unaryExpr
-binaryExpr        -> unaryExpr unaryOp unaryExpr
+binaryExpr        -> unaryExpr __ binaryOp __ unaryExpr     {% p.ExOpInfix %}
+binaryExpr        -> unaryExpr unaryOp unaryExpr            {% p.ExOpInfix %}
 binaryExpr        -> unaryExpr
-unaryExpr         -> unaryOp atom
-unaryExpr         -> atom unaryOp
+unaryExpr         -> unaryOp atom                           {% p.ExOpPrefix %}
+unaryExpr         -> atom unaryOp                           {% p.ExOpPostfix %}
 unaryExpr         -> atom
 
 atom            -> %identifier                              {% p.ExVariable %}
@@ -155,7 +155,7 @@ atom            -> expression_index_dot
 expression_return -> erKeyword erValue:? {% p.ExReturn %}
 
 erKeyword       -> "return"
-erValue         -> __ atom
+erValue         -> __ expr
 
 stmt -> expression_return
 

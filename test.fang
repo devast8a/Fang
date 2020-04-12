@@ -1,5 +1,5 @@
 fn foo(): int {
-    return 100
+    return 10 + 20
 }
 
 fn main(): none {
