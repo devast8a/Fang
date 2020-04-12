@@ -5,8 +5,8 @@
         "experimentalDecorators": true,
         "sourceMap": true,
         "module": "commonjs",
-        "outDir": "build",
-        "rootDir": ".",
+        "outDir": "build/js",
+        "rootDir": "src",
         "strict": true,
         "target": "ES6",
         "types": [
