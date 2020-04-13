@@ -7,7 +7,8 @@
     "@types/node": "^13.9.5",
     "chalk": "^3.0.0",
     "moo": "^0.5.1",
-    "nearley": "^2.19.1"
+    "nearley": "^2.19.1",
+    "source-map-support": "^0.5.16"
   },
   "devDependencies": {
     "@types/nearley": "^2.11.1",

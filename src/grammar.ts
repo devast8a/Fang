@@ -262,7 +262,7 @@ const grammar: Grammar = {
     {"name": "atom", "symbols": ["literal_string"]},
     {"name": "type$ebnf$1", "symbols": ["tLifetime"], "postprocess": id},
     {"name": "type$ebnf$1", "symbols": [], "postprocess": () => null},
-    {"name": "type", "symbols": ["tExpr", "type$ebnf$1"], "postprocess": p.type},
+    {"name": "type", "symbols": ["tExpr", "type$ebnf$1"]},
     {"name": "tExpr", "symbols": ["tAtom"]},
     {"name": "tAtom", "symbols": [(lexer.has("identifier") ? {type: "identifier"} : identifier)]},
     {"name": "tLifetime", "symbols": ["_", (lexer.has("lifetime") ? {type: "lifetime"} : lifetime)]},

@@ -1,3 +1,5 @@
+import 'source-map-support/register'
+
 import * as nearley from "nearley";
 import chalk from "chalk";
 import grammar from "./grammar";
@@ -98,90 +100,109 @@ export class Compiler {
 
         // TODO: Support binding to target within the language itself
         const scope = new Scope();
+
+        const str = new Class("", "char*", "char*", scope);
+        const int = new Class("", "int", "int", scope);
+
         (scope as any).types.set("none", new Class("", "void", "void", scope));
-        (scope as any).types.set("str", new Class("", "char*", "char*", scope));
-        (scope as any).types.set("int", new Class("", "int", "int", scope));
-        (scope as any).functions.set("writeLn", new Function("", "printf", "printf", scope));
+        (scope as any).types.set("str", str);
+        (scope as any).types.set("int", int);
+
+        const f = new Function("", "printf", "printf", scope);
+        f.parameters.push(new Variable("", "", str, ""));
+        f.parameters.push(new Variable("", "", int, ""));
+
+        (scope as any).functions.set("writeLn", f);
         (scope as any).functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
 
         for(const node of parser.results[0]){
             this.parse(node, scope);
         }
 
-        // TODO: Remove hack to avoid outputting compiler defined functions
-        (scope as any).functions.delete("writeLn");
-        (scope as any).functions.delete("$infix+");
-
         if(this.errors.length === 0){
+            // TODO: Remove hack to avoid outputting compiler defined functions
+            (scope as any).types.delete("none");
+            (scope as any).types.delete("str");
+            (scope as any).types.delete("int");
+            (scope as any).functions.delete("writeLn");
+            (scope as any).functions.delete("$infix+");
+
             const target = new TargetCGcc();
+
+            for(const thing of (scope as any).classes.values()){
+                target.compileClass(thing);
+            }
+
             for(const func of (scope as any).functions.values()){
                 target.compileFunction(func);
             }
 
             const output = target.output.join("");
             fs.writeFileSync("build/test.c", output);
-        }
+        } else {
+            // Display errors
+            while(this.errors.length > 0){
+                let {format, args, highlight} = this.errors.pop();
 
-        // Display errors
-        while(this.errors.length > 0){
-            let {format, args, highlight} = this.errors.pop();
+                let color = true;
 
-            let color = true;
+                // Find the most likely word
+                //const incorrect = args[1];
+                //if(incorrect !== undefined){
+                //    let types = Array.from(compiler.types.values())
+                //        .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
+                //        .sort((a, b) => a.distance - b.distance);
 
-            // Find the most likely word
-            //const incorrect = args[1];
-            //if(incorrect !== undefined){
-            //    let types = Array.from(compiler.types.values())
-            //        .map(type => ({name: type.name, distance: levenshteinDistance(type.name, incorrect)}))
-            //        .sort((a, b) => a.distance - b.distance);
+                //    args.push(types[0].name);
+                //}
+                args.push("???");
 
-            //    args.push(types[0].name);
-            //}
-            args.push("???");
+                // Color each of the arguments
+                if(color){
+                    args = args.map((x:string) => chalk.whiteBright(x));
+                }
 
-            // Color each of the arguments
-            if(color){
-                args = args.map((x:string) => chalk.whiteBright(x));
+                const target = highlight[0];
+
+                // First line components
+                let banner    = "!";
+                let path      = source.path;
+                let line      = target.line;
+                let col       = target.col;
+                let message   = format.replace(/\$(\d+)/g, (_: any, index: number)=> `'${args[index]}'`);
+
+                // Color each of the first line components
+                if(color){
+                    banner  = chalk.bgRedBright.whiteBright(banner);
+                    path    = chalk.blueBright(path);
+                    line    = chalk.greenBright(line);
+                    col     = chalk.greenBright(col);
+                }
+
+                // First line
+                console.log(`${banner} ${message} (${path}:${line}:${col})`);
+                console.log();
+
+                // Context...
+                const begin = target.col - 1;
+                const end = begin + target.text.length;
+                const src = source.content.split(/(\r\n|\r|\n)/g);
+
+                let content = src[target.line * 2 - 2]
+                content = content.slice(0, begin) +
+                    chalk.redBright(content.slice(begin, end)) +
+                    content.slice(end);
+
+                console.log(target.line + ":     " + content);
+
+                if(this.errors.length > 0){
+                    console.log();
+                    console.log();
+                    console.log();
+                }
             }
 
-            const target = highlight[0];
-
-            // First line components
-            let banner    = "!";
-            let path      = source.path;
-            let line      = target.line;
-            let col       = target.col;
-            let message   = format.replace(/\$(\d+)/g, (_: any, index: number)=> `'${args[index]}'`);
-
-            // Color each of the first line components
-            if(color){
-                banner  = chalk.bgRedBright.whiteBright(banner);
-                path    = chalk.blueBright(path);
-                line    = chalk.greenBright(line);
-                col     = chalk.greenBright(col);
-            }
-
-            // First line
-            console.log(`${banner} ${message} (${path}:${line}:${col})`);
-            console.log();
-
-            // Context...
-            const begin = target.col - 1;
-            const end = begin + target.text.length;
-            const src = source.content.split(/(\r\n|\r|\n)/g);
-
-            let content = src[target.line * 2 - 2]
-            content = content.slice(0, begin) +
-                chalk.redBright(content.slice(begin, end)) +
-                content.slice(end);
-
-            console.log(target.line + ":     " + content);
-
-            if(this.errors.length > 0){
-                console.log();
-                console.log();
-                console.log();
-            }
+            process.exit(1);
         }
     }
 };
@@ -192,7 +213,10 @@ async function main(){
     compiler.compile(source);
 }
 
-main();
+main().catch((e) => {
+    console.log(e);
+    process.exit(1);
+});
 
 //const path = process.argv[2];
 //const content = fs.readFileSync(path, "utf8");

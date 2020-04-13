@@ -1,7 +1,13 @@
-fn foo(): int {
-    return 10 + 20
+class Vec2d {
+    val x: int
+    val y: int
+}
+
+fn foo(vec: Vec2d): int {
+    return 10 + 30
 }
 
 fn main(): none {
-    writeLn("%d\n", foo())
+    val vec: Vec2d
+    foo(vec)
 }

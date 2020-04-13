@@ -1,5 +1,5 @@
 // Code generation step
-import { Tag, Class, Function, ExCall, Expression, ExConstant, ExVariable, ExReturn } from './ast';
+import { Tag, Class, Function, ExCall, Expression, ExConstant, ExVariable, ExReturn, ExConstruct, Variable } from './ast';
 
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];
@@ -33,12 +33,31 @@ export class TargetCGcc {
 
     public compileExpression(expression: Expression) {
         switch(expression.tag){
+            // TODO: Sort this out
+            case Tag.Variable as any: return this.compileVariable(expression as any);
+
             case Tag.ExCall: return this.compileExCall(expression);
             case Tag.ExConstant: return this.compileExConstant(expression);
+            case Tag.ExConstruct: return this.compileExConstruct(expression);
             case Tag.ExVariable: return this.compileExVariable(expression);
             case Tag.ExReturn: return this.compileExReturn(expression);
             default: throw new Error("Incomplete switch statement (compileExpression)")
         }
+    }
+
+    public compileClass(thing: Class) {
+        this.output.push(thing.id, "{");
+
+        for(const member of thing.members.values()){
+            this.compileExpression(member as any);
+            this.output.push(";");
+        }
+
+        this.output.push("};");
+    }
+
+    public compileVariable(thing: Variable) {
+        this.output.push(thing.type.id, " ", thing.name);
     }
 
     public compileExReturn(expression: ExReturn) {
@@ -84,6 +103,11 @@ export class TargetCGcc {
         // TODO: Determine which type of constant it is
         // For now assume we can just output the value
         this.output.push(node.value);
+    }
+
+    public compileExConstruct(node: ExConstruct) {
+        this.output.push("{");
+        this.output.push("}");
     }
 }
 

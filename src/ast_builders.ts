@@ -11,6 +11,29 @@ const IMPL_TARGET_NOT_SUBTYPE       = "$0 is missing $2 required to implement $1
 
 type Node = any[];
 
+function lookupType(node: any, compiler: Compiler, scope: Ast.Scope){
+    const name = node[0].value;
+    const type = scope.lookupType(name);
+
+    if(type === undefined){
+        compiler.error("$0 does not exist, did you mean $1", [name, '???'], [node.data[0]]);
+    }
+
+    // TODO: Support type members
+
+    return type;
+}
+
+function lookupFunction(node: any, compiler: Compiler, scope: Ast.Scope){
+    const thing = scope.lookupFunction(node.data[0].value);
+    return thing;
+}
+
+function lookupClass(node: any, compiler: Compiler, scope: Ast.Scope){
+    const thing = scope.lookupClass(node.data[0].value);
+    return thing;
+}
+
 //// Class
 export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1].text;
@@ -26,7 +49,7 @@ export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     // Collect implemented traits
     for(const impl of node[2]){
-        const type = scope.lookupType(impl[3].data[0].value);
+        const type = lookupType(impl[3], compiler, scope);
 
         // TODO: Create better error handling system
         if(type === undefined){
@@ -53,6 +76,8 @@ export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     }
 
     scope.declareClass(obj);
+    obj.id = "struct Vec2d";
+
     return obj;
 }
 
@@ -72,9 +97,8 @@ function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
         typeNode = node.data[5];
     }
 
-    const type = scope.lookupType(typeNode.data[0].value);
+    const type = lookupType(typeNode, compiler, scope);
     if(type === undefined){
-        compiler.error("$0 does not exist, did you mean $1", [typeNode.data[0].value, '???'], [typeNode.data[0]]);
         return
     }
 
@@ -104,10 +128,7 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
         compiler.error("All functions must declare return types", [], [node[1][0]]);
         return;
     }
-    obj.return_type = scope.lookupType(node[3][3].data[0].value);
-    if(obj.return_type === undefined){
-        compiler.error("$0 does not exist, did you mean $1", [node[3][3].data[0].value, '???'], [node[3][3].data[0]]);
-    }
+    obj.return_type = lookupType(node[3][3], compiler, scope);
 
     // Collect statements
     if(node[5] !== null){
@@ -150,35 +171,42 @@ export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 //// Variable
-export function Variable(node: Node, compiler: Compiler){
-    throw new Error("Not implemented yet");
+export function Variable(node: Node, compiler: Compiler, scope: Ast.Scope){
+    const type = lookupType(node[2][3], compiler, scope);
+
+    if(type === undefined){
+        // TODO: Poisoning
+        return undefined;
+    }
+
+    const thing = new Ast.Variable(node, node[1].value, type, node[1].value);
+    scope.declareVariable(thing);
+
+    return thing;
 }
 
 //// ExCall
 export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
-    const call = new Ast.ExCall(node, null as any);
-
     // TODO: Split call types into their respective categories
     //  - symbol(foo, bar)
     //  - symbol.method(foo, bar)
     //  - expression(foo, bar)
     //  - expression.method(foo, bar)
 
-    const name = node[0].data[0];
-    const func = scope.lookupFunction(name.value);
-    if(func === undefined){
-        compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
-        // TODO: Support better error bail out
-        return;
-    }
-    call.target = func;
+    const target = lookupFunction(node[0], compiler, scope);
+    const args = node[1].elements.map((arg: any) => compiler.parse(arg, scope));
 
-    call.result_type = func.return_type;
+    const call = new Ast.ExCall(node, target!);
+    call.arguments = args;
 
-    for(const argument of node[1].elements){
-        const expression = compiler.parse(argument, scope) as Ast.Expression; 
-        if(expression !== undefined){
-            call.arguments.push(expression);
+    // TODO: Type check parameters and arguments
+    if(target !== undefined){
+        const blame = node[0].data[0];
+
+        if(call.arguments.length > target.parameters.length){
+            compiler.error("Too many arguments", [], [blame]);
+        } else if(call.arguments.length < target.parameters.length){
+            compiler.error("Too few arguments", [], [blame]);
         }
     }
 
@@ -186,8 +214,12 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 //// ExConstruct
-export function ExConstruct(node: Node, compiler: Compiler){
-    throw new Error("Not implemented yet");
+export function ExConstruct(node: Node, compiler: Compiler, scope: Ast.Scope){
+    const target = lookupClass(node[0], compiler, scope);
+
+    const thing = new Ast.ExConstruct(node, target!);
+
+    return thing;
 }
 
 // ExOpInfix

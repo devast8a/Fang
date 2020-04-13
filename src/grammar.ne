@@ -173,7 +173,7 @@ literal_string -> %string_double_quote {% p.LiteralString %}
 atom -> literal_string
 
 ## Type ############################################################################################
-type            -> tExpr tLifetime:? {% p.type %}
+type            -> tExpr tLifetime:?
 
 tExpr           -> tAtom
 tAtom           -> %identifier
