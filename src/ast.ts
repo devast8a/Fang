@@ -7,7 +7,10 @@ export enum Tag {
     ExConstruct,
     ExConstant,
     ExVariable,
-    ExReturn
+    ExReturn,
+    StmtAssignVariable,
+    StmtAssignField,
+    ExprIndexDot
 }
 
 // TODO: Make the parser strongly typed
@@ -217,6 +220,55 @@ export class ExVariable implements IThing, IExpression {
         this.ast = ast;
         this.variable = variable;
         this.result_type = variable.type;
+    }
+}
+
+export class ExprIndexDot implements IThing, IExpression {
+    public ast: any;
+    public tag: Tag.ExprIndexDot = Tag.ExprIndexDot;
+
+    public result_type: Type | undefined;
+
+    public target: Expression;
+    public field: Variable;
+
+    public constructor(ast: Node, target: Expression, field: Variable){
+        this.ast = ast;
+
+        this.target = target;
+        this.field = field;
+    }
+}
+
+export class StmtAssignVariable implements IThing {
+    public ast: any;
+    public tag: Tag.StmtAssignVariable = Tag.StmtAssignVariable;
+
+    public target: Variable;
+    public source: Expression;
+
+    public constructor(ast: Node, target: Variable, source: Expression){
+        this.ast = ast;
+
+        this.target = target;
+        this.source = source;
+    }
+}
+
+export class StmtAssignField implements IThing {
+    public ast: any;
+    public tag: Tag.StmtAssignField = Tag.StmtAssignField;
+
+    public target: Expression;
+    public field: Variable;
+    public source: Expression;
+
+    public constructor(ast: Node, target: Expression, field: Variable, source: Expression){
+        this.ast = ast;
+
+        this.target = target;
+        this.field = field;
+        this.source = source;
     }
 }
 

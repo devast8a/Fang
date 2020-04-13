@@ -3,11 +3,12 @@ class Vec2d {
     val y: int
 }
 
-fn foo(vec: Vec2d): int {
-    return 10 + 30
-}
-
 fn main(): none {
-    val vec: Vec2d
-    foo(vec)
+    val v: Vec2d
+
+    v.x = 10
+    v.y = 20
+
+    writeLn("x is %d\n", v.x)
+    writeLn("y is %d\n", v.y)
 }

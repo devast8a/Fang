@@ -213,6 +213,18 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
     return call;
 }
 
+export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
+    const expression = compiler.parse(node[0], scope) as Ast.Expression;
+
+    if(expression.result_type?.tag !== Ast.Tag.Class){
+        throw new Error("Not implemented yet");
+    }
+
+    const field = expression.result_type.scope.lookupVariable(node[2].value);
+
+    return new Ast.ExprIndexDot(node, expression, field!);
+}
+
 //// ExConstruct
 export function ExConstruct(node: Node, compiler: Compiler, scope: Ast.Scope){
     const target = lookupClass(node[0], compiler, scope);
@@ -277,4 +289,28 @@ export function LiteralInteger(node: Node, compiler: Compiler){
 
 export function LiteralString(node: Node, compiler: Compiler){
     return new Ast.ExConstant(node, null as any, node[0].value);
+}
+
+export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
+    // TODO: Generate AST nodes based on what we assign to
+    // TODO: Support assignment operators
+    // TODO: StmtAssign target should have tag
+
+    if(node[0].name !== "ExprIndexDot"){
+        const assignable = scope.lookupVariable(node[0].value);
+        const value = compiler.parse(node[2], scope) as Ast.Expression;
+
+        return new Ast.StmtAssignVariable(node, assignable!, value);
+    } else {
+        const expression = compiler.parse(node[0].data[0], scope) as Ast.Expression;
+
+        if(expression.result_type?.tag !== Ast.Tag.Class){
+            throw new Error("Not implemented yet");
+        }
+
+        const variable = expression.result_type.scope.lookupVariable(node[0].data[2].value)
+        const value = compiler.parse(node[2], scope) as Ast.Expression;
+
+        return new Ast.StmtAssignField(node, expression, variable!, value);
+    }
 }

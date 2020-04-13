@@ -102,7 +102,7 @@ expr            -> binaryExpr
 # We do not consider "<" and ">" by themselves as an operator token. However we do however want to
 # use these symbols for less than and greater than operators, so we special case it.
 binaryOp        -> (%operator | ">" | "<"):+
-unaryOp         -> %operator (%operator | ">" | "<"):*
+unaryOp         -> %operator (%operator | ">" | "<"):* {% function(node, location, reject){if(node[0].value === "."){return reject} return node;} %}
 
 binaryExpr        -> unaryExpr __ binaryOp __ unaryExpr     {% p.ExOpInfix %}
 binaryExpr        -> unaryExpr unaryOp unaryExpr            {% p.ExOpInfix %}
@@ -143,7 +143,7 @@ eibIndex        -> PLUS["[", expr, COMMA, "]"] {% p.PLUS %}
 atom            -> expression_index_bracket
 
 ## Expression/IndexDot #############################################################################
-expression_index_dot -> eidTarget eidSymbol eidName
+expression_index_dot -> eidTarget eidSymbol eidName {% p.ExprIndexDot %}
 
 eidTarget       -> atom
 eidSymbol       -> _ "." _
@@ -171,6 +171,17 @@ atom -> literal_integer
 literal_string -> %string_double_quote {% p.LiteralString %}
 
 atom -> literal_string
+
+## Statement/Assign ################################################################################
+StmtAssign -> saAssignable saOperator saValue {% p.StmtAssign %}
+
+saAssignable    -> %identifier
+saAssignable    -> expression_index_dot
+saAssignable    -> expression_index_bracket
+saOperator      -> __ binaryOp __
+saValue         -> expr
+
+stmt -> StmtAssign
 
 ## Type ############################################################################################
 type            -> tExpr tLifetime:?

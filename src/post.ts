@@ -20,6 +20,7 @@ function builder<T>(builder: (node: Node, state: Compiler, scope: Scope) => T){
             tag: Tag.NODE,
             data: node,
             builder: builder,
+            name: builder.name,
         };
     }
 }
@@ -46,8 +47,10 @@ export const ExOpPostfix    = builder(AstBuilder.ExOpPostfix);
 export const ExOpPrefix     = builder(AstBuilder.ExOpPrefix);
 export const ExReturn       = builder(AstBuilder.ExReturn);
 export const ExVariable     = builder(AstBuilder.ExVariable);
+export const ExprIndexDot   = builder(AstBuilder.ExprIndexDot);
 export const LiteralInteger = builder(AstBuilder.LiteralInteger);
 export const LiteralString  = builder(AstBuilder.LiteralString);
+export const StmtAssign     = builder(AstBuilder.StmtAssign);
 
 export function whitespace(node: Node){
     return {

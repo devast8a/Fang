@@ -1,5 +1,5 @@
 // Code generation step
-import { Tag, Class, Function, ExCall, Expression, ExConstant, ExVariable, ExReturn, ExConstruct, Variable } from './ast';
+import { Tag, Class, Function, ExCall, Expression, ExConstant, ExVariable, ExReturn, ExConstruct, Variable, StmtAssignVariable, StmtAssignField, ExprIndexDot } from './ast';
 
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];
@@ -33,8 +33,11 @@ export class TargetCGcc {
 
     public compileExpression(expression: Expression) {
         switch(expression.tag){
-            // TODO: Sort this out
+            // TODO: Create separate Stmt nodes and move these there
             case Tag.Variable as any: return this.compileVariable(expression as any);
+            case Tag.ExprIndexDot as any: return this.compileExprIndexDot(expression as any);
+            case Tag.StmtAssignVariable as any: return this.compileStmtAssignVariable(expression as any);
+            case Tag.StmtAssignField as any: return this.compileStmtAssignField(expression as any);
 
             case Tag.ExCall: return this.compileExCall(expression);
             case Tag.ExConstant: return this.compileExConstant(expression);
@@ -43,6 +46,18 @@ export class TargetCGcc {
             case Tag.ExReturn: return this.compileExReturn(expression);
             default: throw new Error("Incomplete switch statement (compileExpression)")
         }
+    }
+
+    public compileStmtAssignField(thing: StmtAssignField) {
+        this.compileExpression(thing.target);
+        this.output.push(".", thing.field.name, "=");
+        this.compileExpression(thing.source);
+    }
+
+    public compileStmtAssignVariable(thing: StmtAssignVariable) {
+        this.output.push(thing.target.id);
+        this.output.push("=");
+        this.compileExpression(thing.source);
     }
 
     public compileClass(thing: Class) {
@@ -71,6 +86,13 @@ export class TargetCGcc {
         output.push(node.variable.id);
     }
 
+    public compileExprIndexDot(node: ExprIndexDot) {
+        const output = this.output;
+
+        this.compileExpression(node.target);
+        output.push(".", node.field.name);
+    }
+
     public compileExCall(node: ExCall){
         const output = this.output;
 
@@ -84,7 +106,11 @@ export class TargetCGcc {
         }
 
         // TODO: Extend to non-function calls
-        output.push(node.target.id)
+        if((node as any).target.ffi_name !== undefined){
+            output.push((node as any).target.ffi_name);
+        } else {
+            output.push(node.target.id);
+        }
         output.push("(");
 
         const args = node.arguments;

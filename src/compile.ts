@@ -94,7 +94,10 @@ export class Compiler {
         parser.feed(source.content);
 
         if(parser.results.length > 1){
-            console.error("! AMBIGUOUS GRAMMAR !")
+            console.error("! AMBIGUOUS GRAMMAR !");
+            console.log(JSON.stringify(parser.results[0], null, 4));
+            console.log(JSON.stringify(parser.results[1], null, 4));
+            console.log(parser.results.length);
             return;
         }
 
@@ -108,11 +111,13 @@ export class Compiler {
         (scope as any).types.set("str", str);
         (scope as any).types.set("int", int);
 
-        const f = new Function("", "printf", "printf", scope);
+        const f = new Function("", "writeLn", "writeLn", scope);
+        (f as any).ffi_name = "printf";
         f.parameters.push(new Variable("", "", str, ""));
         f.parameters.push(new Variable("", "", int, ""));
 
-        (scope as any).functions.set("writeLn", f);
+        scope.declareFunction(f);
+
         (scope as any).functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
 
         for(const node of parser.results[0]){
