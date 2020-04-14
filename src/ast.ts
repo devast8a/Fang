@@ -1,3 +1,6 @@
+import { Compiler } from './compile';
+import { canSubType } from './type_api';
+
 export enum Tag {
     Class,
     Function,
@@ -14,6 +17,11 @@ export enum Tag {
     Return,
 }
 
+class Poison {};
+function isPoisoned<T>(value: T | Poison): value is Poison {
+    return value === Poison;
+}
+
 // TODO: Make the parser strongly typed
 type Node = any;
 
@@ -21,6 +29,9 @@ interface IThing {
     ast: Node;
 
     tag: Tag;
+
+    // TODO: Solve shortcut problems
+    checkTypes(compiler: Compiler): boolean;
 }
 export type Thing =
       Class
@@ -71,6 +82,7 @@ export class Class implements IThing, IType {
     public name: string;
     public id: string;
 
+    // TODO: Switch to arrays and use indexes to lookup
     public traits   = new Map<string, Trait>();
     public members  = new Map<string, Member>();
 
@@ -82,6 +94,27 @@ export class Class implements IThing, IType {
         this.ast = ast;
         this.name = name;
         this.id = id;
+    }
+
+    public checkTypes(compiler: Compiler): boolean {
+        let result = true;
+
+        for(const member of this.members.values()){
+            result = result && member.checkTypes(compiler);
+        }
+        
+        for(const trait of this.traits.values()){
+            // TODO: Return required members
+            if(!canSubType(this, trait)){
+                compiler.error("$0 is missing $2 required to implement $1",
+                    [this.name, trait.name, '???'],
+                    [this.ast[1]]
+                )
+                result = false;
+            }
+        }
+
+        return result;
     }
 }
 
@@ -105,6 +138,16 @@ export class Function implements IThing, IType {
         this.name = name;
         this.id = id;
     }
+
+    public checkTypes(compiler: Compiler): boolean {
+        let result = true;
+
+        for(const stmt of this.body){
+            result = result && stmt.checkTypes(compiler);
+        }
+
+        return result;
+    }
 }
 
 export class Trait implements IThing, IType {
@@ -126,6 +169,16 @@ export class Trait implements IThing, IType {
         this.name = name;
         this.id = id;
     }
+
+    public checkTypes(compiler: Compiler): boolean {
+        let result = true;
+
+        for(const member of this.members.values()){
+            result = result && member.checkTypes(compiler);
+        }
+
+        return result;
+    }
 }
 
 export class Variable implements IThing, IType {
@@ -143,6 +196,10 @@ export class Variable implements IThing, IType {
         this.id = id;
         this.type = type;
     }
+
+    public checkTypes(compiler: Compiler): boolean {
+        return true;
+    }
 }
 
 export class Call implements IThing, IExpr {
@@ -159,6 +216,16 @@ export class Call implements IThing, IExpr {
         this.ast = ast;
         this.target = target;
     }
+
+    public checkTypes(compiler: Compiler): boolean {
+        let result = true;
+
+        for(const argument of this.arguments){
+            result = result && argument.checkTypes(compiler);
+        }
+
+        return result;
+    }
 }
 
 export class Constant implements IThing, IExpr {
@@ -172,6 +239,10 @@ export class Constant implements IThing, IExpr {
         this.ast = ast;
         this.resultType = type;
         this.value = value;
+    }
+
+    public checkTypes(compiler: Compiler): boolean {
+        return true;
     }
 }
 
@@ -189,6 +260,10 @@ export class Construct implements IThing, IExpr {
         this.ast = ast;
         this.target = target;
     }
+
+    public checkTypes(compiler: Compiler): boolean {
+        throw new Error('Method not implemented.');
+    }
 }
 
 export class Return implements IThing, IExpr {
@@ -205,9 +280,12 @@ export class Return implements IThing, IExpr {
         this.value = value;
         this.resultType = value.resultType;
     }
+
+    public checkTypes(compiler: Compiler): boolean {
+        return this.value.checkTypes(compiler);
+    }
 }
 
-// TODO: Look at removing this and replacing it directly with Variable
 export class GetVariable implements IThing, IExpr {
     public ast: any;
     public tag: Tag.GetVariable = Tag.GetVariable;
@@ -219,6 +297,10 @@ export class GetVariable implements IThing, IExpr {
         this.ast = ast;
         this.variable = variable;
         this.resultType = variable.type;
+    }
+
+    public checkTypes(compiler: Compiler): boolean {
+        return true;
     }
 }
 
@@ -237,6 +319,15 @@ export class GetField implements IThing, IExpr {
         this.target = target;
         this.field = field;
     }
+
+    public checkTypes(compiler: Compiler): boolean {
+        let result = true;
+
+        result = result && this.target.checkTypes(compiler);
+        // result = result && this.field.checkTypes(compiler);
+
+        return result;
+    }
 }
 
 export class SetVariable implements IThing {
@@ -251,6 +342,22 @@ export class SetVariable implements IThing {
 
         this.target = target;
         this.source = source;
+    }
+
+    public checkTypes(compiler: Compiler){
+        let result = true;
+
+        // result = result && this.target.checkTypes(compiler);
+
+        // TODO: Remove this hack
+        if(this.target.type !== this.source.resultType && this.source.tag !== Tag.Constant){
+            compiler.error("Bad type", [], []);
+            result = false;
+        }
+
+        result = result && this.source.checkTypes(compiler);
+
+        return result;
     }
 }
 
@@ -268,6 +375,25 @@ export class SetField implements IThing {
         this.target = target;
         this.field = field;
         this.source = source;
+    }
+
+    public checkTypes(compiler: Compiler): boolean {
+        let result = true;
+
+        result = result && this.target.checkTypes(compiler);
+
+        // TODO: Remove this hack
+        // TODO: Setup proper poisoning
+        if(this.field !== undefined){
+            if(this.field.type !== this.source.resultType && this.source.tag !== Tag.Constant){
+                compiler.error("Bad type", [], [this.source.ast[0]]);
+                result = false;
+            }
+        }
+
+        result = result && this.source.checkTypes(compiler);
+
+        return result;
     }
 }
 

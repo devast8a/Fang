@@ -126,7 +126,7 @@ export class Compiler {
             return;
         }
 
-        // Ast Generation / Type-check
+        // Ast Generation
         for(const node of parser.results[0]){
             this.parse(node, scope);
         }
@@ -137,6 +137,11 @@ export class Compiler {
         scope.types.delete("int");
         scope.functions.delete("writeLn");
         scope.functions.delete("$infix+");
+
+        // Type check
+        for(const type of scope.types.values()){
+            type.checkTypes(this);
+        }
 
         // Monomorphize
         for(const call of this.callsToMonomorphize){

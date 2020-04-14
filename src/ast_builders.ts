@@ -64,12 +64,6 @@ export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
                 [node[1].value, impl[3].data[0].value],
                 [impl[3].data[0], type.ast]
             );
-        } else if(!canSubType(obj, type)){
-            compiler.error(
-                IMPL_TARGET_NOT_SUBTYPE,
-                [node[1].value, impl[3].data[0].value, "<not implemented>"],
-                [impl[3].data[0], type.ast]
-            );
         } else {
             obj.traits.set(type.id, type);
         }
