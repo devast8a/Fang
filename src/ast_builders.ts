@@ -1,6 +1,6 @@
 import * as Ast from "./ast";
 import { Compiler } from './compile';
-import { canSubType } from './type_api';
+import { canSubType, canMonomorphize } from './type_api';
 import { Tag } from './post';
 
 const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
@@ -76,7 +76,7 @@ export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     }
 
     scope.declareClass(obj);
-    obj.id = "struct Vec2d";
+    obj.id = "struct " + obj.id;
 
     return obj;
 }
@@ -208,6 +208,10 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
         } else if(call.arguments.length < target.parameters.length){
             compiler.error("Too few arguments", [], [blame]);
         }
+
+        if(canMonomorphize(call.target)){
+            compiler.callsToMonomorphize.push(call);
+        }
     }
 
     return call;
@@ -216,8 +220,14 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
 export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
     const expression = compiler.parse(node[0], scope) as Ast.Expression;
 
-    if(expression.result_type?.tag !== Ast.Tag.Class){
-        throw new Error("Not implemented yet");
+    switch(expression.result_type?.tag){
+        case Ast.Tag.Class:
+        case Ast.Tag.Trait:
+            // Okay
+            break;
+
+        default:
+            throw new Error("Not implemented yet");
     }
 
     const field = expression.result_type.scope.lookupVariable(node[2].value);

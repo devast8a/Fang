@@ -58,3 +58,13 @@ export function canSubTypeFunction(child: Function, parent: Function){
 
     return true;
 }
+
+export function canMonomorphize(func: Function){
+    for(const parameter of func.parameters){
+        if(parameter.type.tag === Tag.Trait){
+            return true;
+        }
+    }
+
+    return false;
+}

@@ -5,7 +5,7 @@ import chalk from "chalk";
 import grammar from "./grammar";
 import * as fs from "fs";
 import { Tag as AstTag } from './post';
-import { Thing, Type, Class, Function, Variable, Scope } from './ast';
+import { Thing, Type, Class, Function, Variable, Scope, ExCall } from './ast';
 import TargetCGcc from './codegen';
 
 // Create a Parser object from our grammar.
@@ -58,6 +58,8 @@ class Source {
 export class Compiler {
     private errors = new Array<any>();
 
+    public callsToMonomorphize = new Array<ExCall>();   // Used in monomorphize step
+
     public error(format: string, args: string[], highlight?: any[]) {
         this.errors.push({
             format: format,
@@ -90,6 +92,29 @@ export class Compiler {
     }
 
     public compile(source: Source){
+        // TODO: Support binding to target within the language itself
+        const scope = new Scope();
+
+        const str = new Class("", "char*", "char*", scope);
+        const int = new Class("", "int", "int", scope);
+
+        scope.types.set("none", new Class("", "void", "void", scope));
+        scope.types.set("str", str);
+        scope.types.set("int", int);
+
+        const f = new Function("", "writeLn", "writeLn", scope);
+        (f as any).ffi_name = "printf";
+        f.parameters.push(new Variable("", "", str, ""));
+        f.parameters.push(new Variable("", "", int, ""));
+
+        scope.declareFunction(f);
+
+        scope.functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
+
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        // Parse
         const parser = new nearley.Parser(compiled);
         parser.feed(source.content);
 
@@ -101,50 +126,54 @@ export class Compiler {
             return;
         }
 
-        // TODO: Support binding to target within the language itself
-        const scope = new Scope();
-
-        const str = new Class("", "char*", "char*", scope);
-        const int = new Class("", "int", "int", scope);
-
-        (scope as any).types.set("none", new Class("", "void", "void", scope));
-        (scope as any).types.set("str", str);
-        (scope as any).types.set("int", int);
-
-        const f = new Function("", "writeLn", "writeLn", scope);
-        (f as any).ffi_name = "printf";
-        f.parameters.push(new Variable("", "", str, ""));
-        f.parameters.push(new Variable("", "", int, ""));
-
-        scope.declareFunction(f);
-
-        (scope as any).functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
-
+        // Ast Generation / Type-check
         for(const node of parser.results[0]){
             this.parse(node, scope);
         }
 
-        if(this.errors.length === 0){
-            // TODO: Remove hack to avoid outputting compiler defined functions
-            (scope as any).types.delete("none");
-            (scope as any).types.delete("str");
-            (scope as any).types.delete("int");
-            (scope as any).functions.delete("writeLn");
-            (scope as any).functions.delete("$infix+");
+        // TODO: Remove hack to avoid outputting compiler defined functions
+        scope.types.delete("none");
+        scope.types.delete("str");
+        scope.types.delete("int");
+        scope.functions.delete("writeLn");
+        scope.functions.delete("$infix+");
 
+        // Monomorphize
+        for(const call of this.callsToMonomorphize){
+            scope.functions.delete(call.target.id);
+
+            // TODO: Properly dispatch when monomorphized instead of duplicating the function
+            const target = call.target;
+
+            const duplicated = new Function(target.ast, target.name, target.id + call.arguments[0].result_type!.name, target.scope);
+            duplicated.body = call.target.body;
+            duplicated.return_type = call.target.return_type;
+            duplicated.parameters.push(new Variable(null, "v", call.arguments[0].result_type!, "v"));
+
+            call.target = duplicated;
+
+            scope.functions.set(duplicated.id, duplicated);
+        }
+
+        // Code-gen
+        if(this.errors.length === 0){
             const target = new TargetCGcc();
 
             for(const thing of (scope as any).classes.values()){
                 target.compileClass(thing);
             }
 
-            for(const func of (scope as any).functions.values()){
+            for(const func of Array.from(scope.functions.values()).reverse()){
                 target.compileFunction(func);
             }
 
             const output = target.output.join("");
             fs.writeFileSync("build/test.c", output);
-        } else {
+        }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        
+        if(this.errors.length > 0){
             // Display errors
             while(this.errors.length > 0){
                 let {format, args, highlight} = this.errors.pop();

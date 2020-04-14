@@ -1,14 +1,38 @@
-class Vec2d {
+trait Vec2d {
     val x: int
     val y: int
 }
 
-fn main(): none {
-    val v: Vec2d
 
-    v.x = 10
-    v.y = 20
+class Foo2 impl Vec2d {
+    val x: int
+    val y: int
+}
 
+
+class Foo3 impl Vec2d {
+    val z: int
+    val y: int
+    val x: int
+}
+
+
+fn printVec(v: Vec2d): none {
     writeLn("x is %d\n", v.x)
     writeLn("y is %d\n", v.y)
+}
+
+
+fn main(): none {
+    val f2: Foo2
+    f2.x = 1
+    f2.y = 2
+
+    val f3: Foo3
+    f3.x = 3
+    f3.y = 4
+    f3.z = 5
+
+    printVec(f2)
+    printVec(f3)
 }

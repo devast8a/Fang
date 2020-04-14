@@ -273,11 +273,11 @@ export class StmtAssignField implements IThing {
 }
 
 export class Scope {
-    private readonly classes    = new Map<string, Class>();
-    private readonly functions  = new Map<string, Function>();
-    private readonly traits     = new Map<string, Trait>();
-    private readonly types      = new Map<string, Type>();
-    private readonly variables  = new Map<string, Variable>();
+    public readonly classes    = new Map<string, Class>();
+    public readonly functions  = new Map<string, Function>();
+    public readonly traits     = new Map<string, Trait>();
+    public readonly types      = new Map<string, Type>();
+    public readonly variables  = new Map<string, Variable>();
 
     public readonly parent: Scope | null;
 

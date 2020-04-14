@@ -6,7 +6,7 @@
         "sourceMap": true,
         "module": "commonjs",
         "outDir": "build/js",
-        "rootDir": "src",
+        "rootDir": "src/",
         "strict": true,
         "target": "ES6",
         "types": [
