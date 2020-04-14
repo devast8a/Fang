@@ -1,7 +1,7 @@
 import * as Ast from "./ast";
 import { Compiler } from './compile';
-import { canSubType, canMonomorphize } from './type_api';
 import { Tag } from './post';
+import { canMonomorphize, canSubType } from './type_api';
 
 const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
 const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
@@ -135,7 +135,7 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
         for(const statement of node[5][1].elements){
             const stmt = compiler.parse(statement, obj.scope);
             if(stmt !== undefined){
-                obj.body.push(stmt as Ast.Expression);
+                obj.body.push(stmt as Ast.Stmt);
             }
         }
     }
@@ -196,7 +196,7 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
     const target = lookupFunction(node[0], compiler, scope);
     const args = node[1].elements.map((arg: any) => compiler.parse(arg, scope));
 
-    const call = new Ast.ExCall(node, target!);
+    const call = new Ast.Call(node, target!);
     call.arguments = args;
 
     // TODO: Type check parameters and arguments
@@ -218,7 +218,7 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
-    const expression = compiler.parse(node[0], scope) as Ast.Expression;
+    const expression = compiler.parse(node[0], scope) as Ast.Expr;
 
     switch(expression.resultType?.tag){
         case Ast.Tag.Class:
@@ -232,14 +232,14 @@ export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     const field = expression.resultType.scope.lookupVariable(node[2].value);
 
-    return new Ast.ExprIndexDot(node, expression, field!);
+    return new Ast.GetField(node, expression, field!);
 }
 
 //// ExConstruct
 export function ExConstruct(node: Node, compiler: Compiler, scope: Ast.Scope){
     const target = lookupClass(node[0], compiler, scope);
 
-    const thing = new Ast.ExConstruct(node, target!);
+    const thing = new Ast.Construct(node, target!);
 
     return thing;
 }
@@ -253,10 +253,10 @@ export function ExOpInfix(node: Node, compiler: Compiler, scope: Ast.Scope){
         return;
     }
 
-    const call = new Ast.ExCall(node, func);
+    const call = new Ast.Call(node, func);
 
-    call.arguments.push(compiler.parse(node[0], scope) as Ast.Expression);
-    call.arguments.push(compiler.parse(node[4], scope) as Ast.Expression);
+    call.arguments.push(compiler.parse(node[0], scope) as Ast.Expr);
+    call.arguments.push(compiler.parse(node[4], scope) as Ast.Expr);
 
     return call;
 }
@@ -273,12 +273,12 @@ export function ExOpPrefix(node: Node, compiler: Compiler){
 
 //// ExReturn
 export function ExReturn(node: Node, compiler: Compiler, scope: Ast.Scope){
-    const expression = compiler.parse(node[1][1], scope) as Ast.Expression;
+    const expression = compiler.parse(node[1][1], scope) as Ast.Expr;
     if(expression === undefined){
         return;
     }
 
-    return new Ast.ExReturn(node, expression);
+    return new Ast.Return(node, expression);
 }
 
 //// ExVariable
@@ -290,15 +290,15 @@ export function ExVariable(node: Node, compiler: Compiler, scope: Ast.Scope){
         return;
     }
 
-    return new Ast.ExVariable(node, variable);
+    return new Ast.GetVariable(node, variable);
 }
 
 export function LiteralInteger(node: Node, compiler: Compiler){
-    return new Ast.ExConstant(node, null as any, node[0].value);
+    return new Ast.Constant(node, null as any, node[0].value);
 }
 
 export function LiteralString(node: Node, compiler: Compiler){
-    return new Ast.ExConstant(node, null as any, node[0].value);
+    return new Ast.Constant(node, null as any, node[0].value);
 }
 
 export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
@@ -308,19 +308,19 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     if(node[0].name !== "ExprIndexDot"){
         const assignable = scope.lookupVariable(node[0].value);
-        const value = compiler.parse(node[2], scope) as Ast.Expression;
+        const value = compiler.parse(node[2], scope) as Ast.Expr;
 
-        return new Ast.StmtAssignVariable(node, assignable!, value);
+        return new Ast.SetVariable(node, assignable!, value);
     } else {
-        const expression = compiler.parse(node[0].data[0], scope) as Ast.Expression;
+        const expression = compiler.parse(node[0].data[0], scope) as Ast.Expr;
 
         if(expression.resultType?.tag !== Ast.Tag.Class){
             throw new Error("Not implemented yet");
         }
 
         const variable = expression.resultType.scope.lookupVariable(node[0].data[2].value)
-        const value = compiler.parse(node[2], scope) as Ast.Expression;
+        const value = compiler.parse(node[2], scope) as Ast.Expr;
 
-        return new Ast.StmtAssignField(node, expression, variable!, value);
+        return new Ast.SetField(node, expression, variable!, value);
     }
 }

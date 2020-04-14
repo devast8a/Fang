@@ -3,14 +3,15 @@ export enum Tag {
     Function,
     Trait,
     Variable,
-    ExCall,
-    ExConstruct,
-    ExConstant,
-    ExVariable,
-    ExReturn,
-    StmtAssignVariable,
-    StmtAssignField,
-    ExprIndexDot
+
+    Call,
+    Constant,
+    Construct,
+    GetField,
+    GetVariable,
+    SetField,
+    SetVariable,
+    Return,
 }
 
 // TODO: Make the parser strongly typed
@@ -26,8 +27,8 @@ export type Thing =
     | Function
     | Trait
     | Variable
-    | ExCall
-    | ExConstruct;
+    | Call
+    | Construct;
 
 interface IType {
     name: string;
@@ -38,15 +39,24 @@ export type Type =
     | Function
     | Trait;
 
-interface IExpression {
+interface IExpr {
     resultType: Type | undefined;
 }
-export type Expression =
-      ExCall
-    | ExConstant
-    | ExConstruct
-    | ExVariable
-    | ExReturn;
+export type Expr =
+      Call
+    | Constant
+    | Construct
+    | GetField
+    | GetVariable;
+
+interface IStmt {
+}
+export type Stmt =
+      Variable
+    | Call
+    | Return
+    | SetField
+    | SetVariable;
 
 export type Member =
       Class
@@ -84,7 +94,8 @@ export class Function implements IThing, IType {
 
     public returnType: Type | undefined = undefined;
     public parameters = new Array<Variable>();
-    public body = new Array<Expression>();
+    public body = new Array<Stmt>();
+
     public scope: Scope;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
@@ -134,15 +145,15 @@ export class Variable implements IThing, IType {
     }
 }
 
-export class ExCall implements IThing, IExpression {
+export class Call implements IThing, IExpr {
     public ast: Node;
 
-    public tag: Tag.ExCall = Tag.ExCall;
+    public tag: Tag.Call = Tag.Call;
 
     public resultType: Type | undefined;
 
     public target: Function;        // TODO: Going forward this shouldn't be restricted to Function
-    public arguments = new Array<Expression>();
+    public arguments = new Array<Expr>();
 
     public constructor(ast: Node, target: Function){
         this.ast = ast;
@@ -150,9 +161,9 @@ export class ExCall implements IThing, IExpression {
     }
 }
 
-export class ExConstant implements IThing, IExpression {
+export class Constant implements IThing, IExpr {
     public ast: any;
-    public tag: Tag.ExConstant = Tag.ExConstant;
+    public tag: Tag.Constant = Tag.Constant;
 
     public resultType: Type | undefined;
     public value: any;
@@ -164,15 +175,15 @@ export class ExConstant implements IThing, IExpression {
     }
 }
 
-export class ExConstruct implements IThing, IExpression {
+export class Construct implements IThing, IExpr {
     public ast: Node;
 
-    public tag: Tag.ExConstruct = Tag.ExConstruct;
+    public tag: Tag.Construct = Tag.Construct;
 
     public resultType: Type | undefined;
 
     public target: Type;
-    public arguments = new Array<Expression>();
+    public arguments = Array<Expr>();
 
     public constructor(ast: Node, target: Type){
         this.ast = ast;
@@ -180,15 +191,15 @@ export class ExConstruct implements IThing, IExpression {
     }
 }
 
-export class ExReturn implements IThing, IExpression {
+export class Return implements IThing, IExpr {
     public ast: Node;
 
-    public tag: Tag.ExReturn = Tag.ExReturn;
+    public tag: Tag.Return = Tag.Return;
 
     public resultType: Type | undefined;
-    public value: Expression;
+    public value: Expr;
 
-    public constructor(ast: Node, value: Expression){
+    public constructor(ast: Node, value: Expr){
         this.ast = ast;
 
         this.value = value;
@@ -197,9 +208,9 @@ export class ExReturn implements IThing, IExpression {
 }
 
 // TODO: Look at removing this and replacing it directly with Variable
-export class ExVariable implements IThing, IExpression {
+export class GetVariable implements IThing, IExpr {
     public ast: any;
-    public tag: Tag.ExVariable = Tag.ExVariable;
+    public tag: Tag.GetVariable = Tag.GetVariable;
 
     public resultType: Type | undefined;
     public variable: Variable;
@@ -211,16 +222,16 @@ export class ExVariable implements IThing, IExpression {
     }
 }
 
-export class ExprIndexDot implements IThing, IExpression {
+export class GetField implements IThing, IExpr {
     public ast: any;
-    public tag: Tag.ExprIndexDot = Tag.ExprIndexDot;
+    public tag: Tag.GetField = Tag.GetField;
 
     public resultType: Type | undefined;
 
-    public target: Expression;
+    public target: Expr;
     public field: Variable;
 
-    public constructor(ast: Node, target: Expression, field: Variable){
+    public constructor(ast: Node, target: Expr, field: Variable){
         this.ast = ast;
 
         this.target = target;
@@ -228,14 +239,14 @@ export class ExprIndexDot implements IThing, IExpression {
     }
 }
 
-export class StmtAssignVariable implements IThing {
+export class SetVariable implements IThing {
     public ast: any;
-    public tag: Tag.StmtAssignVariable = Tag.StmtAssignVariable;
+    public tag: Tag.SetVariable = Tag.SetVariable;
 
     public target: Variable;
-    public source: Expression;
+    public source: Expr;
 
-    public constructor(ast: Node, target: Variable, source: Expression){
+    public constructor(ast: Node, target: Variable, source: Expr){
         this.ast = ast;
 
         this.target = target;
@@ -243,15 +254,15 @@ export class StmtAssignVariable implements IThing {
     }
 }
 
-export class StmtAssignField implements IThing {
+export class SetField implements IThing {
     public ast: any;
-    public tag: Tag.StmtAssignField = Tag.StmtAssignField;
+    public tag: Tag.SetField = Tag.SetField;
 
-    public target: Expression;
+    public target: Expr;
     public field: Variable;
-    public source: Expression;
+    public source: Expr;
 
-    public constructor(ast: Node, target: Expression, field: Variable, source: Expression){
+    public constructor(ast: Node, target: Expr, field: Variable, source: Expr){
         this.ast = ast;
 
         this.target = target;

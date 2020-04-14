@@ -1,5 +1,5 @@
 // Code generation step
-import { Tag, Class, Function, ExCall, Expression, ExConstant, ExVariable, ExReturn, ExConstruct, Variable, StmtAssignVariable, StmtAssignField, ExprIndexDot } from './ast';
+import { Call, Class, Constant, Construct, Expr, Function, GetField, GetVariable, Member, Return, SetField, SetVariable, Stmt, Tag, Variable } from './ast';
 
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];
@@ -25,36 +25,48 @@ export class TargetCGcc {
 
         // Body
         for(const expression of node.body){
-            this.compileExpression(expression);
+            this.compileStmt(expression);
             output.push(";");
         }
         output.push("}");
     }
 
-    public compileExpression(expression: Expression) {
-        switch(expression.tag){
-            // TODO: Create separate Stmt nodes and move these there
-            case Tag.Variable as any: return this.compileVariable(expression as any);
-            case Tag.ExprIndexDot as any: return this.compileExprIndexDot(expression as any);
-            case Tag.StmtAssignVariable as any: return this.compileStmtAssignVariable(expression as any);
-            case Tag.StmtAssignField as any: return this.compileStmtAssignField(expression as any);
-
-            case Tag.ExCall: return this.compileExCall(expression);
-            case Tag.ExConstant: return this.compileExConstant(expression);
-            case Tag.ExConstruct: return this.compileExConstruct(expression);
-            case Tag.ExVariable: return this.compileExVariable(expression);
-            case Tag.ExReturn: return this.compileExReturn(expression);
-            default: throw new Error("Incomplete switch statement (compileExpression)")
+    public compileExpression(thing: Expr) {
+        switch(thing.tag){
+            case Tag.Call:          return this.compileCall(thing);
+            case Tag.Constant:      return this.compileConstant(thing);
+            case Tag.Construct:     return this.compileConstruct(thing);
+            case Tag.GetField:      return this.compileGetField(thing);
+            case Tag.GetVariable:   return this.compileGetVariable(thing);
+            default: throw new Error("Incomplete switch statement (compileExpr)")
         }
     }
 
-    public compileStmtAssignField(thing: StmtAssignField) {
+    public compileStmt(thing: Stmt){
+        switch(thing.tag){
+            case Tag.Call:              return this.compileCall(thing);
+            case Tag.Return:            return this.compileReturn(thing);
+            case Tag.SetField:          return this.compileSetField(thing);
+            case Tag.SetVariable:       return this.compileSetVariable(thing);
+            case Tag.Variable:          return this.compileVariable(thing);
+            default: throw new Error("Incomplete switch statement (compileStmt)")
+        }
+    }
+
+    public compileMember(thing: Member){
+        switch(thing.tag){
+            case Tag.Variable:              return this.compileVariable(thing);
+            default: throw new Error("Incomplete switch statement (compileMember)")
+        }
+    }
+
+    public compileSetField(thing: SetField) {
         this.compileExpression(thing.target);
         this.output.push(".", thing.field.name, "=");
         this.compileExpression(thing.source);
     }
 
-    public compileStmtAssignVariable(thing: StmtAssignVariable) {
+    public compileSetVariable(thing: SetVariable) {
         this.output.push(thing.target.id);
         this.output.push("=");
         this.compileExpression(thing.source);
@@ -64,7 +76,7 @@ export class TargetCGcc {
         this.output.push(thing.id, "{");
 
         for(const member of thing.members.values()){
-            this.compileExpression(member as any);
+            this.compileMember(member);
             this.output.push(";");
         }
 
@@ -75,25 +87,25 @@ export class TargetCGcc {
         this.output.push(thing.type.id, " ", thing.name);
     }
 
-    public compileExReturn(expression: ExReturn) {
+    public compileReturn(expression: Return) {
         this.output.push("return ");
         this.compileExpression(expression.value);
     }
 
-    public compileExVariable(node: ExVariable) {
+    public compileGetVariable(node: GetVariable) {
         const output = this.output;
 
         output.push(node.variable.id);
     }
 
-    public compileExprIndexDot(node: ExprIndexDot) {
+    public compileGetField(node: GetField) {
         const output = this.output;
 
         this.compileExpression(node.target);
         output.push(".", node.field.name);
     }
 
-    public compileExCall(node: ExCall){
+    public compileCall(node: Call){
         const output = this.output;
 
         if(node.target.id[0] === '$'){
@@ -125,13 +137,13 @@ export class TargetCGcc {
         output.push(")")
     }
 
-    public compileExConstant(node: ExConstant) {
+    public compileConstant(node: Constant) {
         // TODO: Determine which type of constant it is
         // For now assume we can just output the value
         this.output.push(node.value);
     }
 
-    public compileExConstruct(node: ExConstruct) {
+    public compileConstruct(node: Construct) {
         this.output.push("{");
         this.output.push("}");
     }

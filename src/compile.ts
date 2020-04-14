@@ -1,12 +1,12 @@
-import 'source-map-support/register'
-
-import * as nearley from "nearley";
 import chalk from "chalk";
-import grammar from "./grammar";
 import * as fs from "fs";
-import { Tag as AstTag } from './post';
-import { Thing, Type, Class, Function, Variable, Scope, ExCall } from './ast';
+import * as nearley from "nearley";
+import 'source-map-support/register';
+import { Call, Class, Function, Scope, Thing, Variable } from './ast';
 import TargetCGcc from './codegen';
+import grammar from "./grammar";
+import { Tag as AstTag } from './post';
+
 
 // Create a Parser object from our grammar.
 const compiled = nearley.Grammar.fromCompiled(grammar);
@@ -58,7 +58,7 @@ class Source {
 export class Compiler {
     private errors = new Array<any>();
 
-    public callsToMonomorphize = new Array<ExCall>();   // Used in monomorphize step
+    public callsToMonomorphize = new Array<Call>();   // Used in monomorphize step
 
     public error(format: string, args: string[], highlight?: any[]) {
         this.errors.push({
