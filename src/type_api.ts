@@ -42,9 +42,9 @@ export function canSubTypeFunction(child: Function, parent: Function){
         return false;
     }
 
-    if(child.return_type !== undefined && parent.return_type !== undefined){
+    if(child.returnType !== undefined && parent.returnType !== undefined){
         //TODO: use isSubType here
-        if(!canSubType(child.return_type, parent.return_type)){
+        if(!canSubType(child.returnType, parent.returnType)){
             return false;
         }
     }

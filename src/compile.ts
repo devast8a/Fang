@@ -145,10 +145,10 @@ export class Compiler {
             // TODO: Properly dispatch when monomorphized instead of duplicating the function
             const target = call.target;
 
-            const duplicated = new Function(target.ast, target.name, target.id + call.arguments[0].result_type!.name, target.scope);
+            const duplicated = new Function(target.ast, target.name, target.id + call.arguments[0].resultType!.name, target.scope);
             duplicated.body = call.target.body;
-            duplicated.return_type = call.target.return_type;
-            duplicated.parameters.push(new Variable(null, "v", call.arguments[0].result_type!, "v"));
+            duplicated.returnType = call.target.returnType;
+            duplicated.parameters.push(new Variable(null, "v", call.arguments[0].resultType!, "v"));
 
             call.target = duplicated;
 

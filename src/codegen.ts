@@ -6,7 +6,7 @@ export class TargetCGcc {
 
     public compileFunction(node: Function){
         const output = this.output;
-        output.push(node.return_type!.id, " ", node.id)
+        output.push(node.returnType!.id, " ", node.id)
 
         // Parameters
         output.push("(");

@@ -128,7 +128,7 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
         compiler.error("All functions must declare return types", [], [node[1][0]]);
         return;
     }
-    obj.return_type = lookupType(node[3][3], compiler, scope);
+    obj.returnType = lookupType(node[3][3], compiler, scope);
 
     // Collect statements
     if(node[5] !== null){
@@ -220,7 +220,7 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
 export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
     const expression = compiler.parse(node[0], scope) as Ast.Expression;
 
-    switch(expression.result_type?.tag){
+    switch(expression.resultType?.tag){
         case Ast.Tag.Class:
         case Ast.Tag.Trait:
             // Okay
@@ -230,7 +230,7 @@ export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
             throw new Error("Not implemented yet");
     }
 
-    const field = expression.result_type.scope.lookupVariable(node[2].value);
+    const field = expression.resultType.scope.lookupVariable(node[2].value);
 
     return new Ast.ExprIndexDot(node, expression, field!);
 }
@@ -314,11 +314,11 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
     } else {
         const expression = compiler.parse(node[0].data[0], scope) as Ast.Expression;
 
-        if(expression.result_type?.tag !== Ast.Tag.Class){
+        if(expression.resultType?.tag !== Ast.Tag.Class){
             throw new Error("Not implemented yet");
         }
 
-        const variable = expression.result_type.scope.lookupVariable(node[0].data[2].value)
+        const variable = expression.resultType.scope.lookupVariable(node[0].data[2].value)
         const value = compiler.parse(node[2], scope) as Ast.Expression;
 
         return new Ast.StmtAssignField(node, expression, variable!, value);

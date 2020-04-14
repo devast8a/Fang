@@ -39,7 +39,7 @@ export type Type =
     | Trait;
 
 interface IExpression {
-    result_type: Type | undefined;
+    resultType: Type | undefined;
 }
 export type Expression =
       ExCall
@@ -54,13 +54,7 @@ export type Member =
     | Trait
     | Variable;
 
-// All things that are allowed to be generic
-type Generic = Class | Function | Trait;
-interface IGeneric {
-    generic_parameters: Type[];
-}
-
-export class Class implements IThing, IType, IGeneric {
+export class Class implements IThing, IType {
     public ast: Node;
 
     public tag: Tag.Class = Tag.Class;
@@ -70,8 +64,6 @@ export class Class implements IThing, IType, IGeneric {
     public traits   = new Map<string, Trait>();
     public members  = new Map<string, Member>();
 
-    public generic_parameters = new Array<Type>();
-
     public scope: Scope;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
@@ -83,19 +75,17 @@ export class Class implements IThing, IType, IGeneric {
     }
 }
 
-export class Function implements IThing, IType, IGeneric {
+export class Function implements IThing, IType {
     public ast: Node;
 
     public tag: Tag.Function = Tag.Function;
     public name: string;
     public id: string;
 
-    public return_type: Type | undefined = undefined;
+    public returnType: Type | undefined = undefined;
     public parameters = new Array<Variable>();
     public body = new Array<Expression>();
     public scope: Scope;
-
-    public generic_parameters = new Array<Type>();
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
         this.scope = new Scope(parentScope);
@@ -106,7 +96,7 @@ export class Function implements IThing, IType, IGeneric {
     }
 }
 
-export class Trait implements IThing, IType, IGeneric {
+export class Trait implements IThing, IType {
     public ast: Node;
 
     public tag: Tag.Trait = Tag.Trait;
@@ -115,8 +105,6 @@ export class Trait implements IThing, IType, IGeneric {
 
     public traits   = new Map<string, Trait>();
     public members  = new Map<string, Member>();
-
-    public generic_parameters = new Array<Type>();
 
     public scope: Scope;
 
@@ -151,7 +139,7 @@ export class ExCall implements IThing, IExpression {
 
     public tag: Tag.ExCall = Tag.ExCall;
 
-    public result_type: Type | undefined;
+    public resultType: Type | undefined;
 
     public target: Function;        // TODO: Going forward this shouldn't be restricted to Function
     public arguments = new Array<Expression>();
@@ -166,12 +154,12 @@ export class ExConstant implements IThing, IExpression {
     public ast: any;
     public tag: Tag.ExConstant = Tag.ExConstant;
 
-    public result_type: Type | undefined;
+    public resultType: Type | undefined;
     public value: any;
 
     public constructor(ast: Node, type: Type, value: any){
         this.ast = ast;
-        this.result_type = type;
+        this.resultType = type;
         this.value = value;
     }
 }
@@ -181,7 +169,7 @@ export class ExConstruct implements IThing, IExpression {
 
     public tag: Tag.ExConstruct = Tag.ExConstruct;
 
-    public result_type: Type | undefined;
+    public resultType: Type | undefined;
 
     public target: Type;
     public arguments = new Array<Expression>();
@@ -197,14 +185,14 @@ export class ExReturn implements IThing, IExpression {
 
     public tag: Tag.ExReturn = Tag.ExReturn;
 
-    public result_type: Type | undefined;
+    public resultType: Type | undefined;
     public value: Expression;
 
     public constructor(ast: Node, value: Expression){
         this.ast = ast;
 
         this.value = value;
-        this.result_type = value.result_type;
+        this.resultType = value.resultType;
     }
 }
 
@@ -213,13 +201,13 @@ export class ExVariable implements IThing, IExpression {
     public ast: any;
     public tag: Tag.ExVariable = Tag.ExVariable;
 
-    public result_type: Type | undefined;
+    public resultType: Type | undefined;
     public variable: Variable;
 
     public constructor(ast: Node, variable: Variable){
         this.ast = ast;
         this.variable = variable;
-        this.result_type = variable.type;
+        this.resultType = variable.type;
     }
 }
 
@@ -227,7 +215,7 @@ export class ExprIndexDot implements IThing, IExpression {
     public ast: any;
     public tag: Tag.ExprIndexDot = Tag.ExprIndexDot;
 
-    public result_type: Type | undefined;
+    public resultType: Type | undefined;
 
     public target: Expression;
     public field: Variable;
