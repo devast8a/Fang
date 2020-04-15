@@ -24,11 +24,6 @@ function lookupType(node: any, compiler: Compiler, scope: Ast.Scope){
     return type;
 }
 
-function lookupFunction(node: any, compiler: Compiler, scope: Ast.Scope){
-    const thing = scope.lookupFunction(node.data[0].value);
-    return thing;
-}
-
 function lookupClass(node: any, compiler: Compiler, scope: Ast.Scope){
     const thing = scope.lookupClass(node.data[0].value);
     return thing;
@@ -180,6 +175,47 @@ export function Variable(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 //// ExCall
+export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
+    switch(node[0].name){
+        case 'ExVariable': {
+            const thing = scope.lookupFunction(node[0].data[0].value);
+
+            if(thing === undefined){
+                // TODO: Suggest symbol
+                compiler.error("$0 does not exist, did you mean $1", [node[0].data[0].value, '???'], [node[0].data[0]]);
+            }
+
+            return new Ast.Call(node, thing!);
+        }
+
+        case 'ExprIndexDot': {
+            const expression = compiler.parse(node[0].data[0], scope) as Ast.Expr;
+
+            switch(expression.resultType?.tag){
+                case Ast.Tag.Class:
+                case Ast.Tag.Trait:
+                    // Okay
+                    break;
+
+                default:
+                    throw new Error("Not implemented yet");
+            }
+
+            const thing = expression.resultType.scope.lookupFunction(node[0].data[2].value);
+            
+            if(thing === undefined){
+                // TODO: Suggest symbol
+                compiler.error("$0 does not exist, did you mean $1", [node[0].data[2].value, '???'], [node[0].data[2]]);
+            }
+
+            const call = new Ast.Call(node, thing!);
+            (call as any).expression = expression;
+            return call;
+        }
+        default: throw new Error("Incomplete switch"); break;
+    }
+}
+
 export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
     // TODO: Split call types into their respective categories
     //  - symbol(foo, bar)
@@ -187,19 +223,19 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
     //  - expression(foo, bar)
     //  - expression.method(foo, bar)
 
-    const target = lookupFunction(node[0], compiler, scope);
-    const args = node[1].elements.map((arg: any) => compiler.parse(arg, scope));
+    let call = ExCallHelper(node, compiler, scope);
 
-    const call = new Ast.Call(node, target!);
+    const args = node[1].elements.map((arg: any) => compiler.parse(arg, scope));
     call.arguments = args;
 
+
     // TODO: Type check parameters and arguments
-    if(target !== undefined){
+    if(call.target !== undefined){
         const blame = node[0].data[0];
 
-        if(call.arguments.length > target.parameters.length){
+        if(call.arguments.length > call.target.parameters.length){
             compiler.error("Too many arguments", [], [blame]);
-        } else if(call.arguments.length < target.parameters.length){
+        } else if(call.arguments.length < call.target.parameters.length){
             compiler.error("Too few arguments", [], [blame]);
         }
 
@@ -314,6 +350,10 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
 
         const variable = expression.resultType.scope.lookupVariable(node[0].data[2].value)
         const value = compiler.parse(node[2], scope) as Ast.Expr;
+
+        if(variable === undefined){
+            compiler.error("$0 does not exist, do you mean $1", [node[0].data[2].value, '???'], [node[0].data[2]]);
+        }
 
         return new Ast.SetField(node, expression, variable!, value);
     }

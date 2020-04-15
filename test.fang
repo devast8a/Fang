@@ -1,12 +1,18 @@
 trait Vec2d {
     val x: int
     val y: int
+
+    fn test(): none
 }
 
 
 class Foo2 impl Vec2d {
     val x: int
     val y: int
+
+    fn test(): none {
+        writeLn("Foo2\n", 0)
+    }
 }
 
 
@@ -14,12 +20,17 @@ class Foo3 impl Vec2d {
     val z: int
     val y: int
     val x: int
+
+    fn test(): none {
+        writeLn("Foo3\n", 0)
+    }
 }
 
 
 fn printVec(v: Vec2d): none {
     writeLn("x is %d\n", v.x)
     writeLn("y is %d\n", v.y)
+    v.test()
 }
 
 

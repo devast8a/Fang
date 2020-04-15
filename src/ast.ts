@@ -35,11 +35,17 @@ interface IThing {
 }
 export type Thing =
       Class
-    | Function
-    | Trait
-    | Variable
     | Call
-    | Construct;
+    | Constant
+    | Construct
+    | Function
+    | GetField
+    | GetVariable
+    | Return
+    | SetField
+    | SetVariable
+    | Trait
+    | Variable;
 
 interface IType {
     name: string;

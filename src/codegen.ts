@@ -4,13 +4,13 @@ import { Call, Class, Constant, Construct, Expr, Function, GetField, GetVariable
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];
 
-    public compileFunction(node: Function){
+    public compileFunction(thing: Function){
         const output = this.output;
-        output.push(node.returnType!.id, " ", node.id)
+        output.push(thing.returnType!.id, " ", thing.id)
 
         // Parameters
         output.push("(");
-        const parameters = node.parameters;
+        const parameters = thing.parameters;
         for(let i = 0; i < parameters.length; i++){
             if(i > 0){
                 output.push(", ");
@@ -24,7 +24,7 @@ export class TargetCGcc {
         output.push("){");
 
         // Body
-        for(const expression of node.body){
+        for(const expression of thing.body){
             this.compileStmt(expression);
             output.push(";");
         }
@@ -33,31 +33,51 @@ export class TargetCGcc {
 
     public compileExpression(thing: Expr) {
         switch(thing.tag){
-            case Tag.Call:          return this.compileCall(thing);
-            case Tag.Constant:      return this.compileConstant(thing);
-            case Tag.Construct:     return this.compileConstruct(thing);
-            case Tag.GetField:      return this.compileGetField(thing);
-            case Tag.GetVariable:   return this.compileGetVariable(thing);
+            case Tag.Call:        this.compileCall(thing); break;
+            case Tag.Constant:    this.compileConstant(thing); break;
+            case Tag.Construct:   this.compileConstruct(thing); break;
+            case Tag.GetField:    this.compileGetField(thing); break;
+            case Tag.GetVariable: this.compileGetVariable(thing); break;
             default: throw new Error("Incomplete switch statement (compileExpr)")
         }
     }
 
     public compileStmt(thing: Stmt){
         switch(thing.tag){
-            case Tag.Call:              return this.compileCall(thing);
-            case Tag.Return:            return this.compileReturn(thing);
-            case Tag.SetField:          return this.compileSetField(thing);
-            case Tag.SetVariable:       return this.compileSetVariable(thing);
-            case Tag.Variable:          return this.compileVariable(thing);
+            case Tag.Call:        this.compileCall(thing); break;
+            case Tag.Return:      this.compileReturn(thing); break;
+            case Tag.SetField:    this.compileSetField(thing); break;
+            case Tag.SetVariable: this.compileSetVariable(thing); break;
+            case Tag.Variable:    this.compileVariable(thing); break;
             default: throw new Error("Incomplete switch statement (compileStmt)")
         }
     }
 
-    public compileMember(thing: Member){
-        switch(thing.tag){
-            case Tag.Variable:              return this.compileVariable(thing);
-            default: throw new Error("Incomplete switch statement (compileMember)")
+    public compileMemberFunction(name: string, thing: Function) {
+        const output = this.output;
+        output.push(thing.returnType!.id, " ", name + thing.id)
+
+        // Parameters
+        output.push("(");
+        const parameters = thing.parameters;
+        for(let i = 0; i < parameters.length; i++){
+            if(i > 0){
+                output.push(", ");
+            }
+
+            const parameter = parameters[i];
+            output.push(parameter.type.id);     // Parameter type
+            output.push(" ");
+            output.push(parameter.id);
         }
+        output.push("){");
+
+        // Body
+        for(const expression of thing.body){
+            this.compileStmt(expression);
+            output.push(";");
+        }
+        output.push("}");
     }
 
     public compileSetField(thing: SetField) {
@@ -73,14 +93,27 @@ export class TargetCGcc {
     }
 
     public compileClass(thing: Class) {
+        // Data structure
         this.output.push(thing.id, "{");
-
         for(const member of thing.members.values()){
-            this.compileMember(member);
+            switch(member.tag){
+                case Tag.Function: break; // Handled in next section
+                case Tag.Variable: this.compileVariable(member); break;
+                default: throw new Error("Incomplete switch statement (compileMember)")
+            }
+
             this.output.push(";");
         }
-
         this.output.push("};");
+
+        // Member Functions
+        for(const member of thing.members.values()){
+            switch(member.tag){
+                case Tag.Function: this.compileMemberFunction(thing.name, member); break;
+                case Tag.Variable: break; // Handled in previous section
+                default: throw new Error("Incomplete switch statement (compileMember)")
+            }
+        }
     }
 
     public compileVariable(thing: Variable) {
