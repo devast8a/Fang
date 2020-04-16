@@ -238,10 +238,6 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
         } else if(call.arguments.length < call.target.parameters.length){
             compiler.error("Too few arguments", [], [blame]);
         }
-
-        if(canMonomorphize(call.target)){
-            compiler.callsToMonomorphize.push(call);
-        }
     }
 
     return call;

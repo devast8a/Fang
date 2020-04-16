@@ -1,49 +1,33 @@
-trait Vec2d {
-    val x: int
-    val y: int
-
-    fn test(): none
+trait Printer {
+    fn print(): none
 }
 
-
-class Foo2 impl Vec2d {
-    val x: int
-    val y: int
-
-    fn test(): none {
-        writeLn("Foo2\n", 0)
+class Foo impl Printer {
+    fn print(): none {
+        writeLn("This is Foo!\n", 0)
     }
 }
 
-
-class Foo3 impl Vec2d {
-    val z: int
-    val y: int
-    val x: int
-
-    fn test(): none {
-        writeLn("Foo3\n", 0)
+class Bar impl Printer {
+    fn print(): none {
+        writeLn("This is Bar!\n", 0)
     }
 }
 
-
-fn printVec(v: Vec2d): none {
-    writeLn("x is %d\n", v.x)
-    writeLn("y is %d\n", v.y)
-    v.test()
+fn print(p: Printer): none {
+    p.print()
 }
 
+fn print(p: T): none
+    where T impl Printer
+{
+    
+}
 
 fn main(): none {
-    val f2: Foo2
-    f2.x = 1
-    f2.y = 2
+    val f: Foo
+    val b: Bar
 
-    val f3: Foo3
-    f3.x = 3
-    f3.y = 4
-    f3.z = 5
-
-    printVec(f2)
-    printVec(f3)
+    print(f)
+    print(b)
 }

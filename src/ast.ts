@@ -1,5 +1,5 @@
 import { Compiler } from './compile';
-import { canSubType } from './type_api';
+import { canSubType, canMonomorphize } from './type_api';
 
 export enum Tag {
     Class,
@@ -227,7 +227,13 @@ export class Call implements IThing, IExpr {
         let result = true;
 
         for(const argument of this.arguments){
-            result = result && argument.checkTypes(compiler);
+            // Use temporary variable to avoid short-circuiting behavior of &&
+            const argResult = argument.checkTypes(compiler);
+            result = result && argResult;
+        }
+
+        if(canMonomorphize(this.target)){
+            compiler.callsToMonomorphize.push(this);
         }
 
         return result;
@@ -327,12 +333,8 @@ export class GetField implements IThing, IExpr {
     }
 
     public checkTypes(compiler: Compiler): boolean {
-        let result = true;
-
-        result = result && this.target.checkTypes(compiler);
-        // result = result && this.field.checkTypes(compiler);
-
-        return result;
+        // Assume that this.field is already checked
+        return this.target.checkTypes(compiler);
     }
 }
 
@@ -355,13 +357,15 @@ export class SetVariable implements IThing {
 
         // result = result && this.target.checkTypes(compiler);
 
-        // TODO: Remove this hack
+        // TODO: Type check constants - Blocked because constants do not currently have types
         if(this.target.type !== this.source.resultType && this.source.tag !== Tag.Constant){
             compiler.error("Bad type", [], []);
             result = false;
         }
 
-        result = result && this.source.checkTypes(compiler);
+        // Use temporary variable to avoid short-circuiting behavior of &&
+        let temp = this.source.checkTypes(compiler);
+        result = result && temp;
 
         return result;
     }
