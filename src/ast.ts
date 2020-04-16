@@ -30,7 +30,6 @@ interface IThing {
 
     tag: Tag;
 
-    // TODO: Solve shortcut problems
     checkTypes(compiler: Compiler): boolean;
 }
 export type Thing =
@@ -95,7 +94,7 @@ export class Class implements IThing, IType {
     public scope: Scope;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
-        this.scope = new Scope(parentScope);
+        this.scope = new Scope(parentScope.id + "_C" + name, parentScope);
 
         this.ast = ast;
         this.name = name;
@@ -138,7 +137,7 @@ export class Function implements IThing, IType {
     public scope: Scope;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
-        this.scope = new Scope(parentScope);
+        this.scope = new Scope(parentScope.id + "_F" + name, parentScope);
 
         this.ast = ast;
         this.name = name;
@@ -169,7 +168,7 @@ export class Trait implements IThing, IType {
     public scope: Scope;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
-        this.scope = new Scope(parentScope);
+        this.scope = new Scope(parentScope.id + "_T" + name, parentScope);
 
         this.ast = ast;
         this.name = name;
@@ -392,8 +391,7 @@ export class SetField implements IThing {
 
         result = result && this.target.checkTypes(compiler);
 
-        // TODO: Remove this hack
-        // TODO: Setup proper poisoning
+        // TODO: Remove this hack, poison values instead
         if(this.field !== undefined){
             if(this.field.type !== this.source.resultType && this.source.tag !== Tag.Constant){
                 compiler.error("Bad type", [], [this.source.ast[0]]);
@@ -415,40 +413,42 @@ export class Scope {
     public readonly variables  = new Map<string, Variable>();
 
     public readonly parent: Scope | null;
+    public readonly id: string;
 
-    public constructor(parent?: Scope){
+    public constructor(id: string, parent?: Scope){
+        this.id = id;
         this.parent = parent === undefined ? null : parent;
     }
 
     public declareClass(thing: Class){
-        if(this.types.has(thing.id)){
+        if(this.types.has(thing.name)){
             throw new Error('Not implemented yet');
         }
 
-        this.classes.set(thing.id, thing);
-        this.types.set(thing.id, thing);
+        this.classes.set(thing.name, thing);
+        this.types.set(thing.name, thing);
     }
 
     public declareFunction(thing: Function){
-        if(this.types.has(thing.id)){
+        if(this.types.has(thing.name)){
             throw new Error('Not implemented yet');
         }
 
-        this.functions.set(thing.id, thing);
-        this.types.set(thing.id, thing);
+        this.functions.set(thing.name, thing);
+        this.types.set(thing.name, thing);
     }
 
     public declareTrait(thing: Trait){
-        if(this.types.has(thing.id)){
+        if(this.types.has(thing.name)){
             throw new Error('Not implemented yet');
         }
 
-        this.traits.set(thing.id, thing);
-        this.types.set(thing.id, thing);
+        this.traits.set(thing.name, thing);
+        this.types.set(thing.name, thing);
     }
 
     public declareType(thing: Type){
-        if(this.types.has(thing.id)){
+        if(this.types.has(thing.name)){
             throw new Error('Not implemented yet');
         }
 
@@ -461,11 +461,11 @@ export class Scope {
     }
 
     public declareVariable(thing: Variable){
-        if(this.variables.has(thing.id)){
+        if(this.variables.has(thing.name)){
             throw new Error('Not implemented yet');
         }
 
-        this.variables.set(thing.id, thing);
+        this.variables.set(thing.name, thing);
     }
 
     private static lookup<T>(

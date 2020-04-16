@@ -32,13 +32,13 @@ function lookupClass(node: any, compiler: Compiler, scope: Ast.Scope){
 //// Class
 export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1].text;
-    const obj = new Ast.Class(node, name, name, scope);
+    const obj = new Ast.Class(node, name, scope.id + name, scope);
 
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
             const parsed = compiler.parse(member, obj.scope) as Ast.Member;
-            obj.members.set(parsed.id, parsed);
+            obj.members.set(parsed.name, parsed);
         }
     }
 
@@ -60,7 +60,7 @@ export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
                 [impl[3].data[0], type.ast]
             );
         } else {
-            obj.traits.set(type.id, type);
+            obj.traits.set(type.name, type);
         }
     }
 
@@ -91,13 +91,19 @@ function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
         return
     }
 
-    return new Ast.Variable(node, name, type, name);
+    return new Ast.Variable(node, name, type, scope.id + name);
 }
 
 //// Function
 export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1][0].text;
-    const obj = new Ast.Function(node, name, name, scope);
+
+    let id = name;
+    if(scope.id != "F_test" || name != "main"){
+        id = scope.id + name;
+    }
+
+    const obj = new Ast.Function(node, name, id, scope);
 
     // Collect parameters
     for(const parameterNode of node[2].elements){
@@ -138,13 +144,13 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
 export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1].text;
 
-    const obj = new Ast.Trait(node, name, name, scope);
+    const obj = new Ast.Trait(node, name, scope.id + name, scope);
 
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
             const parsed = compiler.parse(member, obj.scope) as Ast.Member;
-            obj.members.set(parsed.id, parsed);
+            obj.members.set(parsed.name, parsed);
         }
     }
 
@@ -168,7 +174,7 @@ export function Variable(node: Node, compiler: Compiler, scope: Ast.Scope){
         return undefined;
     }
 
-    const thing = new Ast.Variable(node, node[1].value, type, node[1].value);
+    const thing = new Ast.Variable(node, node[1].value, type, scope.id + node[1].value);
     scope.declareVariable(thing);
 
     return thing;

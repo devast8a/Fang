@@ -94,7 +94,8 @@ export class Compiler {
 
     public compile(source: Source){
         // TODO: Support binding to target within the language itself
-        const scope = new Scope();
+        // TODO: Use the actual name of the module
+        const scope = new Scope('F_test');
 
         const str = new Class("", "char*", "char*", scope);
         const int = new Class("", "int", "int", scope);

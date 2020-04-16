@@ -1,33 +1,23 @@
-trait Printer {
+trait Printable {
     fn print(): none
 }
 
-class Foo impl Printer {
+class Foo impl Printable {
     fn print(): none {
-        writeLn("This is Foo!\n", 0)
+        writeLn("I am Foo!\n", 0)
     }
 }
 
-class Bar impl Printer {
+class Bar impl Printable {
     fn print(): none {
-        writeLn("This is Bar!\n", 0)
+        writeLn("I am Bar!\n", 0)
     }
-}
-
-fn print(p: Printer): none {
-    p.print()
-}
-
-fn print(p: T): none
-    where T impl Printer
-{
-    
 }
 
 fn main(): none {
-    val f: Foo
-    val b: Bar
+    val foo: Foo
+    val bar: Bar
 
-    print(f)
-    print(b)
+    foo.print()
+    bar.print()
 }

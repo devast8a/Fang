@@ -55,7 +55,7 @@ export class TargetCGcc {
 
     public compileMemberFunction(name: string, thing: Function) {
         const output = this.output;
-        output.push(thing.returnType!.id, " ", name + thing.id)
+        output.push(thing.returnType!.id, " ", thing.id)
 
         // Parameters
         output.push("(");
