@@ -98,6 +98,7 @@ function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
 export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1][0].text;
 
+    // TODO: Support developer explicitly naming a symbol
     let id = name;
     if(scope.id != "F_test" || name != "main"){
         id = scope.id + name;
