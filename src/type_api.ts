@@ -1,4 +1,4 @@
-import { Type, Tag, Class, Trait, Function } from './ast';
+import { Type, Tag, Class, Trait, Function, Thing, Constant, Variable, GetField, Expr, GetVariable, Call } from './ast';
 
 // TODO: Return a member that caused the subtype relation to fail?
 export function canSubType(child: Type, parent: Type){
@@ -67,4 +67,86 @@ export function canMonomorphize(func: Function){
     }
 
     return false;
+}
+
+export function polymorph<T>(input: T, types: Map<Type, Type>): T {
+    return polymorphInner(input as any, types) as any;
+}
+
+function polymorphInner(input: Thing, types: Map<Type, Type>): Thing {
+    switch(input.tag){
+        case Tag.Class: {
+            throw new Error("Not implemented yet");
+        }
+        case Tag.Function: {
+            const returnType    = types.get(input.returnType!) || input.returnType!;
+            const parameters    = input.parameters.map(x => polymorph(x, types));
+            const body          = input.body.map(x => polymorph(x, types));
+
+            // TODO: Should we replace scope with a duplicate?
+            const output = new Function(input.ast, input.name, input.id, input.scope);
+            output.returnType = returnType;
+            output.parameters = parameters;
+            output.body       = body;
+            return output;
+        }
+        case Tag.Trait: {
+            throw new Error("Not implemented yet");
+        }
+        case Tag.Variable: {
+            return new Variable(input.ast, input.name, types.get(input.type) || input.type, input.id);
+        }
+
+        case Tag.Call: {
+            const args       = input.arguments.map(x => polymorph(x, types));
+            const expression = polymorph((input as any).expression as (Expr | undefined), types);
+
+            if(expression === undefined){
+                throw new Error("Not implemented yet");
+            }
+
+            const type       = types.get(expression.resultType!) || expression.resultType!; // TODO: Optimise double lookups
+            const target     = type.scope.lookupFunction(input.target.name);
+            if(target === undefined){
+                throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
+            }
+
+            const output = new Call(input.ast, target);
+            output.resultType = target.returnType;
+            return output;
+        }
+        case Tag.Constant: {
+            // Constants can never be polymorphic
+            return input;
+        }
+        case Tag.Construct: {
+            throw new Error("Not implemented yet");
+        }
+        case Tag.GetField: {
+            const target = polymorph(input.target, types);
+            const type = types.get(target.resultType!) || target.resultType!; // TODO: Optimise double lookups
+
+            const field = type.scope.lookupVariable(input.field.name);
+            if(field === undefined){
+                throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
+            }
+
+            const output = new GetField(input.ast, target, field);
+            output.resultType = target.resultType; // TODO: Move into GetField constructor
+            return output;
+        }
+        case Tag.GetVariable: {
+            return new GetVariable(input.ast, polymorph(input.variable, types));
+        }
+        case Tag.SetField: {
+            throw new Error("Not implemented yet");
+        }
+        case Tag.SetVariable: {
+            throw new Error("Not implemented yet");
+        }
+        case Tag.Return: {
+            throw new Error("Not implemented yet");
+        }
+        default: throw new Error(`Incomplete switch (${Tag[(input as any).tag]})`);
+    }
 }

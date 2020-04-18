@@ -6,7 +6,7 @@ import { Call, Class, Function, Scope, Thing, Variable, Stmt, Type, Tag, Expr, G
 import TargetCGcc from './codegen';
 import grammar from "./grammar";
 import { Tag as AstTag } from './post';
-import { canMonomorphize } from './type_api';
+import { canMonomorphize, polymorph } from './type_api';
 
 
 // Create a Parser object from our grammar.
@@ -147,13 +147,14 @@ export class Compiler {
 
         // Monomorphize
         for(const call of this.callsToMonomorphize){
-            scope.functions.delete(call.target.id);
+            scope.functions.delete(call.target.name);
 
             // Monomorphize the body
-            const monomorphized = this.replaceTypes(call.target, new Map([
+            const monomorphized = polymorph(call.target, new Map([
                 [call.target.parameters[0].type, call.arguments[0].resultType!]
             ])) as Function;
 
+            monomorphized.name += call.arguments[0].resultType!.name;
             monomorphized.id += call.arguments[0].resultType!.name;
             call.target = monomorphized;
 
@@ -243,76 +244,6 @@ export class Compiler {
 
             process.exit(1);
         }
-    }
-
-    public replaceTypes(input: Thing, types: Map<Type, Type>): Thing {
-        switch(input.tag){
-            case Tag.Constant: {
-                return input;
-            }
-
-            case Tag.GetVariable: {
-                return input;
-            }
-
-            case Tag.GetField: {
-                const output = new GetField(
-                    input.ast,
-                    this.replaceTypes(input.target, types) as Expr,
-                    input.field
-                );
-
-                return input;
-            }
-
-            case Tag.Function: {
-                const output = new Function(input.ast, input.name, input.id, input.scope);
-
-                output.returnType   = types.get(input.returnType!) || input.returnType;
-                output.parameters   = input.parameters.map(x => this.replaceTypes(x, types) as Variable);
-                output.body         = input.body.map(x => this.replaceTypes(x, types) as Stmt);
-
-                return output;
-            }
-
-            case Tag.Call: {
-                const output = new Call(input.ast, input.target);
-
-                const ert = (input as any).expression?.resultType;
-                if(ert !== undefined){
-                    const replaced = types.get(ert);
-
-                    if(replaced !== undefined){
-                        // TODO: Properly replace
-                        output.target = {
-                            id: replaced.name + input.target.id
-                        } as any;
-                    }
-                }
-
-                output.arguments = input.arguments.map(x => this.replaceTypes(x, types) as Expr);
-
-                return output;
-            }
-
-            case Tag.Variable: {
-                return new Variable(input.ast, input.name, types.get(input.type) || input.type, input.id);
-            }
-
-            default: throw new Error(`Incomplete switch (${Tag[input.tag]})`);
-        }
-        // TODO: Properly dispatch when monomorphized instead of duplicating the function
-        //const target = call.target;
-
-        //const duplicated = new Function(target.ast, target.name, target.id + call.arguments[0].resultType!.name, target.scope);
-        //duplicated.returnType = call.target.returnType;
-        //duplicated.parameters.push(
-        //    new Variable(null, "v", call.arguments[0].resultType!, "v")
-        //);
-
-        //call.target = duplicated;
-
-        //scope.functions.set(duplicated.id, duplicated);
     }
 };
 

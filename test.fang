@@ -14,10 +14,16 @@ class Bar impl Printable {
     }
 }
 
+fn dispatch(p: Printable): none {
+    p.print()
+}
+
 fn main(): none {
     val foo: Foo
     val bar: Bar
 
     foo.print()
     bar.print()
+    dispatch(foo)
+    dispatch(bar)
 }

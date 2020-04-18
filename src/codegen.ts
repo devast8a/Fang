@@ -98,11 +98,9 @@ export class TargetCGcc {
         for(const member of thing.members.values()){
             switch(member.tag){
                 case Tag.Function: break; // Handled in next section
-                case Tag.Variable: this.compileVariable(member); break;
+                case Tag.Variable: this.compileVariable(member); this.output.push(";"); break;
                 default: throw new Error("Incomplete switch statement (compileMember)")
             }
-
-            this.output.push(";");
         }
         this.output.push("};");
 
@@ -117,7 +115,7 @@ export class TargetCGcc {
     }
 
     public compileVariable(thing: Variable) {
-        this.output.push(thing.type.id, " ", thing.name);
+        this.output.push(thing.type.id, " ", thing.id);
     }
 
     public compileReturn(expression: Return) {

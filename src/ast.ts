@@ -1,6 +1,8 @@
 import { Compiler } from './compile';
 import { canSubType, canMonomorphize } from './type_api';
 
+// TODO: Remove IDs
+
 export enum Tag {
     Class,
     Function,
@@ -56,6 +58,7 @@ export type Type =
     | Trait;
 
 interface IExpr {
+    // TODO: change name to expressionResultType
     resultType: Type | undefined;
 }
 export type Expr =
