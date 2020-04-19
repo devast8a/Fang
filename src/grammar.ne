@@ -126,7 +126,6 @@ ecallArguments  -> STAR["(", expr, COMMA, ")"] {% p.STAR %}
 ## Expression/Construct ############################################################################
 expression_construct -> atom econArguments {% p.ExConstruct %}
 
-stmt            -> expression_construct
 atom            -> expression_construct
 
 econArguments   -> STAR["{", econArgument, COMMA, "}"] {% p.STAR %}
@@ -152,7 +151,7 @@ eidName         -> %identifier
 atom            -> expression_index_dot
 
 ## Expression/IndexDot #############################################################################
-expression_return -> erKeyword erValue:? {% p.ExReturn %}
+expression_return -> erKeyword erValue {% p.ExReturn %}
 
 erKeyword       -> "return"
 erValue         -> __ expr
