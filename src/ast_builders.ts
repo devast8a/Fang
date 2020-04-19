@@ -121,10 +121,12 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     // Return type
     if(node[3] === null){
-        compiler.error("All functions must declare return types", [], [node[1][0]]);
-        return;
+        //compiler.error("All functions must declare return types", [], [node[1][0]]);
+        //return;
+        obj.returnType = scope.lookupType("none");
+    } else {
+        obj.returnType = lookupType(node[3][3], compiler, scope);
     }
-    obj.returnType = lookupType(node[3][3], compiler, scope);
 
     // Collect statements
     if(node[5] !== null){

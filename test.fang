@@ -1,29 +1,40 @@
-trait Printable {
-    fn print(): none
+trait Foo {
+    fn foo()
 }
 
-class Foo impl Printable {
-    fn print(): none {
-        writeLn("I am Foo!\n", 0)
-    }
+trait Bar {
+    fn bar()
 }
 
-class Bar impl Printable {
-    fn print(): none {
-        writeLn("I am Bar!\n", 0)
-    }
+
+
+class OnlyFoo impl Foo {
+    fn foo(){writeLn("This is OnlyFoo\n", 0)}
 }
 
-fn dispatch(p: Printable): none {
-    p.print()
+class OnlyBar impl Bar {
+    fn bar(){writeLn("This is OnlyBar\n", 0)}
 }
 
-fn main(): none {
-    val foo: Foo
-    val bar: Bar
+class Both impl Foo impl Bar {
+    fn foo(){writeLn("This is Both\n", 0)}
+    fn bar(){writeLn("This is Both\n", 0)}
+}
 
-    foo.print()
-    bar.print()
-    dispatch(foo)
-    dispatch(bar)
+
+fn fooBar(foo: Foo, bar: Bar){
+    foo.foo()
+    bar.bar()
+    writeLn("\n", 0)
+}
+
+fn main(){
+    val foo: OnlyFoo
+    val bar: OnlyBar
+    val both: Both
+
+    fooBar(foo, bar)
+    fooBar(foo, both)
+    fooBar(both, bar)
+    fooBar(both, both)
 }

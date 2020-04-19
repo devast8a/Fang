@@ -97,10 +97,10 @@ export class Compiler {
         // TODO: Use the actual name of the module
         const scope = new Scope('Ftest_');
 
-        const str = new Class("", "char*", "char*", scope);
+        const str = new Class("", "str", "char*", scope);
         const int = new Class("", "int", "int", scope);
 
-        scope.types.set("none", new Class("", "void", "void", scope));
+        scope.types.set("none", new Class("", "none", "void", scope));
         scope.types.set("str", str);
         scope.types.set("int", int);
 
@@ -149,16 +149,32 @@ export class Compiler {
         for(const call of this.callsToMonomorphize){
             scope.functions.delete(call.target.name);
 
-            // Monomorphize the body
-            const monomorphized = polymorph(call.target, new Map([
-                [call.target.parameters[0].type, call.arguments[0].resultType!]
-            ])) as Function;
+            const args = call.arguments;
+            const params = call.target.parameters;
+            const types = new Map<Type, Type>();
 
-            monomorphized.name += call.arguments[0].resultType!.name;
-            monomorphized.id += call.arguments[0].resultType!.name;
+            let suffix = call.target.name;
+
+            for(let i = 0; i < args.length; i++){
+                const argument = args[i];
+                const parameter = params[i];
+
+                if(parameter.type.tag === Tag.Trait){
+                    types.set(parameter.type, argument.resultType!);
+                    suffix += `_${i}_${argument.resultType!.name}`
+                }
+            }
+
+            let monomorphized = scope.functions.get(call.target.name + suffix);
+
+            if(monomorphized === undefined){
+                monomorphized = polymorph(call.target, types);
+                monomorphized.name += suffix;
+                monomorphized.id += suffix;
+                scope.declareFunction(monomorphized);
+            }
+
             call.target = monomorphized;
-
-            scope.declareFunction(monomorphized);
         }
 
         // Code-gen

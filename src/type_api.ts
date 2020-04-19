@@ -98,22 +98,28 @@ function polymorphInner(input: Thing, types: Map<Type, Type>): Thing {
         }
 
         case Tag.Call: {
-            const args       = input.arguments.map(x => polymorph(x, types));
-            const expression = polymorph((input as any).expression as (Expr | undefined), types);
+            if((input as any).expression === undefined){
+                const args       = input.arguments.map(x => polymorph(x, types));
 
-            if(expression === undefined){
-                throw new Error("Not implemented yet");
+                const output = new Call(input.ast, input.target);
+                output.resultType = input.resultType;
+                output.arguments = args;
+                return output;
+            } else {
+                const args       = input.arguments.map(x => polymorph(x, types));
+                const expression = polymorph((input as any).expression as Expr, types);
+                const type       = types.get(expression.resultType!) || expression.resultType!; // TODO: Optimise double lookups
+                const target     = type.scope.lookupFunction(input.target.name);
+
+                if(target === undefined){
+                    throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
+                }
+
+                const output = new Call(input.ast, target);
+                output.resultType = target.returnType;
+                output.arguments = args;
+                return output;
             }
-
-            const type       = types.get(expression.resultType!) || expression.resultType!; // TODO: Optimise double lookups
-            const target     = type.scope.lookupFunction(input.target.name);
-            if(target === undefined){
-                throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
-            }
-
-            const output = new Call(input.ast, target);
-            output.resultType = target.returnType;
-            return output;
         }
         case Tag.Constant: {
             // Constants can never be polymorphic
