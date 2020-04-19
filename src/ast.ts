@@ -197,6 +197,7 @@ export class Variable implements IThing, IType {
     public id: string;
 
     public type: Type;
+    public value: Expr | undefined;
 
     public constructor(ast: Node, name: string, type: Type, id: string){
         this.ast = ast;
@@ -223,6 +224,7 @@ export class Call implements IThing, IExpr {
     public constructor(ast: Node, target: Function){
         this.ast = ast;
         this.target = target;
+        this.resultType = target.returnType;
     }
 
     public checkTypes(compiler: Compiler): boolean {

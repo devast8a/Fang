@@ -1,40 +1,19 @@
-trait Foo {
-    fn foo()
+trait Printable {
+    fn print()
 }
 
-trait Bar {
-    fn bar()
+class Foo impl Printable {
+    fn print() {
+        writeLn("I am Foo!\n", 0)
+    }
 }
 
-
-
-class OnlyFoo impl Foo {
-    fn foo(){writeLn("This is OnlyFoo\n", 0)}
+fn makeFoo(): Foo {
+    val foo: Foo
+    return foo
 }
 
-class OnlyBar impl Bar {
-    fn bar(){writeLn("This is OnlyBar\n", 0)}
-}
-
-class Both impl Foo impl Bar {
-    fn foo(){writeLn("This is Both\n", 0)}
-    fn bar(){writeLn("This is Both\n", 0)}
-}
-
-
-fn fooBar(foo: Foo, bar: Bar){
-    foo.foo()
-    bar.bar()
-    writeLn("\n", 0)
-}
-
-fn main(){
-    val foo: OnlyFoo
-    val bar: OnlyBar
-    val both: Both
-
-    fooBar(foo, bar)
-    fooBar(foo, both)
-    fooBar(both, bar)
-    fooBar(both, both)
+fn main() {
+    val foo: Foo = makeFoo()
+    foo.print()
 }

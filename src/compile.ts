@@ -185,7 +185,11 @@ export class Compiler {
                 target.compileClass(thing);
             }
 
-            for(const func of Array.from(scope.functions.values()).reverse()){
+            for(const func of Array.from(scope.functions.values())){
+                target.declareFunction(func);
+            }
+
+            for(const func of Array.from(scope.functions.values())){
                 target.compileFunction(func);
             }
 

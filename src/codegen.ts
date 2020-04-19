@@ -4,6 +4,26 @@ import { Call, Class, Constant, Construct, Expr, Function, GetField, GetVariable
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];
 
+    public declareFunction(thing: Function) {
+        const output = this.output;
+        output.push(thing.returnType!.id, " ", thing.id)
+
+        // Parameters
+        output.push("(");
+        const parameters = thing.parameters;
+        for(let i = 0; i < parameters.length; i++){
+            if(i > 0){
+                output.push(", ");
+            }
+
+            const parameter = parameters[i];
+            output.push(parameter.type.id);     // Parameter type
+            output.push(" ");
+            output.push(parameter.id);
+        }
+        output.push(");\n")
+    }
+
     public compileFunction(thing: Function){
         const output = this.output;
         output.push(thing.returnType!.id, " ", thing.id)
@@ -22,13 +42,17 @@ export class TargetCGcc {
             output.push(parameter.id);
         }
         output.push("){");
+        if(thing.body.length > 0){
+            output.push("\n");
+        }
 
         // Body
         for(const expression of thing.body){
+            output.push("\t");
             this.compileStmt(expression);
-            output.push(";");
+            output.push(";\n");
         }
-        output.push("}");
+        output.push("}\n");
     }
 
     public compileExpression(thing: Expr) {
@@ -71,13 +95,17 @@ export class TargetCGcc {
             output.push(parameter.id);
         }
         output.push("){");
+        if(thing.body.length > 0){
+            output.push("\n");
+        }
 
         // Body
         for(const expression of thing.body){
+            output.push("\t");
             this.compileStmt(expression);
-            output.push(";");
+            output.push(";\n");
         }
-        output.push("}");
+        output.push("}\n");
     }
 
     public compileSetField(thing: SetField) {
@@ -95,14 +123,17 @@ export class TargetCGcc {
     public compileClass(thing: Class) {
         // Data structure
         this.output.push(thing.id, "{");
+        if(thing.members.size > 0){
+            this.output.push("\n");
+        }
         for(const member of thing.members.values()){
             switch(member.tag){
                 case Tag.Function: break; // Handled in next section
-                case Tag.Variable: this.compileVariable(member); this.output.push(";"); break;
+                case Tag.Variable: this.compileVariable(member); this.output.push(";\n"); break;
                 default: throw new Error("Incomplete switch statement (compileMember)")
             }
         }
-        this.output.push("};");
+        this.output.push("};\n");
 
         // Member Functions
         for(const member of thing.members.values()){
@@ -116,6 +147,10 @@ export class TargetCGcc {
 
     public compileVariable(thing: Variable) {
         this.output.push(thing.type.id, " ", thing.id);
+        if(thing.value !== undefined){
+            this.output.push(" = ");
+            this.compileExpression(thing.value);
+        }
     }
 
     public compileReturn(expression: Return) {

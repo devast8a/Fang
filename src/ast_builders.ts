@@ -178,8 +178,12 @@ export function Variable(node: Node, compiler: Compiler, scope: Ast.Scope){
     }
 
     const thing = new Ast.Variable(node, node[1].value, type, scope.id + node[1].value);
-    scope.declareVariable(thing);
 
+    if(node[3] !== null){
+        thing.value = compiler.parse(node[3][4], scope) as Ast.Expr;
+    }
+
+    scope.declareVariable(thing);
     return thing;
 }
 
