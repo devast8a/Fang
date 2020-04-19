@@ -69,19 +69,22 @@ export function canMonomorphize(func: Function){
     return false;
 }
 
-export function polymorph<T>(input: T, types: Map<Type, Type>): T {
-    return polymorphInner(input as any, types) as any;
+export function polymorph<T>(input: T, mapping: Map<Variable, Type>): T {
+    return polymorphInner(input as any, mapping) as any;
 }
 
-function polymorphInner(input: Thing, types: Map<Type, Type>): Thing {
+function polymorphInner(input: Thing, mapping: Map<Variable, Type>): Thing {
+    // TODO: Optimise mapping. Use an array instead of a map. Lookup based on id.
     switch(input.tag){
         case Tag.Class: {
             throw new Error("Not implemented yet");
         }
         case Tag.Function: {
-            const returnType    = types.get(input.returnType!) || input.returnType!;
-            const parameters    = input.parameters.map(x => polymorph(x, types));
-            const body          = input.body.map(x => polymorph(x, types));
+            // TODO: Look into implementing return type polymorphism
+            //const returnType    = mapping.get(input.returnType!) || input.returnType!;
+            const returnType    = input.returnType;
+            const parameters    = input.parameters.map(x => polymorph(x, mapping));
+            const body          = input.body.map(x => polymorph(x, mapping));
 
             // TODO: Should we replace scope with a duplicate?
             const output = new Function(input.ast, input.name, input.id, input.scope);
@@ -94,22 +97,36 @@ function polymorphInner(input: Thing, types: Map<Type, Type>): Thing {
             throw new Error("Not implemented yet");
         }
         case Tag.Variable: {
-            return new Variable(input.ast, input.name, types.get(input.type) || input.type, input.id);
+            const type = mapping.get(input);
+
+            if(type === undefined){
+                return input;
+            }
+
+            return new Variable(
+                input.ast,
+                input.name,
+                type,
+                input.id
+            );
         }
 
         case Tag.Call: {
             if((input as any).expression === undefined){
-                const args       = input.arguments.map(x => polymorph(x, types));
+                const args       = input.arguments.map(x => polymorph(x, mapping));
 
                 const output = new Call(input.ast, input.target);
                 output.resultType = input.resultType;
                 output.arguments = args;
                 return output;
             } else {
-                const args       = input.arguments.map(x => polymorph(x, types));
-                const expression = polymorph((input as any).expression as Expr, types);
-                const type       = types.get(expression.resultType!) || expression.resultType!; // TODO: Optimise double lookups
-                const target     = type.scope.lookupFunction(input.target.name);
+                const args       = input.arguments.map(x => polymorph(x, mapping));
+
+                const expression = polymorph((input as any).expression as Expr, mapping);
+
+                // TODO: Optimise double lookups
+                //const type       = mapping.get(expression.resultType!) || expression.resultType!;
+                const target     = expression.resultType!.scope.lookupFunction(input.target.name);
 
                 if(target === undefined){
                     throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
@@ -129,10 +146,11 @@ function polymorphInner(input: Thing, types: Map<Type, Type>): Thing {
             throw new Error("Not implemented yet");
         }
         case Tag.GetField: {
-            const target = polymorph(input.target, types);
-            const type = types.get(target.resultType!) || target.resultType!; // TODO: Optimise double lookups
+            const target = polymorph(input.target, mapping);
 
-            const field = type.scope.lookupVariable(input.field.name);
+            // TODO: Optimise double lookups
+            //const type = mapping.get(target.resultType!) || target.resultType!;
+            const field = target.resultType!.scope.lookupVariable(input.field.name);
             if(field === undefined){
                 throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
             }
@@ -142,7 +160,7 @@ function polymorphInner(input: Thing, types: Map<Type, Type>): Thing {
             return output;
         }
         case Tag.GetVariable: {
-            return new GetVariable(input.ast, polymorph(input.variable, types));
+            return new GetVariable(input.ast, polymorph(input.variable, mapping));
         }
         case Tag.SetField: {
             throw new Error("Not implemented yet");

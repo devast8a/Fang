@@ -151,7 +151,7 @@ export class Compiler {
 
             const args = call.arguments;
             const params = call.target.parameters;
-            const types = new Map<Type, Type>();
+            const mapping = new Map<Variable, Type>();
 
             let suffix = call.target.name;
 
@@ -160,7 +160,7 @@ export class Compiler {
                 const parameter = params[i];
 
                 if(parameter.type.tag === Tag.Trait){
-                    types.set(parameter.type, argument.resultType!);
+                    mapping.set(parameter, argument.resultType!);
                     suffix += `_${i}_${argument.resultType!.name}`
                 }
             }
@@ -168,7 +168,7 @@ export class Compiler {
             let monomorphized = scope.functions.get(call.target.name + suffix);
 
             if(monomorphized === undefined){
-                monomorphized = polymorph(call.target, types);
+                monomorphized = polymorph(call.target, mapping);
                 monomorphized.name += suffix;
                 monomorphized.id += suffix;
                 scope.declareFunction(monomorphized);
