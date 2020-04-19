@@ -100,7 +100,7 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     // TODO: Support developer explicitly naming a symbol
     let id = name;
-    if(scope.id != "F_test" || name != "main"){
+    if(scope.id != "Ftest_" || name != "main"){
         id = scope.id + name;
     }
 

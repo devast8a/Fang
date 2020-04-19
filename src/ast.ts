@@ -97,7 +97,7 @@ export class Class implements IThing, IType {
     public scope: Scope;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
-        this.scope = new Scope(parentScope.id + "_C" + name, parentScope);
+        this.scope = new Scope(parentScope.id + "C" + name + "_", parentScope);
 
         this.ast = ast;
         this.name = name;
@@ -140,7 +140,7 @@ export class Function implements IThing, IType {
     public scope: Scope;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
-        this.scope = new Scope(parentScope.id + "_F" + name, parentScope);
+        this.scope = new Scope(parentScope.id + "F" + name + "_", parentScope);
 
         this.ast = ast;
         this.name = name;
@@ -171,7 +171,7 @@ export class Trait implements IThing, IType {
     public scope: Scope;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
-        this.scope = new Scope(parentScope.id + "_T" + name, parentScope);
+        this.scope = new Scope(parentScope.id + "T" + name + "_", parentScope);
 
         this.ast = ast;
         this.name = name;
