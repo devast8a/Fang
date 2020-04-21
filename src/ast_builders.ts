@@ -280,6 +280,10 @@ export function ExConstruct(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     const thing = new Ast.Construct(node, target!);
 
+    for(const argument of node[1].elements){
+        thing.arguments.push(compiler.parse(argument, scope) as Ast.Expr);
+    }
+
     return thing;
 }
 

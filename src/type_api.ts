@@ -60,6 +60,13 @@ export function canSubTypeFunction(child: Function, parent: Function){
 }
 
 export function canMonomorphize(func: Function){
+    // TODO: Avoid this hack
+    if(func.returnType !== undefined){
+        if(func.returnType.tag === Tag.Trait){
+            return true;
+        }
+    }
+
     for(const parameter of func.parameters){
         if(parameter.type.tag === Tag.Trait){
             return true;

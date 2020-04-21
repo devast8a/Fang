@@ -147,8 +147,7 @@ export class Compiler {
 
         // Monomorphize
         for(const call of this.callsToMonomorphize){
-            scope.functions.delete(call.target.name);
-
+            // What needs to be replaced
             const args = call.arguments;
             const params = call.target.parameters;
             const mapping = new Map<Variable, Type>();
@@ -165,16 +164,24 @@ export class Compiler {
                 }
             }
 
-            let monomorphized = scope.functions.get(call.target.name + suffix);
+            if(mapping.size > 0){
+                scope.functions.delete(call.target.name);
 
-            if(monomorphized === undefined){
-                monomorphized = polymorph(call.target, mapping);
-                monomorphized.name += suffix;
-                monomorphized.id += suffix;
-                scope.declareFunction(monomorphized);
+                let monomorphized = scope.functions.get(call.target.name + suffix);
+                if(monomorphized === undefined){
+                    monomorphized = polymorph(call.target, mapping);
+                    monomorphized.name += suffix;
+                    monomorphized.id += suffix;
+                    scope.declareFunction(monomorphized);
+                }
+
+                call.target = monomorphized;
             }
 
-            call.target = monomorphized;
+            if(call.target.returnType!.tag === Tag.Trait){
+                call.target.returnType = scope.lookupClass("Foo");
+                call.resultType = call.target.returnType;
+            }
         }
 
         // Code-gen

@@ -207,6 +207,9 @@ export class Variable implements IThing, IType {
     }
 
     public checkTypes(compiler: Compiler): boolean {
+        if(this.value !== undefined){
+            return this.value.checkTypes(compiler);
+        }
         return true;
     }
 }
@@ -278,7 +281,15 @@ export class Construct implements IThing, IExpr {
     }
 
     public checkTypes(compiler: Compiler): boolean {
-        throw new Error('Method not implemented.');
+        let result = true;
+
+        for(const argument of this.arguments){
+            if(!argument.checkTypes(compiler)){
+                result = false;
+            }
+        }
+
+        return true;
     }
 }
 

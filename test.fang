@@ -1,19 +1,25 @@
-trait Printable {
+trait Vec2d {
+    val x: int
+    val y: int
+
     fn print()
 }
 
-class Foo impl Printable {
+class Foo impl Vec2d {
+    val x: int
+    val y: int
+
     fn print() {
         writeLn("I am Foo!\n", 0)
     }
 }
 
-fn makeFoo(): Foo {
-    val foo: Foo
+fn makeFoo(): Vec2d {
+    val foo: Foo = Foo{100, 200}
     return foo
 }
 
 fn main() {
     val foo: Foo = makeFoo()
-    foo.print()
+    writeLn("%d\n", foo.x)
 }

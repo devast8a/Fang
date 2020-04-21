@@ -55,7 +55,7 @@ export class TargetCGcc {
         output.push("}\n");
     }
 
-    public compileExpression(thing: Expr) {
+    public compileExpr(thing: Expr) {
         switch(thing.tag){
             case Tag.Call:        this.compileCall(thing); break;
             case Tag.Constant:    this.compileConstant(thing); break;
@@ -109,15 +109,15 @@ export class TargetCGcc {
     }
 
     public compileSetField(thing: SetField) {
-        this.compileExpression(thing.target);
-        this.output.push(".", thing.field.name, "=");
-        this.compileExpression(thing.source);
+        this.compileExpr(thing.target);
+        this.output.push(".", thing.field.id, "=");
+        this.compileExpr(thing.source);
     }
 
     public compileSetVariable(thing: SetVariable) {
         this.output.push(thing.target.id);
         this.output.push("=");
-        this.compileExpression(thing.source);
+        this.compileExpr(thing.source);
     }
 
     public compileClass(thing: Class) {
@@ -149,13 +149,13 @@ export class TargetCGcc {
         this.output.push(thing.type.id, " ", thing.id);
         if(thing.value !== undefined){
             this.output.push(" = ");
-            this.compileExpression(thing.value);
+            this.compileExpr(thing.value);
         }
     }
 
     public compileReturn(expression: Return) {
         this.output.push("return ");
-        this.compileExpression(expression.value);
+        this.compileExpr(expression.value);
     }
 
     public compileGetVariable(node: GetVariable) {
@@ -167,8 +167,8 @@ export class TargetCGcc {
     public compileGetField(node: GetField) {
         const output = this.output;
 
-        this.compileExpression(node.target);
-        output.push(".", node.field.name);
+        this.compileExpr(node.target);
+        output.push(".", node.field.id);
     }
 
     public compileCall(node: Call){
@@ -177,9 +177,9 @@ export class TargetCGcc {
         if(node.target.id[0] === '$'){
             // TODO: Create a better way of representing various calls to operators
             const operator = node.target.id.replace("$infix", "");
-            this.compileExpression(node.arguments[0]);
+            this.compileExpr(node.arguments[0]);
             output.push(operator);
-            this.compileExpression(node.arguments[1]);
+            this.compileExpr(node.arguments[1]);
             return;
         }
 
@@ -197,7 +197,7 @@ export class TargetCGcc {
                 output.push(", ");
             }
 
-            this.compileExpression(args[i]);
+            this.compileExpr(args[i]);
         }
 
         output.push(")")
@@ -211,6 +211,14 @@ export class TargetCGcc {
 
     public compileConstruct(node: Construct) {
         this.output.push("{");
+
+        for(let i = 0; i < node.arguments.length; i++){
+            if(i > 0){
+                this.output.push(",");
+            }
+            this.compileExpr(node.arguments[i]);
+        }
+
         this.output.push("}");
     }
 }
