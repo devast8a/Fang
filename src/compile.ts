@@ -7,6 +7,7 @@ import TargetCGcc from './codegen';
 import grammar from "./grammar";
 import { Tag as AstTag } from './post';
 import { canMonomorphize, polymorph } from './type_api';
+import { TypeChecker } from './type_check';
 
 
 // Create a Parser object from our grammar.
@@ -57,6 +58,10 @@ class Source {
 }
 
 export class Compiler {
+    public report(error: any) {
+        throw new Error('Method not implemented.');
+    }
+
     private errors = new Array<any>();
 
     public callsToMonomorphize = new Array<Call>();   // Used in monomorphize step
@@ -141,8 +146,10 @@ export class Compiler {
         scope.functions.delete("$infix+");
 
         // Type check
+        const checker = new TypeChecker(this);
         for(const type of scope.types.values()){
-            type.checkTypes(this);
+            checker.check(type);
+            //type.checkTypes(this);
         }
 
         // Monomorphize

@@ -20,6 +20,6 @@ fn makeFoo(): Vec2d {
 }
 
 fn main() {
-    val foo: Foo = makeFoo()
+    val foo: Vec2d = makeFoo()
     writeLn("%d\n", foo.x)
 }

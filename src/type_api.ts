@@ -1,6 +1,21 @@
 import { Type, Tag, Class, Trait, Function, Thing, Constant, Variable, GetField, Expr, GetVariable, Call } from './ast';
 
-// TODO: Return a member that caused the subtype relation to fail?
+export function isSubType(child: Type, parent: Type){
+    if(parent === child){
+        return true;
+    }
+
+    if(child.tag === Tag.Function || parent.tag === Tag.Function){
+        throw new Error("Not implemented yet. isSubType used on functions");
+    }
+
+    if(child.tag === Tag.Class){
+        return child.traits.has(parent.name);
+    }
+
+    return false;
+}
+
 export function canSubType(child: Type, parent: Type){
     if(parent === child){
         return true;

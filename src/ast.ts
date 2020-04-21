@@ -17,22 +17,54 @@ export enum Tag {
     SetField,
     SetVariable,
     Return,
-}
 
-class Poison {};
-function isPoisoned<T>(value: T | Poison): value is Poison {
+    Poison,
+}
+export const TagCount = Math.max(...Object.values(Tag).filter(x => typeof(x) === 'number') as number[]) + 1;
+
+export interface Poison {
+    tag: Tag.Poison;
+}
+export const Poison: Poison = {
+    tag: Tag.Poison,
+};
+export function isPoisoned<T>(value: T | Poison): value is Poison {
     return value === Poison;
 }
 
 // TODO: Make the parser strongly typed
 type Node = any;
 
+export type VisitorFn<T> = (visitor: T, thing: Thing) => void;
+export interface Visitor<T> {
+    visit: VisitorFn<T>[];
+}
+
+export function visit<T extends Visitor<T>>(thing: Thing, visitor: T){
+    const queue = [thing];
+
+    while(queue.length > 0){
+        queue.pop()!.visit(visitor, queue);
+    }
+}
+
+type Constructor<T = any, P = object> = {new(...args: any[]): any, prototype: P};
+
+export function register<V extends Visitor<V>, T extends Constructor<Thing> & {tag: Tag} >(
+    thing: T,
+    visitors: VisitorFn<V>[],
+    handler: (visitor: V, thing: InstanceType<T>) => void
+){
+    visitors[thing.tag] = handler as any;
+}
+
 interface IThing {
     ast: Node;
+    poisoned: boolean;
 
     tag: Tag;
 
-    checkTypes(compiler: Compiler): boolean;
+    visit<T extends Visitor<T>>(visitor: T, next: Thing[]): void;
 }
 export type Thing =
       Class
@@ -84,8 +116,10 @@ export type Member =
 
 export class Class implements IThing, IType {
     public ast: Node;
-
+    public poisoned = false;
     public tag: Tag.Class = Tag.Class;
+    public static tag: Tag.Class = Tag.Class;
+
     public name: string;
     public id: string;
 
@@ -103,32 +137,21 @@ export class Class implements IThing, IType {
         this.id = id;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        let result = true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
 
-        for(const member of this.members.values()){
-            result = result && member.checkTypes(compiler);
+        for(const thing of this.members.values()){
+            next.push(thing);
         }
-        
-        for(const trait of this.traits.values()){
-            // TODO: Return required members
-            if(!canSubType(this, trait)){
-                compiler.error("$0 is missing $2 required to implement $1",
-                    [this.name, trait.name, '???'],
-                    [this.ast[1]]
-                )
-                result = false;
-            }
-        }
-
-        return result;
     }
 }
 
 export class Function implements IThing, IType {
     public ast: Node;
-
+    public poisoned = false;
     public tag: Tag.Function = Tag.Function;
+    public static tag: Tag.Function = Tag.Function;
+
     public name: string;
     public id: string;
 
@@ -146,21 +169,25 @@ export class Function implements IThing, IType {
         this.id = id;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        let result = true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
 
-        for(const stmt of this.body){
-            result = result && stmt.checkTypes(compiler);
+        for(const thing of this.parameters){
+            next.push(thing);
         }
 
-        return result;
+        for(const thing of this.body){
+            next.push(thing);
+        }
     }
 }
 
 export class Trait implements IThing, IType {
     public ast: Node;
-
+    public poisoned = false;
     public tag: Tag.Trait = Tag.Trait;
+    public static tag: Tag.Trait = Tag.Trait;
+
     public name: string;
     public id: string;
 
@@ -177,21 +204,21 @@ export class Trait implements IThing, IType {
         this.id = id;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        let result = true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
 
-        for(const member of this.members.values()){
-            result = result && member.checkTypes(compiler);
+        for(const thing of this.members.values()){
+            next.push(thing);
         }
-
-        return result;
     }
 }
 
 export class Variable implements IThing, IType {
     public ast: Node;
-
+    public poisoned = false;
     public tag: Tag.Variable = Tag.Variable;
+    public static tag: Tag.Variable = Tag.Variable;
+
     public name: string;
     public id: string;
 
@@ -205,18 +232,20 @@ export class Variable implements IThing, IType {
         this.type = type;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        if(this.value !== undefined){
-            return this.value.checkTypes(compiler);
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
+
+        if(this.value){
+            next.push(this.value);
         }
-        return true;
     }
 }
 
 export class Call implements IThing, IExpr {
     public ast: Node;
-
+    public poisoned = false;
     public tag: Tag.Call = Tag.Call;
+    public static tag: Tag.Call = Tag.Call;
 
     public expressionResultType: Type | undefined;
 
@@ -229,26 +258,22 @@ export class Call implements IThing, IExpr {
         this.expressionResultType = target.returnType;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        let result = true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
 
-        for(const argument of this.arguments){
-            // Use temporary variable to avoid short-circuiting behavior of &&
-            const argResult = argument.checkTypes(compiler);
-            result = result && argResult;
+        // TODO: Support Expression
+
+        for(const thing of this.arguments){
+            next.push(thing);
         }
-
-        if(canMonomorphize(this.target)){
-            compiler.callsToMonomorphize.push(this);
-        }
-
-        return result;
     }
 }
 
 export class Constant implements IThing, IExpr {
-    public ast: any;
+    public ast: Node;
+    public poisoned = false;
     public tag: Tag.Constant = Tag.Constant;
+    public static tag: Tag.Constant = Tag.Constant;
 
     public expressionResultType: Type | undefined;
     public value: any;
@@ -259,15 +284,16 @@ export class Constant implements IThing, IExpr {
         this.value = value;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        return true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
     }
 }
 
 export class Construct implements IThing, IExpr {
     public ast: Node;
-
+    public poisoned = false;
     public tag: Tag.Construct = Tag.Construct;
+    public static tag: Tag.Construct = Tag.Construct;
 
     public expressionResultType: Type | undefined;
 
@@ -277,25 +303,23 @@ export class Construct implements IThing, IExpr {
     public constructor(ast: Node, target: Type){
         this.ast = ast;
         this.target = target;
+        this.expressionResultType = this.target;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        let result = true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
 
-        for(const argument of this.arguments){
-            if(!argument.checkTypes(compiler)){
-                result = false;
-            }
+        for(const thing of this.arguments){
+            next.push(thing);
         }
-
-        return true;
     }
 }
 
 export class Return implements IThing, IExpr {
     public ast: Node;
-
+    public poisoned = false;
     public tag: Tag.Return = Tag.Return;
+    public static tag: Tag.Return = Tag.Return;
 
     public expressionResultType: Type | undefined;
     public value: Expr;
@@ -307,14 +331,18 @@ export class Return implements IThing, IExpr {
         this.expressionResultType = value.expressionResultType;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        return this.value.checkTypes(compiler);
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
+
+        next.push(this.value);
     }
 }
 
 export class GetVariable implements IThing, IExpr {
-    public ast: any;
+    public ast: Node;
+    public poisoned = false;
     public tag: Tag.GetVariable = Tag.GetVariable;
+    public static tag: Tag.GetVariable = Tag.GetVariable;
 
     public expressionResultType: Type | undefined;
     public variable: Variable;
@@ -325,14 +353,16 @@ export class GetVariable implements IThing, IExpr {
         this.expressionResultType = variable.type;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        return true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
     }
 }
 
 export class GetField implements IThing, IExpr {
-    public ast: any;
+    public ast: Node;
+    public poisoned = false;
     public tag: Tag.GetField = Tag.GetField;
+    public static tag: Tag.GetField = Tag.GetField;
 
     public expressionResultType: Type | undefined;
 
@@ -344,17 +374,21 @@ export class GetField implements IThing, IExpr {
 
         this.target = target;
         this.field = field;
+        this.expressionResultType = field.type;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        // Assume that this.field is already checked
-        return this.target.checkTypes(compiler);
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
+
+        next.push(this.target);
     }
 }
 
 export class SetVariable implements IThing {
-    public ast: any;
+    public ast: Node;
+    public poisoned = false;
     public tag: Tag.SetVariable = Tag.SetVariable;
+    public static tag: Tag.SetVariable = Tag.SetVariable;
 
     public target: Variable;
     public source: Expr;
@@ -366,28 +400,18 @@ export class SetVariable implements IThing {
         this.source = source;
     }
 
-    public checkTypes(compiler: Compiler){
-        let result = true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
 
-        // result = result && this.target.checkTypes(compiler);
-
-        // TODO: Type check constants - Blocked because constants do not currently have types
-        if(this.target.type !== this.source.expressionResultType && this.source.tag !== Tag.Constant){
-            compiler.error("Bad type", [], []);
-            result = false;
-        }
-
-        // Use temporary variable to avoid short-circuiting behavior of &&
-        let temp = this.source.checkTypes(compiler);
-        result = result && temp;
-
-        return result;
+        next.push(this.source);
     }
 }
 
 export class SetField implements IThing {
-    public ast: any;
+    public ast: Node;
+    public poisoned = false;
     public tag: Tag.SetField = Tag.SetField;
+    public static tag: Tag.SetField = Tag.SetField;
 
     public target: Expr;
     public field: Variable;
@@ -401,22 +425,11 @@ export class SetField implements IThing {
         this.source = source;
     }
 
-    public checkTypes(compiler: Compiler): boolean {
-        let result = true;
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
 
-        result = result && this.target.checkTypes(compiler);
-
-        // TODO: Remove this hack, poison values instead
-        if(this.field !== undefined){
-            if(this.field.type !== this.source.expressionResultType && this.source.tag !== Tag.Constant){
-                compiler.error("Bad type", [], [this.source.ast[0]]);
-                result = false;
-            }
-        }
-
-        result = result && this.source.checkTypes(compiler);
-
-        return result;
+        next.push(this.target);
+        next.push(this.source);
     }
 }
 
