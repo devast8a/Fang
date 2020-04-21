@@ -159,8 +159,8 @@ export class Compiler {
                 const parameter = params[i];
 
                 if(parameter.type.tag === Tag.Trait){
-                    mapping.set(parameter, argument.resultType!);
-                    suffix += `_${i}_${argument.resultType!.name}`
+                    mapping.set(parameter, argument.expressionResultType!);
+                    suffix += `_${i}_${argument.expressionResultType!.name}`
                 }
             }
 
@@ -180,7 +180,7 @@ export class Compiler {
 
             if(call.target.returnType!.tag === Tag.Trait){
                 call.target.returnType = scope.lookupClass("Foo");
-                call.resultType = call.target.returnType;
+                call.expressionResultType = call.target.returnType;
             }
         }
 

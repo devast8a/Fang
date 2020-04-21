@@ -204,7 +204,7 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
         case 'ExprIndexDot': {
             const expression = compiler.parse(node[0].data[0], scope) as Ast.Expr;
 
-            switch(expression.resultType?.tag){
+            switch(expression.expressionResultType?.tag){
                 case Ast.Tag.Class:
                 case Ast.Tag.Trait:
                     // Okay
@@ -214,7 +214,7 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
                     throw new Error("Not implemented yet");
             }
 
-            const thing = expression.resultType.scope.lookupFunction(node[0].data[2].value);
+            const thing = expression.expressionResultType.scope.lookupFunction(node[0].data[2].value);
             
             if(thing === undefined){
                 // TODO: Suggest symbol
@@ -259,7 +259,7 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
 export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
     const expression = compiler.parse(node[0], scope) as Ast.Expr;
 
-    switch(expression.resultType?.tag){
+    switch(expression.expressionResultType?.tag){
         case Ast.Tag.Class:
         case Ast.Tag.Trait:
             // Okay
@@ -269,7 +269,7 @@ export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
             throw new Error("Not implemented yet");
     }
 
-    const field = expression.resultType.scope.lookupVariable(node[2].value);
+    const field = expression.expressionResultType.scope.lookupVariable(node[2].value);
 
     return new Ast.GetField(node, expression, field!);
 }
@@ -357,11 +357,11 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
     } else {
         const expression = compiler.parse(node[0].data[0], scope) as Ast.Expr;
 
-        if(expression.resultType?.tag !== Ast.Tag.Class){
+        if(expression.expressionResultType?.tag !== Ast.Tag.Class){
             throw new Error("Not implemented yet");
         }
 
-        const variable = expression.resultType.scope.lookupVariable(node[0].data[2].value)
+        const variable = expression.expressionResultType.scope.lookupVariable(node[0].data[2].value)
         const value = compiler.parse(node[2], scope) as Ast.Expr;
 
         if(variable === undefined){

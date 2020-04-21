@@ -123,7 +123,7 @@ function polymorphInner(input: Thing, mapping: Map<Variable, Type>): Thing {
                 const args       = input.arguments.map(x => polymorph(x, mapping));
 
                 const output = new Call(input.ast, input.target);
-                output.resultType = input.resultType;
+                output.expressionResultType = input.expressionResultType;
                 output.arguments = args;
                 return output;
             } else {
@@ -133,14 +133,14 @@ function polymorphInner(input: Thing, mapping: Map<Variable, Type>): Thing {
 
                 // TODO: Optimise double lookups
                 //const type       = mapping.get(expression.resultType!) || expression.resultType!;
-                const target     = expression.resultType!.scope.lookupFunction(input.target.name);
+                const target     = expression.expressionResultType!.scope.lookupFunction(input.target.name);
 
                 if(target === undefined){
                     throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
                 }
 
                 const output = new Call(input.ast, target);
-                output.resultType = target.returnType;
+                output.expressionResultType = target.returnType;
                 output.arguments = args;
                 return output;
             }
@@ -157,13 +157,13 @@ function polymorphInner(input: Thing, mapping: Map<Variable, Type>): Thing {
 
             // TODO: Optimise double lookups
             //const type = mapping.get(target.resultType!) || target.resultType!;
-            const field = target.resultType!.scope.lookupVariable(input.field.name);
+            const field = target.expressionResultType!.scope.lookupVariable(input.field.name);
             if(field === undefined){
                 throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
             }
 
             const output = new GetField(input.ast, target, field);
-            output.resultType = target.resultType; // TODO: Move into GetField constructor
+            output.expressionResultType = target.expressionResultType; // TODO: Move into GetField constructor
             return output;
         }
         case Tag.GetVariable: {

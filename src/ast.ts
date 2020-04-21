@@ -58,8 +58,7 @@ export type Type =
     | Trait;
 
 interface IExpr {
-    // TODO: change name to expressionResultType
-    resultType: Type | undefined;
+    expressionResultType: Type | undefined;
 }
 export type Expr =
       Call
@@ -219,7 +218,7 @@ export class Call implements IThing, IExpr {
 
     public tag: Tag.Call = Tag.Call;
 
-    public resultType: Type | undefined;
+    public expressionResultType: Type | undefined;
 
     public target: Function;        // TODO: Going forward this shouldn't be restricted to Function
     public arguments = new Array<Expr>();
@@ -227,7 +226,7 @@ export class Call implements IThing, IExpr {
     public constructor(ast: Node, target: Function){
         this.ast = ast;
         this.target = target;
-        this.resultType = target.returnType;
+        this.expressionResultType = target.returnType;
     }
 
     public checkTypes(compiler: Compiler): boolean {
@@ -251,12 +250,12 @@ export class Constant implements IThing, IExpr {
     public ast: any;
     public tag: Tag.Constant = Tag.Constant;
 
-    public resultType: Type | undefined;
+    public expressionResultType: Type | undefined;
     public value: any;
 
     public constructor(ast: Node, type: Type, value: any){
         this.ast = ast;
-        this.resultType = type;
+        this.expressionResultType = type;
         this.value = value;
     }
 
@@ -270,7 +269,7 @@ export class Construct implements IThing, IExpr {
 
     public tag: Tag.Construct = Tag.Construct;
 
-    public resultType: Type | undefined;
+    public expressionResultType: Type | undefined;
 
     public target: Type;
     public arguments = Array<Expr>();
@@ -298,14 +297,14 @@ export class Return implements IThing, IExpr {
 
     public tag: Tag.Return = Tag.Return;
 
-    public resultType: Type | undefined;
+    public expressionResultType: Type | undefined;
     public value: Expr;
 
     public constructor(ast: Node, value: Expr){
         this.ast = ast;
 
         this.value = value;
-        this.resultType = value.resultType;
+        this.expressionResultType = value.expressionResultType;
     }
 
     public checkTypes(compiler: Compiler): boolean {
@@ -317,13 +316,13 @@ export class GetVariable implements IThing, IExpr {
     public ast: any;
     public tag: Tag.GetVariable = Tag.GetVariable;
 
-    public resultType: Type | undefined;
+    public expressionResultType: Type | undefined;
     public variable: Variable;
 
     public constructor(ast: Node, variable: Variable){
         this.ast = ast;
         this.variable = variable;
-        this.resultType = variable.type;
+        this.expressionResultType = variable.type;
     }
 
     public checkTypes(compiler: Compiler): boolean {
@@ -335,7 +334,7 @@ export class GetField implements IThing, IExpr {
     public ast: any;
     public tag: Tag.GetField = Tag.GetField;
 
-    public resultType: Type | undefined;
+    public expressionResultType: Type | undefined;
 
     public target: Expr;
     public field: Variable;
@@ -373,7 +372,7 @@ export class SetVariable implements IThing {
         // result = result && this.target.checkTypes(compiler);
 
         // TODO: Type check constants - Blocked because constants do not currently have types
-        if(this.target.type !== this.source.resultType && this.source.tag !== Tag.Constant){
+        if(this.target.type !== this.source.expressionResultType && this.source.tag !== Tag.Constant){
             compiler.error("Bad type", [], []);
             result = false;
         }
@@ -409,7 +408,7 @@ export class SetField implements IThing {
 
         // TODO: Remove this hack, poison values instead
         if(this.field !== undefined){
-            if(this.field.type !== this.source.resultType && this.source.tag !== Tag.Constant){
+            if(this.field.type !== this.source.expressionResultType && this.source.tag !== Tag.Constant){
                 compiler.error("Bad type", [], [this.source.ast[0]]);
                 result = false;
             }
