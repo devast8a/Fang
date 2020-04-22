@@ -2,7 +2,7 @@ import chalk from "chalk";
 import * as fs from "fs";
 import * as nearley from "nearley";
 import 'source-map-support/register';
-import { Call, Class, Function, Scope, Thing, Variable, Stmt, Type, Tag, Expr, GetField } from './ast';
+import { CallStatic, Class, Function, Scope, Thing, Variable, Stmt, Type, Tag, Expr, GetField } from './ast';
 import TargetCGcc from './codegen';
 import grammar from "./grammar";
 import { Tag as AstTag } from './post';
@@ -98,7 +98,7 @@ export class Compiler {
 
     private errors = new Array<any>();
 
-    public callsToMonomorphize = new Array<Call>();   // Used in monomorphize step
+    public callsToMonomorphize = new Array<CallStatic>();   // Used in monomorphize step
 
     public error(format: string, args: string[], highlight?: any[]) {
         this.errors.push({
@@ -175,44 +175,6 @@ export class Compiler {
                 this.scope.functions.set(morphed.name, morphed);
             }
         }
-
-        //for(const call of this.callsToMonomorphize){
-        //    // What needs to be replaced
-        //    const args = call.arguments;
-        //    const params = call.target.parameters;
-        //    const mapping = new Map<Variable, Type>();
-
-        //    let suffix = call.target.name;
-
-        //    for(let i = 0; i < args.length; i++){
-        //        const argument = args[i];
-        //        const parameter = params[i];
-
-        //        if(parameter.type.tag === Tag.Trait){
-        //            mapping.set(parameter, argument.expressionResultType!);
-        //            suffix += `_${i}_${argument.expressionResultType!.name}`
-        //        }
-        //    }
-
-        //    if(mapping.size > 0){
-        //        this.scope.functions.delete(call.target.name);
-
-        //        let monomorphized = this.scope.functions.get(call.target.name + suffix);
-        //        if(monomorphized === undefined){
-        //            monomorphized = polymorph(call.target, mapping);
-        //            monomorphized.name += suffix;
-        //            monomorphized.id += suffix;
-        //            this.scope.declareFunction(monomorphized);
-        //        }
-
-        //        call.target = monomorphized;
-        //    }
-
-        //    if(call.target.returnType!.tag === Tag.Trait){
-        //        call.target.returnType = this.scope.lookupClass("Foo");
-        //        call.expressionResultType = call.target.returnType;
-        //    }
-        //}
 
         // Code-gen
         if(this.errors.length === 0){

@@ -1,4 +1,4 @@
-import { Type, Function, Thing, Call, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, visit, Class, Return, Scope, Construct } from './ast';
+import { Type, Function, Thing, CallStatic, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, visit, Class, Return, Scope, Construct, CallField } from './ast';
 import { canMonomorphize } from './type_api';
 
 // TODO: Can we remove this junk and maybe tie it in with the visitor system?
@@ -61,55 +61,34 @@ register(Class, (input, data) => {
     return input;
 });
 
-register(Call, (input, data) => {
+register(CallStatic, (input, data) => {
     const expr = (input as any).expression as Expr | undefined;
+    const args       = input.arguments.map(x => polymorph(x, data));
 
-    // Polymorph the call
-    const args    = input.arguments;
-    const params  = input.target.parameters;
-    const mapping = new Map<Variable, Type>();
-    let name      = input.target.name;
+    const output     = new CallStatic(input.ast, input.target);
+    output.arguments = args;
 
-    for(let i = 0; i < args.length; i++){
-        const argument = args[i];
-        const parameter = params[i];
-
-        if(parameter.type.tag === Tag.Trait){
-            mapping.set(parameter, argument.expressionResultType!);
-            name += "_" + i + "_" + argument.expressionResultType!.name;
-        }
+    if(input.target.returnType!.tag === Tag.Trait){
+        output.expressionResultType = data.scope.lookupClass("Concrete");
     }
 
-    if(mapping.size !== 0){
-        throw new Error("Polymorph call");
+    return output;
+});
+
+register(CallField, (input, data) => {
+    const expr   = polymorph(input.expression, data);
+    const args   = input.arguments.map(x => polymorph(x, data));
+    const target = expr.expressionResultType!.scope.lookupFunction(input.target.name)!;
+    const output = new CallField(input.ast, expr, target);
+
+    output.arguments = args;
+
+    // Handle return type polymorphism
+    if(input.target.returnType!.tag === Tag.Trait){
+        output.expressionResultType = data.scope.lookupClass("Concrete");
     }
 
-    if(expr === undefined){
-        const args       = input.arguments.map(x => polymorph(x, data));
-
-        const output     = new Call(input.ast, input.target);
-        output.arguments = args;
-
-        if(input.target.returnType!.tag === Tag.Trait){
-            output.expressionResultType = data.scope.lookupClass("Concrete");
-        }
-
-        return output;
-    } else {
-        const expression = polymorph(expr, data);
-
-        const args       = input.arguments.map(x => polymorph(x, data));
-        const target     = expression.expressionResultType!.scope.lookupFunction(input.target.name)!;
-
-        const output     = new Call(input.ast, target);
-        output.arguments = args;
-
-        if(input.target.returnType!.tag === Tag.Trait){
-            output.expressionResultType = data.scope.lookupClass("Concrete");
-        }
-
-        return output;
-    }
+    return output;
 });
 
 register(Constant, (input, data) => {

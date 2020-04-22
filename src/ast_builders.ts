@@ -198,7 +198,7 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
                 compiler.error("$0 does not exist, did you mean $1", [node[0].data[0].value, '???'], [node[0].data[0]]);
             }
 
-            return new Ast.Call(node, thing!);
+            return new Ast.CallStatic(node, thing!);
         }
 
         case 'ExprIndexDot': {
@@ -221,8 +221,7 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
                 compiler.error("$0 does not exist, did you mean $1", [node[0].data[2].value, '???'], [node[0].data[2]]);
             }
 
-            const call = new Ast.Call(node, thing!);
-            (call as any).expression = expression;
+            const call = new Ast.CallField(node, expression, thing!);
             return call;
         }
         default: throw new Error("Incomplete switch"); break;
@@ -296,7 +295,7 @@ export function ExOpInfix(node: Node, compiler: Compiler, scope: Ast.Scope){
         return;
     }
 
-    const call = new Ast.Call(node, func);
+    const call = new Ast.CallStatic(node, func);
 
     call.arguments.push(compiler.parse(node[0], scope) as Ast.Expr);
     call.arguments.push(compiler.parse(node[4], scope) as Ast.Expr);

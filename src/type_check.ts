@@ -30,7 +30,23 @@ register(Ast.Class, visitors, (visitor, thing) => {
     }
 });
 
-register(Ast.Call, visitors, (visitor, thing) => {
+register(Ast.CallStatic, visitors, (visitor, thing) => {
+    const args = thing.arguments;
+    const params = thing.target.parameters;
+
+    for(let i = 0; i < args.length; i++){
+        if(args[i].tag === Tag.Constant){
+            continue;
+        }
+
+        if(args[i].expressionResultType !== params[i].type){
+            // TODO: Use an error specific to calls?
+            visitor.compiler.report(new ExpressionTypeError(args[i], params[i].type, args[i]))
+        }
+    }
+});
+
+register(Ast.CallField, visitors, (visitor, thing) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
 

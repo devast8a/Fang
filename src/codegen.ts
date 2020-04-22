@@ -1,5 +1,5 @@
 // Code generation step
-import { Call, Class, Constant, Construct, Expr, Function, GetField, GetVariable, Member, Return, SetField, SetVariable, Stmt, Tag, Variable } from './ast';
+import { CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, Member, Return, SetField, SetVariable, Stmt, Tag, Variable, CallField } from './ast';
 
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];
@@ -57,7 +57,8 @@ export class TargetCGcc {
 
     public compileExpr(thing: Expr) {
         switch(thing.tag){
-            case Tag.Call:        this.compileCall(thing); break;
+            case Tag.CallField:   this.compileCallField(thing); break;
+            case Tag.CallStatic:  this.compileCallStatic(thing); break;
             case Tag.Constant:    this.compileConstant(thing); break;
             case Tag.Construct:   this.compileConstruct(thing); break;
             case Tag.GetField:    this.compileGetField(thing); break;
@@ -68,7 +69,8 @@ export class TargetCGcc {
 
     public compileStmt(thing: Stmt){
         switch(thing.tag){
-            case Tag.Call:        this.compileCall(thing); break;
+            case Tag.CallField:   this.compileCallField(thing); break;
+            case Tag.CallStatic:  this.compileCallStatic(thing); break;
             case Tag.Return:      this.compileReturn(thing); break;
             case Tag.SetField:    this.compileSetField(thing); break;
             case Tag.SetVariable: this.compileSetVariable(thing); break;
@@ -171,7 +173,39 @@ export class TargetCGcc {
         output.push(".", node.field.id);
     }
 
-    public compileCall(node: Call){
+    public compileCallStatic(node: CallStatic){
+        const output = this.output;
+
+        if(node.target.id[0] === '$'){
+            // TODO: Create a better way of representing various calls to operators
+            const operator = node.target.id.replace("$infix", "");
+            this.compileExpr(node.arguments[0]);
+            output.push(operator);
+            this.compileExpr(node.arguments[1]);
+            return;
+        }
+
+        // TODO: Extend to non-function calls
+        if((node as any).target.ffi_name !== undefined){
+            output.push((node as any).target.ffi_name);
+        } else {
+            output.push(node.target.id);
+        }
+        output.push("(");
+
+        const args = node.arguments;
+        for(let i = 0; i < args.length; i++){
+            if(i > 0){
+                output.push(", ");
+            }
+
+            this.compileExpr(args[i]);
+        }
+
+        output.push(")")
+    }
+
+    public compileCallField(node: CallField){
         const output = this.output;
 
         if(node.target.id[0] === '$'){

@@ -1,4 +1,4 @@
-import { Type, Tag, Class, Trait, Function, Thing, Constant, Variable, GetField, Expr, GetVariable, Call } from './ast';
+import { Type, Tag, Class, Trait, Function, Thing, Constant, Variable, GetField, Expr, GetVariable, CallStatic } from './ast';
 
 export function isSubType(child: Type, parent: Type){
     if(parent === child){
@@ -133,11 +133,11 @@ function polymorphInner(input: Thing, mapping: Map<Variable, Type>): Thing {
             );
         }
 
-        case Tag.Call: {
+        case Tag.CallStatic: {
             if((input as any).expression === undefined){
                 const args       = input.arguments.map(x => polymorph(x, mapping));
 
-                const output = new Call(input.ast, input.target);
+                const output = new CallStatic(input.ast, input.target);
                 output.expressionResultType = input.expressionResultType;
                 output.arguments = args;
                 return output;
@@ -154,7 +154,7 @@ function polymorphInner(input: Thing, mapping: Map<Variable, Type>): Thing {
                     throw new Error("Invariant broken: Type checking should ensure lookupVariable always returns a value");
                 }
 
-                const output = new Call(input.ast, target);
+                const output = new CallStatic(input.ast, target);
                 output.expressionResultType = target.returnType;
                 output.arguments = args;
                 return output;

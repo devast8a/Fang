@@ -3,13 +3,15 @@ import { canSubType, canMonomorphize } from './type_api';
 
 // TODO: Remove IDs
 
+// TODO: Remove IDs
 export enum Tag {
     Class,
     Function,
     Trait,
     Variable,
 
-    Call,
+    CallField,
+    CallStatic,
     Constant,
     Construct,
     GetField,
@@ -68,7 +70,8 @@ interface IThing {
 }
 export type Thing =
       Class
-    | Call
+    | CallField
+    | CallStatic
     | Constant
     | Construct
     | Function
@@ -93,7 +96,8 @@ interface IExpr {
     expressionResultType: Type | undefined;
 }
 export type Expr =
-      Call
+      CallField
+    | CallStatic
     | Constant
     | Construct
     | GetField
@@ -102,11 +106,12 @@ export type Expr =
 interface IStmt {
 }
 export type Stmt =
-      Variable
-    | Call
+      CallField
+    | CallStatic
     | Return
     | SetField
-    | SetVariable;
+    | SetVariable
+    | Variable;
 
 export type Member =
       Class
@@ -241,15 +246,45 @@ export class Variable implements IThing, IType {
     }
 }
 
-export class Call implements IThing, IExpr {
+export class CallField implements IThing, IExpr {
     public ast: Node;
     public poisoned = false;
-    public tag: Tag.Call = Tag.Call;
-    public static tag: Tag.Call = Tag.Call;
+    public tag: Tag.CallField = Tag.CallField;
+    public static tag: Tag.CallField = Tag.CallField;
 
     public expressionResultType: Type | undefined;
 
-    public target: Function;        // TODO: Going forward this shouldn't be restricted to Function
+    public expression: Expr;
+    public target: Function;
+    public arguments = new Array<Expr>();
+
+    public constructor(ast: Node, expression: Expr, target: Function){
+        this.ast = ast;
+        this.expression = expression;
+        this.target = target;
+        this.expressionResultType = target.returnType;
+    }
+
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+        visitor.visit[this.tag](visitor, this);
+
+        next.push(this.expression);
+
+        for(const thing of this.arguments){
+            next.push(thing);
+        }
+    }
+}
+
+export class CallStatic implements IThing, IExpr {
+    public ast: Node;
+    public poisoned = false;
+    public tag: Tag.CallStatic = Tag.CallStatic;
+    public static tag: Tag.CallStatic = Tag.CallStatic;
+
+    public expressionResultType: Type | undefined;
+
+    public target: Function;
     public arguments = new Array<Expr>();
 
     public constructor(ast: Node, target: Function){
@@ -260,8 +295,6 @@ export class Call implements IThing, IExpr {
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
         visitor.visit[this.tag](visitor, this);
-
-        // TODO: Support Expression
 
         for(const thing of this.arguments){
             next.push(thing);

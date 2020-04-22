@@ -6,7 +6,7 @@ trait Trait {
 class Concrete impl Trait {
     val field: int
     fn method() {
-        writeLn("!!!\n", 0)
+        writeLn("This is the method\n", 0)
     }
 }
 
@@ -18,5 +18,6 @@ fn makeConcrete(): Trait {
 fn main(): int {
     val value: Trait = makeConcrete()
     writeLn("%d\n", value.field)
+    value.method()
     return 0
 }
