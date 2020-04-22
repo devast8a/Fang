@@ -15,9 +15,18 @@ fn makeConcrete(): Trait {
     return concrete
 }
 
-fn main(): int {
-    val value: Trait = makeConcrete()
+fn useTrait(value: Trait){
     writeLn("%d\n", value.field)
     value.method()
+}
+
+fn main(): int {
+    val value: Trait = makeConcrete()
+
+    writeLn("%d\n", value.field)
+    value.method()
+
+    useTrait(value)
+
     return 0
 }

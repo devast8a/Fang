@@ -6,8 +6,13 @@ export class Data {
     mapping: Map<Variable, Type>;
     scope: Scope;
 
-    public constructor(scope: Scope){
-        this.mapping = new Map();
+    public constructor(scope: Scope, mapping?: Map<Variable, Type>){
+        if(mapping === undefined){
+            this.mapping = new Map();
+        } else {
+            this.mapping = mapping;
+        }
+
         this.scope = scope;
     }
 }
@@ -62,12 +67,43 @@ register(Class, (input, data) => {
 });
 
 register(CallStatic, (input, data) => {
-    const expr = (input as any).expression as Expr | undefined;
-    const args       = input.arguments.map(x => polymorph(x, data));
+    const args    = input.arguments.map(x => polymorph(x, data));
+    const params  = input.target.parameters;
+    const mapping = new Map<Variable, Type>();
 
-    const output     = new CallStatic(input.ast, input.target);
+    let name = input.target.name;
+
+    for(let i = 0; i < args.length; i++){
+        const argument = args[i];
+        const parameter = params[i];
+
+        if(parameter.type.tag === Tag.Trait){
+            mapping.set(parameter, argument.expressionResultType!);
+            name += `_${i}_${argument.expressionResultType!.name}`
+        }
+    }
+
+    let target = input.target;
+
+    if(mapping.size > 0){
+        // TODO: Replace with a clearer way of instantiating generics
+        data.scope.functions.delete(input.target.name);
+
+        let monomorphized = data.scope.functions.get(name);
+        if(monomorphized === undefined){
+            monomorphized = polymorph(input.target, new Data(data.scope, mapping));
+            monomorphized.name = name;
+            monomorphized.id = name;
+            data.scope.declareFunction(monomorphized);
+        }
+
+        target = monomorphized;
+    }
+
+    const output     = new CallStatic(input.ast, target);
     output.arguments = args;
 
+    // Handle return type polymorphism
     if(input.target.returnType!.tag === Tag.Trait){
         output.expressionResultType = data.scope.lookupClass("Concrete");
     }
