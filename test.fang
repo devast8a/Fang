@@ -1,25 +1,22 @@
-trait Vec2d {
-    val x: int
-    val y: int
-
-    fn print()
+trait Trait {
+    val field: int
+    fn method()
 }
 
-class Foo impl Vec2d {
-    val x: int
-    val y: int
-
-    fn print() {
-        writeLn("I am Foo!\n", 0)
+class Concrete impl Trait {
+    val field: int
+    fn method() {
+        writeLn("!!!\n", 0)
     }
 }
 
-fn makeFoo(): Vec2d {
-    val foo: Foo = Foo{100, 200}
-    return foo
+fn makeConcrete(): Trait {
+    val concrete: Concrete = Concrete{100}
+    return concrete
 }
 
-fn main() {
-    val foo: Vec2d = makeFoo()
-    writeLn("%d\n", foo.x)
+fn main(): int {
+    val value: Trait = makeConcrete()
+    writeLn("%d\n", value.field)
+    return 0
 }

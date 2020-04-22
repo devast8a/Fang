@@ -31,11 +31,6 @@ register(Ast.Class, visitors, (visitor, thing) => {
 });
 
 register(Ast.Call, visitors, (visitor, thing) => {
-    // TODO: Check if a function is polymorphic somewhere else
-    if(canMonomorphize(thing.target)){
-        visitor.compiler.callsToMonomorphize.push(thing);
-    }
-
     const args = thing.arguments;
     const params = thing.target.parameters;
 
