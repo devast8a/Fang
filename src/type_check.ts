@@ -2,7 +2,6 @@ import { Visitor, VisitorFn, TagCount, Thing, visit, Tag, register } from './ast
 import * as Ast from './ast';
 import { canSubType, canMonomorphize, isSubType } from './type_api';
 import { Compiler } from './compile';
-// TODO: Constants should have types correctly set. When they do, remove hacks in this file checking for a constant
 
 export class TypeChecker implements Visitor<TypeChecker> {
     public visit: Array<VisitorFn<TypeChecker>>;
@@ -57,10 +56,6 @@ register(Ast.Variable, visitors, (visitor, thing) => {
         return;
     }
 
-    if(thing.value.tag === Tag.Constant){
-        return;
-    }
-
     if(!isSubType(thing.value.expressionResultType!, thing.type)){
         visitor.compiler.report(new ExpressionTypeError(thing, thing.type, thing.value));
     }
@@ -71,20 +66,12 @@ register(Ast.Return, visitors, (visitor, thing) => {
 });
 
 register(Ast.SetVariable, visitors, (visitor, thing) => {
-    if(thing.source.tag === Tag.Constant){
-        return;
-    }
-
     if(thing.source.expressionResultType !== thing.target.type){
         visitor.compiler.report(new ExpressionTypeError(thing, thing.target.type, thing.source));
     }
 });
 
 register(Ast.SetField, visitors, (visitor, thing) => {
-    if(thing.source.tag === Tag.Constant){
-        return;
-    }
-
     if(thing.source.expressionResultType !== thing.field.type){
         visitor.compiler.report(new ExpressionTypeError(thing, thing.field.type, thing.source));
     }
