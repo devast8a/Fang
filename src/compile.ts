@@ -62,6 +62,39 @@ export class Compiler {
         throw new Error('Method not implemented.');
     }
 
+    private readonly scope: Scope;
+    public readonly types: {
+        string: Type,
+        int: Type,
+    };
+
+    constructor(){
+        // TODO: Support binding to target within the language itself
+        // TODO: Use the actual name of the module
+        const scope = this.scope = new Scope('Ftest_');
+
+        const str = new Class("", "str", "char*", scope);
+        const int = new Class("", "int", "int", scope);
+
+        scope.types.set("none", new Class("", "none", "void", scope));
+        scope.types.set("str", str);
+        scope.types.set("int", int);
+
+        const f = new Function("", "writeLn", "writeLn", scope);
+        (f as any).ffi_name = "printf";
+        f.parameters.push(new Variable("", "", str, ""));
+        f.parameters.push(new Variable("", "", int, ""));
+
+        scope.declareFunction(f);
+
+        scope.functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
+
+        this.types = {
+            string: str,
+            int: int,
+        };
+    }
+
     private errors = new Array<any>();
 
     public callsToMonomorphize = new Array<Call>();   // Used in monomorphize step
@@ -98,29 +131,6 @@ export class Compiler {
     }
 
     public compile(source: Source){
-        // TODO: Support binding to target within the language itself
-        // TODO: Use the actual name of the module
-        const scope = new Scope('Ftest_');
-
-        const str = new Class("", "str", "char*", scope);
-        const int = new Class("", "int", "int", scope);
-
-        scope.types.set("none", new Class("", "none", "void", scope));
-        scope.types.set("str", str);
-        scope.types.set("int", int);
-
-        const f = new Function("", "writeLn", "writeLn", scope);
-        (f as any).ffi_name = "printf";
-        f.parameters.push(new Variable("", "", str, ""));
-        f.parameters.push(new Variable("", "", int, ""));
-
-        scope.declareFunction(f);
-
-        scope.functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
-
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
         // Parse
         const parser = new nearley.Parser(compiled);
         parser.feed(source.content);
@@ -135,19 +145,19 @@ export class Compiler {
 
         // Ast Generation
         for(const node of parser.results[0]){
-            this.parse(node, scope);
+            this.parse(node, this.scope);
         }
 
         // TODO: Remove hack to avoid outputting compiler defined functions
-        scope.types.delete("none");
-        scope.types.delete("str");
-        scope.types.delete("int");
-        scope.functions.delete("writeLn");
-        scope.functions.delete("$infix+");
+        this.scope.types.delete("none");
+        this.scope.types.delete("str");
+        this.scope.types.delete("int");
+        this.scope.functions.delete("writeLn");
+        this.scope.functions.delete("$infix+");
 
         // Type check
         const checker = new TypeChecker(this);
-        for(const type of scope.types.values()){
+        for(const type of this.scope.types.values()){
             checker.check(type);
             //type.checkTypes(this);
         }
@@ -172,21 +182,21 @@ export class Compiler {
             }
 
             if(mapping.size > 0){
-                scope.functions.delete(call.target.name);
+                this.scope.functions.delete(call.target.name);
 
-                let monomorphized = scope.functions.get(call.target.name + suffix);
+                let monomorphized = this.scope.functions.get(call.target.name + suffix);
                 if(monomorphized === undefined){
                     monomorphized = polymorph(call.target, mapping);
                     monomorphized.name += suffix;
                     monomorphized.id += suffix;
-                    scope.declareFunction(monomorphized);
+                    this.scope.declareFunction(monomorphized);
                 }
 
                 call.target = monomorphized;
             }
 
             if(call.target.returnType!.tag === Tag.Trait){
-                call.target.returnType = scope.lookupClass("Foo");
+                call.target.returnType = this.scope.lookupClass("Foo");
                 call.expressionResultType = call.target.returnType;
             }
         }
@@ -195,15 +205,15 @@ export class Compiler {
         if(this.errors.length === 0){
             const target = new TargetCGcc();
 
-            for(const thing of (scope as any).classes.values()){
+            for(const thing of (this.scope as any).classes.values()){
                 target.compileClass(thing);
             }
 
-            for(const func of Array.from(scope.functions.values())){
+            for(const func of Array.from(this.scope.functions.values())){
                 target.declareFunction(func);
             }
 
-            for(const func of Array.from(scope.functions.values())){
+            for(const func of Array.from(this.scope.functions.values())){
                 target.compileFunction(func);
             }
 

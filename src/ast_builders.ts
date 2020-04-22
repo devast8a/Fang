@@ -337,11 +337,19 @@ export function ExVariable(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 export function LiteralInteger(node: Node, compiler: Compiler){
-    return new Ast.Constant(node, null as any, node[0].value);
+    return new Ast.Constant(
+        node,
+        compiler.types.int,
+        node[0].value
+    );
 }
 
 export function LiteralString(node: Node, compiler: Compiler){
-    return new Ast.Constant(node, null as any, node[0].value);
+    return new Ast.Constant(
+        node,
+        compiler.types.string,
+        node[0].value
+    );
 }
 
 export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
