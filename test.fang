@@ -2,16 +2,21 @@ class Foo {
 
 }
 
-fn pass   (foo: Foo){}
-fn passMut(mut foo: Foo){}
-fn passOwn(own foo: Foo){}
+fn func(a: Foo, mut b: Foo){
+
+}
 
 fn main(){
-    val foo: Foo = Foo{}
+    val a: Foo = Foo{}
+    val b: Foo = Foo{}
 
-    pass(foo)
-    passMut(foo)
-    passOwn(foo)
+    fun(a, a)
+    # Loaned Set    : {a}
+    # Mutated Set   : {a}
+
+    func(a, b)
+    # Loaned Set    : {a}
+    # Mutated Set   : {b}
 
     writeLn("Hello world\n", 0)
 }

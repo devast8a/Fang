@@ -131,6 +131,7 @@ mutator(Variable, Polymorpher, (input, polymorpher) => {
         input.ast,
         input.name,
         type || input.type,
+        input.flags,
         input.id
     );
 

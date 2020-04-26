@@ -17,9 +17,19 @@ export class Visitor<T extends Visitor<T>> {
 
     protected visit(thing: Thing){
         const queue = [thing];
+        const visit = [];
 
         while(queue.length > 0){
-            queue.pop()!.visit(this as any, queue);
+            const item = queue.pop()!;
+            
+            item.visit(this as any, queue);
+            visit.push(item);
+        }
+
+        while(visit.length > 0){
+            const item = visit.pop()!;
+
+            this.visitors[item.tag](item, this as any);
         }
     }
 }

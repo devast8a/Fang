@@ -2,6 +2,7 @@ import * as Ast from "./ast";
 import { Compiler } from './compile';
 import { Tag } from './post';
 import { canMonomorphize, canSubType } from './type_api';
+import { VariableFlags } from './ast';
 
 const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
 const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
@@ -86,12 +87,17 @@ function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
         typeNode = node.data[5];
     }
 
+    let flags = VariableFlags.None;
+    if(node.data[0].length > 0){
+        flags = VariableFlags.Mutable
+    }
+
     const type = lookupType(typeNode, compiler, scope);
     if(type === undefined){
         return
     }
 
-    return new Ast.Variable(node, name, type, scope.id + name);
+    return new Ast.Variable(node, name, type, flags, scope.id + name);
 }
 
 //// Function
@@ -177,7 +183,7 @@ export function Variable(node: Node, compiler: Compiler, scope: Ast.Scope){
         return undefined;
     }
 
-    const thing = new Ast.Variable(node, node[1].value, type, scope.id + node[1].value);
+    const thing = new Ast.Variable(node, node[1].value, type, VariableFlags.None, scope.id + node[1].value);
 
     if(node[3] !== null){
         thing.value = compiler.parse(node[3][4], scope) as Ast.Expr;

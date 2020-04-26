@@ -2,7 +2,7 @@ import chalk from "chalk";
 import * as fs from "fs";
 import * as nearley from "nearley";
 import 'source-map-support/register';
-import { CallStatic, Class, Function, Scope, Thing, Variable, Stmt, Type, Tag, Expr, GetField } from './ast';
+import { CallStatic, Class, Function, Scope, Thing, Variable, Stmt, Type, Tag, Expr, GetField, VariableFlags } from './ast';
 import TargetCGcc from './codegen';
 import grammar from "./grammar";
 import { Tag as AstTag } from './post';
@@ -84,8 +84,8 @@ export class Compiler {
         const f = new Function("", "writeLn", "writeLn", scope);
         f.returnType = none;
         (f as any).ffi_name = "printf";
-        f.parameters.push(new Variable("", "", str, ""));
-        f.parameters.push(new Variable("", "", int, ""));
+        f.parameters.push(new Variable("", "", str, VariableFlags.None, ""));
+        f.parameters.push(new Variable("", "", int, VariableFlags.None, ""));
 
         scope.declareFunction(f);
 
@@ -176,7 +176,7 @@ export class Compiler {
         console.time("analysis");
         const analyser = new Analyzer();
         for(const type of this.scope.types.values()){
-            //analyser.check(type);
+            analyser.check(type);
         }
         console.timeEnd("analysis");
 
