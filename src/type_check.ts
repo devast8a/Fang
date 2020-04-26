@@ -1,26 +1,25 @@
-import { Visitor, VisitorFn, TagCount, Thing, visit, Tag, register } from './ast';
+import { TagCount, Thing, Tag } from './ast';
 import * as Ast from './ast';
 import { canSubType, canMonomorphize, isSubType } from './type_api';
 import { Compiler } from './compile';
+import { Visitor, visitor } from './ast/visitor';
 
-export class TypeChecker implements Visitor<TypeChecker> {
-    public visit: Array<VisitorFn<TypeChecker>>;
+export class TypeChecker extends Visitor<TypeChecker> {
     public compiler: Compiler;
 
+    protected default_visitor(thing: Thing, visitor: TypeChecker){}
+
     public constructor(compiler: Compiler){
-        this.visit = visitors;
+        super();
         this.compiler = compiler;
     }
 
     public check(thing: Thing){
-        visit(thing, this);
+        this.visit(thing);
     }
 }
 
-function dummy(){}
-export const visitors = new Array<VisitorFn<TypeChecker>>(TagCount).fill(dummy);
-
-register(Ast.Class, visitors, (visitor, thing) => {
+visitor(Ast.Class, TypeChecker, (thing, visitor) => {
     for(const trait of thing.traits.values()){
         if(canSubType(thing, trait)){
             continue;
@@ -30,7 +29,7 @@ register(Ast.Class, visitors, (visitor, thing) => {
     }
 });
 
-register(Ast.CallStatic, visitors, (visitor, thing) => {
+visitor(Ast.CallStatic, TypeChecker, (thing, visitor) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
 
@@ -46,7 +45,7 @@ register(Ast.CallStatic, visitors, (visitor, thing) => {
     }
 });
 
-register(Ast.CallField, visitors, (visitor, thing) => {
+visitor(Ast.CallField, TypeChecker, (thing, visitor) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
 
@@ -62,7 +61,7 @@ register(Ast.CallField, visitors, (visitor, thing) => {
     }
 });
 
-register(Ast.Variable, visitors, (visitor, thing) => {
+visitor(Ast.Variable, TypeChecker, (thing, visitor) => {
     if(thing.value === undefined){
         return;
     }
@@ -72,17 +71,17 @@ register(Ast.Variable, visitors, (visitor, thing) => {
     }
 });
 
-register(Ast.Return, visitors, (visitor, thing) => {
+visitor(Ast.Return, TypeChecker, (thing, visitor) => {
     // TODO: Return needs a way to reference the function it is defined in
 });
 
-register(Ast.SetVariable, visitors, (visitor, thing) => {
+visitor(Ast.SetVariable, TypeChecker, (thing, visitor) => {
     if(thing.source.expressionResultType !== thing.target.type){
         visitor.compiler.report(new ExpressionTypeError(thing, thing.target.type, thing.source));
     }
 });
 
-register(Ast.SetField, visitors, (visitor, thing) => {
+visitor(Ast.SetField, TypeChecker, (thing, visitor) => {
     if(thing.source.expressionResultType !== thing.field.type){
         visitor.compiler.report(new ExpressionTypeError(thing, thing.field.type, thing.source));
     }

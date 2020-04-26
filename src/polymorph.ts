@@ -1,12 +1,15 @@
-import { Type, Function, Thing, CallStatic, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, visit, Class, Return, Scope, Construct, CallField } from './ast';
+import { Type, Function, Thing, CallStatic, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, Class, Return, Scope, Construct, CallField } from './ast';
 import { canMonomorphize } from './type_api';
+import { Mutator, mutator } from './ast/mutator';
 
-// TODO: Can we remove this junk and maybe tie it in with the visitor system?
-export class Data {
+export default class Polymorpher extends Mutator<Polymorpher> {
     mapping: Map<Variable, Type>;
     scope: Scope;
+    returnType: Type | null = null;
 
     public constructor(scope: Scope, mapping?: Map<Variable, Type>){
+        super();
+
         if(mapping === undefined){
             this.mapping = new Map();
         } else {
@@ -15,42 +18,27 @@ export class Data {
 
         this.scope = scope;
     }
-}
 
-type Polymorpher = (input: Thing, data: Data) => Thing;
-const polymorphers = new Array<Polymorpher>();
-
-type Constructor<T = any, P = object> = {new(...args: any[]): any, prototype: P};
-export function register<T extends Constructor<Thing> & {tag: Tag}>(
-    thing: T,
-    handler: (thing: InstanceType<T>, data: Data) => InstanceType<T>
-){
-    polymorphers[thing.tag] = handler as any;
-}
-
-export function polymorph<T>(input: T, data: Data): T {
-    const thing = (input as any) as Thing;
-    const polymorpher = polymorphers[thing.tag];
-
-    if(polymorpher === undefined){
-        throw new Error(`Unknown thing with tag ${Tag[thing.tag]}`)
+    public polymorph<T>(input: T) {
+        return this.mutate(input);
     }
-
-    return polymorpher(thing, data) as any;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-register(Trait, (input, data) => {
+mutator(Trait, Polymorpher, (input, data) => {
     return input;
 });
 
-register(Function, (input, data) => {
+mutator(Function, Polymorpher, (input, polymorpher) => {
+    let inner = new Polymorpher(polymorpher.scope, polymorpher.mapping);
+
     let returnType      = input.returnType;
-    const parameters    = input.parameters.map(x => polymorph(x, data));
-    const body          = input.body.map(x => polymorph(x, data));
+    const parameters    = input.parameters.map(x => inner.polymorph(x));
+    const body          = input.body.map(x => inner.polymorph(x));
 
     if(input.returnType!.tag === Tag.Trait){
-        returnType = data.scope.lookupClass("Concrete");
+        returnType = inner.returnType!;
+        (input as any).realReturnType = returnType;
     }
 
     // TODO: Should we replace scope with a duplicate?
@@ -61,13 +49,13 @@ register(Function, (input, data) => {
     return output;
 });
 
-register(Class, (input, data) => {
+mutator(Class, Polymorpher, (input, polymorpher) => {
     // TODO: Implement Class
     return input;
 });
 
-register(CallStatic, (input, data) => {
-    const args    = input.arguments.map(x => polymorph(x, data));
+mutator(CallStatic, Polymorpher, (input, polymorpher) => {
+    const args    = input.arguments.map(x => polymorpher.polymorph(x));
     const params  = input.target.parameters;
     const mapping = new Map<Variable, Type>();
 
@@ -87,14 +75,15 @@ register(CallStatic, (input, data) => {
 
     if(mapping.size > 0){
         // TODO: Replace with a clearer way of instantiating generics
-        data.scope.functions.delete(input.target.name);
+        polymorpher.scope.functions.delete(input.target.name);
 
-        let monomorphized = data.scope.functions.get(name);
+        let monomorphized = polymorpher.scope.functions.get(name);
         if(monomorphized === undefined){
-            monomorphized = polymorph(input.target, new Data(data.scope, mapping));
+            const inner = new Polymorpher(polymorpher.scope, mapping);
+            monomorphized = inner.polymorph(input.target);
             monomorphized.name = name;
             monomorphized.id = name;
-            data.scope.declareFunction(monomorphized);
+            polymorpher.scope.declareFunction(monomorphized);
         }
 
         target = monomorphized;
@@ -105,15 +94,15 @@ register(CallStatic, (input, data) => {
 
     // Handle return type polymorphism
     if(input.target.returnType!.tag === Tag.Trait){
-        output.expressionResultType = data.scope.lookupClass("Concrete");
+        output.expressionResultType = (input.target as any).realReturnType;
     }
 
     return output;
 });
 
-register(CallField, (input, data) => {
-    const expr   = polymorph(input.expression, data);
-    const args   = input.arguments.map(x => polymorph(x, data));
+mutator(CallField, Polymorpher, (input, polymorpher) => {
+    const expr   = polymorpher.polymorph(input.expression);
+    const args   = input.arguments.map(x => polymorpher.polymorph(x));
     const target = expr.expressionResultType!.scope.lookupFunction(input.target.name)!;
     const output = new CallField(input.ast, expr, target);
 
@@ -121,18 +110,18 @@ register(CallField, (input, data) => {
 
     // Handle return type polymorphism
     if(input.target.returnType!.tag === Tag.Trait){
-        output.expressionResultType = data.scope.lookupClass("Concrete");
+        output.expressionResultType = polymorpher.scope.lookupClass("Concrete");
     }
 
     return output;
 });
 
-register(Constant, (input, data) => {
+mutator(Constant, Polymorpher, (input, polymorpher) => {
     return input;
 });
 
-register(Variable, (input, data) => {
-    const type = data.mapping.get(input);
+mutator(Variable, Polymorpher, (input, polymorpher) => {
+    const type = polymorpher.mapping.get(input);
 
     if(type === undefined && input.value === undefined){
         return input;
@@ -147,36 +136,41 @@ register(Variable, (input, data) => {
 
     if(input.value !== undefined){
         // TODO: Change variable type
-        output.value = polymorph(input.value, data);
+        output.value = polymorpher.polymorph(input.value);
 
         if(output.value.expressionResultType !== input.value.expressionResultType){
             // We need to change the type of this variable!
             output.type = output.value.expressionResultType!;
 
-            data.mapping.set(input, output.value.expressionResultType!);
+            polymorpher.mapping.set(input, output.value.expressionResultType!);
         }
     }
 
     return output;
 });
 
-register(GetField, (input, data) => {
-    const target = polymorph(input.target, data);
+mutator(GetField, Polymorpher, (input, polymorpher) => {
+    const target = polymorpher.polymorph(input.target);
     const field = target.expressionResultType!.scope.lookupVariable(input.field.name)!;
 
     return new GetField(input.ast, target, field);
 });
 
-register(GetVariable, (input, data) => {
-    return new GetVariable(input.ast, polymorph(input.variable, data));
+mutator(GetVariable, Polymorpher, (input, polymorpher) => {
+    return new GetVariable(input.ast, polymorpher.polymorph(input.variable));
 });
 
-register(Return, (input, data) => {
-    // TODO: Implement Return
-    return input;
+mutator(Return, Polymorpher, (input, polymorpher) => {
+    const value = polymorpher.polymorph(input.value);
+
+    if(polymorpher.returnType === null){
+        polymorpher.returnType = value.expressionResultType!;
+    }
+
+    return new Return(input.ast, value);
 });
 
-register(Construct, (input, data) => {
+mutator(Construct, Polymorpher, (input, polymorpher) => {
     // TODO: Implement Construct
     return input;
 });

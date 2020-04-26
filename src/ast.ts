@@ -1,5 +1,6 @@
 import { Compiler } from './compile';
 import { canSubType, canMonomorphize } from './type_api';
+import { Visitor } from './ast/visitor';
 
 // TODO: Remove IDs
 
@@ -36,29 +37,6 @@ export function isPoisoned<T>(value: T | Poison): value is Poison {
 
 // TODO: Make the parser strongly typed
 type Node = any;
-
-export type VisitorFn<T> = (visitor: T, thing: Thing) => void;
-export interface Visitor<T> {
-    visit: VisitorFn<T>[];
-}
-
-export function visit<T extends Visitor<T>>(thing: Thing, visitor: T){
-    const queue = [thing];
-
-    while(queue.length > 0){
-        queue.pop()!.visit(visitor, queue);
-    }
-}
-
-type Constructor<T = any, P = object> = {new(...args: any[]): any, prototype: P};
-
-export function register<V extends Visitor<V>, T extends Constructor<Thing> & {tag: Tag} >(
-    thing: T,
-    visitors: VisitorFn<V>[],
-    handler: (visitor: V, thing: InstanceType<T>) => void
-){
-    visitors[thing.tag] = handler as any;
-}
 
 interface IThing {
     ast: Node;
@@ -143,7 +121,7 @@ export class Class implements IThing, IType {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         for(const thing of this.members.values()){
             next.push(thing);
@@ -175,7 +153,7 @@ export class Function implements IThing, IType {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         for(const thing of this.parameters){
             next.push(thing);
@@ -210,7 +188,7 @@ export class Trait implements IThing, IType {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         for(const thing of this.members.values()){
             next.push(thing);
@@ -238,7 +216,7 @@ export class Variable implements IThing, IType {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         if(this.value){
             next.push(this.value);
@@ -266,7 +244,7 @@ export class CallField implements IThing, IExpr {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         next.push(this.expression);
 
@@ -294,7 +272,7 @@ export class CallStatic implements IThing, IExpr {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         for(const thing of this.arguments){
             next.push(thing);
@@ -318,7 +296,7 @@ export class Constant implements IThing, IExpr {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
     }
 }
 
@@ -340,7 +318,7 @@ export class Construct implements IThing, IExpr {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         for(const thing of this.arguments){
             next.push(thing);
@@ -365,7 +343,7 @@ export class Return implements IThing, IExpr {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         next.push(this.value);
     }
@@ -387,7 +365,7 @@ export class GetVariable implements IThing, IExpr {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
     }
 }
 
@@ -411,7 +389,7 @@ export class GetField implements IThing, IExpr {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         next.push(this.target);
     }
@@ -434,7 +412,7 @@ export class SetVariable implements IThing {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         next.push(this.source);
     }
@@ -459,7 +437,7 @@ export class SetField implements IThing {
     }
 
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
-        visitor.visit[this.tag](visitor, this);
+        visitor.visitors[this.tag](this, visitor);
 
         next.push(this.target);
         next.push(this.source);

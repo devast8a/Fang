@@ -7,7 +7,8 @@ import TargetCGcc from './codegen';
 import grammar from "./grammar";
 import { Tag as AstTag } from './post';
 import { TypeChecker } from './type_check';
-import { polymorph, Data } from './polymorph';
+import Polymorpher from './polymorph';
+import { Analyzer } from './analysis';
 
 // Create a Parser object from our grammar.
 const compiled = nearley.Grammar.fromCompiled(grammar);
@@ -133,8 +134,10 @@ export class Compiler {
 
     public compile(source: Source){
         // Parse
+        console.time("parsing");
         const parser = new nearley.Parser(compiled);
         parser.feed(source.content);
+        console.timeEnd("parsing");
 
         if(parser.results.length > 1){
             console.error("! AMBIGUOUS GRAMMAR !");
@@ -145,9 +148,11 @@ export class Compiler {
         }
 
         // Ast Generation
+        console.time("ast-generation");
         for(const node of parser.results[0]){
             this.parse(node, this.scope);
         }
+        console.timeEnd("ast-generation");
 
         // TODO: Remove hack to avoid outputting compiler defined functions
         this.scope.types.delete("none");
@@ -159,24 +164,37 @@ export class Compiler {
         this.scope.functions.delete("$infix+");
 
         // Type check
+        console.time("type-checking");
         const checker = new TypeChecker(this);
         for(const type of this.scope.types.values()){
             checker.check(type);
             //type.checkTypes(this);
         }
+        console.timeEnd("type-checking");
+
+        // Analysis
+        console.time("analysis");
+        const analyser = new Analyzer();
+        for(const type of this.scope.types.values()){
+            //analyser.check(type);
+        }
+        console.timeEnd("analysis");
 
         // Monomorphize
-        const data = new Data(this.scope);
+        console.time("monomorphize");
+        const polymorpher = new Polymorpher(this.scope);
         for(const type of this.scope.types.values()){
-            let morphed = polymorph(type, data);
+            let morphed = polymorpher.polymorph(type);
 
             if(morphed.tag === Tag.Function){
                 this.scope.types.set(morphed.name, morphed);
                 this.scope.functions.set(morphed.name, morphed);
             }
         }
+        console.timeEnd("monomorphize");
 
         // Code-gen
+        console.time("code-gen");
         if(this.errors.length === 0){
             const target = new TargetCGcc();
 
@@ -195,6 +213,7 @@ export class Compiler {
             const output = target.output.join("");
             fs.writeFileSync("build/test.c", output);
         }
+        console.timeEnd("code-gen");
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
@@ -267,9 +286,11 @@ export class Compiler {
 };
 
 async function main(){
+    console.group("Compiling...");
     const compiler = new Compiler();
     const source = await Source.fromFile(process.argv[2]);
     compiler.compile(source);
+    console.groupEnd();
 }
 
 main().catch((e) => {

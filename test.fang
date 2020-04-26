@@ -1,32 +1,17 @@
-trait Trait {
-    val field: int
-    fn method()
+class Foo {
+
 }
 
-class Concrete impl Trait {
-    val field: int
-    fn method() {
-        writeLn("This is the method\n", 0)
-    }
-}
+fn pass   (foo: Foo){}
+fn passMut(mut foo: Foo){}
+fn passOwn(own foo: Foo){}
 
-fn makeConcrete(): Trait {
-    val concrete: Concrete = Concrete{100}
-    return concrete
-}
+fn main(){
+    val foo: Foo = Foo{}
 
-fn useTrait(value: Trait){
-    writeLn("%d\n", value.field)
-    value.method()
-}
+    pass(foo)
+    passMut(foo)
+    passOwn(foo)
 
-fn main(): int {
-    val value: Trait = makeConcrete()
-
-    writeLn("%d\n", value.field)
-    value.method()
-
-    useTrait(value)
-
-    return 0
+    writeLn("Hello world\n", 0)
 }
