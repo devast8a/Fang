@@ -10,7 +10,7 @@ fn main(){
     val a: Foo = Foo{}
     val b: Foo = Foo{}
 
-    fun(a, a)
+    #fun(a, a)
     # Loaned Set    : {a}
     # Mutated Set   : {a}
 

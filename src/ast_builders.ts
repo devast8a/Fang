@@ -3,6 +3,7 @@ import { Compiler } from './compile';
 import { Tag } from './post';
 import { canMonomorphize, canSubType } from './type_api';
 import { VariableFlags } from './ast';
+import { MissingIdentifierError, NotTraitError, TraitImplementingTraitError, CompilerError } from './errors';
 
 const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
 const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
@@ -13,11 +14,11 @@ const IMPL_TARGET_NOT_SUBTYPE       = "$0 is missing $2 required to implement $1
 type Node = any[];
 
 function lookupType(node: any, compiler: Compiler, scope: Ast.Scope){
-    const name = node[0].value;
-    const type = scope.lookupType(name);
+    const identifier = node[0];
+    const type = scope.lookupType(identifier.value);
 
     if(type === undefined){
-        compiler.error("$0 does not exist, did you mean $1", [name, '???'], [node.data[0]]);
+        compiler.report(new MissingIdentifierError(identifier, scope));
     }
 
     // TODO: Support type members
@@ -47,19 +48,10 @@ export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     for(const impl of node[2]){
         const type = lookupType(impl[3], compiler, scope);
 
-        // TODO: Create better error handling system
         if(type === undefined){
-            compiler.error(
-                IMPL_TARGET_DOES_NOT_EXIST,
-                [node[1].value, impl[3].data[0].value],
-                [impl[3].data[0]]
-            );
+            compiler.report(new MissingIdentifierError(impl[3].data[0], scope));
         } else if(type.tag !== Ast.Tag.Trait){
-            compiler.error(
-                IMPL_TARGET_NOT_A_TRAIT,
-                [node[1].value, impl[3].data[0].value],
-                [impl[3].data[0], type.ast]
-            );
+            compiler.report(new NotTraitError(impl[3].data[0]));
         } else {
             obj.traits.set(type.name, type);
         }
@@ -165,8 +157,7 @@ export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     // Collect traits
     if(node[2].length !== 0){
-        compiler.error("Traits can not implement other traits", [], [node[1]]);
-        return;
+        compiler.report(compiler.report(new TraitImplementingTraitError(node[1])));
     }
 
     scope.declareTrait(obj);
@@ -200,8 +191,7 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
             const thing = scope.lookupFunction(node[0].data[0].value);
 
             if(thing === undefined){
-                // TODO: Suggest symbol
-                compiler.error("$0 does not exist, did you mean $1", [node[0].data[0].value, '???'], [node[0].data[0]]);
+                compiler.report(new MissingIdentifierError(node[0].data[0], scope));
             }
 
             return new Ast.CallStatic(node, thing!);
@@ -224,7 +214,7 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
             
             if(thing === undefined){
                 // TODO: Suggest symbol
-                compiler.error("$0 does not exist, did you mean $1", [node[0].data[2].value, '???'], [node[0].data[2]]);
+                compiler.report(new MissingIdentifierError(node[0].data[2], scope));
             }
 
             const call = new Ast.CallField(node, expression, thing!);
@@ -252,9 +242,9 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
         const blame = node[0].data[0];
 
         if(call.arguments.length > call.target.parameters.length){
-            compiler.error("Too many arguments", [], [blame]);
+            compiler.report(new CompilerError("Too many arguments", blame));
         } else if(call.arguments.length < call.target.parameters.length){
-            compiler.error("Too few arguments", [], [blame]);
+            compiler.report(new CompilerError("Too few arguments", blame));
         }
     }
 
@@ -297,7 +287,7 @@ export function ExOpInfix(node: Node, compiler: Compiler, scope: Ast.Scope){
     const func = scope.lookupFunction("$infix+");
 
     if(func === undefined){
-        compiler.error("Could not find operator", [], [node[2][0][0]]);
+        compiler.report(new MissingIdentifierError(node[2][0][0], scope));
         return;
     }
 
@@ -334,7 +324,8 @@ export function ExVariable(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[0];
     const variable = scope.lookupVariable(name.value);
     if(variable === undefined){
-        compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
+        compiler.report(new MissingIdentifierError(name, scope));
+        //compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
         return;
     }
 
@@ -378,7 +369,8 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
         const value = compiler.parse(node[2], scope) as Ast.Expr;
 
         if(variable === undefined){
-            compiler.error("$0 does not exist, do you mean $1", [node[0].data[2].value, '???'], [node[0].data[2]]);
+            //compiler.error("$0 does not exist, do you mean $1", [node[0].data[2].value, '???'], [node[0].data[2]]);
+            compiler.report(new MissingIdentifierError(node[0].data[2], scope));
         }
 
         return new Ast.SetField(node, expression, variable!, value);

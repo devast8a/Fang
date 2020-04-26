@@ -97,17 +97,16 @@ export class Compiler {
         };
     }
 
-    private errors = new Array<any>();
-
     public callsToMonomorphize = new Array<CallStatic>();   // Used in monomorphize step
 
-    public error(format: string, args: string[], highlight?: any[]) {
-        this.errors.push({
-            format: format,
-            args: args,
-            highlight: highlight,
-        });
-    }
+    private errors = new Array<any>();
+    // public error(format: string, args: string[], highlight?: any[]) {
+    //     this.errors.push({
+    //         format: format,
+    //         args: args,
+    //         highlight: highlight,
+    //     });
+    // }
 
     public parse(node: any, scope: Scope): Thing{
         switch(node.tag){

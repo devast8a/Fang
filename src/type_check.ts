@@ -3,6 +3,7 @@ import * as Ast from './ast';
 import { canSubType, canMonomorphize, isSubType } from './type_api';
 import { Compiler } from './compile';
 import { Visitor, visitor } from './ast/visitor';
+import { ExpressionTypeError, MissingImplementationError } from './errors';
 
 export class TypeChecker extends Visitor<TypeChecker> {
     public compiler: Compiler;
@@ -25,7 +26,7 @@ visitor(Ast.Class, TypeChecker, (thing, visitor) => {
             continue;
         }
 
-        visitor.compiler.report(new MissingImplementationsError(thing, trait));
+        visitor.compiler.report(new MissingImplementationError(thing, trait));
     }
 });
 
@@ -86,15 +87,3 @@ visitor(Ast.SetField, TypeChecker, (thing, visitor) => {
         visitor.compiler.report(new ExpressionTypeError(thing, thing.field.type, thing.source));
     }
 });
-
-export class MissingImplementationsError {
-    public constructor(child: Ast.Class, parent: Ast.Trait){
-
-    }
-}
-
-export class ExpressionTypeError {
-    public constructor(target: any, type: Ast.Type, source: Ast.Expr){
-
-    }
-}
