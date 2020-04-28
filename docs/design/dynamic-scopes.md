@@ -15,6 +15,7 @@
 - For most cases Dynamic Scoping can reduce the cost of supporting these constructions to zero.
 - Most of the utility of Dynamic Scoping can be achieved statically.
 
+```
     val y = 2
 
     fn bar() {
@@ -47,6 +48,7 @@
 
     val allocator #[dynamic] = Bar{}
     useAllocator() # Statically instantiated to use Bar
+```
 
 ## The Problem
 For some applications it can be essential to control in detail how the application performs certain
@@ -73,6 +75,7 @@ Fortunately we might be able to solve this problem with Dynamic Scoping. As a re
 cover the differences between static scoping (also called lexical scoping) and dynamic scoping with
 the following example example.
 
+```
     # We call this "X1" below
     val x = 1
 
@@ -85,6 +88,7 @@ the following example example.
         val x = 2
         foo()
     }
+```
 
 Under static scoping the `x` in `foo` would be resolved to `X1`. When `foo` is compiled the compiler
 searches `foo` for a variable named `x` - but no variable exists with that name, so it searches the
@@ -107,6 +111,7 @@ those objects around manually. This is not in line with FANG's design goal of **
 As usual, our strategy to remove overhead will be to find a way to implement this feature statically
 at compile time. Consider the previous example with some slight modifications.
     
+```
     val dynamic = Map<Str, Str>{}
     val x = "static"
 
@@ -123,11 +128,13 @@ at compile time. Consider the previous example with some slight modifications.
 
         dynamic.set("x", old)
     }
+```
 
 We have dynamic scoping using a map. There is still runtime overhead in looking up the keys of the
 map. To remove this overhead we collect *all* keys that are used to access the map throughout the
 entire program and for each key we create a field in a special structure.
 
+```
     class Dynamic {
         x: Str
     }
@@ -148,6 +155,7 @@ entire program and for each key we create a field in a special structure.
 
         dynamic.x = old
     }
+```
 
 ## Static Polymorphism
 This still leaves us with one last source of overhead. If we want to implement memory allocation and
@@ -155,6 +163,7 @@ use dynamic scoping to allow developers to override its implementation, the memo
 polymorphic. To remove this overhead we can statically instantiate new functions for each concrete
 type we want to assign to the dynamically scoped variable. For example.
 
+```
     fn useAllocator() {
         val allocator: Allocator #[dynamic]
         # Use allocator ...
@@ -168,12 +177,14 @@ type we want to assign to the dynamically scoped variable. For example.
 
     val allocator #[dynamic] = Bar{}
     useAllocator() # We call this "U2" below
+```
 
 The usual rules of static trait polymorphism apply here - when `U1` is called we can determine that
 the dynamically scoped variable `allocator` has the concrete type `Foo` so we instantiate a copy of
 `useAllocator` that expects `allocator` to be a `Foo`. Similarly for `U2` a copy of `useAllocator`
 is instantiated that expects `allocator` to be a `Bar`. Here's how it may look after instantiation.
 
+```
     class Dynamic {
         allocator_Foo: Foo
         allocator_Bar: Bar
@@ -197,6 +208,7 @@ is instantiated that expects `allocator` to be a `Bar`. Here's how it may look a
 
     dynamic.allocator_Bar = Bar{}
     useAllocator_Bar()
+```
 
 ## Conclusion
 TODO
