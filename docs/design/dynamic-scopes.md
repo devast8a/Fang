@@ -8,6 +8,7 @@
 - How does this work during dynamic dispatch?
 - Syntax
 - Rewrite sections around "Dynamically Scoped Variables" as a term
+- Restrict setting of dynamic variables only inside argument blocks
 
 ## Summary
 - Constructions like allocators or loggers are high cost BUT low utility to most developers.
