@@ -15,8 +15,8 @@ declare var integer_hex: any;
 declare var string_double_quote: any;
 declare var lifetime: any;
 
-import lex from './lexer';
-import * as p from './post';
+import lex from '../lexer';
+import * as p from '../post_processor';
 
 // Subvert type system
 const lexer = lex as any;

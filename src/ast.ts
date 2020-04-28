@@ -2,9 +2,7 @@ import { Compiler } from './compile';
 import { canSubType, canMonomorphize } from './type_api';
 import { Visitor } from './ast/visitor';
 
-// TODO: Remove IDs
-
-// TODO: Remove IDs
+// TODO: Remove ID
 export enum Tag {
     Class,
     Function,

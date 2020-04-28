@@ -1,7 +1,7 @@
 // Setup code from ast_builders in a suitable way for nearley to use.
 import * as AstBuilder from "./ast_builders";
-import { Compiler } from './compile';
-import { Scope } from './ast';
+import { Compiler } from '../compile';
+import { Scope } from '../ast';
 
 type Node = any;
 

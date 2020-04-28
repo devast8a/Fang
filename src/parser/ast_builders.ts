@@ -1,9 +1,9 @@
-import * as Ast from "./ast";
-import { Compiler } from './compile';
-import { Tag } from './post';
-import { canMonomorphize, canSubType } from './type_api';
-import { VariableFlags } from './ast';
-import { MissingIdentifierError, NotTraitError, TraitImplementingTraitError, CompilerError } from './errors';
+import * as Ast from "../ast";
+import { Compiler } from '../compile';
+import { Tag } from './post_processor';
+import { canMonomorphize, canSubType } from '../type_api';
+import { VariableFlags } from '../ast';
+import { MissingIdentifierError, NotTraitError, TraitImplementingTraitError, CompilerError } from '../errors';
 
 const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
 const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
@@ -235,18 +235,6 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     const args = node[1].elements.map((arg: any) => compiler.parse(arg, scope));
     call.arguments = args;
-
-
-    // TODO: Type check parameters and arguments
-    if(call.target !== undefined){
-        const blame = node[0].data[0];
-
-        if(call.arguments.length > call.target.parameters.length){
-            compiler.report(new CompilerError("Too many arguments", blame));
-        } else if(call.arguments.length < call.target.parameters.length){
-            compiler.report(new CompilerError("Too few arguments", blame));
-        }
-    }
 
     return call;
 }

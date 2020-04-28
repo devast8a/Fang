@@ -1,6 +1,6 @@
 @{%
-import lex from './lexer';
-import * as p from './post';
+import lex from '../lexer';
+import * as p from '../post_processor';
 
 // Subvert type system
 const lexer = lex as any;

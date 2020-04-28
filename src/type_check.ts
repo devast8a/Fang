@@ -3,7 +3,7 @@ import * as Ast from './ast';
 import { canSubType, canMonomorphize, isSubType } from './type_api';
 import { Compiler } from './compile';
 import { Visitor, visitor } from './ast/visitor';
-import { ExpressionTypeError, MissingImplementationError } from './errors';
+import { ExpressionTypeError, MissingImplementationError, BadArgumentCountError } from './errors';
 
 export class TypeChecker extends Visitor<TypeChecker> {
     public compiler: Compiler;
@@ -33,6 +33,12 @@ visitor(Ast.Class, TypeChecker, (thing, visitor) => {
 visitor(Ast.CallStatic, TypeChecker, (thing, visitor) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
+
+    if(args.length < params.length){
+        visitor.compiler.report(new BadArgumentCountError(thing));
+    } else if (args.length > params.length){
+        visitor.compiler.report(new BadArgumentCountError(thing));
+    }
 
     for(let i = 0; i < args.length; i++){
         if(args[i].tag === Tag.Constant){
