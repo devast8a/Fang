@@ -57,12 +57,147 @@ class Source {
     public content: string;
 }
 
+class Parse {
+    public execute(compiler: Compiler){
+        // TODO: Properly load source
+        const source = (compiler as any).source as Source;
+
+        // Parse
+        console.time("parsing");
+        const parser = new nearley.Parser(compiled);
+        parser.feed(source.content);
+        console.timeEnd("parsing");
+
+        if(parser.results.length > 1){
+            console.error("! AMBIGUOUS GRAMMAR !");
+            console.log(JSON.stringify(parser.results[0], null, 4));
+            console.log(JSON.stringify(parser.results[1], null, 4));
+            console.log(parser.results.length);
+
+            // TODO: Remove this kludge
+            throw new Error();
+        }
+
+        return parser.results[0];
+    }
+}
+
+class AstGeneration {
+    public execute(compiler: Compiler){
+        const parse = new Parse();
+        const results = parse.execute(compiler);
+
+        // Ast Generation
+        console.time("ast-generation");
+        for(const node of results){
+            compiler.parse(node, compiler.scope);
+            // this.parse(node, this.scope);
+        }
+        console.timeEnd("ast-generation");
+
+        // TODO: Remove hack to avoid outputting compiler defined functions
+        compiler.scope.types.delete("none");
+        compiler.scope.types.delete("str");
+        compiler.scope.types.delete("int");
+        compiler.scope.types.delete("writeLn");
+        compiler.scope.types.delete("$infix+");
+        compiler.scope.functions.delete("writeLn");
+        compiler.scope.functions.delete("$infix+");
+    }
+}
+
+class TypeCheck {
+    public execute(compiler: Compiler){
+        const astGeneration = new AstGeneration();
+        const scope = astGeneration.execute(compiler);
+
+        // Type check
+        console.time("type-checking");
+        const checker = new TypeChecker(compiler);
+        for(const type of compiler.scope.types.values()){
+            checker.check(type);
+            //type.checkTypes(this);
+        }
+        console.timeEnd("type-checking");
+
+    }
+}
+
+class Analyze {
+    public execute(compiler: Compiler){
+        const typeCheck = new TypeCheck();
+        typeCheck.execute(compiler);
+
+        // Analysis
+        console.time("analysis");
+        const analyser = new Analyzer();
+        for(const type of compiler.scope.types.values()){
+            analyser.check(type);
+        }
+        console.timeEnd("analysis");
+
+    }
+}
+
+export class Monomorphize {
+    public execute(compiler: Compiler){
+        const analyze = new Analyze();
+        analyze.execute(compiler);
+
+        // Monomorphize
+        console.time("monomorphize");
+        const polymorpher = new Polymorpher(compiler.scope);
+        for(const type of compiler.scope.types.values()){
+            let morphed = polymorpher.polymorph(type);
+
+            if(morphed.tag === Tag.Function){
+                compiler.scope.types.set(morphed.name, morphed);
+                compiler.scope.functions.set(morphed.name, morphed);
+            }
+        }
+        console.timeEnd("monomorphize");
+
+    }
+}
+
+class Output {
+    public execute(compiler: Compiler){
+        const monomorphize = new Monomorphize();
+        monomorphize.execute(compiler);
+
+        // Code-gen
+        console.time("code-gen");
+        if(compiler.errors.length === 0){
+            const target = new TargetCGcc();
+
+            for(const thing of (compiler.scope as any).classes.values()){
+                target.compileClass(thing);
+            }
+
+            for(const func of Array.from(compiler.scope.functions.values())){
+                target.declareFunction(func);
+            }
+
+            for(const func of Array.from(compiler.scope.functions.values())){
+                target.compileFunction(func);
+            }
+
+            const output = target.output.join("");
+            fs.writeFileSync("build/test.c", output);
+        }
+        console.timeEnd("code-gen");
+
+    }
+}
+
+
 export class Compiler {
     public report(error: any) {
         throw new Error('Method not implemented.');
     }
 
-    private readonly scope: Scope;
+    // TODO: Refactor this out
+    public readonly scope: Scope;
     public readonly types: {
         string: Type,
         int: Type,
@@ -99,14 +234,8 @@ export class Compiler {
 
     public callsToMonomorphize = new Array<CallStatic>();   // Used in monomorphize step
 
-    private errors = new Array<any>();
-    // public error(format: string, args: string[], highlight?: any[]) {
-    //     this.errors.push({
-    //         format: format,
-    //         args: args,
-    //         highlight: highlight,
-    //     });
-    // }
+    // TODO: Refactor
+    public errors = new Array<any>();
 
     public parse(node: any, scope: Scope): Thing{
         switch(node.tag){
@@ -132,87 +261,10 @@ export class Compiler {
     }
 
     public compile(source: Source){
-        // Parse
-        console.time("parsing");
-        const parser = new nearley.Parser(compiled);
-        parser.feed(source.content);
-        console.timeEnd("parsing");
+        (this as any).source = source;
 
-        if(parser.results.length > 1){
-            console.error("! AMBIGUOUS GRAMMAR !");
-            console.log(JSON.stringify(parser.results[0], null, 4));
-            console.log(JSON.stringify(parser.results[1], null, 4));
-            console.log(parser.results.length);
-            return;
-        }
-
-        // Ast Generation
-        console.time("ast-generation");
-        for(const node of parser.results[0]){
-            this.parse(node, this.scope);
-        }
-        console.timeEnd("ast-generation");
-
-        // TODO: Remove hack to avoid outputting compiler defined functions
-        this.scope.types.delete("none");
-        this.scope.types.delete("str");
-        this.scope.types.delete("int");
-        this.scope.types.delete("writeLn");
-        this.scope.types.delete("$infix+");
-        this.scope.functions.delete("writeLn");
-        this.scope.functions.delete("$infix+");
-
-        // Type check
-        console.time("type-checking");
-        const checker = new TypeChecker(this);
-        for(const type of this.scope.types.values()){
-            checker.check(type);
-            //type.checkTypes(this);
-        }
-        console.timeEnd("type-checking");
-
-        // Analysis
-        console.time("analysis");
-        const analyser = new Analyzer();
-        for(const type of this.scope.types.values()){
-            analyser.check(type);
-        }
-        console.timeEnd("analysis");
-
-        // Monomorphize
-        console.time("monomorphize");
-        const polymorpher = new Polymorpher(this.scope);
-        for(const type of this.scope.types.values()){
-            let morphed = polymorpher.polymorph(type);
-
-            if(morphed.tag === Tag.Function){
-                this.scope.types.set(morphed.name, morphed);
-                this.scope.functions.set(morphed.name, morphed);
-            }
-        }
-        console.timeEnd("monomorphize");
-
-        // Code-gen
-        console.time("code-gen");
-        if(this.errors.length === 0){
-            const target = new TargetCGcc();
-
-            for(const thing of (this.scope as any).classes.values()){
-                target.compileClass(thing);
-            }
-
-            for(const func of Array.from(this.scope.functions.values())){
-                target.declareFunction(func);
-            }
-
-            for(const func of Array.from(this.scope.functions.values())){
-                target.compileFunction(func);
-            }
-
-            const output = target.output.join("");
-            fs.writeFileSync("build/test.c", output);
-        }
-        console.timeEnd("code-gen");
+        const output = new Output();
+        output.execute(this);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         
