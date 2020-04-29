@@ -179,7 +179,8 @@ export function Variable(node: Node, compiler: Compiler, scope: Ast.Scope){
         return undefined;
     }
 
-    const thing = new Ast.Variable(node, node[1].value, type, VariableFlags.None, scope.id + node[1].value);
+    // HACK: We currently set Variable as local. This is -NOT- true generally.
+    const thing = new Ast.Variable(node, node[1].value, type, VariableFlags.Local, scope.id + node[1].value);
 
     if(node[3] !== null){
         thing.value = compiler.parse(node[3][4], scope) as Ast.Expr;

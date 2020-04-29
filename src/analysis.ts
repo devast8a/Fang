@@ -24,13 +24,19 @@ export class Analyzer extends Visitor<Analyzer> {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 visitor(CallStatic, Analyzer, (thing, analyzer) => {
-    // We want to guarantee the golden rule.
+    // Check that the golden rule is being followed by the program.
     //  "An object must not be mutated using a mutable loan while another loan could observe it"
     //
     // Current strategy is to create a set that tracks variables a target function might mutate.
     // If one of two things happen we could be violating the golden rule.
     //  - A function immutably loans a value AND mutably loans the same value
     //  - A function mutably loans the same value more than once
+    //
+    // Also check that lifetime rules are being followed.
+    //  - Only alive objects are used.
+    // TODO: Actually check that only alive objects can be used
+    //  - Mark objects as dead when they are moved.
+    //  - Only owned objects can be moved.
     const immutableSet = new Set();
     const mutableSet = new Set();
 
@@ -102,7 +108,6 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
                     analyzer.compiler.report(new LoanViolationError());
                     continue;
                 }
-
                 if(arg.arguments.length !== 1 || arg.arguments[0].tag !== Tag.GetVariable){
                     // TODO: Copy or move only allowed for variables
                     analyzer.compiler.report(new LoanViolationError());
@@ -119,6 +124,11 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
 
                 if(arg.target === analyzer.compiler.functions.move){
                     if(immutableSet.has(variable) || mutableSet.has(variable) || analyzer.owned.has(variable)){
+                        analyzer.compiler.report(new LoanViolationError());
+                    }
+
+                    if((variable.flags & (VariableFlags.Local | VariableFlags.Owns)) === 0){
+                        // TODO: Can only move local variables or variables that are owned
                         analyzer.compiler.report(new LoanViolationError());
                     }
 
