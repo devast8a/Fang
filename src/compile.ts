@@ -99,7 +99,7 @@ class Analyze {
 
         // Analysis
         console.time("analysis");
-        const analyser = new Analyzer();
+        const analyser = new Analyzer(compiler);
         for(const type of compiler.scope.types.values()){
             analyser.check(type);
         }

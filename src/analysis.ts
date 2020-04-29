@@ -1,7 +1,16 @@
 import { Thing, Tag, CallStatic, VariableFlags } from './ast';
 import { Visitor, visitor } from './ast/visitor';
+import { Compiler } from './compile';
+import { LoanViolationError } from './errors';
 
 export class Analyzer extends Visitor<Analyzer> {
+    public compiler: Compiler;
+
+    public constructor(compiler: Compiler){
+        super();
+        this.compiler = compiler;
+    }
+
     public check(thing: Thing){
         this.visit(thing);
     }
@@ -15,6 +24,13 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
 
+    // We want to guarantee the golden rule.
+    //  "An object must not be mutated using a mutable loan while another loan could observe it"
+    //
+    // Current strategy is to create a set that tracks variables a target function might mutate.
+    // If one of two things happen we could be violating the golden rule.
+    //  - A function immutably loans a value AND mutably loans the same value
+    //  - A function mutably loans the same value more than once
     const immutableSet = new Set();
     const mutableSet = new Set();
 
@@ -31,6 +47,10 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
         }
 
         if((params[i].flags & VariableFlags.Mutable) === VariableFlags.Mutable){
+            if(mutableSet.has(arg.variable)){
+                analyzer.compiler.report(new LoanViolationError());
+            }
+
             mutableSet.add(arg.variable);
         } else {
             immutableSet.add(arg.variable);
@@ -39,7 +59,7 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
 
     for(const v of immutableSet){
         if(mutableSet.has(v)){
-            console.error("!!!");
+            analyzer.compiler.report(new LoanViolationError());
         }
     }
 });

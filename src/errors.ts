@@ -42,3 +42,9 @@ export class BadArgumentCountError extends CompilerError {
         super();
     }
 }
+
+export class LoanViolationError extends CompilerError {
+    public constructor(){
+        super();
+    }
+}
