@@ -46,7 +46,7 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
             continue;
         }
 
-        if((params[i].flags & VariableFlags.Mutable) === VariableFlags.Mutable){
+        if((params[i].flags & VariableFlags.Mutates) === VariableFlags.Mutates){
             if(mutableSet.has(arg.variable)){
                 analyzer.compiler.report(new LoanViolationError());
             }

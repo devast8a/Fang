@@ -190,7 +190,8 @@ export class Trait implements IThing, IType {
 
 export enum VariableFlags {
     None    = 0,
-    Mutable = 1 << 0,
+    Mutates = 1 << 0,
+    Owns    = 1 << 1,
 }
 
 export class Variable implements IThing, IType {

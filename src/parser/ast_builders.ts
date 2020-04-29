@@ -80,8 +80,13 @@ function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
     }
 
     let flags = VariableFlags.None;
-    if(node.data[0].length > 0){
-        flags = VariableFlags.Mutable
+
+    for(const tag of node.data[0]){
+        // TODO: Move this into the parser post-processors
+        switch(tag[0].value){
+            case "mut": flags |= VariableFlags.Mutates; break;
+            case "own": flags |= VariableFlags.Owns; break;
+        }
     }
 
     const type = lookupType(typeNode, compiler, scope);
