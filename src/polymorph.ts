@@ -1,13 +1,15 @@
 import { Type, Function, Thing, CallStatic, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, Class, Return, Scope, Construct, CallField } from './ast';
 import { canMonomorphize } from './type_api';
 import { Mutator, mutator } from './ast/mutator';
+import { Compiler } from './compile';
 
 export default class Polymorpher extends Mutator<Polymorpher> {
     mapping: Map<Variable, Type>;
     scope: Scope;
     returnType: Type | null = null;
+    compiler: Compiler;
 
-    public constructor(scope: Scope, mapping?: Map<Variable, Type>){
+    public constructor(compiler: Compiler, scope: Scope, mapping?: Map<Variable, Type>){
         super();
 
         if(mapping === undefined){
@@ -16,6 +18,7 @@ export default class Polymorpher extends Mutator<Polymorpher> {
             this.mapping = mapping;
         }
 
+        this.compiler = compiler;
         this.scope = scope;
     }
 
@@ -30,7 +33,7 @@ mutator(Trait, Polymorpher, (input, data) => {
 });
 
 mutator(Function, Polymorpher, (input, polymorpher) => {
-    let inner = new Polymorpher(polymorpher.scope, polymorpher.mapping);
+    let inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, polymorpher.mapping);
 
     let returnType      = input.returnType;
     const parameters    = input.parameters.map(x => inner.polymorph(x));
@@ -55,6 +58,13 @@ mutator(Class, Polymorpher, (input, polymorpher) => {
 });
 
 mutator(CallStatic, Polymorpher, (input, polymorpher) => {
+    if(input.target === polymorpher.compiler.functions.copy){
+        return polymorpher.polymorph(input.arguments[0]) as any;
+    }
+    if(input.target === polymorpher.compiler.functions.move){
+        return polymorpher.polymorph(input.arguments[0]) as any;
+    }
+
     const args    = input.arguments.map(x => polymorpher.polymorph(x));
     const params  = input.target.parameters;
     const mapping = new Map<Variable, Type>();
@@ -79,7 +89,7 @@ mutator(CallStatic, Polymorpher, (input, polymorpher) => {
 
         let monomorphized = polymorpher.scope.functions.get(name);
         if(monomorphized === undefined){
-            const inner = new Polymorpher(polymorpher.scope, mapping);
+            const inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, mapping);
             monomorphized = inner.polymorph(input.target);
             monomorphized.name = name;
             monomorphized.id = name;

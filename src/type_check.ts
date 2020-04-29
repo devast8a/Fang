@@ -40,6 +40,16 @@ visitor(Ast.CallStatic, TypeChecker, (thing, visitor) => {
         visitor.compiler.report(new BadArgumentCountError(thing));
     }
 
+    // HACK: Omit type checking for copy and move because they need to take any type - BUT we have no any type
+    if(thing.target === visitor.compiler.functions.copy){
+        thing.expressionResultType = thing.arguments[0].expressionResultType;
+        return;
+    }
+    if(thing.target === visitor.compiler.functions.move){
+        thing.expressionResultType = thing.arguments[0].expressionResultType;
+        return;
+    }
+
     for(let i = 0; i < args.length; i++){
         if(args[i].tag === Tag.Constant){
             continue;

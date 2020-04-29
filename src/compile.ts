@@ -72,6 +72,8 @@ class AstGeneration {
         compiler.scope.types.delete("$infix+");
         compiler.scope.functions.delete("writeLn");
         compiler.scope.functions.delete("$infix+");
+        compiler.scope.functions.delete("copy");
+        compiler.scope.functions.delete("move");
     }
 }
 
@@ -115,7 +117,7 @@ export class Monomorphize {
 
         // Monomorphize
         console.time("monomorphize");
-        const polymorpher = new Polymorpher(compiler.scope);
+        const polymorpher = new Polymorpher(compiler, compiler.scope);
         for(const type of compiler.scope.types.values()){
             let morphed = polymorpher.polymorph(type);
 
@@ -167,6 +169,10 @@ export class Compiler {
         string: Type,
         int: Type,
     };
+    public readonly functions: {
+        copy: Function,
+        move: Function,
+    };
 
     constructor(){
         // TODO: Support binding to target within the language itself
@@ -191,9 +197,22 @@ export class Compiler {
 
         scope.functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
 
+        const copy = new Function("", "copy", "copy", scope);
+        copy.parameters.push(new Variable("", "", str, VariableFlags.None, ""));
+        scope.functions.set("copy", copy);
+
+        const move = new Function("", "move", "move", scope);
+        move.parameters.push(new Variable("", "", str, VariableFlags.None, ""));
+        scope.functions.set("move", move);
+
         this.types = {
             string: str,
             int: int,
+        };
+
+        this.functions = {
+            copy: copy,
+            move: move,
         };
     }
 
