@@ -8,23 +8,9 @@ import { Tag as AstTag } from './parser/post_processor';
 import { TypeChecker } from './type_check';
 import Polymorpher from './polymorph';
 import { Analyzer } from './analysis';
-import { CompilerError } from './errors';
+import { CompilerError, ConsoleErrorFormatter } from './errors';
 import Grammar from './parser/grammar';
-
-class Source {
-    public constructor(path: string, content: string){
-        this.path = path;
-        this.content = content;
-    }
-
-    public static async fromFile(path: string){
-        const content = await fs.promises.readFile(path, "utf8");
-        return new Source(path, content);
-    }
-
-    public path: string;
-    public content: string;
-}
+import { Source } from './common/source';
 
 class Parse {
     public execute(compiler: Compiler){
@@ -255,7 +241,7 @@ export class Compiler {
         
         if(this.errors.length > 0){
             while(this.errors.length > 0){
-                console.log(this.errors.pop());
+                this.errors.pop()!.format(new ConsoleErrorFormatter(source), this);
             }
             process.exit(1);
         }

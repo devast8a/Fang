@@ -166,7 +166,7 @@ export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
 
     // Collect traits
     if(node[2].length !== 0){
-        compiler.report(compiler.report(new TraitImplementingTraitError(node[1])));
+        compiler.report(new TraitImplementingTraitError(node[1]));
     }
 
     scope.declareTrait(obj);
