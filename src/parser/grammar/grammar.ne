@@ -51,6 +51,16 @@ dfGeneric       -> _ declare_generic
 dfBody          -> _ dfBodyList
 dfBodyList      -> BODY[stmt] {% p.STAR %}
 
+## Declare/Operator ################################################################################
+declare_operator -> do
+
+stmt -> do
+
+do              -> doKeyword doName dfParameters dfReturnType:? dfGeneric:? dfBody:? {% p.Operator %}
+doKeyword       -> "op" __
+doName          -> "constructor" _
+doName          -> "destructor" _
+
 ## Declare/Function/Parameter ######################################################################
 declare_function_parameter -> dfp
 

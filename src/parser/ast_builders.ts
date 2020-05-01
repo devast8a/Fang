@@ -35,6 +35,7 @@ function lookupClass(node: any, compiler: Compiler, scope: Ast.Scope){
 export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[1].text;
     const obj = new Ast.Class(node, name, scope.id + name, scope);
+    scope.declareClass(obj);
 
     // Collect members
     if(node[4] !== null){
@@ -57,10 +58,13 @@ export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
         }
     }
 
-    scope.declareClass(obj);
     obj.id = "struct " + obj.id;
 
     return obj;
+}
+
+export function Operator(node: any, compiler: Compiler, scope: Ast.Scope){
+    return Function(node, compiler, scope);
 }
 
 function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {

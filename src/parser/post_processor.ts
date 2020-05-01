@@ -37,9 +37,7 @@ export function Trait(node: any){
 }
 
 //export const Class          = builder(AstBuilder.Class);
-export const Function       = builder(AstBuilder.Function);
 //export const Trait          = builder(AstBuilder.Trait);
-export const Variable       = builder(AstBuilder.Variable);
 export const ExCall         = builder(AstBuilder.ExCall);
 export const ExConstruct    = builder(AstBuilder.ExConstruct);
 export const ExOpInfix      = builder(AstBuilder.ExOpInfix);
@@ -48,9 +46,12 @@ export const ExOpPrefix     = builder(AstBuilder.ExOpPrefix);
 export const ExReturn       = builder(AstBuilder.ExReturn);
 export const ExVariable     = builder(AstBuilder.ExVariable);
 export const ExprIndexDot   = builder(AstBuilder.ExprIndexDot);
+export const Function       = builder(AstBuilder.Function);
 export const LiteralInteger = builder(AstBuilder.LiteralInteger);
 export const LiteralString  = builder(AstBuilder.LiteralString);
+export const Operator       = builder(AstBuilder.Operator);
 export const StmtAssign     = builder(AstBuilder.StmtAssign);
+export const Variable       = builder(AstBuilder.Variable);
 
 export function whitespace(node: Node){
     return {
