@@ -23,22 +23,11 @@ export enum Tag {
 }
 export const TagCount = Math.max(...Object.values(Tag).filter(x => typeof(x) === 'number') as number[]) + 1;
 
-export interface Poison {
-    tag: Tag.Poison;
-}
-export const Poison: Poison = {
-    tag: Tag.Poison,
-};
-export function isPoisoned<T>(value: T | Poison): value is Poison {
-    return value === Poison;
-}
-
 // TODO: Make the parser strongly typed
 type Node = any;
 
 interface IThing {
     ast: Node;
-    poisoned: boolean;
 
     tag: Tag;
 
@@ -97,7 +86,6 @@ export type Member =
 
 export class Class implements IThing, IType {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.Class = Tag.Class;
     public static tag: Tag.Class = Tag.Class;
 
@@ -127,7 +115,6 @@ export class Class implements IThing, IType {
 
 export class Function implements IThing, IType {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.Function = Tag.Function;
     public static tag: Tag.Function = Tag.Function;
 
@@ -161,7 +148,6 @@ export class Function implements IThing, IType {
 
 export class Trait implements IThing, IType {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.Trait = Tag.Trait;
     public static tag: Tag.Trait = Tag.Trait;
 
@@ -197,7 +183,6 @@ export enum VariableFlags {
 
 export class Variable implements IThing, IType {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.Variable = Tag.Variable;
     public static tag: Tag.Variable = Tag.Variable;
 
@@ -225,7 +210,6 @@ export class Variable implements IThing, IType {
 
 export class CallField implements IThing, IExpr {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.CallField = Tag.CallField;
     public static tag: Tag.CallField = Tag.CallField;
 
@@ -253,7 +237,6 @@ export class CallField implements IThing, IExpr {
 
 export class CallStatic implements IThing, IExpr {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.CallStatic = Tag.CallStatic;
     public static tag: Tag.CallStatic = Tag.CallStatic;
 
@@ -277,7 +260,6 @@ export class CallStatic implements IThing, IExpr {
 
 export class Constant implements IThing, IExpr {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.Constant = Tag.Constant;
     public static tag: Tag.Constant = Tag.Constant;
 
@@ -295,7 +277,6 @@ export class Constant implements IThing, IExpr {
 
 export class Construct implements IThing, IExpr {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.Construct = Tag.Construct;
     public static tag: Tag.Construct = Tag.Construct;
 
@@ -319,7 +300,6 @@ export class Construct implements IThing, IExpr {
 
 export class Return implements IThing, IExpr {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.Return = Tag.Return;
     public static tag: Tag.Return = Tag.Return;
 
@@ -340,7 +320,6 @@ export class Return implements IThing, IExpr {
 
 export class GetVariable implements IThing, IExpr {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.GetVariable = Tag.GetVariable;
     public static tag: Tag.GetVariable = Tag.GetVariable;
 
@@ -358,7 +337,6 @@ export class GetVariable implements IThing, IExpr {
 
 export class GetField implements IThing, IExpr {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.GetField = Tag.GetField;
     public static tag: Tag.GetField = Tag.GetField;
 
@@ -382,7 +360,6 @@ export class GetField implements IThing, IExpr {
 
 export class SetVariable implements IThing {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.SetVariable = Tag.SetVariable;
     public static tag: Tag.SetVariable = Tag.SetVariable;
 
@@ -403,7 +380,6 @@ export class SetVariable implements IThing {
 
 export class SetField implements IThing {
     public ast: Node;
-    public poisoned = false;
     public tag: Tag.SetField = Tag.SetField;
     public static tag: Tag.SetField = Tag.SetField;
 
