@@ -118,12 +118,6 @@ export interface ErrorFormatter {
 }
 
 export class ConsoleErrorFormatter implements ErrorFormatter {
-    private source: Source;
-
-    public constructor(source: Source){
-        this.source = source;
-    }
-
     public format(error: ErrorFormat): void {
         const args = error.arguments === undefined ? [] : error.arguments.map(x => this.formatArgument(x))
         const map = error.source.map;
@@ -148,15 +142,24 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
         }
     }
 
-    formatArgument(argument: { value: string; scope?: Ast.Scope; }): string {
+    public formatArgument(argument: { value: string; scope?: Ast.Scope; }): string {
         if(argument.scope !== undefined){
             let recommended = "";
             let min = argument.value.length;
 
             let scope: Ast.Scope | null = argument.scope;
 
+            // TODO: Switch to longest common subsequence
             while(scope !== null){
                 for(const symbol of scope.types.keys()){
+                    const distance = levenshteinDistance(argument.value, symbol);
+                    if(distance < min){
+                        recommended = symbol;
+                        min = distance;
+                    }
+                }
+
+                for(const symbol of scope.variables.keys()){
                     const distance = levenshteinDistance(argument.value, symbol);
                     if(distance < min){
                         recommended = symbol;
@@ -199,14 +202,10 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
 
         // Print out everything
         for(let i = 0; i < lines.length; i++){
-            let line = (i + start).toString();
-            line = line.length < endLength ? " " + line : line;
+            let line = (i + start).toString().padStart(endLength);
+            line = (i + start === identifier.line - 1) ? chalk.red(line) : line;
 
-            if(i + start === identifier.line - 1){
-                console.log(chalk.red(line) + chalk.blackBright(`| `) + lines[i]);
-            } else {
-                console.log(chalk.blackBright(`${line}| `) + lines[i]);
-            }
+            console.log(chalk.blackBright(`    ${line}| `) + lines[i]);
         }
     }
 }
