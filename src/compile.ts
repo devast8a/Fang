@@ -5,9 +5,9 @@ import 'source-map-support/register';
 import { CallStatic, Class, Function, Scope, Thing, Variable, Stmt, Type, Tag, Expr, GetField, VariableFlags } from './ast';
 import TargetCGcc from './codegen';
 import { Tag as AstTag } from './parser/post_processor';
-import { TypeChecker } from './type_check';
+import TypeChecker from './type_check';
 import Polymorpher from './polymorph';
-import { Analyzer } from './analysis';
+import Analyzer from './analysis';
 import { CompilerError, ConsoleErrorFormatter } from './errors';
 import Grammar from './parser/grammar';
 import { Source } from './common/source';
@@ -71,8 +71,9 @@ class TypeCheck {
         // Type check
         console.time("type-checking");
         const checker = new TypeChecker(compiler);
+        const state = new TypeChecker.State();
         for(const type of compiler.scope.types.values()){
-            checker.check(type);
+            checker.check(type, state);
             //type.checkTypes(this);
         }
         console.timeEnd("type-checking");
@@ -88,8 +89,9 @@ class Analyze {
         // Analysis
         console.time("analysis");
         const analyser = new Analyzer(compiler);
+        const state = new Analyzer.State();
         for(const type of compiler.scope.types.values()){
-            analyser.check(type);
+            analyser.check(type, state);
         }
         console.timeEnd("analysis");
 
@@ -104,8 +106,9 @@ export class Monomorphize {
         // Monomorphize
         console.time("monomorphize");
         const polymorpher = new Polymorpher(compiler, compiler.scope);
+        const state = new Polymorpher.State();
         for(const type of compiler.scope.types.values()){
-            let morphed = polymorpher.polymorph(type);
+            let morphed = polymorpher.polymorph(type, state);
 
             if(morphed.tag === Tag.Function){
                 compiler.scope.types.set(morphed.name, morphed);

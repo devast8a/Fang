@@ -1,16 +1,16 @@
 import { Type, Function, Thing, CallStatic, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, Class, Return, Scope, Construct, CallField, SetField, GetType } from './ast';
 import { canMonomorphize } from './type_api';
-import { Mutator, mutator } from './ast/mutator';
 import { Compiler } from './compile';
+import { Visitor, InputType, Register } from './ast/visitor';
 
-export default class Polymorpher extends Mutator<Polymorpher> {
+export class Polymorpher extends Visitor<State, InputType> {
     mapping: Map<Variable, Type>;
     scope: Scope;
     returnType: Type | null = null;
     compiler: Compiler;
 
     public constructor(compiler: Compiler, scope: Scope, mapping?: Map<Variable, Type>){
-        super();
+        super(setup, Visitor.ErrorByDefault());
 
         if(mapping === undefined){
             this.mapping = new Map();
@@ -22,22 +22,32 @@ export default class Polymorpher extends Mutator<Polymorpher> {
         this.scope = scope;
     }
 
-    public polymorph<T>(input: T) {
-        return this.mutate(input);
+    public polymorph = super.visit;
+}
+
+export module Polymorpher {
+    export class State {
+
     }
 }
 
+type State = Polymorpher.State;
+
+export default Polymorpher;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-mutator(Trait, Polymorpher, (input, data) => {
+function setup(reg: Register<Polymorpher, State, InputType>){
+
+reg(Trait, (input, polymorpher, state) => {
     return input;
 });
 
-mutator(Function, Polymorpher, (input, polymorpher) => {
+reg(Function, (input, polymorpher, state) => {
     let inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, polymorpher.mapping);
 
     let returnType      = input.returnType;
-    const parameters    = input.parameters.map(x => inner.polymorph(x));
-    const body          = input.body.map(x => inner.polymorph(x));
+    const parameters    = input.parameters.map(x => inner.polymorph(x, state));
+    const body          = input.body.map(x => inner.polymorph(x, state));
 
     if(input.returnType!.tag === Tag.Trait){
         returnType = inner.returnType!;
@@ -52,20 +62,20 @@ mutator(Function, Polymorpher, (input, polymorpher) => {
     return output;
 });
 
-mutator(Class, Polymorpher, (input, polymorpher) => {
+reg(Class, (input, polymorpher, state) => {
     // TODO: Implement Class
     return input;
 });
 
-mutator(CallStatic, Polymorpher, (input, polymorpher) => {
+reg(CallStatic, (input, polymorpher, state) => {
     if(input.target === polymorpher.compiler.functions.copy){
-        return polymorpher.polymorph(input.arguments[0]) as any;
+        return polymorpher.polymorph(input.arguments[0], state) as any;
     }
     if(input.target === polymorpher.compiler.functions.move){
-        return polymorpher.polymorph(input.arguments[0]) as any;
+        return polymorpher.polymorph(input.arguments[0], state) as any;
     }
 
-    const args    = input.arguments.map(x => polymorpher.polymorph(x));
+    const args    = input.arguments.map(x => polymorpher.polymorph(x, state));
     const params  = input.target.parameters;
     const mapping = new Map<Variable, Type>();
 
@@ -90,7 +100,7 @@ mutator(CallStatic, Polymorpher, (input, polymorpher) => {
         let monomorphized = polymorpher.scope.functions.get(name);
         if(monomorphized === undefined){
             const inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, mapping);
-            monomorphized = inner.polymorph(input.target);
+            monomorphized = inner.polymorph(input.target, state);
             monomorphized.name = name;
             monomorphized.id = name;
             polymorpher.scope.declareFunction(monomorphized);
@@ -110,13 +120,13 @@ mutator(CallStatic, Polymorpher, (input, polymorpher) => {
     return output;
 });
 
-mutator(GetType, Polymorpher, (input, polymorpher) => {
+reg(GetType, (input, polymorpher, state) => {
     return input;
 })
 
-mutator(CallField, Polymorpher, (input, polymorpher) => {
-    const expr   = polymorpher.polymorph(input.expression);
-    const args   = input.arguments.map(x => polymorpher.polymorph(x));
+reg(CallField, (input, polymorpher, state) => {
+    const expr   = polymorpher.polymorph(input.expression, state);
+    const args   = input.arguments.map(x => polymorpher.polymorph(x, state));
     const target = expr.expressionResultType!.scope.lookupFunction(input.target.name)!;
     const output = new CallField(input.ast, expr, target);
 
@@ -135,11 +145,11 @@ mutator(CallField, Polymorpher, (input, polymorpher) => {
     return output;
 });
 
-mutator(Constant, Polymorpher, (input, polymorpher) => {
+reg(Constant, (input, polymorpher, state) => {
     return input;
 });
 
-mutator(Variable, Polymorpher, (input, polymorpher) => {
+reg(Variable, (input, polymorpher, state) => {
     const type = polymorpher.mapping.get(input);
 
     if(type === undefined && input.value === undefined){
@@ -156,7 +166,7 @@ mutator(Variable, Polymorpher, (input, polymorpher) => {
 
     if(input.value !== undefined){
         // TODO: Change variable type
-        output.value = polymorpher.polymorph(input.value);
+        output.value = polymorpher.polymorph(input.value, state);
 
         if(output.value.expressionResultType !== input.value.expressionResultType){
             // We need to change the type of this variable!
@@ -169,27 +179,27 @@ mutator(Variable, Polymorpher, (input, polymorpher) => {
     return output;
 });
 
-mutator(GetField, Polymorpher, (input, polymorpher) => {
-    const target = polymorpher.polymorph(input.target);
+reg(GetField, (input, polymorpher, state) => {
+    const target = polymorpher.polymorph(input.target, state);
     const field = target.expressionResultType!.scope.lookupVariable(input.field.name)!;
 
     return new GetField(input.ast, target, field);
 });
 
-mutator(SetField, Polymorpher, (input, polymorpher) => {
-    const target = polymorpher.polymorph(input.target);
-    const source = polymorpher.polymorph(input.source);
+reg(SetField, (input, polymorpher, state) => {
+    const target = polymorpher.polymorph(input.target, state);
+    const source = polymorpher.polymorph(input.source, state);
     const field  = target.expressionResultType!.scope.lookupVariable(input.field.name)!;
 
     return new SetField(input.ast, target, field, source);
 });
 
-mutator(GetVariable, Polymorpher, (input, polymorpher) => {
-    return new GetVariable(input.ast, polymorpher.polymorph(input.variable));
+reg(GetVariable, (input, polymorpher, state) => {
+    return new GetVariable(input.ast, polymorpher.polymorph(input.variable, state));
 });
 
-mutator(Return, Polymorpher, (input, polymorpher) => {
-    const value = polymorpher.polymorph(input.value);
+reg(Return, (input, polymorpher, state) => {
+    const value = polymorpher.polymorph(input.value, state);
 
     if(polymorpher.returnType === null){
         polymorpher.returnType = value.expressionResultType!;
@@ -198,7 +208,10 @@ mutator(Return, Polymorpher, (input, polymorpher) => {
     return new Return(input.ast, value);
 });
 
-mutator(Construct, Polymorpher, (input, polymorpher) => {
+reg(Construct, (input, polymorpher, state) => {
     // TODO: Implement Construct
     return input;
 });
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+}

@@ -31,7 +31,7 @@ interface IThing {
 
     tag: Tag;
 
-    visit<T extends Visitor<T>>(visitor: T, next: Thing[]): void;
+    visit(next: Thing[]): void;
 }
 export type Thing =
       Class
@@ -108,7 +108,7 @@ export class Class implements IThing, IType {
         this.id = id;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         for(const thing of this.members.values()){
             next.push(thing);
         }
@@ -137,7 +137,7 @@ export class Function implements IThing, IType {
         this.id = id;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         for(const thing of this.parameters){
             next.push(thing);
         }
@@ -169,7 +169,7 @@ export class Trait implements IThing, IType {
         this.id = id;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         for(const thing of this.members.values()){
             next.push(thing);
         }
@@ -203,7 +203,7 @@ export class Variable implements IThing, IType {
         this.flags = flags;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         if(this.value){
             next.push(this.value);
         }
@@ -228,7 +228,7 @@ export class CallField implements IThing, IExpr {
         this.expressionResultType = target.returnType;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         next.push(this.expression);
 
         for(const thing of this.arguments){
@@ -253,7 +253,7 @@ export class CallStatic implements IThing, IExpr {
         this.expressionResultType = target.returnType;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         for(const thing of this.arguments){
             next.push(thing);
         }
@@ -274,7 +274,7 @@ export class Constant implements IThing, IExpr {
         this.value = value;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){}
+    public visit(next: Thing[]) {}
 }
 
 export class Construct implements IThing, IExpr {
@@ -293,7 +293,7 @@ export class Construct implements IThing, IExpr {
         this.expressionResultType = this.target;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         for(const thing of this.arguments){
             next.push(thing);
         }
@@ -315,7 +315,7 @@ export class Return implements IThing, IExpr {
         this.expressionResultType = value.expressionResultType;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         next.push(this.value);
     }
 }
@@ -333,7 +333,7 @@ export class GetType implements IThing, IExpr {
         this.expressionResultType = type;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){}
+    public visit(next: Thing[]) {}
 }
 
 export class GetVariable implements IThing, IExpr {
@@ -350,7 +350,7 @@ export class GetVariable implements IThing, IExpr {
         this.expressionResultType = variable.type;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){}
+    public visit(next: Thing[]) {}
 }
 
 export class GetField implements IThing, IExpr {
@@ -371,7 +371,7 @@ export class GetField implements IThing, IExpr {
         this.expressionResultType = field.type;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         next.push(this.target);
     }
 }
@@ -391,7 +391,7 @@ export class SetVariable implements IThing {
         this.source = source;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         next.push(this.source);
     }
 }
@@ -413,7 +413,7 @@ export class SetField implements IThing {
         this.source = source;
     }
 
-    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
+    public visit(next: Thing[]) {
         next.push(this.target);
         next.push(this.source);
     }

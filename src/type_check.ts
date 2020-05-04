@@ -2,25 +2,36 @@ import { TagCount, Thing, Tag } from './ast';
 import * as Ast from './ast';
 import { canSubType, canMonomorphize, isSubType } from './type_api';
 import { Compiler } from './compile';
-import { Visitor, visitor } from './ast/visitor';
+import { Visitor, Register } from './ast/visitor';
 import { ExpressionTypeError, MissingImplementationError, BadArgumentCountError } from './errors';
 
-export class TypeChecker extends Visitor<TypeChecker> {
+export class TypeChecker extends Visitor<State, void> {
     public compiler: Compiler;
 
     protected default_visitor(thing: Thing, visitor: TypeChecker){}
 
     public constructor(compiler: Compiler){
-        super();
+        super(setup, Visitor.VisitByDefault());
         this.compiler = compiler;
     }
 
-    public check(thing: Thing){
-        this.visit(thing);
+    public check = super.visit;
+}
+
+export module TypeChecker {
+    export class State {
+
     }
 }
 
-visitor(Ast.Class, TypeChecker, (thing, visitor) => {
+type State = TypeChecker.State;
+
+export default TypeChecker;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+function setup(reg: Register<TypeChecker, State, void>){
+
+reg(Ast.Class, (thing, visitor) => {
     for(const trait of thing.traits.values()){
         if(canSubType(thing, trait)){
             continue;
@@ -30,7 +41,7 @@ visitor(Ast.Class, TypeChecker, (thing, visitor) => {
     }
 });
 
-visitor(Ast.CallStatic, TypeChecker, (thing, visitor) => {
+reg(Ast.CallStatic, (thing, visitor) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
 
@@ -62,7 +73,7 @@ visitor(Ast.CallStatic, TypeChecker, (thing, visitor) => {
     }
 });
 
-visitor(Ast.CallField, TypeChecker, (thing, visitor) => {
+reg(Ast.CallField, (thing, visitor) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
 
@@ -78,7 +89,7 @@ visitor(Ast.CallField, TypeChecker, (thing, visitor) => {
     }
 });
 
-visitor(Ast.Variable, TypeChecker, (thing, visitor) => {
+reg(Ast.Variable, (thing, visitor) => {
     if(thing.value === undefined){
         return;
     }
@@ -88,18 +99,21 @@ visitor(Ast.Variable, TypeChecker, (thing, visitor) => {
     }
 });
 
-visitor(Ast.Return, TypeChecker, (thing, visitor) => {
+reg(Ast.Return, (thing, visitor) => {
     // TODO: Return needs a way to reference the function it is defined in
 });
 
-visitor(Ast.SetVariable, TypeChecker, (thing, visitor) => {
+reg(Ast.SetVariable, (thing, visitor) => {
     if(thing.source.expressionResultType !== thing.target.type){
         visitor.compiler.report(new ExpressionTypeError(thing, thing.target.type, thing.source));
     }
 });
 
-visitor(Ast.SetField, TypeChecker, (thing, visitor) => {
+reg(Ast.SetField, (thing, visitor) => {
     if(thing.source.expressionResultType !== thing.field.type){
         visitor.compiler.report(new ExpressionTypeError(thing, thing.field.type, thing.source));
     }
 });
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+}

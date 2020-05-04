@@ -1,29 +1,39 @@
 import { Thing, Tag, CallStatic, VariableFlags, Variable, GetVariable, Expr } from './ast';
-import { Visitor, visitor } from './ast/visitor';
+import { Visitor, Register } from './ast/visitor';
 import { Compiler } from './compile';
 import { LoanViolationError, SimultaneousLoanError } from './errors';
 
-export class Analyzer extends Visitor<Analyzer> {
+export class Analyzer extends Visitor<State, void> {
     public compiler: Compiler;
 
     // TODO: This really ought to be unique per function
     public owned: Set<Variable>;
 
     public constructor(compiler: Compiler){
-        super();
+        super(setup, Visitor.VisitByDefault());
+
         this.compiler = compiler;
         this.owned = new Set();
     }
 
-    public check(thing: Thing){
-        this.visit(thing);
-    }
-
-    public default_visitor(thing: Thing, visitor: Analyzer){}
+    public check = super.visit;
 }
 
+export module Analyzer {
+    export class State {
+
+    }
+}
+
+type State = Analyzer.State;
+
+export default Analyzer;
+
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-visitor(CallStatic, Analyzer, (thing, analyzer) => {
+function setup(reg: Register<Analyzer, State, void>){
+
+reg(CallStatic, (thing, analyzer, state) => {
     // Check that the golden rule is being followed by the program.
     //  "An object must not be mutated using a mutable loan while another loan could observe it"
     //
@@ -171,3 +181,6 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
         }
     }
 });
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+}
