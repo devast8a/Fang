@@ -1,7 +1,7 @@
-import { Thing, Tag, CallStatic, VariableFlags, Variable, GetVariable } from './ast';
+import { Thing, Tag, CallStatic, VariableFlags, Variable, GetVariable, Expr } from './ast';
 import { Visitor, visitor } from './ast/visitor';
 import { Compiler } from './compile';
-import { LoanViolationError } from './errors';
+import { LoanViolationError, SimultaneousLoanError } from './errors';
 
 export class Analyzer extends Visitor<Analyzer> {
     public compiler: Compiler;
@@ -37,8 +37,14 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
     // TODO: Actually check that only alive objects can be used
     //  - Mark objects as dead when they are moved.
     //  - Only owned objects can be moved.
-    const immutableSet = new Set();
-    const mutableSet = new Set();
+
+    interface Loan {
+        argument: Expr,
+        parameter: Variable,
+    };
+
+    const immutable = new Map<Variable, Loan>();
+    const mutable = new Map<Variable, Loan>();
 
 
     // HACK: Omit analyzing for copy/move - we use them as part of ownership analysis
@@ -55,8 +61,9 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
 
     for(let i = 0; i < args.length; i++){
         const arg = args[i];
+        const param = params[i];
 
-        switch(params[i].flags & (VariableFlags.Mutates | VariableFlags.Owns)){
+        switch(param.flags & (VariableFlags.Mutates | VariableFlags.Owns)){
             // Unmarked parameters are by default immutable.
             default:
                 // TODO: Review this comment
@@ -72,7 +79,10 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
                     analyzer.compiler.report(new LoanViolationError());
                 }
 
-                immutableSet.add(arg.variable);
+                immutable.set(arg.variable, {
+                    argument: arg,
+                    parameter: params[i],
+                });
                 break;
 
             // Marked as ONLY mutable.
@@ -87,15 +97,24 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
                 }
 
                 // TODO: Don't merge these conditions. We should probably emit two different error types
-                if(mutableSet.has(arg.variable)){
-                    analyzer.compiler.report(new LoanViolationError());
+                if(mutable.has(arg.variable)){
+                    analyzer.compiler.report(new SimultaneousLoanError({
+                        call: thing,
+                        immutableArgument: arg,
+                        mutableArgument: arg,
+                        immutableParameter: params[i],
+                        mutableParameter: params[i],
+                    }));
                 }
 
                 if(analyzer.owned.has(arg.variable)){
                     analyzer.compiler.report(new LoanViolationError());
                 }
 
-                mutableSet.add(arg.variable);
+                mutable.set(arg.variable, {
+                    argument: arg,
+                    parameter: params[i],
+                });
                 break;
 
             // Marked as owned or as both owned and mutable.
@@ -123,7 +142,7 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
                 }
 
                 if(arg.target === analyzer.compiler.functions.move){
-                    if(immutableSet.has(variable) || mutableSet.has(variable) || analyzer.owned.has(variable)){
+                    if(immutable.has(variable) || mutable.has(variable) || analyzer.owned.has(variable)){
                         analyzer.compiler.report(new LoanViolationError());
                     }
 
@@ -139,9 +158,16 @@ visitor(CallStatic, Analyzer, (thing, analyzer) => {
         }
     }
 
-    for(const v of immutableSet){
-        if(mutableSet.has(v)){
-            analyzer.compiler.report(new LoanViolationError());
+    for(const i of immutable){
+        const m = mutable.get(i[0]);
+        if(m !== undefined){
+            analyzer.compiler.report(new SimultaneousLoanError({
+                call: thing,
+                immutableArgument: i[1].argument,
+                immutableParameter: i[1].parameter,
+                mutableArgument: m.argument,
+                mutableParameter: m.parameter,
+            }));
         }
     }
 });

@@ -9,6 +9,7 @@ type Node = any;
 // 
 export class CompilerError {
     public format(formatter: ErrorFormatter, compiler: Compiler){
+        console.log(this);
     }
 }
 
@@ -81,6 +82,56 @@ export class LoanViolationError extends CompilerError {
     }
 }
 
+interface SimultaneousLoanErrorArgs {
+    call: Ast.CallStatic | Ast.CallField;
+    immutableArgument: Ast.Expr;
+    immutableParameter: Ast.Variable;
+    mutableArgument: Ast.Expr;
+    mutableParameter: Ast.Variable;
+}
+
+export class SimultaneousLoanError extends CompilerError implements SimultaneousLoanErrorArgs {
+    public call: Ast.CallStatic | Ast.CallField;
+    public immutableArgument: Ast.Expr;
+    public immutableParameter: Ast.Variable;
+    public mutableArgument: Ast.Expr;
+    public mutableParameter: Ast.Variable;
+
+    public constructor(args: SimultaneousLoanErrorArgs){
+        super();
+
+        this.call               = args.call;
+        this.immutableArgument  = args.immutableArgument;
+        this.immutableParameter = args.immutableParameter;
+        this.mutableArgument    = args.mutableArgument;
+        this.mutableParameter   = args.mutableParameter;
+    }
+
+    public format(formatter: ErrorFormatter, compiler: Compiler){
+        // HACK: Deliver source to other stages correctly
+        const source = (compiler as any).source;
+
+        formatter.format({
+            message: "Call to $0 makes a mutable and immutable loan of the same value",
+            position: this.call,
+            source: source,
+            arguments: [
+                {value: this.call.target.name},
+            ],
+            highlights: [
+                {
+                    source: source,
+                    nodes: [this.mutableArgument, this.immutableArgument]
+                },
+                {
+                    source: source,
+                    nodes: [this.mutableParameter, this.immutableParameter]
+                }
+            ],
+        });
+    }
+}
+
 function levenshteinDistance(a: string, b: string){
     return levenshteinDistance_(a, b, a.length, b.length);
 }
@@ -101,7 +152,7 @@ function levenshteinDistance_(a: string, b: string, i: number, j: number): numbe
 export interface ErrorFormat {
     message: string,
     source: Source,
-    position: LineMap.Query,
+    position: LineMap.Query | Ast.Thing,
 
     arguments?: Array<{
         value: string,
@@ -121,13 +172,19 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
     public format(error: ErrorFormat): void {
         const args = error.arguments === undefined ? [] : error.arguments.map(x => this.formatArgument(x))
         const map = error.source.map;
-        const entry = map.queryToLineColumn(error.position);
+
+        let lineCol: LineMap.LineColumn;
+        if("tag" in error.position){
+            lineCol = map.queryToLineColumn({offset: 0});
+        } else {
+            lineCol = map.queryToLineColumn(error.position);
+        }
 
         // Color each of the first line components
         const banner  = chalk.bgRedBright.whiteBright('!');
         const path    = chalk.blueBright(error.source.path);
-        const line    = chalk.greenBright(entry.line + 1);
-        const column  = chalk.greenBright(entry.column + 1);
+        const line    = chalk.greenBright(lineCol.line + 1);
+        const column  = chalk.greenBright(lineCol.column + 1);
         const message = error.message.replace(/\$(\d+)/g, (_: any, index: number)=> chalk.whiteBright(`'${args[index]}'`));
 
         // First line
@@ -176,6 +233,15 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
     }
 
     public highlight(identifier: Node, source: Source){
+        if(identifier.tag !== undefined){
+            identifier = identifier.ast;
+            if(identifier instanceof Array){
+                identifier = identifier[0];
+            } else {
+                identifier = identifier.data[1];
+            }
+        }
+
         const start = Math.max(0, identifier.line - 3);
         const end   = identifier.line;
 
@@ -207,5 +273,6 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
 
             console.log(chalk.blackBright(`    ${line}| `) + lines[i]);
         }
+        console.log();
     }
 }
