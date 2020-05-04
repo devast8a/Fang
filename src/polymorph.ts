@@ -1,4 +1,4 @@
-import { Type, Function, Thing, CallStatic, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, Class, Return, Scope, Construct, CallField } from './ast';
+import { Type, Function, Thing, CallStatic, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, Class, Return, Scope, Construct, CallField, SetField, GetType } from './ast';
 import { canMonomorphize } from './type_api';
 import { Mutator, mutator } from './ast/mutator';
 import { Compiler } from './compile';
@@ -110,11 +110,20 @@ mutator(CallStatic, Polymorpher, (input, polymorpher) => {
     return output;
 });
 
+mutator(GetType, Polymorpher, (input, polymorpher) => {
+    return input;
+})
+
 mutator(CallField, Polymorpher, (input, polymorpher) => {
     const expr   = polymorpher.polymorph(input.expression);
     const args   = input.arguments.map(x => polymorpher.polymorph(x));
     const target = expr.expressionResultType!.scope.lookupFunction(input.target.name)!;
     const output = new CallField(input.ast, expr, target);
+
+    // TODO: Perform this in its own lowering step
+    if(expr.tag !== Tag.GetType){
+        args.unshift(expr);
+    }
 
     output.arguments = args;
 
@@ -165,6 +174,14 @@ mutator(GetField, Polymorpher, (input, polymorpher) => {
     const field = target.expressionResultType!.scope.lookupVariable(input.field.name)!;
 
     return new GetField(input.ast, target, field);
+});
+
+mutator(SetField, Polymorpher, (input, polymorpher) => {
+    const target = polymorpher.polymorph(input.target);
+    const source = polymorpher.polymorph(input.source);
+    const field  = target.expressionResultType!.scope.lookupVariable(input.field.name)!;
+
+    return new SetField(input.ast, target, field, source);
 });
 
 mutator(GetVariable, Polymorpher, (input, polymorpher) => {

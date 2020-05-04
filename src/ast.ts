@@ -3,12 +3,12 @@ import { canSubType, canMonomorphize } from './type_api';
 import { Visitor } from './ast/visitor';
 
 // TODO: Remove ID
+// TODO: Remove ID
 export enum Tag {
     Class,
     Function,
     Trait,
     Variable,
-
     CallField,
     CallStatic,
     Constant,
@@ -18,8 +18,8 @@ export enum Tag {
     SetField,
     SetVariable,
     Return,
-
     Poison,
+    GetType
 }
 export const TagCount = Math.max(...Object.values(Tag).filter(x => typeof(x) === 'number') as number[]) + 1;
 
@@ -41,6 +41,7 @@ export type Thing =
     | Construct
     | Function
     | GetField
+    | GetType
     | GetVariable
     | Return
     | SetField
@@ -66,6 +67,7 @@ export type Expr =
     | Constant
     | Construct
     | GetField
+    | GetType
     | GetVariable;
 
 interface IStmt {
@@ -316,6 +318,22 @@ export class Return implements IThing, IExpr {
     public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){
         next.push(this.value);
     }
+}
+
+export class GetType implements IThing, IExpr {
+    public ast: Node;
+    public tag: Tag.GetType = Tag.GetType;
+    public static tag: Tag.GetType = Tag.GetType;
+
+    public expressionResultType: Type | undefined;
+    public type: Type;
+
+    public constructor(ast: Node, type: Type){
+        this.type = type;
+        this.expressionResultType = type;
+    }
+
+    public visit<T extends Visitor<T>>(visitor: T, next: Thing[]){}
 }
 
 export class GetVariable implements IThing, IExpr {

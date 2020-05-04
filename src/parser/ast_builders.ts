@@ -320,14 +320,19 @@ export function ExReturn(node: Node, compiler: Compiler, scope: Ast.Scope){
 //// ExVariable
 export function ExVariable(node: Node, compiler: Compiler, scope: Ast.Scope){
     const name = node[0];
+
     const variable = scope.lookupVariable(name.value);
-    if(variable === undefined){
-        compiler.report(new MissingIdentifierError(name, scope));
-        //compiler.error("$0 does not exist, did you mean $1", [name, "???"], [name]);
-        return;
+    if(variable !== undefined){
+        return new Ast.GetVariable(node, variable);
     }
 
-    return new Ast.GetVariable(node, variable);
+    const type = scope.lookupType(name.value);
+    if(type !== undefined){
+        return new Ast.GetType(node, type);
+    }
+
+    compiler.report(new MissingIdentifierError(name, scope));
+    return;
 }
 
 export function LiteralInteger(node: Node, compiler: Compiler){

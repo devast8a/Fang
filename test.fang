@@ -1,22 +1,22 @@
 class Foo {
+    val x: int
 
-}
-
-fn func(a: Foo, mut b: Foo){
-
+    fn test(mut self: Foo){
+        writeLn("Value %d\n", self.x)
+    }
 }
 
 fn main(){
     val a: Foo = Foo{}
     val b: Foo = Foo{}
 
-    #fun(a, a)
-    # Loaned Set    : {a}
-    # Mutated Set   : {a}
+    a.x = 10
+    b.x = 20
 
-    func(a, b)
-    # Loaned Set    : {a}
-    # Mutated Set   : {b}
+    Foo.test(a)
+    Foo.test(b)
+
+    a.test()
 
     writeLn("Hello world\n", 0)
 }
