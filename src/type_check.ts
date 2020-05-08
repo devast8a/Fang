@@ -15,7 +15,7 @@ export class TypeChecker extends Visitor<State, void> {
         this.compiler = compiler;
     }
 
-    public check = super.visit;
+    public check = this.visit;
 }
 
 export module TypeChecker {
@@ -25,6 +25,7 @@ export module TypeChecker {
 }
 
 type State = TypeChecker.State;
+const State = TypeChecker.State;
 
 export default TypeChecker;
 

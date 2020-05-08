@@ -26,6 +26,7 @@ export module Analyzer {
 }
 
 type State = Analyzer.State;
+const State = Analyzer.State;
 
 export default Analyzer;
 

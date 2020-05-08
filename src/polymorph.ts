@@ -32,6 +32,7 @@ export module Polymorpher {
 }
 
 type State = Polymorpher.State;
+const State = Polymorpher.State;
 
 export default Polymorpher;
 
