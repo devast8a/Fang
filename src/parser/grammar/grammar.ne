@@ -168,6 +168,18 @@ erValue         -> __ expr
 
 stmt -> expression_return
 
+## Expression/Control Flow/If ######################################################################
+expression_cf_if -> eci_keyword eci_condition eci_body eci_elif:* eci_else:? {% p.If %}
+
+stmt            -> expression_cf_if
+
+eci_keyword     -> "if" _
+eci_condition   -> "(" _ expr _ ")" _
+eci_body        -> BODY[stmt] {% p.STAR %}
+
+eci_elif        -> _ "else" __ "if" _ eci_condition _ eci_body
+eci_else        -> _ "else" _ eci_body
+
 ## Literal/Integer #################################################################################
 literal_integer -> %integer_bin {% p.LiteralInteger %}
 literal_integer -> %integer_oct {% p.LiteralInteger %}

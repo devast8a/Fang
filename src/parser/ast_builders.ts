@@ -380,3 +380,25 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Scope){
         return new Ast.SetField(node, expression, variable!, value);
     }
 }
+
+// keyword condition body elif:* else:?
+export function If(node: Node, compiler: Compiler, scope: Scope){
+    const condition = compiler.parse(node[1][2], scope) as Ast.Expr;
+
+    // First condition and body
+    const body = [];
+    for(const stmt of node[2].elements){
+        body.push(compiler.parse(stmt, scope) as Ast.Stmt);
+    }
+    const cases = [new Ast.Case(condition, body)];
+
+    // TODO: Support other cases
+
+    // Else branch
+    const otherwise = [];
+    for(const stmt of node[4][3].elements){
+        otherwise.push(compiler.parse(stmt, scope) as Ast.Stmt);
+    }
+
+    return new Ast.If(node, cases, otherwise);
+}

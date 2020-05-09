@@ -1,5 +1,5 @@
 import { Scope } from './ast/scope';
-import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable } from './ast/things';
+import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable, If } from './ast/things';
 import { InputType, Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
 
@@ -211,6 +211,10 @@ reg(Return, (input, polymorpher, state) => {
 
 reg(Construct, (input, polymorpher, state) => {
     // TODO: Implement Construct
+    return input;
+});
+
+reg(If, (input, polymorpher, state) => {
     return input;
 });
 

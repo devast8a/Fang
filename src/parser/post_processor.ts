@@ -52,6 +52,7 @@ export const LiteralString  = builder(AstBuilder.LiteralString);
 export const Operator       = builder(AstBuilder.Operator);
 export const StmtAssign     = builder(AstBuilder.StmtAssign);
 export const Variable       = builder(AstBuilder.Variable);
+export const If             = builder(AstBuilder.If);
 
 export function whitespace(node: Node){
     return {

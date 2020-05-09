@@ -2,6 +2,8 @@ import { Scope } from './scope';
 
 // TODO: Remove ID
 // TODO: Remove ID
+// TODO: Remove ID
+// TODO: Remove ID
 export enum Tag {
     Class,
     Function,
@@ -17,7 +19,8 @@ export enum Tag {
     SetVariable,
     Return,
     Poison,
-    GetType
+    GetType,
+    If
 }
 export const TagCount = Math.max(...Object.values(Tag).filter(x => typeof(x) === 'number') as number[]) + 1;
 
@@ -41,6 +44,7 @@ export type Thing =
     | GetField
     | GetType
     | GetVariable
+    | If
     | Return
     | SetField
     | SetVariable
@@ -73,6 +77,7 @@ interface IStmt {
 export type Stmt =
       CallField
     | CallStatic
+    | If
     | Return
     | SetField
     | SetVariable
@@ -414,5 +419,44 @@ export class SetField implements IThing {
     public visit(next: Thing[]) {
         next.push(this.target);
         next.push(this.source);
+    }
+}
+
+export class Case {
+    public condition: Expr;
+    public body: Stmt[];
+
+    public constructor(condition: Expr, body: Stmt[]){
+        this.condition = condition;
+        this.body = body;
+    }
+}
+
+export class If implements IThing {
+    public ast: any;
+    public tag: Tag.If = Tag.If;
+    public static tag: Tag.If = Tag.If;
+
+    public cases: Case[];
+    public defaultCase: Stmt[];
+
+    public constructor(ast: Node, cases: Case[], defaultCase: Stmt[]){
+        this.ast = ast;
+        this.cases = cases;
+        this.defaultCase = defaultCase;
+    }
+
+    public visit(next: Thing[]) {
+        for(const c of this.cases){
+            next.push(c.condition);
+
+            for(const stmt of c.body){
+                next.push(stmt);
+            }
+        }
+
+        for(const stmt of this.defaultCase){
+            next.push(stmt);
+        }
     }
 }
