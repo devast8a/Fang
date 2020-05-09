@@ -1,7 +1,7 @@
-import { Type, Function, Thing, CallStatic, Expr, Constant, Variable, Stmt, Tag, GetField, GetVariable, Trait, TagCount, Class, Return, Scope, Construct, CallField, SetField, GetType } from './ast';
-import { canMonomorphize } from './type_api';
+import { Scope } from './ast/scope';
+import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable } from './ast/things';
+import { InputType, Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
-import { Visitor, InputType, Register } from './ast/visitor';
 
 export class Polymorpher extends Visitor<State, InputType> {
     mapping: Map<Variable, Type>;

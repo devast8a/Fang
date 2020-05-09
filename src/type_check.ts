@@ -1,5 +1,5 @@
-import { TagCount, Thing, Tag } from './ast';
-import * as Ast from './ast';
+import { TagCount, Thing, Tag } from './ast/things';
+import * as Ast from './ast/things';
 import { canSubType, canMonomorphize, isSubType } from './type_api';
 import { Compiler } from './compile';
 import { Visitor, Register } from './ast/visitor';

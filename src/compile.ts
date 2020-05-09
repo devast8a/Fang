@@ -1,16 +1,16 @@
-import chalk from "chalk";
 import * as fs from "fs";
 import * as nearley from "nearley";
 import 'source-map-support/register';
-import { CallStatic, Class, Function, Scope, Thing, Variable, Stmt, Type, Tag, Expr, GetField, VariableFlags } from './ast';
-import TargetCGcc from './codegen';
-import { Tag as AstTag } from './parser/post_processor';
-import TypeChecker from './type_check';
-import Polymorpher from './polymorph';
 import Analyzer from './analysis';
+import { Scope } from './ast/scope';
+import { Class, Function, Tag, Thing, Type, Variable, VariableFlags } from './ast/things';
+import TargetCGcc from './codegen';
+import { Source } from './common/source';
 import { CompilerError, ConsoleErrorFormatter } from './errors';
 import Grammar from './parser/grammar';
-import { Source } from './common/source';
+import { Tag as AstTag } from './parser/post_processor';
+import Polymorpher from './polymorph';
+import TypeChecker from './type_check';
 
 class Parse {
     public execute(compiler: Compiler){

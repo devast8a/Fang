@@ -1,9 +1,10 @@
-import * as Ast from "../ast";
+import * as Ast from "../ast/things";
+import { VariableFlags } from '../ast/things';
 import { Compiler } from '../compile';
 import { Tag } from './post_processor';
 import { canMonomorphize, canSubType } from '../type_api';
-import { VariableFlags } from '../ast';
 import { MissingIdentifierError, NotTraitError, TraitImplementingTraitError, CompilerError } from '../errors';
+import { Scope } from '../ast/scope';
 
 const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
 const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
@@ -13,7 +14,7 @@ const IMPL_TARGET_NOT_SUBTYPE       = "$0 is missing $2 required to implement $1
 
 type Node = any[];
 
-function lookupType(node: any, compiler: Compiler, scope: Ast.Scope){
+function lookupType(node: any, compiler: Compiler, scope: Scope){
     const identifier = node[0];
     const type = scope.lookupType(identifier.value);
 
@@ -26,13 +27,13 @@ function lookupType(node: any, compiler: Compiler, scope: Ast.Scope){
     return type;
 }
 
-function lookupClass(node: any, compiler: Compiler, scope: Ast.Scope){
+function lookupClass(node: any, compiler: Compiler, scope: Scope){
     const thing = scope.lookupClass(node.data[0].value);
     return thing;
 }
 
 //// Class
-export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function Class(node: Node, compiler: Compiler, scope: Scope){
     const name = node[1].text;
     const obj = new Ast.Class(node, name, scope.id + name, scope);
     scope.declareClass(obj);
@@ -63,11 +64,11 @@ export function Class(node: Node, compiler: Compiler, scope: Ast.Scope){
     return obj;
 }
 
-export function Operator(node: any, compiler: Compiler, scope: Ast.Scope){
+export function Operator(node: any, compiler: Compiler, scope: Scope){
     return Function(node, compiler, scope);
 }
 
-function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
+function Parameter(node: any, compiler: Compiler, scope: Scope) {
     // TODO: Find a better way of failing the current compilation unit
 
     let typeNode: any;
@@ -102,7 +103,7 @@ function Parameter(node: any, compiler: Compiler, scope: Ast.Scope) {
 }
 
 //// Function
-export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function Function(node: Node, compiler: Compiler, scope: Scope){
     const name = node[1][0].text;
 
     // TODO: Support developer explicitly naming a symbol
@@ -151,7 +152,7 @@ export function Function(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 //// Trait
-export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function Trait(node: Node, compiler: Compiler, scope: Scope){
     const name = node[1].text;
 
     const obj = new Ast.Trait(node, name, scope.id + name, scope);
@@ -175,7 +176,7 @@ export function Trait(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 //// Variable
-export function Variable(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function Variable(node: Node, compiler: Compiler, scope: Scope){
     const type = lookupType(node[2][3], compiler, scope);
 
     if(type === undefined){
@@ -195,7 +196,7 @@ export function Variable(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 //// ExCall
-export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function ExCallHelper(node: Node, compiler: Compiler, scope: Scope){
     switch(node[0].name){
         case 'ExVariable': {
             const thing = scope.lookupFunction(node[0].data[0].value);
@@ -234,7 +235,7 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Ast.Scope){
     }
 }
 
-export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function ExCall(node: Node, compiler: Compiler, scope: Scope){
     // TODO: Split call types into their respective categories
     //  - symbol(foo, bar)
     //  - symbol.method(foo, bar)
@@ -249,7 +250,7 @@ export function ExCall(node: Node, compiler: Compiler, scope: Ast.Scope){
     return call;
 }
 
-export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function ExprIndexDot(node: Node, compiler: Compiler, scope: Scope){
     const expression = compiler.parse(node[0], scope) as Ast.Expr;
 
     switch(expression.expressionResultType?.tag){
@@ -268,7 +269,7 @@ export function ExprIndexDot(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 //// ExConstruct
-export function ExConstruct(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function ExConstruct(node: Node, compiler: Compiler, scope: Scope){
     const target = lookupClass(node[0], compiler, scope);
 
     const thing = new Ast.Construct(node, target!);
@@ -281,7 +282,7 @@ export function ExConstruct(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 // ExOpInfix
-export function ExOpInfix(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function ExOpInfix(node: Node, compiler: Compiler, scope: Scope){
     const func = scope.lookupFunction("$infix+");
 
     if(func === undefined){
@@ -308,7 +309,7 @@ export function ExOpPrefix(node: Node, compiler: Compiler){
 }
 
 //// ExReturn
-export function ExReturn(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function ExReturn(node: Node, compiler: Compiler, scope: Scope){
     const expression = compiler.parse(node[1][1], scope) as Ast.Expr;
     if(expression === undefined){
         return;
@@ -318,7 +319,7 @@ export function ExReturn(node: Node, compiler: Compiler, scope: Ast.Scope){
 }
 
 //// ExVariable
-export function ExVariable(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function ExVariable(node: Node, compiler: Compiler, scope: Scope){
     const name = node[0];
 
     const variable = scope.lookupVariable(name.value);
@@ -351,7 +352,7 @@ export function LiteralString(node: Node, compiler: Compiler){
     );
 }
 
-export function StmtAssign(node: Node, compiler: Compiler, scope: Ast.Scope){
+export function StmtAssign(node: Node, compiler: Compiler, scope: Scope){
     // TODO: Generate AST nodes based on what we assign to
     // TODO: Support assignment operators
     // TODO: StmtAssign target should have tag

@@ -1,5 +1,5 @@
 // Code generation step
-import { CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, Member, Return, SetField, SetVariable, Stmt, Tag, Variable, CallField } from './ast';
+import { CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, Member, Return, SetField, SetVariable, Stmt, Tag, Variable, CallField } from './ast/things';
 
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];

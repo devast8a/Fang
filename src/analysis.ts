@@ -1,4 +1,4 @@
-import { Function, Tag, CallStatic, VariableFlags, Variable, GetVariable, Expr, SetVariable } from './ast';
+import { Function, Tag, CallStatic, VariableFlags, Variable, GetVariable, Expr, SetVariable } from './ast/things';
 import { Visitor, Register } from './ast/visitor';
 import { Compiler } from './compile';
 import { LoanViolationError, SimultaneousLoanError } from './errors';

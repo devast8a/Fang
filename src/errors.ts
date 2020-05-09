@@ -1,4 +1,5 @@
-import * as Ast from './ast';
+import * as Ast from './ast/things';
+import { Scope } from './ast/scope';
 import { Compiler } from './compile';
 import chalk from 'chalk';
 import { Source } from './common/source';
@@ -27,9 +28,9 @@ export class ExpressionTypeError extends CompilerError {
 
 export class MissingIdentifierError extends CompilerError {
     public readonly identifier: Node;
-    public readonly scope: Ast.Scope;
+    public readonly scope: Scope;
 
-    public constructor(identifier: Node, scope: Ast.Scope){
+    public constructor(identifier: Node, scope: Scope){
         super();
 
         this.identifier = identifier;
@@ -156,7 +157,7 @@ export interface ErrorFormat {
 
     arguments?: Array<{
         value: string,
-        scope?: Ast.Scope,
+        scope?: Scope,
     }>;
     highlights?: Array<{
         nodes: Array<Node>,
@@ -199,12 +200,12 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
         }
     }
 
-    public formatArgument(argument: { value: string; scope?: Ast.Scope; }): string {
+    public formatArgument(argument: { value: string; scope?: Scope; }): string {
         if(argument.scope !== undefined){
             let recommended = "";
             let min = argument.value.length;
 
-            let scope: Ast.Scope | null = argument.scope;
+            let scope: Scope | null = argument.scope;
 
             // TODO: Switch to longest common subsequence
             while(scope !== null){
