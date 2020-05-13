@@ -51,7 +51,7 @@ export class Scope {
             case Tag.Class:     return this.declareClass(thing);
             case Tag.Function:  return this.declareFunction(thing);
             case Tag.Trait:     return this.declareTrait(thing);
-            default: throw new Error('Incomplete switch');
+            default: throw new Error('Incomplete switch (declareType)');
         }
     }
 

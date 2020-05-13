@@ -231,7 +231,8 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Scope){
             const call = new Ast.CallField(node, expression, thing!);
             return call;
         }
-        default: throw new Error("Incomplete switch"); break;
+
+        default: throw new Error(`Incomplete switch (ExCallHelper) (${node[0].name})`); break;
     }
 }
 

@@ -1,6 +1,4 @@
-import * as fs from "fs";
 import * as nearley from "nearley";
-import 'source-map-support/register';
 import Analyzer from './analysis';
 import { Scope } from './ast/scope';
 import { Class, Function, Tag, Thing, Type, Variable, VariableFlags } from './ast/things';
@@ -120,10 +118,12 @@ export class Monomorphize {
     }
 }
 
-class Output {
+class CodeGen {
     public execute(compiler: Compiler){
         const monomorphize = new Monomorphize();
         monomorphize.execute(compiler);
+
+        let output: string = "";
 
         // Code-gen
         console.time("code-gen");
@@ -142,11 +142,11 @@ class Output {
                 target.compileFunction(func);
             }
 
-            const output = target.output.join("");
-            fs.writeFileSync("build/test.c", output);
+            output = target.output.join("");
         }
         console.timeEnd("code-gen");
 
+        return output;
     }
 }
 
@@ -239,27 +239,16 @@ export class Compiler {
     public compile(source: Source){
         (this as any).source = source;
 
-        const output = new Output();
-        output.execute(this);
+        const codegen = new CodeGen();
+        const output = codegen.execute(this);
         
         if(this.errors.length > 0){
             while(this.errors.length > 0){
                 this.errors.pop()!.format(new ConsoleErrorFormatter(), this);
             }
-            process.exit(1);
+            return null;
         }
+
+        return output;
     }
 };
-
-async function main(){
-    console.group("Compiling...");
-    const compiler = new Compiler();
-    const source = await Source.fromFile(process.argv[2]);
-    compiler.compile(source);
-    console.groupEnd();
-}
-
-main().catch((e) => {
-    console.log(e);
-    process.exit(1);
-});

@@ -1,5 +1,4 @@
 import LineMap from './linemap';
-import * as fs from 'fs';
 
 export class Source {
     private _map: SourceLineMap | undefined;
@@ -15,11 +14,6 @@ export class Source {
     public get map(){
         if(this._map === undefined){this._map = new SourceLineMap(this.content);}
         return this._map;
-    }
-
-    public static async fromFile(path: string){
-        const content = await fs.promises.readFile(path, "utf8");
-        return new Source(path, content);
     }
 }
 

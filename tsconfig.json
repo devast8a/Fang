@@ -1,12 +1,13 @@
 {
     "compilerOptions": {
         "allowSyntheticDefaultImports": true,
+        "declaration": true,
         "esModuleInterop": true,
         "experimentalDecorators": true,
-        "sourceMap": true,
         "module": "commonjs",
         "outDir": "build/js",
         "rootDir": "src/",
+        "sourceMap": true,
         "strict": true,
         "target": "ES6",
         "types": [

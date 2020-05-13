@@ -14,13 +14,13 @@ export enum Tag {
     PARAMETER_TYPE,
 }
 
-function builder<T>(builder: (node: Node, state: Compiler, scope: Scope) => T){
+function builder<T>(builder: (node: Node, state: Compiler, scope: Scope) => T, name: string){
     return function(node: Node){
         return {
             tag: Tag.NODE,
             data: node,
             builder: builder,
-            name: builder.name,
+            name: name,
         };
     }
 }
@@ -38,21 +38,21 @@ export function Trait(node: any){
 
 //export const Class          = builder(AstBuilder.Class);
 //export const Trait          = builder(AstBuilder.Trait);
-export const ExCall         = builder(AstBuilder.ExCall);
-export const ExConstruct    = builder(AstBuilder.ExConstruct);
-export const ExOpInfix      = builder(AstBuilder.ExOpInfix);
-export const ExOpPostfix    = builder(AstBuilder.ExOpPostfix);
-export const ExOpPrefix     = builder(AstBuilder.ExOpPrefix);
-export const ExReturn       = builder(AstBuilder.ExReturn);
-export const ExVariable     = builder(AstBuilder.ExVariable);
-export const ExprIndexDot   = builder(AstBuilder.ExprIndexDot);
-export const Function       = builder(AstBuilder.Function);
-export const LiteralInteger = builder(AstBuilder.LiteralInteger);
-export const LiteralString  = builder(AstBuilder.LiteralString);
-export const Operator       = builder(AstBuilder.Operator);
-export const StmtAssign     = builder(AstBuilder.StmtAssign);
-export const Variable       = builder(AstBuilder.Variable);
-export const If             = builder(AstBuilder.If);
+export const ExCall         = builder(AstBuilder.ExCall, 'ExCall');
+export const ExConstruct    = builder(AstBuilder.ExConstruct, 'ExConstruct');
+export const ExOpInfix      = builder(AstBuilder.ExOpInfix, 'ExOpInfix');
+export const ExOpPostfix    = builder(AstBuilder.ExOpPostfix, 'ExOpPostfix');
+export const ExOpPrefix     = builder(AstBuilder.ExOpPrefix, 'ExOpPrefix');
+export const ExReturn       = builder(AstBuilder.ExReturn, 'ExReturn');
+export const ExVariable     = builder(AstBuilder.ExVariable, 'ExVariable');
+export const ExprIndexDot   = builder(AstBuilder.ExprIndexDot, 'ExprIndexDot');
+export const Function       = builder(AstBuilder.Function, 'Function');
+export const LiteralInteger = builder(AstBuilder.LiteralInteger, 'LiteralInteger');
+export const LiteralString  = builder(AstBuilder.LiteralString, 'LiteralString');
+export const Operator       = builder(AstBuilder.Operator, 'Operator');
+export const StmtAssign     = builder(AstBuilder.StmtAssign, 'StmtAssign');
+export const Variable       = builder(AstBuilder.Variable, 'Variable');
+export const If             = builder(AstBuilder.If, 'If');
 
 export function whitespace(node: Node){
     return {

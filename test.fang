@@ -4,6 +4,14 @@ class Foo {
     fn test(mut self: Foo){
         writeLn("Value %d\n", self.x)
     }
+
+    fn destructor(own self: Foo){
+        writeLn("Destroy Foo %d\n", self.x)
+    }
+}
+
+fn test(mut b: Foo, mut c: Foo){
+
 }
 
 fn main(){
@@ -13,10 +21,19 @@ fn main(){
     a.x = 10
     b.x = 20
 
+    # test(a, a)
+    # test(a, a)
+
     Foo.test(a)
     Foo.test(b)
 
-    a.test()
+    val x: int = 0
+    val y: int = 20
 
-    writeLn("Hello world\n", 0)
+    if(x){
+        Foo.test(a)
+        Foo.test(a)
+    } else {
+        Foo.test(b)
+    }
 }
