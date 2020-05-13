@@ -103,9 +103,9 @@ reg(CallStatic, (input, polymorpher, state) => {
 
     if(mapping.size > 0){
         // TODO: Replace with a clearer way of instantiating generics
-        polymorpher.scope.functions.delete(input.target.name);
+        polymorpher.scope.functionNameMap.delete(input.target.name);
 
-        let monomorphized = polymorpher.scope.functions.get(name);
+        let monomorphized = polymorpher.scope.functionNameMap.get(name);
         if(monomorphized === undefined){
             const inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, mapping);
             monomorphized = inner.polymorph(input.target, state);

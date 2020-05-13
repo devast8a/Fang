@@ -1,11 +1,17 @@
 import { Class, Function, Trait, Type, Variable, Tag } from './things';
 
 export class Scope {
-    public readonly classes    = new Map<string, Class>();
-    public readonly functions  = new Map<string, Function>();
-    public readonly traits     = new Map<string, Trait>();
-    public readonly types      = new Map<string, Type>();
-    public readonly variables  = new Map<string, Variable>();
+    public readonly classNameMap        = new Map<string, Class>();
+    public readonly functionNameMap     = new Map<string, Function>();
+    public readonly traitNameMap        = new Map<string, Trait>();
+    public readonly typeNameMap         = new Map<string, Type>();
+    public readonly variableNameMap     = new Map<string, Variable>();
+
+    public readonly classes    = new Array<Class>();
+    public readonly functions  = new Array<Function>();
+    public readonly traits     = new Array<Trait>();
+    public readonly types      = new Array<Type>();
+    public readonly variables  = new Array<Variable>();
 
     public readonly parent: Scope | null;
     public readonly id: string;
@@ -15,35 +21,21 @@ export class Scope {
         this.parent = parent === undefined ? null : parent;
     }
 
-    public declareClass(thing: Class){
-        if(this.types.has(thing.name)){
-            throw new Error('Not implemented yet');
-        }
+    public declareClass     = Scope.declare(scope => scope.classes, scope => scope.classNameMap);
+    public lookupClass      = Scope.lookup(scope => scope.classNameMap);
 
-        this.classes.set(thing.name, thing);
-        this.types.set(thing.name, thing);
-    }
+    public lookupFunction   = Scope.lookup(scope => scope.functionNameMap);
+    public declareFunction  = Scope.declare(scope => scope.functions, scope => scope.functionNameMap);
 
-    public declareFunction(thing: Function){
-        if(this.types.has(thing.name)){
-            throw new Error('Not implemented yet');
-        }
+    public lookupTrait      = Scope.lookup(scope => scope.traitNameMap);
+    public declareTrait     = Scope.declare(scope => scope.traits, scope => scope.traitNameMap);
 
-        this.functions.set(thing.name, thing);
-        this.types.set(thing.name, thing);
-    }
+    public lookupVariable   = Scope.lookup(scope => scope.variableNameMap);
+    public declareVariable  = Scope.declare(scope => scope.variables, scope => scope.variableNameMap);
 
-    public declareTrait(thing: Trait){
-        if(this.types.has(thing.name)){
-            throw new Error('Not implemented yet');
-        }
-
-        this.traits.set(thing.name, thing);
-        this.types.set(thing.name, thing);
-    }
-
+    public lookupType       = Scope.lookup(scope => scope.typeNameMap);
     public declareType(thing: Type){
-        if(this.types.has(thing.name)){
+        if(this.typeNameMap.has(thing.name)){
             throw new Error('Not implemented yet');
         }
 
@@ -54,60 +46,51 @@ export class Scope {
             default: throw new Error('Incomplete switch (declareType)');
         }
     }
+    
+    private static declare<T>(
+        declared: (scope: Scope) => Array<T>,
+        map: (scope: Scope) => Map<string, T>
+    ){
+        return function(this: Scope, thing: T){
+            const _thing = thing as any;
+            const name = _thing.name;
 
-    public declareVariable(thing: Variable){
-        if(this.variables.has(thing.name)){
-            throw new Error('Not implemented yet');
+            if(this.typeNameMap.has(name)){
+                throw new Error('Not implemented yet');
+            }
+
+            map(this).set(name, thing);
+            declared(this).push(thing);
+
+            if(_thing.tag !== Tag.Variable){
+                this.typeNameMap.set(name, _thing);
+                this.types.push(_thing);
+            }
         }
-
-        this.variables.set(thing.name, thing);
     }
 
-    private static lookup<T>(
-        scope: Scope,
-        name: string,
-        getMap: (scope: Scope) => Map<string, T>,
-        register: (this: Scope, thing: T) => void,
-    ){
-        const thing = getMap(scope).get(name);
-
-        if(thing !== undefined){
-            return thing;
-        }
-
-        let parent = scope.parent;
-        while(parent !== null){
-            const thing = getMap(parent).get(name);
+    private static lookup<T>(getMap: (scope: Scope) => Map<string, T>){
+        return function(this: Scope, name: string){
+            const thing = getMap(this).get(name);
 
             if(thing !== undefined){
-                // Import name into local scope for fast lookups
-                register.call(scope, thing);
                 return thing;
             }
 
-            parent = parent.parent;
+            let parent = this.parent;
+            while(parent !== null){
+                const thing = getMap(parent).get(name);
+
+                if(thing !== undefined){
+                    // Import name into local scope for fast lookups
+                    getMap(this).set(name, thing);
+                    return thing;
+                }
+
+                parent = parent.parent;
+            }
+
+            return undefined;
         }
-
-        return undefined;
-    }
-
-    public lookupClass(name: string) {
-        return Scope.lookup(this, name, x => x.classes, Scope.prototype.declareClass);
-    }
-
-    public lookupFunction(name: string) {
-        return Scope.lookup(this, name, x => x.functions, Scope.prototype.declareFunction);
-    }
-
-    public lookupTrait(name: string){
-        return Scope.lookup(this, name, x => x.traits, Scope.prototype.declareTrait);
-    }
-
-    public lookupType(name: string) {
-        return Scope.lookup(this, name, x => x.types, Scope.prototype.declareType);
-    }
-
-    public lookupVariable(name: string) {
-        return Scope.lookup(this, name, x => x.variables, Scope.prototype.declareVariable);
     }
 }

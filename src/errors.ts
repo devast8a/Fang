@@ -209,7 +209,7 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
 
             // TODO: Switch to longest common subsequence
             while(scope !== null){
-                for(const symbol of scope.types.keys()){
+                for(const symbol of scope.typeNameMap.keys()){
                     const distance = levenshteinDistance(argument.value, symbol);
                     if(distance < min){
                         recommended = symbol;
@@ -217,7 +217,7 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
                     }
                 }
 
-                for(const symbol of scope.variables.keys()){
+                for(const symbol of scope.variableNameMap.keys()){
                     const distance = levenshteinDistance(argument.value, symbol);
                     if(distance < min){
                         recommended = symbol;

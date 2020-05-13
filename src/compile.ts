@@ -49,15 +49,15 @@ class AstGeneration {
         console.timeEnd("ast-generation");
 
         // TODO: Remove hack to avoid outputting compiler defined functions
-        compiler.scope.types.delete("none");
-        compiler.scope.types.delete("str");
-        compiler.scope.types.delete("int");
-        compiler.scope.types.delete("writeLn");
-        compiler.scope.types.delete("$infix+");
-        compiler.scope.functions.delete("writeLn");
-        compiler.scope.functions.delete("$infix+");
-        compiler.scope.functions.delete("copy");
-        compiler.scope.functions.delete("move");
+        compiler.scope.typeNameMap.delete("none");
+        compiler.scope.typeNameMap.delete("str");
+        compiler.scope.typeNameMap.delete("int");
+        compiler.scope.typeNameMap.delete("writeLn");
+        compiler.scope.typeNameMap.delete("$infix+");
+        compiler.scope.functionNameMap.delete("writeLn");
+        compiler.scope.functionNameMap.delete("$infix+");
+        compiler.scope.functionNameMap.delete("copy");
+        compiler.scope.functionNameMap.delete("move");
     }
 }
 
@@ -70,7 +70,7 @@ class TypeCheck {
         console.time("type-checking");
         const checker = new TypeChecker(compiler);
         const state = new TypeChecker.State();
-        for(const type of compiler.scope.types.values()){
+        for(const type of compiler.scope.typeNameMap.values()){
             checker.check(type, state);
             //type.checkTypes(this);
         }
@@ -88,7 +88,7 @@ class Analyze {
         console.time("analysis");
         const analyser = new Analyzer(compiler);
         const state = new Analyzer.State();
-        for(const type of compiler.scope.types.values()){
+        for(const type of compiler.scope.typeNameMap.values()){
             analyser.check(type, state);
         }
         console.timeEnd("analysis");
@@ -105,12 +105,12 @@ export class Monomorphize {
         console.time("monomorphize");
         const polymorpher = new Polymorpher(compiler, compiler.scope);
         const state = new Polymorpher.State();
-        for(const type of compiler.scope.types.values()){
+        for(const type of compiler.scope.typeNameMap.values()){
             let morphed = polymorpher.polymorph(type, state);
 
             if(morphed.tag === Tag.Function){
-                compiler.scope.types.set(morphed.name, morphed);
-                compiler.scope.functions.set(morphed.name, morphed);
+                compiler.scope.typeNameMap.set(morphed.name, morphed);
+                compiler.scope.functionNameMap.set(morphed.name, morphed);
             }
         }
         console.timeEnd("monomorphize");
@@ -130,15 +130,15 @@ class CodeGen {
         if(compiler.errors.length === 0){
             const target = new TargetCGcc();
 
-            for(const thing of (compiler.scope as any).classes.values()){
+            for(const thing of compiler.scope.classNameMap.values()){
                 target.compileClass(thing);
             }
 
-            for(const func of Array.from(compiler.scope.functions.values())){
+            for(const func of Array.from(compiler.scope.functionNameMap.values())){
                 target.declareFunction(func);
             }
 
-            for(const func of Array.from(compiler.scope.functions.values())){
+            for(const func of Array.from(compiler.scope.functionNameMap.values())){
                 target.compileFunction(func);
             }
 
@@ -172,9 +172,9 @@ export class Compiler {
         const int = new Class("", "int", "int", scope);
         const none = new Class("", "none", "void", scope);
 
-        scope.types.set("none", none);
-        scope.types.set("str", str);
-        scope.types.set("int", int);
+        scope.typeNameMap.set("none", none);
+        scope.typeNameMap.set("str", str);
+        scope.typeNameMap.set("int", int);
 
         const f = new Function("", "writeLn", "writeLn", scope);
         f.returnType = none;
@@ -184,15 +184,15 @@ export class Compiler {
 
         scope.declareFunction(f);
 
-        scope.functions.set("$infix+", new Function("", "$infix+", "$infix+", scope));
+        scope.functionNameMap.set("$infix+", new Function("", "$infix+", "$infix+", scope));
 
         const copy = new Function("", "copy", "copy", scope);
         copy.parameters.push(new Variable("", "", str, VariableFlags.None, ""));
-        scope.functions.set("copy", copy);
+        scope.functionNameMap.set("copy", copy);
 
         const move = new Function("", "move", "move", scope);
         move.parameters.push(new Variable("", "", str, VariableFlags.None, ""));
-        scope.functions.set("move", move);
+        scope.functionNameMap.set("move", move);
 
         this.types = {
             string: str,
