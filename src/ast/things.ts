@@ -1,26 +1,23 @@
 import { Scope } from './scope';
 
-// TODO: Remove ID
-// TODO: Remove ID
-// TODO: Remove ID
-// TODO: Remove ID
 export enum Tag {
-    Class,
-    Function,
-    Trait,
-    Variable,
+    Block,
     CallField,
     CallStatic,
+    Class,
     Constant,
     Construct,
+    Function,
     GetField,
+    GetType,
     GetVariable,
+    If,
+    Poison,
+    Return,
     SetField,
     SetVariable,
-    Return,
-    Poison,
-    GetType,
-    If
+    Trait,
+    Variable,
 }
 export const TagCount = Math.max(...Object.values(Tag).filter(x => typeof(x) === 'number') as number[]) + 1;
 
@@ -35,7 +32,8 @@ interface IThing {
     visit(next: Thing[]): void;
 }
 export type Thing =
-      Class
+      Block
+    | Class
     | CallField
     | CallStatic
     | Constant
@@ -128,11 +126,16 @@ export class Function implements IThing, IType {
 
     public returnType: Type | undefined = undefined;
     public parameters = new Array<Variable>();
-    public body = new Array<Stmt>();
+    public body = new Block();
 
     public scope: Scope;
 
-    public constructor(ast: Node, name: string, id: string, parentScope: Scope){
+    public constructor(
+        ast: Node,
+        name: string,
+        id: string,
+        parentScope: Scope,
+    ){
         this.scope = new Scope(parentScope.id + "F" + name + "_", parentScope);
 
         this.ast = ast;
@@ -145,9 +148,7 @@ export class Function implements IThing, IType {
             next.push(thing);
         }
 
-        for(const thing of this.body){
-            next.push(thing);
-        }
+        next.push(this.body);
     }
 }
 
@@ -424,9 +425,9 @@ export class SetField implements IThing {
 
 export class Case {
     public condition: Expr;
-    public body: Stmt[];
+    public body: Block;
 
-    public constructor(condition: Expr, body: Stmt[]){
+    public constructor(condition: Expr, body: Block){
         this.condition = condition;
         this.body = body;
     }
@@ -438,9 +439,9 @@ export class If implements IThing {
     public static tag: Tag.If = Tag.If;
 
     public cases: Case[];
-    public defaultCase: Stmt[];
+    public defaultCase: Block;
 
-    public constructor(ast: Node, cases: Case[], defaultCase: Stmt[]){
+    public constructor(ast: Node, cases: Case[], defaultCase: Block){
         this.ast = ast;
         this.cases = cases;
         this.defaultCase = defaultCase;
@@ -449,13 +450,27 @@ export class If implements IThing {
     public visit(next: Thing[]) {
         for(const c of this.cases){
             next.push(c.condition);
-
-            for(const stmt of c.body){
-                next.push(stmt);
-            }
+            next.push(c.body);
         }
 
-        for(const stmt of this.defaultCase){
+        next.push(this.defaultCase);
+    }
+}
+
+export class Block implements IThing {
+    public ast: any;
+    public tag: Tag.Block = Tag.Block;
+    public static tag: Tag.Block = Tag.Block;
+
+    public block: Stmt[];
+
+    public constructor(block?: Stmt[]){
+        this.ast = null;
+        this.block = block === undefined ? [] : block;
+    }
+
+    public visit(next: Thing[]) {
+        for(const stmt of this.block){
             next.push(stmt);
         }
     }

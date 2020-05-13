@@ -42,12 +42,12 @@ export class TargetCGcc {
             output.push(parameter.id);
         }
         output.push("){");
-        if(thing.body.length > 0){
+        if(thing.body.block.length > 0){
             output.push("\n");
         }
 
         // Body
-        for(const expression of thing.body){
+        for(const expression of thing.body.block){
             output.push("\t");
             this.compileStmt(expression);
             output.push(";\n");
@@ -88,7 +88,7 @@ export class TargetCGcc {
             this.compileExpr(c.condition);
             output.push("){\n");
 
-            for(const stmt of c.body){
+            for(const stmt of c.body.block){
                 this.compileStmt(stmt);
                 output.push(";\n");
             }
@@ -96,9 +96,9 @@ export class TargetCGcc {
             output.push("}");
         }
 
-        if(thing.defaultCase.length !== 0){
+        if(thing.defaultCase.block.length !== 0){
             output.push(" else {\n");
-            for(const stmt of thing.defaultCase){
+            for(const stmt of thing.defaultCase.block){
                 this.compileStmt(stmt);
                 output.push(";\n");
             }
@@ -124,12 +124,12 @@ export class TargetCGcc {
             output.push(parameter.id);
         }
         output.push("){");
-        if(thing.body.length > 0){
+        if(thing.body.block.length > 0){
             output.push("\n");
         }
 
         // Body
-        for(const expression of thing.body){
+        for(const expression of thing.body.block){
             output.push("\t");
             this.compileStmt(expression);
             output.push(";\n");

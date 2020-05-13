@@ -1,5 +1,5 @@
 import { Scope } from './ast/scope';
-import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable, If } from './ast/things';
+import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable, If, Block } from './ast/things';
 import { InputType, Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
 
@@ -48,7 +48,10 @@ reg(Function, (input, polymorpher, state) => {
 
     let returnType      = input.returnType;
     const parameters    = input.parameters.map(x => inner.polymorph(x, state));
-    const body          = input.body.map(x => inner.polymorph(x, state));
+    const body          = inner.polymorph(input.body, state);
+
+    //const body          = input.body.map(x => inner.polymorph(x, state));
+
 
     if(input.returnType!.tag === Tag.Trait){
         returnType = inner.returnType!;
@@ -61,6 +64,10 @@ reg(Function, (input, polymorpher, state) => {
     output.parameters = parameters;
     output.body       = body;
     return output;
+});
+
+reg(Block, (input, polymorpher, state) => {
+    return new Block(input.block.map(x => polymorpher.polymorph(x, state)));
 });
 
 reg(Class, (input, polymorpher, state) => {

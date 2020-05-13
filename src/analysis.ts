@@ -43,7 +43,8 @@ reg(Function, (thing, analyzer, state) => {
         analyzer.check(parameter, functionState);
     }
 
-    for(const stmt of thing.body){
+    // TODO: Don't avoid analyzing block
+    for(const stmt of thing.body.block){
         analyzer.check(stmt, functionState);
     }
 });

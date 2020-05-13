@@ -141,7 +141,7 @@ export function Function(node: Node, compiler: Compiler, scope: Scope){
         for(const statement of node[5][1].elements){
             const stmt = compiler.parse(statement, obj.scope);
             if(stmt !== undefined){
-                obj.body.push(stmt as Ast.Stmt);
+                obj.body.block.push(stmt as Ast.Stmt);
             }
         }
     }
@@ -391,7 +391,7 @@ export function If(node: Node, compiler: Compiler, scope: Scope){
     for(const stmt of node[2].elements){
         body.push(compiler.parse(stmt, scope) as Ast.Stmt);
     }
-    const cases = [new Ast.Case(condition, body)];
+    const cases = [new Ast.Case(condition, new Ast.Block(body))];
 
     // TODO: Support other cases
 
@@ -401,5 +401,5 @@ export function If(node: Node, compiler: Compiler, scope: Scope){
         otherwise.push(compiler.parse(stmt, scope) as Ast.Stmt);
     }
 
-    return new Ast.If(node, cases, otherwise);
+    return new Ast.If(node, cases, new Ast.Block(otherwise));
 }
