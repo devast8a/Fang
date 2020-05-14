@@ -1,17 +1,13 @@
 class Foo {
     val x: int
 
-    fn test(mut self: Foo){
-        writeLn("Value %d\n", self.x)
-    }
-
-    fn destructor(own self: Foo){
+    op destructor(own self: Foo){
         writeLn("Destroy Foo %d\n", self.x)
     }
 }
 
-fn test(mut b: Foo, mut c: Foo){
-
+fn test(own foo: Foo){
+    writeLn("Test Foo %d\n", foo.x)
 }
 
 fn main(){
@@ -21,19 +17,7 @@ fn main(){
     a.x = 10
     b.x = 20
 
-    # test(a, a)
-    # test(a, a)
+    test(move(a))
 
-    Foo.test(a)
-    Foo.test(b)
-
-    val x: int = 0
-    val y: int = 20
-
-    if(x){
-        Foo.test(a)
-        Foo.test(a)
-    } else {
-        Foo.test(b)
-    }
+    writeLn("Main Foo %d\n", b.x)
 }

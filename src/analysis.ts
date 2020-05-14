@@ -1,4 +1,4 @@
-import { Function, Tag, CallStatic, VariableFlags, Variable, GetVariable, Expr, SetVariable } from './ast/things';
+import { Function, Tag, CallStatic, VariableFlags, Variable, GetVariable, Expr, SetVariable, Block, CallField } from './ast/things';
 import { Visitor, Register } from './ast/visitor';
 import { Compiler } from './compile';
 import { LoanViolationError, SimultaneousLoanError } from './errors';
@@ -41,11 +41,25 @@ reg(Function, (thing, analyzer, state) => {
 
     for(const parameter of thing.parameters){
         analyzer.check(parameter, functionState);
+        functionState.alive.set(parameter, true);
     }
 
     // TODO: Don't avoid analyzing block
     for(const stmt of thing.body.block){
         analyzer.check(stmt, functionState);
+    }
+
+    // TODO: Do a better check for destructors
+    if(thing.name === 'destructor'){
+        return;
+    }
+
+    for(const [variable, alive] of functionState.alive){
+        if(alive){
+            const target = new CallStatic(null, variable.type.scope.lookupFunction("destructor")!);
+            target.arguments.push(new GetVariable(null, variable));
+            thing.body.block.push(target);
+        }
     }
 });
 
@@ -59,7 +73,40 @@ reg(SetVariable, (thing, analyzer, state) => {
     state.alive.set(thing.target, true);
 });
 
-reg(CallStatic, (thing, analyzer, state) => {
+reg(CallStatic, HandleFunctionCall);
+reg(CallField, HandleFunctionCall);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+}
+
+interface Loan {
+    argument: Expr,
+    parameter: Variable,
+};
+
+function isMove(expression: Expr, analyzer: Analyzer){
+    if(expression.tag !== Tag.CallStatic){
+        return false;
+    }
+
+    return expression.target === analyzer.compiler.functions.move;
+}
+
+function getCopyOrMoveTarget(expression: Expr, analyzer: Analyzer){
+    if(expression.tag !== Tag.CallStatic){
+        return null;
+    }
+
+    if(expression.target !== analyzer.compiler.functions.copy &&
+        expression.target !== analyzer.compiler.functions.move){
+        return null;
+    }
+
+    // TODO: Support moving fields/arrays etc...
+    return (expression.arguments[0] as GetVariable).variable;
+}
+
+function HandleFunctionCall(thing: CallStatic | CallField, analyzer: Analyzer, state: State){
     // Check that the golden rule is being followed by the program.
     //  "An object must not be mutated using a mutable loan while another loan could observe it"
     //
@@ -106,13 +153,13 @@ reg(CallStatic, (thing, analyzer, state) => {
         const loan = {argument, parameter};
 
         if(parameter.flags & VariableFlags.Mutates){
-            // Check that a function does not loan a value mutably AND immutably
+            // Check call does not result in a mutable and immutable loan of a value
             let other = immutable.get(argument.variable);
             if(other !== undefined){
                 reportSimultaneousLoan(analyzer, thing, loan, other);
             }
 
-            // Check that a function does not mutably loan the same value more than once
+            // Check call does not result in multiple mutable loans of same value
             other = mutable.get(argument.variable);
             if(other !== undefined){
                 reportSimultaneousLoan(analyzer, thing, loan, other);
@@ -120,7 +167,7 @@ reg(CallStatic, (thing, analyzer, state) => {
 
             mutable.set(argument.variable, loan);
         } else {
-            // Check that a function does not loan a value mutably AND immutably
+            // Check call does not result in a mutable and immutable loan of a value
             let other = mutable.get(argument.variable);
             if(other !== undefined){
                 reportSimultaneousLoan(analyzer, thing, other, loan);
@@ -129,38 +176,7 @@ reg(CallStatic, (thing, analyzer, state) => {
             immutable.set(argument.variable, loan);
         }
     }
-});
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 }
-
-interface Loan {
-    argument: Expr,
-    parameter: Variable,
-};
-
-function isMove(expression: Expr, analyzer: Analyzer){
-    if(expression.tag !== Tag.CallStatic){
-        return false;
-    }
-
-    return expression.target === analyzer.compiler.functions.move;
-}
-
-function getCopyOrMoveTarget(expression: Expr, analyzer: Analyzer){
-    if(expression.tag !== Tag.CallStatic){
-        return null;
-    }
-
-    if(expression.target !== analyzer.compiler.functions.copy &&
-        expression.target !== analyzer.compiler.functions.move){
-        return null;
-    }
-
-    // TODO: Support moving fields/arrays etc...
-    return (expression.arguments[0] as GetVariable).variable;
-}
-
 
 function HandleOwnedParameter(analyzer: Analyzer, state: State, argument: Expr){
     const variable = getCopyOrMoveTarget(argument, analyzer);
@@ -184,7 +200,7 @@ function HandleOwnedParameter(analyzer: Analyzer, state: State, argument: Expr){
     }
 }
 
-function reportSimultaneousLoan(analyzer: Analyzer, call: CallStatic, mutable: Loan, immutable: Loan){
+function reportSimultaneousLoan(analyzer: Analyzer, call: CallStatic | CallField, mutable: Loan, immutable: Loan){
     analyzer.compiler.report(new SimultaneousLoanError({
         call: call,
         immutableArgument: immutable.argument,

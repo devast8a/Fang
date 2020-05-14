@@ -166,7 +166,7 @@ export class Compiler {
     constructor(){
         // TODO: Support binding to target within the language itself
         // TODO: Use the actual name of the module
-        const scope = this.scope = new Scope('Ftest_');
+        const scope = this.scope = new Scope('F');
 
         const str = new Class("", "str", "char*", scope);
         const int = new Class("", "int", "int", scope);

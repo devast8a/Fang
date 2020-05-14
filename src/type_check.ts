@@ -42,7 +42,7 @@ reg(Ast.Class, (thing, visitor) => {
     }
 });
 
-reg(Ast.CallStatic, (thing, visitor) => {
+reg(Ast.CallStatic, (thing, visitor, state) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
 
@@ -67,6 +67,8 @@ reg(Ast.CallStatic, (thing, visitor) => {
             continue;
         }
 
+        visitor.check(args[i], state);
+
         if(args[i].expressionResultType !== params[i].type){
             // TODO: Use an error specific to calls?
             visitor.compiler.report(new ExpressionTypeError(args[i], params[i].type, args[i]))
@@ -74,7 +76,7 @@ reg(Ast.CallStatic, (thing, visitor) => {
     }
 });
 
-reg(Ast.CallField, (thing, visitor) => {
+reg(Ast.CallField, (thing, visitor, state) => {
     const args = thing.arguments;
     const params = thing.target.parameters;
 
@@ -82,6 +84,8 @@ reg(Ast.CallField, (thing, visitor) => {
         if(args[i].tag === Tag.Constant){
             continue;
         }
+
+        visitor.check(args[i], state);
 
         if(args[i].expressionResultType !== params[i].type){
             // TODO: Use an error specific to calls?

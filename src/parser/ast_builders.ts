@@ -99,7 +99,7 @@ function Parameter(node: any, compiler: Compiler, scope: Scope) {
         return
     }
 
-    return new Ast.Variable(node, name, type, flags, scope.id + name);
+    return new Ast.Variable(node, name, type, flags, name);
 }
 
 //// Function
@@ -108,7 +108,7 @@ export function Function(node: Node, compiler: Compiler, scope: Scope){
 
     // TODO: Support developer explicitly naming a symbol
     let id = name;
-    if(scope.id != "Ftest_" || name != "main"){
+    if(scope.id != "F" || name != "main"){
         id = scope.id + name;
     }
 
@@ -185,7 +185,8 @@ export function Variable(node: Node, compiler: Compiler, scope: Scope){
     }
 
     // HACK: We currently set Variable as local. This is -NOT- true generally.
-    const thing = new Ast.Variable(node, node[1].value, type, VariableFlags.Local, scope.id + node[1].value);
+    // TODO: We need to detect and handle locals differently
+    const thing = new Ast.Variable(node, node[1].value, type, VariableFlags.Local, node[1].value);
 
     if(node[3] !== null){
         thing.value = compiler.parse(node[3][4], scope) as Ast.Expr;

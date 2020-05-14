@@ -21,8 +21,37 @@ export class MissingImplementationError extends CompilerError {
 }
 
 export class ExpressionTypeError extends CompilerError {
-    public constructor(target: any, type: Ast.Type, source: Ast.Expr){
+    public readonly target: Ast.Thing;
+    public readonly type: Ast.Type;
+
+    public readonly source: Ast.Expr;
+
+    public constructor(target: Ast.Thing, type: Ast.Type, source: Ast.Expr){
         super();
+
+        this.target = target;
+        this.type = type;
+        this.source = source;
+    }
+
+    public format(formatter: ErrorFormatter, compiler: Compiler){
+        // HACK: Deliver source to other stages correctly
+        const source = (compiler as any).source;
+
+        formatter.format({
+            message: "Type of $0 is incorrect",
+            position: this.target,
+            source: source,
+            arguments: [
+                {value: '???'},
+            ],
+            highlights: [
+                {
+                    source: source,
+                    nodes: [this.source]
+                }
+            ],
+        });
     }
 }
 
