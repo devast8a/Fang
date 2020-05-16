@@ -180,6 +180,15 @@ eci_body        -> BODY[stmt] {% p.STAR %}
 eci_elif        -> _ "else" __ "if" _ eci_condition _ eci_body
 eci_else        -> _ "else" _ eci_body
 
+## Expression/Control Flow/While ###################################################################
+expression_cf_while -> ecw_keyword ecw_condition ecw_body {% p.While %}
+
+stmt            -> expression_cf_while
+
+ecw_keyword     -> "while" _
+ecw_condition   -> "(" _ expr _ ")" _
+ecw_body        -> BODY[stmt] {% p.STAR %}
+
 ## Literal/Integer #################################################################################
 literal_integer -> %integer_bin {% p.LiteralInteger %}
 literal_integer -> %integer_oct {% p.LiteralInteger %}

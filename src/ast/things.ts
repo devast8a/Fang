@@ -18,6 +18,7 @@ export enum Tag {
     SetVariable,
     Trait,
     Variable,
+    While
 }
 export const TagCount = Math.max(...Object.values(Tag).filter(x => typeof(x) === 'number') as number[]) + 1;
 
@@ -47,7 +48,8 @@ export type Thing =
     | SetField
     | SetVariable
     | Trait
-    | Variable;
+    | Variable
+    | Stmt;
 
 interface IType {
     name: string;
@@ -79,7 +81,8 @@ export type Stmt =
     | Return
     | SetField
     | SetVariable
-    | Variable;
+    | Variable
+    | While;
 
 export type Member =
       Class
@@ -473,5 +476,27 @@ export class Block implements IThing {
         for(const stmt of this.block){
             next.push(stmt);
         }
+    }
+}
+
+export class While implements IThing {
+    public ast: any;
+    public tag: Tag.While = Tag.While;
+    public static tag: Tag.While = Tag.While;
+
+    public condition: Expr;
+    public body: Block;
+
+    public constructor(
+        condition: Expr,
+        body: Block
+    ){
+        this.condition = condition;
+        this.body = body;
+    }
+
+    public visit(next: Thing[]){
+        next.push(this.condition);
+        next.push(this.body);
     }
 }

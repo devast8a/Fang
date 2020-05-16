@@ -1,5 +1,5 @@
 // Code generation step
-import { CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, Member, Return, SetField, SetVariable, Stmt, Tag, Variable, CallField, If } from './ast/things';
+import { CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, Member, Return, SetField, SetVariable, Stmt, Tag, Variable, CallField, If, While } from './ast/things';
 
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n"];
@@ -76,6 +76,7 @@ export class TargetCGcc {
             case Tag.SetVariable: this.compileSetVariable(thing); break;
             case Tag.Variable:    this.compileVariable(thing); break;
             case Tag.If:          this.compileIf(thing); break;
+            case Tag.While:       this.compileWhile(thing); break;
             default: throw new Error("Incomplete switch statement (compileStmt)")
         }
     }
@@ -104,6 +105,21 @@ export class TargetCGcc {
             }
             output.push("}");
         }
+    }
+
+    public compileWhile(thing: While){
+        const output = this.output;
+
+        output.push("while(");
+        this.compileExpr(thing.condition);
+        output.push("){")
+
+        for(const stmt of thing.body.block){
+            this.compileStmt(stmt);
+            output.push(";\n");
+        }
+
+        output.push("}");
     }
 
     public compileMemberFunction(name: string, thing: Function) {

@@ -53,6 +53,7 @@ export const Operator       = builder(AstBuilder.Operator, 'Operator');
 export const StmtAssign     = builder(AstBuilder.StmtAssign, 'StmtAssign');
 export const Variable       = builder(AstBuilder.Variable, 'Variable');
 export const If             = builder(AstBuilder.If, 'If');
+export const While          = builder(AstBuilder.While, 'While');
 
 export function whitespace(node: Node){
     return {

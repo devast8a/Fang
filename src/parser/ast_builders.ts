@@ -404,3 +404,16 @@ export function If(node: Node, compiler: Compiler, scope: Scope){
 
     return new Ast.If(node, cases, new Ast.Block(otherwise));
 }
+
+// keyword condition body
+export function While(node: Node, compiler: Compiler, scope: Scope){
+    const condition = compiler.parse(node[1][2], scope) as Ast.Expr;
+
+    // First condition and body
+    const body = [];
+    for(const stmt of node[2].elements){
+        body.push(compiler.parse(stmt, scope) as Ast.Stmt);
+    }
+
+    return new Ast.While(condition, new Ast.Block(body));
+}
