@@ -55,10 +55,14 @@ reg(Function, (thing, analyzer, state) => {
     }
 
     for(const [variable, alive] of functionState.alive){
-        if(alive){
-            const target = new CallStatic(null, variable.type.scope.lookupFunction("destructor")!);
-            target.arguments.push(new GetVariable(null, variable));
-            thing.body.block.push(target);
+        if(alive && (variable.flags & (VariableFlags.Local | VariableFlags.Owns))){
+            const destructor = variable.type.scope.lookupFunction("destructor");
+
+            if(destructor !== undefined){
+                const target = new CallStatic(null, destructor);
+                target.arguments.push(new GetVariable(null, variable));
+                thing.body.block.push(target);
+            }
         }
     }
 });
