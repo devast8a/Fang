@@ -1,8 +1,47 @@
 // Code generation step
-import { CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, Member, Return, SetField, SetVariable, Stmt, Tag, Variable, CallField, If, While } from './ast/things';
+import { Scope } from './ast/scope';
+import { CallField, CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, If, Return, SetField, SetVariable, Stmt, Tag, Variable, While } from './ast/things';
 
 export class TargetCGcc {
-    public output = ["#include <stdio.h>\n"];
+    public output = ["#include <stdio.h>\n#include <stdlib.h>\n"];
+
+    public constructor(){
+    }
+
+    public compileModule(scope: Scope){
+        Array.from(scope.classNameMap.values()).sort((a, b) => a.id.localeCompare(b.id)).forEach(thing => this.declareClass(thing));
+        Array.from(scope.functionNameMap.values()).sort((a, b) => a.id.localeCompare(b.id)).forEach(thing => this.declareFunction(thing));
+        this.output.push("\n");
+
+        Array.from(scope.classNameMap.values()).sort((a, b) => a.id.localeCompare(b.id)).forEach(thing => this.compileClass(thing));
+        Array.from(scope.functionNameMap.values()).sort((a, b) => a.id.localeCompare(b.id)).forEach(thing => this.compileFunction(thing));
+    }
+
+    public declareClass(thing: Class) {
+        // Declare structure
+        this.output.push(thing.id, "{");
+        if(thing.members.size > 0){
+            this.output.push("\n");
+        }
+        for(const member of thing.members.values()){
+            if(member.tag === Tag.Variable){
+                this.declareClassField(member);
+            }
+        }
+        this.output.push("};\n");
+
+        // Declare methods
+        for(const member of thing.members.values()){
+            if(member.tag === Tag.Function){
+                this.declareFunction(member);
+            }
+        }
+        this.output.push("\n");
+    }
+
+    public declareClassField(member: Variable) {
+        this.output.push('    ', member.type.id, " ", member.id, ';\n');
+    }
 
     public declareFunction(thing: Function) {
         const output = this.output;
@@ -21,7 +60,7 @@ export class TargetCGcc {
             output.push(" ");
             output.push(parameter.id);
         }
-        output.push(");\n")
+        output.push(");\n");
     }
 
     public compileFunction(thing: Function){
@@ -166,20 +205,6 @@ export class TargetCGcc {
     }
 
     public compileClass(thing: Class) {
-        // Data structure
-        this.output.push(thing.id, "{");
-        if(thing.members.size > 0){
-            this.output.push("\n");
-        }
-        for(const member of thing.members.values()){
-            switch(member.tag){
-                case Tag.Function: break; // Handled in next section
-                case Tag.Variable: this.compileVariable(member); this.output.push(";\n"); break;
-                default: throw new Error("Incomplete switch statement (compileMember)")
-            }
-        }
-        this.output.push("};\n");
-
         // Member Functions
         for(const member of thing.members.values()){
             switch(member.tag){
