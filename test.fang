@@ -1,23 +1,43 @@
-class Foo {
-    val x: int
+class T {
+    mut value: Int
+}
 
-    op destructor(own self: Foo){
-        writeLn("Destroy Foo %d\n", self.x)
+class Vec {
+    mut bufferBegin: Ptr
+    mut bufferEnd: Ptr
+    mut capacityEnd: Ptr
+
+    fn destructor(own self: Vec){
+        Memory_free(self.bufferBegin)
+        writeLn("Freeing memory!\n")
+    }
+
+    fn reallocate(mut self: Vec, requested: Int) {
+        self.bufferBegin = Memory_allocate(requested)
+        
+        self.bufferEnd   = self.bufferBegin # + size
+        self.capacityEnd = self.bufferBegin # + capacity
+    }
+
+    fn pushBack(mut self: Vec, own value: T){
+        if(self.bufferEnd == self.bufferBegin){
+            Vec.reallocate(self, 1000)
+        }
     }
 }
 
-fn test(own foo: Foo){
-    writeLn("Test Foo %d\n", foo.x)
-}
+fn foo3(v: Vec){}
+fn foo2(v: Vec){foo3(v)}
+fn foo (v: Vec){foo2(v)}
+
+fn bar3(own v: Vec){}
+fn bar2(own v: Vec){bar3(move(v))}
+fn bar (own v: Vec){bar2(move(v))}
 
 fn main(){
-    val a: Foo = Foo{}
-    val b: Foo = Foo{}
+    val vec: Vec = Vec{}
+    Vec.reallocate(vec, 1000)
 
-    a.x = 10
-    b.x = 20
-
-    test(move(a))
-
-    writeLn("Main Foo %d\n", b.x)
+    foo(vec)
+    bar(move(vec))
 }

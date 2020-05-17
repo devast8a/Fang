@@ -194,13 +194,13 @@ export class TargetCGcc {
 
     public compileSetField(thing: SetField) {
         this.compileExpr(thing.target);
-        this.output.push(".", thing.field.id, "=");
+        this.output.push(".", thing.field.id, " = ");
         this.compileExpr(thing.source);
     }
 
     public compileSetVariable(thing: SetVariable) {
         this.output.push(thing.target.id);
-        this.output.push("=");
+        this.output.push(" = ");
         this.compileExpr(thing.source);
     }
 
@@ -244,18 +244,17 @@ export class TargetCGcc {
     public compileCallStatic(node: CallStatic){
         const output = this.output;
 
-        if(node.target.id[0] === '$'){
+        if(node.target.name.startsWith("infix")){
             // TODO: Create a better way of representing various calls to operators
-            const operator = node.target.id.replace("$infix", "");
             this.compileExpr(node.arguments[0]);
-            output.push(operator);
+            output.push(node.target.ffiData);
             this.compileExpr(node.arguments[1]);
             return;
         }
 
         // TODO: Extend to non-function calls
-        if((node as any).target.ffi_name !== undefined){
-            output.push((node as any).target.ffi_name);
+        if(node.target.ffiData !== undefined){
+            output.push(node.target.ffiData);
         } else {
             output.push(node.target.id);
         }
@@ -276,18 +275,17 @@ export class TargetCGcc {
     public compileCallField(node: CallField){
         const output = this.output;
 
-        if(node.target.id[0] === '$'){
+        if(node.target.name.startsWith("infix")){
             // TODO: Create a better way of representing various calls to operators
-            const operator = node.target.id.replace("$infix", "");
             this.compileExpr(node.arguments[0]);
-            output.push(operator);
+            output.push(node.target.ffiData);
             this.compileExpr(node.arguments[1]);
             return;
         }
 
         // TODO: Extend to non-function calls
-        if((node as any).target.ffi_name !== undefined){
-            output.push((node as any).target.ffi_name);
+        if(node.target.ffiData !== undefined){
+            output.push(node.target.ffiData);
         } else {
             output.push(node.target.id);
         }

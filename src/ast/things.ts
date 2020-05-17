@@ -103,6 +103,7 @@ export class Class implements IThing, IType {
     public members  = new Map<string, Member>();
 
     public scope: Scope;
+    public ffiData: any;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
         this.scope = new Scope(parentScope.id + "C" + name + "_", parentScope);
@@ -132,6 +133,7 @@ export class Function implements IThing, IType {
     public body = new Block();
 
     public scope: Scope;
+    public ffiData: any;
 
     public constructor(
         ast: Node,

@@ -131,7 +131,7 @@ export function Function(node: Node, compiler: Compiler, scope: Scope){
     if(node[3] === null){
         //compiler.error("All functions must declare return types", [], [node[1][0]]);
         //return;
-        obj.returnType = scope.lookupType("none");
+        obj.returnType = compiler.types.none;
     } else {
         obj.returnType = lookupType(node[3][3], compiler, scope);
     }
@@ -285,17 +285,23 @@ export function ExConstruct(node: Node, compiler: Compiler, scope: Scope){
 
 // ExOpInfix
 export function ExOpInfix(node: Node, compiler: Compiler, scope: Scope){
-    const func = scope.lookupFunction("$infix+");
+    const left = compiler.parse(node[0], scope) as Ast.Expr;
+    const right = compiler.parse(node[4], scope) as Ast.Expr;
 
+    let name = "infix";
+    for(let i = 0; i < node[2].length; i++){
+        name += node[2][i][0].value;
+    }
+
+    const func = left.expressionResultType!.scope.lookupFunction(name);
     if(func === undefined){
         compiler.report(new MissingIdentifierError(node[2][0][0], scope));
         return;
     }
 
     const call = new Ast.CallStatic(node, func);
-
-    call.arguments.push(compiler.parse(node[0], scope) as Ast.Expr);
-    call.arguments.push(compiler.parse(node[4], scope) as Ast.Expr);
+    call.arguments.push(left);
+    call.arguments.push(right);
 
     return call;
 }
@@ -398,8 +404,10 @@ export function If(node: Node, compiler: Compiler, scope: Scope){
 
     // Else branch
     const otherwise = [];
-    for(const stmt of node[4][3].elements){
-        otherwise.push(compiler.parse(stmt, scope) as Ast.Stmt);
+    if(node[4] !== null){
+        for(const stmt of node[4][3].elements){
+            otherwise.push(compiler.parse(stmt, scope) as Ast.Stmt);
+        }
     }
 
     return new Ast.If(node, cases, new Ast.Block(otherwise));

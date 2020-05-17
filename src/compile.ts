@@ -9,6 +9,7 @@ import Grammar from './parser/grammar';
 import { Tag as AstTag } from './parser/post_processor';
 import Polymorpher from './polymorph';
 import TypeChecker from './type_check';
+import { removeIntrinsics, registerIntrinsics } from './targets/c/intrinsics';
 
 class Parse {
     public execute(compiler: Compiler){
@@ -48,16 +49,7 @@ class AstGeneration {
         }
         console.timeEnd("ast-generation");
 
-        // TODO: Remove hack to avoid outputting compiler defined functions
-        compiler.scope.typeNameMap.delete("none");
-        compiler.scope.typeNameMap.delete("str");
-        compiler.scope.typeNameMap.delete("int");
-        compiler.scope.typeNameMap.delete("writeLn");
-        compiler.scope.typeNameMap.delete("$infix+");
-        compiler.scope.functionNameMap.delete("writeLn");
-        compiler.scope.functionNameMap.delete("$infix+");
-        compiler.scope.functionNameMap.delete("copy");
-        compiler.scope.functionNameMap.delete("move");
+        removeIntrinsics(compiler);
     }
 }
 
@@ -130,17 +122,7 @@ class CodeGen {
         if(compiler.errors.length === 0){
             const target = new TargetCGcc();
 
-            for(const thing of compiler.scope.classNameMap.values()){
-                target.compileClass(thing);
-            }
-
-            for(const func of Array.from(compiler.scope.functionNameMap.values())){
-                target.declareFunction(func);
-            }
-
-            for(const func of Array.from(compiler.scope.functionNameMap.values())){
-                target.compileFunction(func);
-            }
+            target.compileModule(compiler.scope);
 
             output = target.output.join("");
         }
@@ -157,6 +139,7 @@ export class Compiler {
     public readonly types: {
         string: Type,
         int: Type,
+        none: Type,
     };
     public readonly functions: {
         copy: Function,
@@ -164,45 +147,10 @@ export class Compiler {
     };
 
     constructor(){
-        // TODO: Support binding to target within the language itself
-        // TODO: Use the actual name of the module
-        const scope = this.scope = new Scope('F');
-
-        const str = new Class("", "str", "char*", scope);
-        const int = new Class("", "int", "int", scope);
-        const none = new Class("", "none", "void", scope);
-
-        scope.typeNameMap.set("none", none);
-        scope.typeNameMap.set("str", str);
-        scope.typeNameMap.set("int", int);
-
-        const f = new Function("", "writeLn", "writeLn", scope);
-        f.returnType = none;
-        (f as any).ffi_name = "printf";
-        f.parameters.push(new Variable("", "", str, VariableFlags.None, ""));
-        f.parameters.push(new Variable("", "", int, VariableFlags.None, ""));
-
-        scope.declareFunction(f);
-
-        scope.functionNameMap.set("$infix+", new Function("", "$infix+", "$infix+", scope));
-
-        const copy = new Function("", "copy", "copy", scope);
-        copy.parameters.push(new Variable("", "", str, VariableFlags.None, ""));
-        scope.functionNameMap.set("copy", copy);
-
-        const move = new Function("", "move", "move", scope);
-        move.parameters.push(new Variable("", "", str, VariableFlags.None, ""));
-        scope.functionNameMap.set("move", move);
-
-        this.types = {
-            string: str,
-            int: int,
-        };
-
-        this.functions = {
-            copy: copy,
-            move: move,
-        };
+        this.scope = new Scope('F');
+        const result = registerIntrinsics(this);
+        this.types = result.types;
+        this.functions = result.functions;
     }
 
     // TODO: Refactor actions so that this doesn't have to be public
