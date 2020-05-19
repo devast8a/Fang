@@ -1,16 +1,9 @@
+import { Scope } from '../ast/scope';
 import * as Ast from "../ast/things";
 import { VariableFlags } from '../ast/things';
 import { Compiler } from '../compile';
+import { MissingIdentifierError, NotTraitError, TraitImplementingTraitError } from '../errors';
 import { Tag } from './post_processor';
-import { canMonomorphize, canSubType } from '../type_api';
-import { MissingIdentifierError, NotTraitError, TraitImplementingTraitError, CompilerError } from '../errors';
-import { Scope } from '../ast/scope';
-
-const IMPL_TARGET_DOES_NOT_EXIST    = "$1 does not exist, do you mean $2?";
-const IMPL_TARGET_NOT_A_TRAIT       = "$0 tried to implement $1, but $1 is not a trait.";
-const IMPL_TARGET_NOT_SUBTYPE       = "$0 is missing $2 required to implement $1";
-
-// TODO: "id" fields should be unique, use some kind of name mangling scheme to guarantee this
 
 type Node = any[];
 

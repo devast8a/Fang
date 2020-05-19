@@ -1,15 +1,15 @@
 import * as nearley from "nearley";
 import Analyzer from './analysis';
 import { Scope } from './ast/scope';
-import { Class, Function, Tag, Thing, Type, Variable, VariableFlags } from './ast/things';
-import TargetCGcc from './targets/c';
+import { Function, Tag, Thing, Type } from './ast/things';
 import { Source } from './common/source';
 import { CompilerError, ConsoleErrorFormatter } from './errors';
 import Grammar from './parser/grammar';
 import { Tag as AstTag } from './parser/post_processor';
 import Polymorpher from './polymorph';
+import TargetCGcc from './targets/c';
+import { registerIntrinsics, removeIntrinsics } from './targets/c/intrinsics';
 import TypeChecker from './type_check';
-import { removeIntrinsics, registerIntrinsics } from './targets/c/intrinsics';
 
 class Parse {
     public execute(compiler: Compiler){
@@ -56,7 +56,7 @@ class AstGeneration {
 class TypeCheck {
     public execute(compiler: Compiler){
         const astGeneration = new AstGeneration();
-        const scope = astGeneration.execute(compiler);
+        astGeneration.execute(compiler);
 
         // Type check
         console.time("type-checking");

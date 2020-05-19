@@ -1,4 +1,4 @@
-import { Type, Tag, Class, Trait, Function, Thing, Constant, Variable, GetField, Expr, GetVariable, CallStatic } from './ast/things';
+import { Function, Tag, Type } from './ast/things';
 
 export function isSubType(child: Type, parent: Type){
     if(parent === child){

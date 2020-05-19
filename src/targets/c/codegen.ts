@@ -232,9 +232,9 @@ export class TargetCGcc {
 
         this.compileExpr(node.target);
         if(node.target.tag === Tag.GetVariable && (node.target.variable.flags & VariableFlags.Mutates)){
-            this.output.push("->", node.field.id);
+            output.push("->", node.field.id);
         } else {
-            this.output.push(".", node.field.id);
+            output.push(".", node.field.id);
         }
     }
 

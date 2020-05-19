@@ -1,5 +1,5 @@
-import { Function, Tag, CallStatic, VariableFlags, Variable, GetVariable, Expr, SetVariable, Block, CallField } from './ast/things';
-import { Visitor, Register } from './ast/visitor';
+import { CallField, CallStatic, Expr, Function, GetVariable, SetVariable, Tag, Variable, VariableFlags } from './ast/things';
+import { Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
 import { LoanViolationError, SimultaneousLoanError } from './errors';
 

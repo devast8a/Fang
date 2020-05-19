@@ -1,10 +1,5 @@
 import { Compiler } from '../../compile';
-import { Class, Function, VariableFlags, Variable, Type, Expr, Tag } from '../../ast/things';
-import { Scope } from '../../ast/scope';
-
-// const intrinsics = new Module("intrinsics");
-// intrinsics.createFunction("infix==", [Int, Int], Bool, (x, y) => `${x} ${y}`);
-
+import { Class, Function, VariableFlags, Variable, Type, Tag } from '../../ast/things';
 export function registerIntrinsics(compiler: Compiler){
     // Intrinsics 2.0
     function createType(

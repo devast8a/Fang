@@ -1,9 +1,9 @@
-import { TagCount, Thing, Tag } from './ast/things';
 import * as Ast from './ast/things';
-import { canSubType, canMonomorphize, isSubType } from './type_api';
+import { Tag, Thing } from './ast/things';
+import { Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
-import { Visitor, Register } from './ast/visitor';
-import { ExpressionTypeError, MissingImplementationError, BadArgumentCountError } from './errors';
+import { BadArgumentCountError, ExpressionTypeError, MissingImplementationError } from './errors';
+import { canSubType, isSubType } from './type_api';
 
 export class TypeChecker extends Visitor<State, void> {
     public compiler: Compiler;
