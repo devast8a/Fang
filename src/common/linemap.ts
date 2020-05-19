@@ -12,7 +12,7 @@ export class LineMap {
 
         let match: RegExpMatchArray | null = null;
 
-        while(match = regex.exec(content)){
+        while((match = regex.exec(content)) != null){
             this.map.push({
                 start: offset,
                 endContent: regex.lastIndex - match[0].length,
@@ -102,16 +102,16 @@ export module LineMap {
 
     export interface Offset {
         offset: number;
-    };
+    }
 
     export interface LineColumn {
         line: number;
         column: number;
-    };
+    }
 
     export interface Line {
         line: number;
-    };
+    }
 
     export type Query = Offset | Line | LineColumn;
 

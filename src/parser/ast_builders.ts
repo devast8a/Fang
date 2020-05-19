@@ -41,7 +41,7 @@ export function Class(node: Node, compiler: Compiler, scope: Scope){
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
-            const parsed = compiler.parse(member, obj.scope) as Ast.Member;
+            const parsed = compiler.parse<Ast.Member>(member, obj.scope);
             obj.members.set(parsed.name, parsed);
         }
     }
@@ -160,7 +160,7 @@ export function Trait(node: Node, compiler: Compiler, scope: Scope){
     // Collect members
     if(node[4] !== null){
         for(const member of node[4][1].elements){
-            const parsed = compiler.parse(member, obj.scope) as Ast.Member;
+            const parsed = compiler.parse<Ast.Member>(member, obj.scope);
             obj.members.set(parsed.name, parsed);
         }
     }
@@ -189,7 +189,7 @@ export function Variable(node: Node, compiler: Compiler, scope: Scope){
     const thing = new Ast.Variable(node, node[1].value, type, VariableFlags.Local, node[1].value);
 
     if(node[3] !== null){
-        thing.value = compiler.parse(node[3][4], scope) as Ast.Expr;
+        thing.value = compiler.parse<Ast.Expr>(node[3][4], scope);
     }
 
     scope.declareVariable(thing);
@@ -210,7 +210,7 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Scope){
         }
 
         case 'ExprIndexDot': {
-            const expression = compiler.parse(node[0].data[0], scope) as Ast.Expr;
+            const expression = compiler.parse<Ast.Expr>(node[0].data[0], scope);
 
             switch(expression.expressionResultType?.tag){
                 case Ast.Tag.Class:
@@ -244,7 +244,7 @@ export function ExCall(node: Node, compiler: Compiler, scope: Scope){
     //  - expression(foo, bar)
     //  - expression.method(foo, bar)
 
-    let call = ExCallHelper(node, compiler, scope);
+    const call = ExCallHelper(node, compiler, scope);
 
     const args = node[1].elements.map((arg: any) => compiler.parse(arg, scope));
     call.arguments = args;
@@ -253,7 +253,7 @@ export function ExCall(node: Node, compiler: Compiler, scope: Scope){
 }
 
 export function ExprIndexDot(node: Node, compiler: Compiler, scope: Scope){
-    const expression = compiler.parse(node[0], scope) as Ast.Expr;
+    const expression = compiler.parse<Ast.Expr>(node[0], scope);
 
     switch(expression.expressionResultType?.tag){
         case Ast.Tag.Class:
@@ -277,7 +277,7 @@ export function ExConstruct(node: Node, compiler: Compiler, scope: Scope){
     const thing = new Ast.Construct(node, target!);
 
     for(const argument of node[1].elements){
-        thing.arguments.push(compiler.parse(argument, scope) as Ast.Expr);
+        thing.arguments.push(compiler.parse<Ast.Expr>(argument, scope));
     }
 
     return thing;
@@ -285,8 +285,8 @@ export function ExConstruct(node: Node, compiler: Compiler, scope: Scope){
 
 // ExOpInfix
 export function ExOpInfix(node: Node, compiler: Compiler, scope: Scope){
-    const left = compiler.parse(node[0], scope) as Ast.Expr;
-    const right = compiler.parse(node[4], scope) as Ast.Expr;
+    const left = compiler.parse<Ast.Expr>(node[0], scope);
+    const right = compiler.parse<Ast.Expr>(node[4], scope);
 
     let name = "infix";
     for(let i = 0; i < node[2].length; i++){
@@ -318,7 +318,7 @@ export function ExOpPrefix(node: Node, compiler: Compiler){
 
 //// ExReturn
 export function ExReturn(node: Node, compiler: Compiler, scope: Scope){
-    const expression = compiler.parse(node[1][1], scope) as Ast.Expr;
+    const expression = compiler.parse<Ast.Expr>(node[1][1], scope);
     if(expression === undefined){
         return;
     }
@@ -367,18 +367,18 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Scope){
 
     if(node[0].name !== "ExprIndexDot"){
         const assignable = scope.lookupVariable(node[0].value);
-        const value = compiler.parse(node[2], scope) as Ast.Expr;
+        const value = compiler.parse<Ast.Expr>(node[2], scope);
 
         return new Ast.SetVariable(node, assignable!, value);
     } else {
-        const expression = compiler.parse(node[0].data[0], scope) as Ast.Expr;
+        const expression = compiler.parse<Ast.Expr>(node[0].data[0], scope);
 
         if(expression.expressionResultType?.tag !== Ast.Tag.Class){
             throw new Error("Not implemented yet");
         }
 
         const variable = expression.expressionResultType.scope.lookupVariable(node[0].data[2].value)
-        const value = compiler.parse(node[2], scope) as Ast.Expr;
+        const value = compiler.parse<Ast.Expr>(node[2], scope);
 
         if(variable === undefined){
             //compiler.error("$0 does not exist, do you mean $1", [node[0].data[2].value, '???'], [node[0].data[2]]);
@@ -391,12 +391,12 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Scope){
 
 // keyword condition body elif:* else:?
 export function If(node: Node, compiler: Compiler, scope: Scope){
-    const condition = compiler.parse(node[1][2], scope) as Ast.Expr;
+    const condition = compiler.parse<Ast.Expr>(node[1][2], scope);
 
     // First condition and body
     const body = [];
     for(const stmt of node[2].elements){
-        body.push(compiler.parse(stmt, scope) as Ast.Stmt);
+        body.push(compiler.parse<Ast.Stmt>(stmt, scope));
     }
     const cases = [new Ast.Case(condition, new Ast.Block(body))];
 
@@ -406,7 +406,7 @@ export function If(node: Node, compiler: Compiler, scope: Scope){
     const otherwise = [];
     if(node[4] !== null){
         for(const stmt of node[4][3].elements){
-            otherwise.push(compiler.parse(stmt, scope) as Ast.Stmt);
+            otherwise.push(compiler.parse<Ast.Stmt>(stmt, scope));
         }
     }
 
@@ -415,12 +415,12 @@ export function If(node: Node, compiler: Compiler, scope: Scope){
 
 // keyword condition body
 export function While(node: Node, compiler: Compiler, scope: Scope){
-    const condition = compiler.parse(node[1][2], scope) as Ast.Expr;
+    const condition = compiler.parse<Ast.Expr>(node[1][2], scope);
 
     // First condition and body
     const body = [];
     for(const stmt of node[2].elements){
-        body.push(compiler.parse(stmt, scope) as Ast.Stmt);
+        body.push(compiler.parse<Ast.Stmt>(stmt, scope));
     }
 
     return new Ast.While(condition, new Ast.Block(body));

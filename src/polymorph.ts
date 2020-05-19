@@ -44,7 +44,7 @@ reg(Trait, (input, polymorpher, state) => {
 });
 
 reg(Function, (input, polymorpher, state) => {
-    let inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, polymorpher.mapping);
+    const inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, polymorpher.mapping);
 
     let returnType      = input.returnType;
     const parameters    = input.parameters.map(x => inner.polymorph(x, state));

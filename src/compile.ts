@@ -98,7 +98,7 @@ export class Monomorphize {
         const polymorpher = new Polymorpher(compiler, compiler.scope);
         const state = new Polymorpher.State();
         for(const type of compiler.scope.typeNameMap.values()){
-            let morphed = polymorpher.polymorph(type, state);
+            const morphed = polymorpher.polymorph(type, state);
 
             if(morphed.tag === Tag.Function){
                 compiler.scope.typeNameMap.set(morphed.name, morphed);
@@ -115,7 +115,7 @@ class CodeGen {
         const monomorphize = new Monomorphize();
         monomorphize.execute(compiler);
 
-        let output: string = "";
+        let output = "";
 
         // Code-gen
         console.time("code-gen");
@@ -160,7 +160,7 @@ export class Compiler {
         this.errors.push(error);
     }
 
-    public parse(node: any, scope: Scope): Thing{
+    public parse<T>(node: any, scope: Scope): T {
         switch(node.tag){
             // Run the AST builders on each Nearley node
             // See: parser/ast_builders for the code that is actually run to build each AST Node
@@ -199,4 +199,4 @@ export class Compiler {
 
         return output;
     }
-};
+}

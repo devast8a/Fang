@@ -6,7 +6,7 @@ export function bisect<T>(
     let end = array.length;
 
     while(start < end){
-        let midpoint = Math.floor(start + (end - start) / 2);
+        const midpoint = Math.floor(start + (end - start) / 2);
 
         if(predicate(array[midpoint], midpoint, array)){
             end = midpoint;

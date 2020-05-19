@@ -86,7 +86,7 @@ reg(CallField, HandleFunctionCall);
 interface Loan {
     argument: Expr,
     parameter: Variable,
-};
+}
 
 function isMove(expression: Expr, analyzer: Analyzer){
     if(expression.tag !== Tag.CallStatic){
@@ -172,7 +172,7 @@ function HandleFunctionCall(thing: CallStatic | CallField, analyzer: Analyzer, s
             mutable.set(argument.variable, loan);
         } else {
             // Check call does not result in a mutable and immutable loan of a value
-            let other = mutable.get(argument.variable);
+            const other = mutable.get(argument.variable);
             if(other !== undefined){
                 reportSimultaneousLoan(analyzer, thing, other, loan);
             }

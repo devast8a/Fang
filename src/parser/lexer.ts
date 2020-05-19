@@ -30,7 +30,7 @@ const lexer = moo.compile({
   right_angle:      '>',
 
   comma:            ',',
-  operator:         /[~!@#$%^&*+=|?/:\.\-\\]/,
+  operator:         /[~!@#$%^&*+=|?/:.\-\\]/,
 
   string_double_quote: {match: /"(?:[^"]|\\.)*"/, lineBreaks: true},
   integer_bin: /0b[01][01_]*/,

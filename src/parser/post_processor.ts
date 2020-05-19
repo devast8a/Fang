@@ -92,7 +92,7 @@ function select(obj: any, ...keys: any[]){
         }
     }
     return obj;
-};
+}
 
 interface List<Element, Separator> {
     tag: Tag.LIST;
@@ -109,7 +109,7 @@ interface List<Element, Separator> {
 export function STAR(node: Node): List<Node, Node>{
     node = node[0];
 
-    var all = [];
+    let all = [];
     if (node[2] !== null) {
         all.push(select(node, 2, 0));
         all = all.concat(...select(node, 2, 1));
