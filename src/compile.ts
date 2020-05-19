@@ -2,7 +2,7 @@ import * as nearley from "nearley";
 import Analyzer from './analysis';
 import { Scope } from './ast/scope';
 import { Class, Function, Tag, Thing, Type, Variable, VariableFlags } from './ast/things';
-import TargetCGcc from './codegen';
+import TargetCGcc from './targets/c';
 import { Source } from './common/source';
 import { CompilerError, ConsoleErrorFormatter } from './errors';
 import Grammar from './parser/grammar';

@@ -1,6 +1,6 @@
 // Code generation step
-import { Scope } from './ast/scope';
-import { CallField, CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, If, Return, SetField, SetVariable, Stmt, Tag, Variable, While, VariableFlags } from './ast/things';
+import { Scope } from '../../ast/scope';
+import { CallField, CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, If, Return, SetField, SetVariable, Stmt, Tag, Variable, While, VariableFlags } from '../../ast/things';
 
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n#include <stdlib.h>\n"];
