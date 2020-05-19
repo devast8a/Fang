@@ -42,6 +42,11 @@ export function Class(node: Node, compiler: Compiler, scope: Scope){
     if(node[4] !== null){
         for(const member of node[4][1].elements){
             const parsed = compiler.parse<Ast.Member>(member, obj.scope);
+
+            if(parsed === null){
+                return null;
+            }
+
             obj.members.set(parsed.name, parsed);
         }
     }
@@ -129,8 +134,6 @@ export function Function(node: Node, compiler: Compiler, scope: Scope){
 
     // Return type
     if(node[3] === null){
-        //compiler.error("All functions must declare return types", [], [node[1][0]]);
-        //return;
         obj.returnType = compiler.types.none;
     } else {
         obj.returnType = lookupType(node[3][3], compiler, scope);
@@ -139,9 +142,10 @@ export function Function(node: Node, compiler: Compiler, scope: Scope){
     // Collect statements
     if(node[5] !== null){
         for(const statement of node[5][1].elements){
-            const stmt = compiler.parse(statement, obj.scope);
-            if(stmt !== undefined){
-                obj.body.block.push(stmt as Ast.Stmt);
+            const stmt = compiler.parse<Ast.Stmt>(statement, obj.scope);
+
+            if(stmt !== undefined && stmt !== null){
+                obj.body.block.push(stmt);
             }
         }
     }
@@ -161,6 +165,11 @@ export function Trait(node: Node, compiler: Compiler, scope: Scope){
     if(node[4] !== null){
         for(const member of node[4][1].elements){
             const parsed = compiler.parse<Ast.Member>(member, obj.scope);
+
+            if(parsed === null){
+                return null;
+            }
+
             obj.members.set(parsed.name, parsed);
         }
     }
@@ -180,8 +189,7 @@ export function Variable(node: Node, compiler: Compiler, scope: Scope){
     const type = lookupType(node[2][3], compiler, scope);
 
     if(type === undefined){
-        // TODO: Poisoning
-        return undefined;
+        return null;
     }
 
     // HACK: We currently set Variable as local. This is -NOT- true generally.
@@ -189,7 +197,13 @@ export function Variable(node: Node, compiler: Compiler, scope: Scope){
     const thing = new Ast.Variable(node, node[1].value, type, VariableFlags.Local, node[1].value);
 
     if(node[3] !== null){
-        thing.value = compiler.parse<Ast.Expr>(node[3][4], scope);
+        const value = compiler.parse<Ast.Expr>(node[3][4], scope);
+
+        if(value === null){
+            return null;
+        }
+
+        thing.value = value;
     }
 
     scope.declareVariable(thing);
@@ -204,13 +218,18 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Scope){
 
             if(thing === undefined){
                 compiler.report(new MissingIdentifierError(node[0].data[0], scope));
+                return null;
             }
 
-            return new Ast.CallStatic(node, thing!);
+            return new Ast.CallStatic(node, thing);
         }
 
         case 'ExprIndexDot': {
             const expression = compiler.parse<Ast.Expr>(node[0].data[0], scope);
+            
+            if(expression === null){
+                return null;
+            }
 
             switch(expression.expressionResultType?.tag){
                 case Ast.Tag.Class:
@@ -227,9 +246,10 @@ export function ExCallHelper(node: Node, compiler: Compiler, scope: Scope){
             if(thing === undefined){
                 // TODO: Suggest symbol
                 compiler.report(new MissingIdentifierError(node[0].data[2], scope));
+                return null;
             }
 
-            const call = new Ast.CallField(node, expression, thing!);
+            const call = new Ast.CallField(node, expression, thing);
             return call;
         }
 
@@ -246,7 +266,21 @@ export function ExCall(node: Node, compiler: Compiler, scope: Scope){
 
     const call = ExCallHelper(node, compiler, scope);
 
-    const args = node[1].elements.map((arg: any) => compiler.parse(arg, scope));
+    // TODO: Needs some TLC
+    if(call === null){
+        return null;
+    }
+
+    const args = new Array<Ast.Expr>();
+    for(const argNode of node[1].elements){
+        const arg = compiler.parse<Ast.Expr>(argNode, scope);
+
+        if(arg == null){
+            return null;
+        }
+
+        args.push(arg);
+    }
     call.arguments = args;
 
     return call;
@@ -254,6 +288,10 @@ export function ExCall(node: Node, compiler: Compiler, scope: Scope){
 
 export function ExprIndexDot(node: Node, compiler: Compiler, scope: Scope){
     const expression = compiler.parse<Ast.Expr>(node[0], scope);
+
+    if(expression === null){
+        return null;
+    }
 
     switch(expression.expressionResultType?.tag){
         case Ast.Tag.Class:
@@ -267,17 +305,31 @@ export function ExprIndexDot(node: Node, compiler: Compiler, scope: Scope){
 
     const field = expression.expressionResultType.scope.lookupVariable(node[2].value);
 
-    return new Ast.GetField(node, expression, field!);
+    if(field === undefined){
+        return null;
+    }
+
+    return new Ast.GetField(node, expression, field);
 }
 
 //// ExConstruct
 export function ExConstruct(node: Node, compiler: Compiler, scope: Scope){
     const target = lookupClass(node[0], compiler, scope);
 
-    const thing = new Ast.Construct(node, target!);
+    if(target === undefined){
+        return null;
+    }
+
+    const thing = new Ast.Construct(node, target);
 
     for(const argument of node[1].elements){
-        thing.arguments.push(compiler.parse<Ast.Expr>(argument, scope));
+        const arg = compiler.parse<Ast.Expr>(argument, scope)
+
+        if(arg === null){
+            return null;
+        }
+
+        thing.arguments.push(arg);
     }
 
     return thing;
@@ -287,6 +339,10 @@ export function ExConstruct(node: Node, compiler: Compiler, scope: Scope){
 export function ExOpInfix(node: Node, compiler: Compiler, scope: Scope){
     const left = compiler.parse<Ast.Expr>(node[0], scope);
     const right = compiler.parse<Ast.Expr>(node[4], scope);
+    
+    if(left === null || right === null){
+        return null;
+    }
 
     let name = "infix";
     for(let i = 0; i < node[2].length; i++){
@@ -296,7 +352,7 @@ export function ExOpInfix(node: Node, compiler: Compiler, scope: Scope){
     const func = left.expressionResultType!.scope.lookupFunction(name);
     if(func === undefined){
         compiler.report(new MissingIdentifierError(node[2][0][0], scope));
-        return;
+        return null;
     }
 
     const call = new Ast.CallStatic(node, func);
@@ -319,8 +375,9 @@ export function ExOpPrefix(node: Node, compiler: Compiler){
 //// ExReturn
 export function ExReturn(node: Node, compiler: Compiler, scope: Scope){
     const expression = compiler.parse<Ast.Expr>(node[1][1], scope);
-    if(expression === undefined){
-        return;
+
+    if(expression === null){
+        return null;
     }
 
     return new Ast.Return(node, expression);
@@ -341,7 +398,7 @@ export function ExVariable(node: Node, compiler: Compiler, scope: Scope){
     }
 
     compiler.report(new MissingIdentifierError(name, scope));
-    return;
+    return null;
 }
 
 export function LiteralInteger(node: Node, compiler: Compiler){
@@ -369,9 +426,17 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Scope){
         const assignable = scope.lookupVariable(node[0].value);
         const value = compiler.parse<Ast.Expr>(node[2], scope);
 
-        return new Ast.SetVariable(node, assignable!, value);
+        if(assignable === undefined || value === null){
+            return null;
+        }
+
+        return new Ast.SetVariable(node, assignable, value);
     } else {
         const expression = compiler.parse<Ast.Expr>(node[0].data[0], scope);
+
+        if(expression === null){
+            return null;
+        }
 
         if(expression.expressionResultType?.tag !== Ast.Tag.Class){
             throw new Error("Not implemented yet");
@@ -381,11 +446,15 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Scope){
         const value = compiler.parse<Ast.Expr>(node[2], scope);
 
         if(variable === undefined){
-            //compiler.error("$0 does not exist, do you mean $1", [node[0].data[2].value, '???'], [node[0].data[2]]);
             compiler.report(new MissingIdentifierError(node[0].data[2], scope));
+            return;
         }
 
-        return new Ast.SetField(node, expression, variable!, value);
+        if(value === null){
+            return null;
+        }
+
+        return new Ast.SetField(node, expression, variable, value);
     }
 }
 
@@ -393,10 +462,19 @@ export function StmtAssign(node: Node, compiler: Compiler, scope: Scope){
 export function If(node: Node, compiler: Compiler, scope: Scope){
     const condition = compiler.parse<Ast.Expr>(node[1][2], scope);
 
+    if(condition === null){
+        return null;
+    }
+
     // First condition and body
     const body = [];
     for(const stmt of node[2].elements){
-        body.push(compiler.parse<Ast.Stmt>(stmt, scope));
+        // TODO: Needs some TLC
+        const s = compiler.parse<Ast.Stmt>(stmt, scope)
+        if(s === null){
+            return null;
+        }
+        body.push(s);
     }
     const cases = [new Ast.Case(condition, new Ast.Block(body))];
 
@@ -406,7 +484,11 @@ export function If(node: Node, compiler: Compiler, scope: Scope){
     const otherwise = [];
     if(node[4] !== null){
         for(const stmt of node[4][3].elements){
-            otherwise.push(compiler.parse<Ast.Stmt>(stmt, scope));
+            const s = compiler.parse<Ast.Stmt>(stmt, scope)
+            if(s === null){
+                return null;
+            }
+            otherwise.push(s);
         }
     }
 
@@ -416,11 +498,19 @@ export function If(node: Node, compiler: Compiler, scope: Scope){
 // keyword condition body
 export function While(node: Node, compiler: Compiler, scope: Scope){
     const condition = compiler.parse<Ast.Expr>(node[1][2], scope);
+    
+    if(condition === null){
+        return null;
+    }
 
     // First condition and body
     const body = [];
     for(const stmt of node[2].elements){
-        body.push(compiler.parse<Ast.Stmt>(stmt, scope));
+        const s = compiler.parse<Ast.Stmt>(stmt, scope)
+        if(s === null){
+            return null;
+        }
+        body.push(s);
     }
 
     return new Ast.While(condition, new Ast.Block(body));

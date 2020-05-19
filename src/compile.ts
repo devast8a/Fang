@@ -160,7 +160,7 @@ export class Compiler {
         this.errors.push(error);
     }
 
-    public parse<T>(node: any, scope: Scope): T {
+    public parse<T = Thing>(node: any, scope: Scope): (T | null) {
         switch(node.tag){
             // Run the AST builders on each Nearley node
             // See: parser/ast_builders for the code that is actually run to build each AST Node
