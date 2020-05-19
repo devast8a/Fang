@@ -1,6 +1,6 @@
 // Code generation step
 import { Scope } from './ast/scope';
-import { CallField, CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, If, Return, SetField, SetVariable, Stmt, Tag, Variable, While } from './ast/things';
+import { CallField, CallStatic, Class, Constant, Construct, Expr, Function, GetField, GetVariable, If, Return, SetField, SetVariable, Stmt, Tag, Variable, While, VariableFlags } from './ast/things';
 
 export class TargetCGcc {
     public output = ["#include <stdio.h>\n#include <stdlib.h>\n"];
@@ -45,6 +45,9 @@ export class TargetCGcc {
 
     public declareFunction(thing: Function) {
         const output = this.output;
+        if(thing.name !== "main"){
+            output.push("static ");
+        }
         output.push(thing.returnType!.id, " ", thing.id)
 
         // Parameters
@@ -57,6 +60,12 @@ export class TargetCGcc {
 
             const parameter = parameters[i];
             output.push(parameter.type.id);     // Parameter type
+
+            // TODO remove indirection for types that only have immutable operations (integers)
+            if(parameter.flags & VariableFlags.Mutates){
+                output.push("* restrict");
+            }
+
             output.push(" ");
             output.push(parameter.id);
         }
@@ -65,6 +74,10 @@ export class TargetCGcc {
 
     public compileFunction(thing: Function){
         const output = this.output;
+
+        if(thing.name !== "main"){
+            output.push("static ");
+        }
         output.push(thing.returnType!.id, " ", thing.id)
 
         // Parameters
@@ -77,6 +90,11 @@ export class TargetCGcc {
 
             const parameter = parameters[i];
             output.push(parameter.type.id);     // Parameter type
+
+            if(parameter.flags & VariableFlags.Mutates){
+                output.push("* restrict");
+            }
+
             output.push(" ");
             output.push(parameter.id);
         }
@@ -96,8 +114,8 @@ export class TargetCGcc {
 
     public compileExpr(thing: Expr) {
         switch(thing.tag){
-            case Tag.CallField:   this.compileCallField(thing); break;
-            case Tag.CallStatic:  this.compileCallStatic(thing); break;
+            case Tag.CallField:   this.compileCall(thing); break;
+            case Tag.CallStatic:  this.compileCall(thing); break;
             case Tag.Constant:    this.compileConstant(thing); break;
             case Tag.Construct:   this.compileConstruct(thing); break;
             case Tag.GetField:    this.compileGetField(thing); break;
@@ -108,8 +126,8 @@ export class TargetCGcc {
 
     public compileStmt(thing: Stmt){
         switch(thing.tag){
-            case Tag.CallField:   this.compileCallField(thing); break;
-            case Tag.CallStatic:  this.compileCallStatic(thing); break;
+            case Tag.CallField:   this.compileCall(thing); break;
+            case Tag.CallStatic:  this.compileCall(thing); break;
             case Tag.Return:      this.compileReturn(thing); break;
             case Tag.SetField:    this.compileSetField(thing); break;
             case Tag.SetVariable: this.compileSetVariable(thing); break;
@@ -161,40 +179,15 @@ export class TargetCGcc {
         output.push("}");
     }
 
-    public compileMemberFunction(name: string, thing: Function) {
-        const output = this.output;
-        output.push(thing.returnType!.id, " ", thing.id)
-
-        // Parameters
-        output.push("(");
-        const parameters = thing.parameters;
-        for(let i = 0; i < parameters.length; i++){
-            if(i > 0){
-                output.push(", ");
-            }
-
-            const parameter = parameters[i];
-            output.push(parameter.type.id);     // Parameter type
-            output.push(" ");
-            output.push(parameter.id);
-        }
-        output.push("){");
-        if(thing.body.block.length > 0){
-            output.push("\n");
-        }
-
-        // Body
-        for(const expression of thing.body.block){
-            output.push("\t");
-            this.compileStmt(expression);
-            output.push(";\n");
-        }
-        output.push("}\n");
-    }
-
     public compileSetField(thing: SetField) {
         this.compileExpr(thing.target);
-        this.output.push(".", thing.field.id, " = ");
+
+        if(thing.target.tag === Tag.GetVariable && (thing.target.variable.flags & VariableFlags.Mutates)){
+            this.output.push("->", thing.field.id, " = ");
+        } else {
+            this.output.push(".", thing.field.id, " = ");
+        }
+
         this.compileExpr(thing.source);
     }
 
@@ -208,7 +201,7 @@ export class TargetCGcc {
         // Member Functions
         for(const member of thing.members.values()){
             switch(member.tag){
-                case Tag.Function: this.compileMemberFunction(thing.name, member); break;
+                case Tag.Function: this.compileFunction(member); break;
                 case Tag.Variable: break; // Handled in previous section
                 default: throw new Error("Incomplete switch statement (compileMember)")
             }
@@ -238,68 +231,58 @@ export class TargetCGcc {
         const output = this.output;
 
         this.compileExpr(node.target);
-        output.push(".", node.field.id);
+        if(node.target.tag === Tag.GetVariable && (node.target.variable.flags & VariableFlags.Mutates)){
+            this.output.push("->", node.field.id);
+        } else {
+            this.output.push(".", node.field.id);
+        }
     }
 
-    public compileCallStatic(node: CallStatic){
+    public compileCall(node: CallStatic | CallField){
         const output = this.output;
 
+        // TODO: Create a better way of representing various calls to operators
         if(node.target.name.startsWith("infix")){
-            // TODO: Create a better way of representing various calls to operators
             this.compileExpr(node.arguments[0]);
             output.push(node.target.ffiData);
             this.compileExpr(node.arguments[1]);
             return;
         }
 
-        // TODO: Extend to non-function calls
+        // Function name
         if(node.target.ffiData !== undefined){
             output.push(node.target.ffiData);
         } else {
             output.push(node.target.id);
         }
-        output.push("(");
 
+        // Function arguments
+        output.push("(");
         const args = node.arguments;
         for(let i = 0; i < args.length; i++){
             if(i > 0){
                 output.push(", ");
             }
 
-            this.compileExpr(args[i]);
-        }
-
-        output.push(")")
-    }
-
-    public compileCallField(node: CallField){
-        const output = this.output;
-
-        if(node.target.name.startsWith("infix")){
-            // TODO: Create a better way of representing various calls to operators
-            this.compileExpr(node.arguments[0]);
-            output.push(node.target.ffiData);
-            this.compileExpr(node.arguments[1]);
-            return;
-        }
-
-        // TODO: Extend to non-function calls
-        if(node.target.ffiData !== undefined){
-            output.push(node.target.ffiData);
-        } else {
-            output.push(node.target.id);
-        }
-        output.push("(");
-
-        const args = node.arguments;
-        for(let i = 0; i < args.length; i++){
-            if(i > 0){
-                output.push(", ");
+            const arg = args[i];
+            if(arg.tag === Tag.GetVariable){
+                if(arg.variable.flags & VariableFlags.Mutates){
+                    if(node.target.parameters[i].flags & VariableFlags.Mutates){
+                        output.push(arg.variable.id);
+                    } else {
+                        output.push("*", arg.variable.id);
+                    }
+                } else {
+                    if(node.target.parameters[i].flags & VariableFlags.Mutates){
+                        output.push("&", arg.variable.id);
+                    } else {
+                        output.push(arg.variable.id);
+                    }
+                }
+            } else {
+                this.compileExpr(arg);
             }
-
-            this.compileExpr(args[i]);
         }
-
         output.push(")")
     }
 
