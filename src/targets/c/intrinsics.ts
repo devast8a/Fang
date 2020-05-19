@@ -19,7 +19,7 @@ export function registerIntrinsics(compiler: Compiler){
             parameters: Array<Variable | Type>,
             returns: Type
         ){
-            const fn = new Function(null, name, name, type.scope);
+            const fn = new Function(null, name, name, returns, type.scope);
 
             for(const parameter of parameters){
                 if(parameter.tag === Tag.Variable){
@@ -31,7 +31,6 @@ export function registerIntrinsics(compiler: Compiler){
             }
 
             fn.ffiData = ' ' + name.substr(5) + ' ';
-            fn.returnType = returns;
 
             type.scope.declareFunction(fn);
             return fn;
@@ -48,7 +47,7 @@ export function registerIntrinsics(compiler: Compiler){
         returns: Type,
         ffiName = name
     ){
-        const fn = new Function(null, name, name, compiler.scope);
+        const fn = new Function(null, name, name, returns, compiler.scope);
 
         for(const parameter of parameters){
             if(parameter.tag === Tag.Variable){

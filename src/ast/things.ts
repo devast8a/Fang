@@ -61,7 +61,7 @@ export type Type =
     | Trait;
 
 interface IExpr {
-    expressionResultType: Type | undefined;
+    expressionResultType: Type;
 }
 export type Expr =
       CallField
@@ -128,7 +128,7 @@ export class Function implements IThing, IType {
     public name: string;
     public id: string;
 
-    public returnType: Type | undefined = undefined;
+    public returnType: Type;
     public parameters = new Array<Variable>();
     public body = new Block();
 
@@ -139,6 +139,7 @@ export class Function implements IThing, IType {
         ast: Node,
         name: string,
         id: string,
+        returnType: Type,
         parentScope: Scope,
     ){
         this.scope = new Scope(parentScope.id + "F" + name + "_", parentScope);
@@ -146,6 +147,8 @@ export class Function implements IThing, IType {
         this.ast = ast;
         this.name = name;
         this.id = id;
+
+        this.returnType = returnType;
     }
 
     public visit(next: Thing[]) {
@@ -224,7 +227,7 @@ export class CallField implements IThing, IExpr {
     public tag: Tag.CallField = Tag.CallField;
     public static tag: Tag.CallField = Tag.CallField;
 
-    public expressionResultType: Type | undefined;
+    public expressionResultType: Type;
 
     public expression: Expr;
     public target: Function;
@@ -251,7 +254,7 @@ export class CallStatic implements IThing, IExpr {
     public tag: Tag.CallStatic = Tag.CallStatic;
     public static tag: Tag.CallStatic = Tag.CallStatic;
 
-    public expressionResultType: Type | undefined;
+    public expressionResultType: Type;
 
     public target: Function;
     public arguments = new Array<Expr>();
@@ -274,7 +277,7 @@ export class Constant implements IThing, IExpr {
     public tag: Tag.Constant = Tag.Constant;
     public static tag: Tag.Constant = Tag.Constant;
 
-    public expressionResultType: Type | undefined;
+    public expressionResultType: Type;
     public value: any;
 
     public constructor(ast: Node, type: Type, value: any){
@@ -291,7 +294,7 @@ export class Construct implements IThing, IExpr {
     public tag: Tag.Construct = Tag.Construct;
     public static tag: Tag.Construct = Tag.Construct;
 
-    public expressionResultType: Type | undefined;
+    public expressionResultType: Type;
 
     public target: Type;
     public arguments = Array<Expr>();
@@ -314,7 +317,7 @@ export class Return implements IThing, IExpr {
     public tag: Tag.Return = Tag.Return;
     public static tag: Tag.Return = Tag.Return;
 
-    public expressionResultType: Type | undefined;
+    public expressionResultType: Type;
     public value: Expr;
 
     public constructor(ast: Node, value: Expr){
@@ -334,7 +337,7 @@ export class GetType implements IThing, IExpr {
     public tag: Tag.GetType = Tag.GetType;
     public static tag: Tag.GetType = Tag.GetType;
 
-    public expressionResultType: Type | undefined;
+    public expressionResultType: Type;
     public type: Type;
 
     public constructor(ast: Node, type: Type){
@@ -350,7 +353,7 @@ export class GetVariable implements IThing, IExpr {
     public tag: Tag.GetVariable = Tag.GetVariable;
     public static tag: Tag.GetVariable = Tag.GetVariable;
 
-    public expressionResultType: Type | undefined;
+    public expressionResultType: Type;
     public variable: Variable;
 
     public constructor(ast: Node, variable: Variable){
@@ -367,7 +370,7 @@ export class GetField implements IThing, IExpr {
     public tag: Tag.GetField = Tag.GetField;
     public static tag: Tag.GetField = Tag.GetField;
 
-    public expressionResultType: Type | undefined;
+    public expressionResultType: Type;
 
     public target: Expr;
     public field: Variable;

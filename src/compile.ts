@@ -192,7 +192,7 @@ export class Compiler {
         
         if(this.errors.length > 0){
             while(this.errors.length > 0){
-                this.errors.pop()!.format(new ConsoleErrorFormatter(), this);
+                this.errors.pop()?.format(new ConsoleErrorFormatter(), this);
             }
             return null;
         }

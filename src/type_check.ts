@@ -99,7 +99,7 @@ reg(Ast.Variable, (thing, visitor) => {
         return;
     }
 
-    if(!isSubType(thing.value.expressionResultType!, thing.type)){
+    if(!isSubType(thing.value.expressionResultType, thing.type)){
         visitor.compiler.report(new ExpressionTypeError(thing, thing.type, thing.value));
     }
 });

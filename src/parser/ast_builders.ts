@@ -117,7 +117,15 @@ export function Function(node: Node, compiler: Compiler, scope: Scope){
         id = scope.id + name;
     }
 
-    const obj = new Ast.Function(node, name, id, scope);
+    // Return type
+    const returnType = node[3] === null ? compiler.types.none : lookupType(node[3][3], compiler, scope);
+
+    if(returnType === undefined){
+        compiler.report(new MissingIdentifierError(node[3][3], scope));
+        return null;
+    }
+
+    const obj = new Ast.Function(node, name, id, returnType, scope);
 
     // Collect parameters
     for(const parameterNode of node[2].elements){
@@ -130,13 +138,6 @@ export function Function(node: Node, compiler: Compiler, scope: Scope){
                 obj.scope.declareVariable(parameter);
             }
         }
-    }
-
-    // Return type
-    if(node[3] === null){
-        obj.returnType = compiler.types.none;
-    } else {
-        obj.returnType = lookupType(node[3][3], compiler, scope);
     }
 
     // Collect statements
@@ -349,7 +350,7 @@ export function ExOpInfix(node: Node, compiler: Compiler, scope: Scope){
         name += node[2][i][0].value;
     }
 
-    const func = left.expressionResultType!.scope.lookupFunction(name);
+    const func = left.expressionResultType.scope.lookupFunction(name);
     if(func === undefined){
         compiler.report(new MissingIdentifierError(node[2][0][0], scope));
         return null;

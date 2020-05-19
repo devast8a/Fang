@@ -290,6 +290,7 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
         }
 
         // Remove common whitespace at the beginning
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const common = Math.min(...lines.map(x => /^\s*/.exec(x)![0].length));
         lines = lines.map(x => x.slice(common));
 

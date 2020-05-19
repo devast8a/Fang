@@ -48,7 +48,7 @@ export class TargetCGcc {
         if(thing.name !== "main"){
             output.push("static ");
         }
-        output.push(thing.returnType!.id, " ", thing.id)
+        output.push(thing.returnType.id, " ", thing.id)
 
         // Parameters
         output.push("(");
@@ -78,7 +78,7 @@ export class TargetCGcc {
         if(thing.name !== "main"){
             output.push("static ");
         }
-        output.push(thing.returnType!.id, " ", thing.id)
+        output.push(thing.returnType.id, " ", thing.id)
 
         // Parameters
         output.push("(");
