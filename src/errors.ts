@@ -3,11 +3,10 @@ import { Scope } from './ast/scope';
 import { Compiler } from './compile';
 import chalk from 'chalk';
 import { Source } from './common/source';
-import LineMap from './common/linemap';
+import { Query, LineColumn } from './common/linemap';
 
 type Node = any;
 
-// 
 export class CompilerError {
     public format(formatter: ErrorFormatter, compiler: Compiler){
         console.log(this);
@@ -182,7 +181,7 @@ function levenshteinDistance_(a: string, b: string, i: number, j: number): numbe
 export interface ErrorFormat {
     message: string,
     source: Source,
-    position: LineMap.Query | Ast.Thing,
+    position: Query | Ast.Thing,
 
     arguments?: Array<{
         value: string,
@@ -203,7 +202,7 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
         const args = error.arguments === undefined ? [] : error.arguments.map(x => this.formatArgument(x))
         const map = error.source.map;
 
-        let lineCol: LineMap.LineColumn;
+        let lineCol: LineColumn;
         if("tag" in error.position){
             lineCol = map.queryToLineColumn({offset: 0});
         } else {

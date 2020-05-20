@@ -1,4 +1,4 @@
-import LineMap from './linemap';
+import {LineMap, Query} from './linemap';
 
 export class Source {
     private _map: SourceLineMap | undefined;
@@ -25,7 +25,7 @@ export class SourceLineMap extends LineMap {
         this.content = content;
     }
 
-    public slice(start: LineMap.Query, end: LineMap.Query){
+    public slice(start: Query, end: Query){
         return this.content.slice(
             this.queryToOffset(start),
             this.queryToOffset(end)
