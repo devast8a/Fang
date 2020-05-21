@@ -1,5 +1,5 @@
 import { Scope } from './ast/scope';
-import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable, If, Block, While } from './ast/things';
+import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable, If, Block, While, Expr } from './ast/things';
 import { InputType, Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
 
@@ -35,6 +35,54 @@ type State = Polymorpher.State;
 const State = Polymorpher.State;
 
 export default Polymorpher;
+
+function instantiateWithArgs(input: Function, args: Expr[], polymorpher: Polymorpher, state: State){
+    let name = input.name;
+    const params  = input.parameters;
+
+    const mapping = new Map<Variable, Type>();
+
+    // Should we abstract this out too?
+    for(let i = 0; i < args.length; i++){
+        const argument = args[i];
+        const parameter = params[i];
+
+        if(parameter.type.tag === Tag.Trait){
+            mapping.set(parameter, argument.expressionResultType);
+            name += `_${i}_${argument.expressionResultType.name}`
+        }
+    }
+
+    for(let i = 0; i < args.length; i++){
+        const argument = args[i];
+        const parameter = params[i];
+
+        if(parameter.type.tag === Tag.Trait){
+            mapping.set(parameter, argument.expressionResultType);
+            name += `_${i}_${argument.expressionResultType.name}`
+        }
+    }
+
+    // No instantiation needs to take place
+    if(mapping.size === 0){
+        return input;
+    }
+
+    // TODO: Replace with a clearer way of instantiating generics
+    polymorpher.scope.functionNameMap.delete(input.name);
+
+    const lookup = polymorpher.scope.functionNameMap.get(name);
+    if(lookup !== undefined){
+        return lookup;
+    }
+
+    const inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, mapping);
+    const monomorphized = inner.polymorph(input, state);
+    monomorphized.name = name;
+    monomorphized.id = name;
+    polymorpher.scope.declareFunction(monomorphized);
+    return monomorphized;
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 function setup(reg: Register<Polymorpher, State, InputType>){
@@ -86,41 +134,37 @@ reg(CallStatic, (input, polymorpher, state) => {
         return polymorpher.polymorph(input.arguments[0], state) as any;
     }
 
-    const args    = input.arguments.map(x => polymorpher.polymorph(x, state));
-    const params  = input.target.parameters;
-    const mapping = new Map<Variable, Type>();
-
-    let name = input.target.name;
-
-    for(let i = 0; i < args.length; i++){
-        const argument = args[i];
-        const parameter = params[i];
-
-        if(parameter.type.tag === Tag.Trait){
-            mapping.set(parameter, argument.expressionResultType);
-            name += `_${i}_${argument.expressionResultType.name}`
-        }
-    }
-
-    let target = input.target;
-
-    if(mapping.size > 0){
-        // TODO: Replace with a clearer way of instantiating generics
-        polymorpher.scope.functionNameMap.delete(input.target.name);
-
-        let monomorphized = polymorpher.scope.functionNameMap.get(name);
-        if(monomorphized === undefined){
-            const inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, mapping);
-            monomorphized = inner.polymorph(input.target, state);
-            monomorphized.name = name;
-            monomorphized.id = name;
-            polymorpher.scope.declareFunction(monomorphized);
-        }
-
-        target = monomorphized;
-    }
+    const args   = input.arguments.map(x => polymorpher.polymorph(x, state));
+    const target = instantiateWithArgs(input.target, args, polymorpher, state);
 
     const output     = new CallStatic(input.ast, target);
+    output.arguments = args;
+
+    // Handle return type polymorphism
+    if(input.target.returnType.tag === Tag.Trait){
+        output.expressionResultType = (input.target as any).realReturnType;
+    }
+
+    return output;
+});
+
+reg(CallField, (input, polymorpher, state) => {
+    const expr   = polymorpher.polymorph(input.expression, state);
+    const args   = input.arguments.map(x => polymorpher.polymorph(x, state));
+    let target   = expr.expressionResultType.scope.lookupFunction(input.target.name);
+
+    if(target === undefined){
+        throw new Error(`[Internal Error] Polymorph.CallField could not find '${input.target.name}'`);
+    }
+
+    // TODO: Perform this in its own lowering step
+    if(expr.tag !== Tag.GetType){
+        args.unshift(expr);
+    }
+
+    target = instantiateWithArgs(input.target, args, polymorpher, state);
+
+    const output = new CallField(input.ast, expr, target);
     output.arguments = args;
 
     // Handle return type polymorphism
@@ -135,33 +179,6 @@ reg(GetType, (input, polymorpher, state) => {
     return input;
 })
 
-reg(CallField, (input, polymorpher, state) => {
-    const expr   = polymorpher.polymorph(input.expression, state);
-    const args   = input.arguments.map(x => polymorpher.polymorph(x, state));
-    const target = expr.expressionResultType.scope.lookupFunction(input.target.name);
-
-    if(target === undefined){
-        throw new Error(`[Internal Error] Polymorph.CallField could not find '${input.target.name}'`);
-    }
-
-    const output = new CallField(input.ast, expr, target);
-
-    // TODO: Perform this in its own lowering step
-    if(expr.tag !== Tag.GetType){
-        args.unshift(expr);
-    }
-
-    output.arguments = args;
-
-    // Handle return type polymorphism
-    if(input.target.returnType.tag === Tag.Trait){
-        // TODO: Actually handle return type polymorphism correctly
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        output.expressionResultType = polymorpher.scope.lookupClass("Concrete")!;
-    }
-
-    return output;
-});
 
 reg(Constant, (input, polymorpher, state) => {
     return input;
