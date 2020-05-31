@@ -1,43 +1,9 @@
-class T {
-    mut value: Int
+class Foo
+    generic<T>
+{
+    val test: T
 }
-
-class Vec {
-    mut bufferBegin: Ptr
-    mut bufferEnd: Ptr
-    mut capacityEnd: Ptr
-
-    fn destructor(own self: Vec){
-        Memory_free(self.bufferBegin)
-        writeLn("Freeing memory!\n")
-    }
-
-    fn reallocate(mut self: Vec, requested: Int) {
-        self.bufferBegin = Memory_allocate(requested)
-        
-        self.bufferEnd   = self.bufferBegin # + size
-        self.capacityEnd = self.bufferBegin # + capacity
-    }
-
-    fn pushBack(mut self: Vec, own value: T){
-        if(self.bufferEnd == self.bufferBegin){
-            Vec.reallocate(self, 1000)
-        }
-    }
-}
-
-fn foo3(v: Vec){}
-fn foo2(v: Vec){foo3(v)}
-fn foo (v: Vec){foo2(v)}
-
-fn bar3(own v: Vec){}
-fn bar2(own v: Vec){bar3(move(v))}
-fn bar (own v: Vec){bar2(move(v))}
 
 fn main(){
-    val vec: Vec = Vec{}
-    Vec.reallocate(vec, 1000)
-
-    foo(vec)
-    bar(move(vec))
+    val foo: Foo<Int>
 }

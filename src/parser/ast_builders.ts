@@ -9,15 +9,31 @@ type Node = any[];
 
 function lookupType(node: any, compiler: Compiler, scope: Scope){
     const identifier = node[0];
-    const type = scope.lookupType(identifier.value);
 
-    if(type === undefined){
-        compiler.report(new MissingIdentifierError(identifier, scope));
-    }
-
+    // TODO: Clean up this mess...
     // TODO: Support type members
 
-    return type;
+    if(identifier instanceof Array){
+        // We are processing a type with parameters
+        // identifier LIST[type]
+        const type = scope.lookupType(identifier[0].value);
+        if(type === undefined){
+            compiler.report(new MissingIdentifierError(identifier[0], scope));
+            return undefined;
+        }
+
+        const args = identifier[1].elements.map((arg: any) => lookupType(arg, compiler, scope));
+
+        const instance = new Ast.GenericInstance(type, args);
+
+        return instance;
+    } else {
+        // Regular type
+        // identifier
+        const type = scope.lookupType(identifier.value);
+        if(type === undefined){ compiler.report(new MissingIdentifierError(identifier, scope)); }
+        return type;
+    }
 }
 
 function lookupClass(node: any, compiler: Compiler, scope: Scope){
@@ -30,6 +46,18 @@ export function Class(node: Node, compiler: Compiler, scope: Scope){
     const name = node[1].text;
     const obj = new Ast.Class(node, name, scope.id + name, scope);
     scope.declareClass(obj);
+
+    // Collect generic parameters
+    if(node[3] !== null){
+        const parameterNodes = node[3][1][1].elements;
+
+        for(const parameterNode of parameterNodes){
+            const parameter = new Ast.GenericParameter(parameterNode.value);
+            obj.genericParameters.push(parameter);
+
+            obj.scope.declareType(parameter);
+        }
+    }
 
     // Collect members
     if(node[4] !== null){

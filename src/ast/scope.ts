@@ -1,4 +1,4 @@
-import { Class, Function, Trait, Type, Variable, Tag } from './things';
+import { Class, Function, Trait, Type, Variable, Tag, GenericParameter } from './things';
 
 export class Scope {
     public readonly classNameMap        = new Map<string, Class>();
@@ -40,13 +40,18 @@ export class Scope {
         }
 
         switch(thing.tag){
-            case Tag.Class:     return this.declareClass(thing);
-            case Tag.Function:  return this.declareFunction(thing);
-            case Tag.Trait:     return this.declareTrait(thing);
+            case Tag.Class:             return this.declareClass(thing);
+            case Tag.Function:          return this.declareFunction(thing);
+            case Tag.Trait:             return this.declareTrait(thing);
+            case Tag.GenericParameter:  return this.declareGenericParameter(thing);
             default: throw new Error('Incomplete switch (declareType)');
         }
     }
-    
+
+    public declareGenericParameter(gParameter: GenericParameter) {
+        this.typeNameMap.set(gParameter.name, gParameter);
+    }
+
     private static declare<T>(
         declared: (scope: Scope) => Array<T>,
         map: (scope: Scope) => Map<string, T>

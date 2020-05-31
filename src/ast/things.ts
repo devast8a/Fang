@@ -18,7 +18,9 @@ export enum Tag {
     SetVariable,
     Trait,
     Variable,
-    While
+    While,
+    GenericParameter,
+    GenericInstance
 }
 export const TagCount = Math.max(...Object.values(Tag).filter(x => typeof(x) === 'number') as number[]) + 1;
 
@@ -34,12 +36,14 @@ interface IThing {
 }
 export type Thing =
       Block
-    | Class
     | CallField
     | CallStatic
+    | Class
     | Constant
     | Construct
     | Function
+    | GenericInstance
+    | GenericParameter
     | GetField
     | GetType
     | GetVariable
@@ -58,7 +62,9 @@ interface IType {
 export type Type =
       Class
     | Function
-    | Trait;
+    | Trait
+    | GenericInstance
+    | GenericParameter;
 
 interface IExpr {
     expressionResultType: Type;
@@ -87,8 +93,12 @@ export type Stmt =
 export type Member =
       Class
     | Function
+    | GenericParameter
     | Trait
     | Variable;
+
+// Annotation to describe a non-owning reference to a T
+type Ref<T> = T;
 
 export class Class implements IThing, IType {
     public ast: Node;
@@ -102,11 +112,15 @@ export class Class implements IThing, IType {
     public traits   = new Map<string, Trait>();
     public members  = new Map<string, Member>();
 
+    public genericParameters: Array<GenericParameter>;
+
     public scope: Scope;
     public ffiData: any;
 
     public constructor(ast: Node, name: string, id: string, parentScope: Scope){
         this.scope = new Scope(parentScope.id + "C" + name + "_", parentScope);
+
+        this.genericParameters = [];
 
         this.ast = ast;
         this.name = name;
@@ -118,6 +132,56 @@ export class Class implements IThing, IType {
             next.push(thing);
         }
     }
+}
+
+export class GenericInstance implements IThing, IType {
+    public readonly tag: Tag.GenericInstance = Tag.GenericInstance;
+    public static readonly tag: Tag.GenericInstance = Tag.GenericInstance;
+
+    public readonly type: Ref<Type>;
+    public readonly arguments: Array<Ref<Type>>;
+
+    public constructor(type: Ref<Type>, args: Array<Ref<Type>>){
+        this.type = type;
+        this.arguments = args;
+        
+        this.name = "";
+        this.id = "";
+        this.scope = new Scope("");
+    }
+
+    public name: string;
+    public id: string;
+    public ast: any;
+    public members  = new Map<string, Member>();
+    public scope: Scope;
+    public visit(next: Thing[]): void {
+        throw new Error('Method not implemented.');
+    }
+}
+
+export class GenericParameter implements IThing, IType {
+    public ast: Node;
+    public tag: Tag.GenericParameter = Tag.GenericParameter;
+    public static tag: Tag.GenericParameter = Tag.GenericParameter;
+
+    public readonly name: string;
+    public readonly id: string;
+    public readonly implements: ReadonlySet<Ref<Trait>>;
+
+    public readonly scope: Scope;
+    public readonly members  = new Map<string, Member>();
+
+    public constructor(name: string){
+        this.id = name;
+        this.name = name;
+        this.implements = new Set;
+
+        // TODO: Sort this crap out
+        this.scope = new Scope(name);
+    }
+
+    public visit(next: Thing[]){}
 }
 
 export class Function implements IThing, IType {

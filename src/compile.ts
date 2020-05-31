@@ -156,7 +156,9 @@ export class Compiler {
     // TODO: Refactor actions so that this doesn't have to be public
     public errors = new Array<CompilerError>();
 
-    public report(error: any) {
+    public report(error: CompilerError) {
+        const formatter = new ConsoleErrorFormatter();
+        error.format(formatter, this);
         this.errors.push(error);
     }
 
@@ -190,12 +192,12 @@ export class Compiler {
         const codegen = new CodeGen();
         const output = codegen.execute(this);
         
-        if(this.errors.length > 0){
-            while(this.errors.length > 0){
-                this.errors.pop()?.format(new ConsoleErrorFormatter(), this);
-            }
-            return null;
-        }
+        //if(this.errors.length > 0){
+        //    while(this.errors.length > 0){
+        //        this.errors.pop()?.format(new ConsoleErrorFormatter(), this);
+        //    }
+        //    return null;
+        //}
 
         return output;
     }

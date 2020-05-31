@@ -228,6 +228,19 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
         }
     }
 
+    public convertArg(identifier: any){
+        if(identifier.tag !== undefined){
+            identifier = identifier.ast;
+            if(identifier instanceof Array){
+                identifier = identifier[0];
+            } else {
+                identifier = identifier.data[1];
+            }
+        }
+
+        return identifier;
+    }
+
     public formatArgument(argument: { value: string; scope?: Scope; }): string {
         if(argument.scope !== undefined){
             let recommended = "";
@@ -262,14 +275,7 @@ export class ConsoleErrorFormatter implements ErrorFormatter {
     }
 
     public highlight(identifier: Node, source: Source){
-        if(identifier.tag !== undefined){
-            identifier = identifier.ast;
-            if(identifier instanceof Array){
-                identifier = identifier[0];
-            } else {
-                identifier = identifier.data[1];
-            }
-        }
+        identifier = this.convertArg(identifier);
 
         const start = Math.max(0, identifier.line - 3);
         const end   = identifier.line;

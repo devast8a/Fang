@@ -232,7 +232,7 @@ tExpr           -> type_index_dot
 type_generic    -> tgTarget tgParameters
 
 tgTarget        -> tExpr
-tgParameters    -> STAR["<", tgParameter, COMMA, ">"]
+tgParameters    -> STAR["<", tgParameter, COMMA, ">"] {% p.STAR %}
 tgParameter     -> type
 
 tExpr           -> type_generic

@@ -341,7 +341,7 @@ const grammar: Grammar = {
     {"name": "tgParameters$macrocall$1$ebnf$1", "symbols": ["tgParameters$macrocall$1$ebnf$1$subexpression$1"], "postprocess": id},
     {"name": "tgParameters$macrocall$1$ebnf$1", "symbols": [], "postprocess": () => null},
     {"name": "tgParameters$macrocall$1", "symbols": ["tgParameters$macrocall$2", "_", "tgParameters$macrocall$1$ebnf$1", "tgParameters$macrocall$5"]},
-    {"name": "tgParameters", "symbols": ["tgParameters$macrocall$1"]},
+    {"name": "tgParameters", "symbols": ["tgParameters$macrocall$1"], "postprocess": p.STAR},
     {"name": "tgParameter", "symbols": ["type"]},
     {"name": "tExpr", "symbols": ["type_generic"]}
   ],
