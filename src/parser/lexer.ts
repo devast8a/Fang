@@ -1,7 +1,7 @@
 import * as moo from 'moo';
 
 const lexer = moo.compile({
-  comment:          /#[ -Z\\-~][ -~]*/,
+  comment:          /##[ -~]*/,
   newline:          {match: '\n', lineBreaks: true},
   ws:               /[ \t]+/,
 
@@ -29,8 +29,10 @@ const lexer = moo.compile({
   left_angle:       '<',
   right_angle:      '>',
 
-  comma:            ',',
-  operator:         /[~!@#$%^&*+=|?/:.\-\\]/,
+  comma:            /\s*,\s*/,
+  semicolon:        ';',
+
+  operator:         /[~!@#$%^&*+=|?/:.\-\\][~!@#$%^&*+=|?/:.\-\\<>]*/,
 
   string_double_quote: {match: /"(?:[^"]|\\.)*"/, lineBreaks: true},
   integer_bin: /0b[01][01_]*/,

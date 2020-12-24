@@ -5,7 +5,7 @@ CALL nearleyc src\parser\grammar\grammar.ne -o src\parser\grammar\grammar.ts
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo Compiling compiler
-REM CALL tsc
+CALL tsc
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo Compiling test.fang

@@ -1,9 +1,7 @@
-class Foo
-    generic<T>
-{
-    val test: T
-}
+## Hello World
+## Whatever
 
-fn main(){
-    val foo: Foo<Int>
-}
+
+
+
+## Test

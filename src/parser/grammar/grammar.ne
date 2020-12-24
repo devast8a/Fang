@@ -1,238 +1,457 @@
-@{%
-import lex from '../lexer';
-import * as p from '../post_processor';
+## Abbreviations ###################################################################################
+    ## Dc - DeclClass
+    ## Df - DeclFunction
+    ## Dg - DeclGeneric
+    ## Dp - DeclParameter
+    ## Dv - DeclVariable
+    ## Eb - ExprIndexBracket
+    ## Ec - ExprCall
+    ## Ed - ExprIndexDot
+    ## Ei - ExprIf
+    ## Em - ExprMacro
+    ## Ld - ExprDictionary     (Literal Dictionary)
+    ## Sf - StmtForEach
+    ## Si - StmtIf
+    ## Sr - StmtReturn
+    ## Sw - StmtWhile
+
+## Prelude #########################################################################################
+    @{%
+    import lex from '../lexer';
+    import * as p from '../post_processor';
+
+    const lexer = lex as any;       // Subvert type system
+    %}
+    @preprocessor typescript
+    @lexer lexer
+
+    STAR[BEGIN, ELEMENT, SEPARATOR, END] -> $BEGIN _ ($ELEMENT ($SEPARATOR $ELEMENT):* _):? $END {%p.ListProcessor%}
+    PLUS[BEGIN, ELEMENT, SEPARATOR, END] -> $BEGIN _ ($ELEMENT ($SEPARATOR $ELEMENT):* _) $END   {%p.ListProcessor%}
+    BODY[ELEMENT] -> "{" (StmtSep Stmt):* StmtSep "}"
+
+## Main ############################################################################################
+    main -> (StmtSep Stmt):* StmtSep        {% function(data){ return [].concat(...data[0]); } %}
+
+## Decl/Variable ###################################################################################
+    DeclVariable     -> DvKeyword DvName DvType:? DvAttribute:* DvValue:? {%p.DeclVariable%}
+
+    # Exmaples:
+    #   val name
+    #   mut name: Type
+    #   val name!: Type = value #attribute
+
+    # Supports:
+    #   Attributes
+    #   Compile Time Operator
+
+    # Required
+    DvKeyword       -> "val" __
+    DvKeyword       -> "mut" __
+    DvName          -> Identifier CompileTime:?
+
+    # Optional After
+    DvType          -> _ ":" _ Type
+    DvAttribute     -> __ Attribute
+    DvValue         -> _ "=" _ Expr
+
+    # Contexts
+    Stmt            -> DeclVariable
+
+## Decl/Function ###################################################################################
+    DeclFunction     -> DfKeyword DfName DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.DeclFunction%}
+
+    # Examples:
+    #   fn name(){ ... }
+    #   fn name(parameter: Type #parameterAttribute ...): ReturnType #functionAttribute { ... }
+
+    # Supports:
+    #   Attributes
+    #   Compile Time Operator
+
+    # Required
+    DfKeyword       -> "fn" __
+    DfKeyword       -> "op" __
+    DfName          -> Identifier CompileTime:?
+    DfParameters    -> STAR["(", DeclParameter, COMMA, ")"]
+
+    # Optional After
+    DfReturnType    -> _ ":" _ Type
+    DfGeneric       -> __ DeclGeneric
+    DfAttribute     -> __ Attribute
+    DfBody          -> _ BODY[Stmt]
+
+    # Contexts
+    Stmt            -> DeclFunction
+
+## Decl/Parameter ##################################################################################
+    DeclParameter    -> DpKeyword:? DpName DpType:? DpAttribute:* DpValue:?
+
+    # Examples:
+    #   name
+    #   name: Type
+    #   mut name
+    #   own name: Type
+
+    # Supports:
+    #   Attributes
+    #   Compile Time Operator
+        
+    # Optional Before
+    DpKeyword       -> "own" __
+    DpKeyword       -> "mut" __
+
+    # Required
+    DpName          -> Identifier CompileTime:?
+    
+    # Optional After
+    DpType          -> _ ":" _ Type
+    DpAttribute     -> __ Attribute
+    DpValue         -> _ "=" _ Expr
+
+    # Context
+    # Function declaration parameter's list (DeclFunction)
+
+## Decl/Class ######################################################################################
+    DeclClass    -> DcKeyword DcName DcImplement:* DcGeneric:? DcAttribute:* DcBody:? {%p.DeclClass%}
+
+    # Examples:
+    #   TODO: Fill out some examples
+
+    # Supports:
+    #   Attributes
+
+    # Required
+    DcKeyword       -> "class" __
+    DcName          -> Identifier
+
+    # Optional After
+    DcImplement     -> __ "impl" __ Type
+    DcGeneric       -> __ DeclGeneric
+    DcAttribute     -> __ Attribute
+    DcBody          -> _ BODY[Stmt]
+
+    # Contexts
+    Stmt            -> DeclClass
+
+## Decl/Generics ###################################################################################
+    DeclGeneric  -> DgKeyword DgParameters DgWhere:*
+
+    # Examples:
+    #   TODO: Fill out some examples
 
-// Subvert type system
-const lexer = lex as any;
-%}
+    DgKeyword       -> "generic"
+    DgParameters    -> PLUS["<", DgParameter, COMMA, ">"]
+    DgParameter     -> Identifier
+    DgWhere         -> __ "where" __ Identifier __ "impl" __ Type
+
+    # Contexts
+    # After the class name but before the body in DeclClass
+    # After the function name but before the body in DeclFunction
+
+## Expr ############################################################################################
+    # Expr describes expressions that may be comprised of binary and unary operations
+    # Atom describes what binary and unary operators may be performed on
+    Expr            -> BinaryExpr
+
+    # To avoid potential ambiguity between generics and less than or greater than operators we do
+    # not consider "<" and ">" to be legal operators. However, we still want to use these symbols
+    # as operators (for less than and greater than operators for example). We special case their
+    # usage in operators, but if there is no space after an expression the operator can not start
+    # with a less than or greater than symbol.
+    OperatorSpaced  -> "<" %operator:?
+    OperatorSpaced  -> ">" %operator:?
+    OperatorSpaced  -> %operator {% p.RejectOperators %}
+    Operator        -> %operator {% p.RejectOperators %}
 
-@preprocessor typescript
-@lexer lexer
+    # Binary Expressions
+    # x + y or x+y
+    BinaryExpr      -> UnaryExpr __ OperatorSpaced __ BinaryExpr
+    BinaryExpr      -> Atom Operator Atom
+    BinaryExpr      -> UnaryExpr
 
-STARX[ELEMENT, SEPARATOR] -> ($ELEMENT ($SEPARATOR $ELEMENT):*):?
-PLUSX[ELEMENT, SEPARATOR] -> $ELEMENT ($SEPARATOR $ELEMENT):*
+    # Unary Expressions
+    # ++x or x++
+    UnaryExpr       -> Operator Atom
+    UnaryExpr       -> Atom Operator
+    UnaryExpr       -> Atom
 
-STAR[BEGIN, ELEMENT, SEPARATOR, END] -> $BEGIN _ ($ELEMENT ($SEPARATOR $ELEMENT):* _):? $END
-PLUS[BEGIN, ELEMENT, SEPARATOR, END] -> $BEGIN _ $ELEMENT ($SEPARATOR $ELEMENT):* _ $END
+    # Atoms
+    Atom            -> "(" Expr ")"
+    Atom            -> Identifier
 
-BODY[ELEMENT] -> STAR["{", $ELEMENT, __, "}"]
+    # Literals
+    Atom            -> %string_double_quote    # "foo"
+    Atom            -> %integer_bin            # 0b1010101101 0b1011_1011
+    Atom            -> %integer_dec            # 208124 012985  1_000_000
+    Atom            -> %integer_hex            # 0x01234567890ABCDEF 0xFF_FF
+    Atom            -> %integer_oct            # 0o01234567 0o123_123_123
 
-main -> (_ stmt):* _ {% function(data){ return [].concat(...data[0]); } %}
+## Expr/Literals/List ##############################################################################
+    ExprList        -> STAR["[", Expr, COMMA, "]"]
+    # This quote is a workaround to fix a highlighting bug in vscode "
 
-__              -> whitespace:+ {% p.whitespace %}
-_               -> whitespace:* {% p.whitespace %}
+    # Example:
+    #   [1, 2, 3, 4, 5, 6, 7]
 
-whitespace      -> %comment
-whitespace      -> %ws
-whitespace      -> %newline
+    # Context
+    Atom            -> ExprList
 
-COMMA           -> _ "," _
+## Expr/Literals/Dictionary ########################################################################
+    ExprDictionary  -> STAR["{", LdEntry, COMMA, "}"]
 
-## Declare/Extension ###############################################################################
-#declare_extension -> de
-#
-#stmt -> declare_extension
-#
-#de              -> deKeyword dt {% p.declare_extension %}
-#deKeyword       -> "extend" __
+    # Example:
+    #   {foo: 1 + 2, bar: 3}
 
-## Declare/Function ################################################################################
-declare_function -> df
+    # Required
+    LdEntry         -> Identifier _ ":" _ Expr
 
-stmt -> declare_function
+    # Context
+    Atom            -> ExprDictionary
 
-df              -> dfKeyword dfName dfParameters dfReturnType:? dfGeneric:? dfBody:? {% p.Function %}
-dfKeyword       -> "fn" __
-dfName          -> %identifier _
-dfParameters    -> STAR["(", dfParameter, COMMA, ")"]           {% p.STAR %}
-dfParameter     -> declare_function_parameter
-dfReturnType    -> _ ":" _ type
-dfGeneric       -> _ declare_generic
-dfBody          -> _ dfBodyList
-dfBodyList      -> BODY[stmt] {% p.STAR %}
+## Expr/Construct ##################################################################################
+    ExprConstruct   -> EbTarget EbArguments
 
-## Declare/Operator ################################################################################
-declare_operator -> do
+    # Eb - b for "build"
 
-stmt -> do
+    # Examples:
+    #   foo{bar, baz
+    #   foo{bar: 100, baz: 20}
 
-do              -> doKeyword doName dfParameters dfReturnType:? dfGeneric:? dfBody:? {% p.Operator %}
-doKeyword       -> "op" __
-doName          -> "constructor" _
-doName          -> "destructor" _
+    # Supports:
+    #   Compile Time Operator
 
-## Declare/Function/Parameter ######################################################################
-declare_function_parameter -> dfp
+    # Required
+    EbTarget        -> Atom CompileTime:?
+    EbArguments     -> STAR["{", EcArgument, COMMA, "}"]
+    EbArgument      -> Expr
+    EbArgument      -> Identifier _ ":" _ Expr
 
-dfp             -> dfpKeyword:* %identifier _ ":" _ type {% p.parameterNameType %}
-dfp             -> dfpKeyword:* type                     {% p.parameterType %}     
-dfpKeyword      -> "own" __
-dfpKeyword      -> "mut" __
+    # Contexts
+    Atom            -> ExprConstruct
 
-## Declare/Generic #################################################################################
-declare_generic -> dgKeyword dgParameters dgWhere:*
+## Expr/Call #######################################################################################
+    ExprCall        -> EcTarget EcArguments
 
-dgKeyword       -> "generic"
-dgParameters    -> PLUS["<", dgParameter, COMMA, ">"] {% p.PLUS %}
-dgParameter     -> %identifier
-dgWhere         -> _ "where" __ dgWhereQuery
-dgWhereQuery    -> %identifier __ "is" __ type
+    # Examples:
+    #   foo(bar, baz)
 
-## Declare/Trait ###################################################################################
-declare_trait -> dt
+    # Supports:
+    #   Compile Time Operator
 
-stmt -> declare_trait
+    # Required
+    EcTarget        -> Atom CompileTime:?
+    EcArguments     -> STAR["(", EcArgument, COMMA, ")"]
+    EcArgument      -> Expr
+    EcArgument      -> Identifier _ ":" _ Expr
 
-dt              -> dtKeyword dtName dtImplements:* dtGeneric:? dtBody:? {% p.Trait %}
-dtKeyword       -> "trait" __
-dtKeyword       -> "class" __
-dtName          -> %identifier
-dtImplements    -> __ "impl" __ type
-dtGeneric       -> __ declare_generic
-dtBody          -> _ dtBodyList
-dtBodyList      -> BODY[stmt] {% p.STAR %}
+    # Contexts
+    Stmt            -> ExprCall
+    Atom            -> ExprCall
 
-## Declare/Variable ################################################################################
-declare_variable -> dv
+## Expr/MacroCall###################################################################################
+    ExprMacroCall   -> EmTarget EmArgument:?
 
-stmt -> declare_variable
+    # Examples:
+    #   foo! x + y
+    #   bar!
 
-dv              -> dvKeyword dvName dvType:? dvValue:? {% p.Variable %}
-dvKeyword       -> "mut" __
-dvKeyword       -> "val" __
-dvName          -> %identifier
-dvType          -> _ ":" _ type
-dvValue         -> _ "=" binaryOp:? _ expr
+    # Required
+    EmTarget        -> Atom CompileTime
 
+    # Optional After
+    EmArgument      -> __ Expr
 
-## Expression ######################################################################################
-expr            -> binaryExpr
+    # Contexts
+    Stmt            -> ExprMacroCall
+    BinaryExpr      -> ExprMacroCall
 
-# In order to avoid any potential ambiguity between generics and less than or greater than operators
-# We do not consider "<" and ">" by themselves as an operator token. However we do however want to
-# use these symbols for less than and greater than operators, so we special case it.
-binaryOp        -> (%operator | ">" | "<"):+
-unaryOp         -> %operator (%operator | ">" | "<"):* {% function(node, location, reject){if(node[0].value === "."){return reject} return node;} %}
+## Expr/IndexBracket ###############################################################################
+    ExprIndexBracket -> EbTarget EbIndex
 
-binaryExpr        -> unaryExpr __ binaryOp __ unaryExpr     {% p.ExOpInfix %}
-binaryExpr        -> unaryExpr unaryOp unaryExpr            {% p.ExOpInfix %}
-binaryExpr        -> unaryExpr
-unaryExpr         -> unaryOp atom                           {% p.ExOpPrefix %}
-unaryExpr         -> atom unaryOp                           {% p.ExOpPostfix %}
-unaryExpr         -> atom
+    # Examples:
+    #   foo[bar, baz]
+    #   (foo + bar)[baz]
 
-atom            -> %identifier                              {% p.ExVariable %}
-atom            -> "(" expr ")"
+    # Required
+    EbTarget        -> Atom
+    EbIndex         -> PLUS["[", Expr, COMMA, "]"]
+    # This quote is a workaround to fix a highlighting bug in vscode "
 
-## Expression/Call #################################################################################
-expression_call -> ecallTarget ecallArguments {% p.ExCall %}
+    # Contexts
+    Atom            -> ExprIndexBracket
 
-stmt            -> expression_call
-atom            -> expression_call
+## Expr/IndexDot ###################################################################################
+    ExprIndexDot    -> EdTarget EdOperator EdName
 
-ecallTarget     -> atom
-ecallArguments  -> STAR["(", expr, COMMA, ")"] {% p.STAR %}
+    # Examples:
+    #   foo.bar.baz
+    #   foo.bar.baz
 
-## Expression/Construct ############################################################################
-expression_construct -> atom econArguments {% p.ExConstruct %}
+    # Required
+    EdTarget        -> Atom
+    EdOperator      -> _ "." _
+    EdName          -> Identifier
 
-atom            -> expression_construct
+    # Contexts
+    Atom            -> ExprIndexDot
 
-econArguments   -> STAR["{", econArgument, COMMA, "}"] {% p.STAR %}
-econArgument    -> expr
-econArgument    -> %identifier _ ":" _ expr
+## Stmt/ForEach ####################################################################################
+    StmtForEach     -> SfKeyword SfCondition SfBody
 
-## Expression/IndexBracket #########################################################################
-expression_index_bracket -> eibTarget eibIndex
+    # Required
+    SfKeyword       -> "for" CompileTime:? _
+    SfCondition     -> "(" _ Identifier __ "in" __ Expr _ ")" _
+    SfBody          -> BODY[Stmt]
 
-eibTarget       -> atom
-eibIndex        -> PLUS["[", expr, COMMA, "]"] {% p.PLUS %}
-# Work around to fix editor syntax highlighting ==> "[]
+    # Contexts
+    Stmt            -> StmtForEach
 
-atom            -> expression_index_bracket
+## Stmt/While ######################################################################################
+    StmtWhile     -> SwKeyword SwCondition SwBody
 
-## Expression/IndexDot #############################################################################
-expression_index_dot -> eidTarget eidSymbol eidName {% p.ExprIndexDot %}
+    # Examples:
+    #   while(x == false){ ... }
+    #   while!(Foo()){ ... }
 
-eidTarget       -> atom
-eidSymbol       -> _ "." _
-eidName         -> %identifier
+    # Supports:
+    #   Compile Time Operator
 
-atom            -> expression_index_dot
+    # Required
+    SwKeyword       -> "while" CompileTime:? _
+    SwCondition     -> "(" _ Expr _ ")" _
+    SwBody          -> BODY[Stmt]
 
-## Expression/IndexDot #############################################################################
-expression_return -> erKeyword erValue {% p.ExReturn %}
+    # Context
+    Stmt            -> StmtWhile
 
-erKeyword       -> "return"
-erValue         -> __ expr
+## Stmt/If #########################################################################################
+    StmtIf          -> SiKeyword SiCondition SiBody SiElif:* SiElse:?
 
-stmt -> expression_return
+    # Examples:
+    #   if(x == false){ ... }
+    #   if!(Foo()){ ... }
+    #   if!(x == y){ ... } else { ... }
+    #   if!(x == 0)!{ ... } else if(x == 1) { ... } else { ... }
 
-## Expression/Control Flow/If ######################################################################
-expression_cf_if -> eci_keyword eci_condition eci_body eci_elif:* eci_else:? {% p.If %}
+    # Supports:
+    #   Compile Time Operator
 
-stmt            -> expression_cf_if
+    # Required
+    SiKeyword       -> "if" CompileTime:? _
+    SiElifKeyword   -> _ "else" __ "if" _
+    SiElseKeyword   -> _ "else" _
+    SiCondition     -> "(" _ Expr _ ")" _
+    SiBody          -> BODY[Stmt]
 
-eci_keyword     -> "if" _
-eci_condition   -> "(" _ expr _ ")" _
-eci_body        -> BODY[stmt] {% p.STAR %}
+    # Optional After
+    SiElif          -> SiElifKeyword SiCondition SiBody
+    SiElse          -> SiElseKeyword SiCondition SiBody
 
-eci_elif        -> _ "else" __ "if" _ eci_condition _ eci_body
-eci_else        -> _ "else" _ eci_body
+    # Context
+    Stmt            -> StmtIf
 
-## Expression/Control Flow/While ###################################################################
-expression_cf_while -> ecw_keyword ecw_condition ecw_body {% p.While %}
+## Stmt/Match ######################################################################################
+    StmtMatch       -> SmKeyword SmValue SmCases
 
-stmt            -> expression_cf_while
+    SmKeyword       -> "match" CompileTime:? _
+    SmValue         -> "(" _ Expr _ ")" _
+    SmCases         -> BODY[SmCase]
 
-ecw_keyword     -> "while" _
-ecw_condition   -> "(" _ expr _ ")" _
-ecw_body        -> BODY[stmt] {% p.STAR %}
+    SmCase          -> "case" __ Pattern _ ":" _ SmBody
+    SmBody          -> BODY[Stmt]
 
-## Literal/Integer #################################################################################
-literal_integer -> %integer_bin {% p.LiteralInteger %}
-literal_integer -> %integer_oct {% p.LiteralInteger %}
-literal_integer -> %integer_dec {% p.LiteralInteger %}
-literal_integer -> %integer_hex {% p.LiteralInteger %}
+    Stmt            -> StmtMatch
 
-atom -> literal_integer
+## Expr/If #########################################################################################
+    ExprIf          -> EiKeyword EiCondition "?" EiTrue ":" EiFalse
 
-## Literal/String ##################################################################################
-literal_string -> %string_double_quote {% p.LiteralString %}
+    # Disabled for now... we need to see what effect this has on code gen first
 
-atom -> literal_string
+    # Examples:
+    #   if x ? y : z
+    #   if (x == y) ? (y + z) : (z + 10)
+    #   if! (x == y) ? 10 : 20
 
-## Statement/Assign ################################################################################
-StmtAssign -> saAssignable saOperator saValue {% p.StmtAssign %}
+    # Supports:
+    #   Compile Time Operator
 
-saAssignable    -> %identifier
-saAssignable    -> expression_index_dot
-saAssignable    -> expression_index_bracket
-saOperator      -> __ binaryOp __
-saValue         -> expr
+    # Required
+    EiKeyword       -> "if" CompileTime:? __
+    EiCondition     -> Atom __
+    EiTrue          -> __ Atom __
+    EiFalse         -> __ Atom
 
-stmt -> StmtAssign
+    # Context
+    # Expr            -> ExprIf
 
-## Type ############################################################################################
-type            -> tExpr tLifetime:?
+## Stmt/Return #####################################################################################
+    StmtReturn      -> SrKeyword SrValue:?
 
-tExpr           -> tAtom
-tAtom           -> %identifier
-tLifetime       -> _ %lifetime
+    # Examples
+    #   return
+    #   return 10 + 20
 
-## Type/IndexDot ###################################################################################
-type_index_dot  -> tExpr tidSymbol tidName
+    # Required
+    SrKeyword       -> "return"
+    
+    # Optional After
+    SrValue         -> WS Expr
 
-tidSymbol       -> _ "." _
-tidName         -> %identifier
+    # Context
+    Stmt            -> StmtReturn
 
-tExpr           -> type_index_dot
+## Types ###########################################################################################
+    Type -> Expr
 
-## Type/Generic ####################################################################################
-type_generic    -> tgTarget tgParameters
+    Atom -> Identifier GenericArguments
+    GenericArguments    -> PLUS["<", GenericArgument, COMMA, ">"]
+    GenericArgument     -> Type
+    GenericArgument     -> Identifier _ ":" _ Type
 
-tgTarget        -> tExpr
-tgParameters    -> STAR["<", tgParameter, COMMA, ">"] {% p.STAR %}
-tgParameter     -> type
+## Patterns ########################################################################################
+    # -- Context: Used in pattern matching and to destructure assignments and arguments
+    Pattern -> PdCrlMembers
+    Pattern -> Identifier PdCrlMembers
+    Pattern -> PdSqrMembers
+    Pattern -> PdKeyword:? Identifier
 
-tExpr           -> type_generic
+    PdCrlMembers -> PLUS["{", PdMember, COMMA, "}"]
+    PdSqrMembers -> PLUS["[", PdMember, COMMA, "]"]
+    # This quote is a workaround to fix a highlighting bug in vscode "
+
+    PdMember     -> Pattern
+    PdMember     -> Identifier PdRebind Pattern
+        PdKeyword    -> "own" __
+        PdKeyword    -> "mut" __
+        PdKeyword    -> "val" __
+        PdRebind     -> _ "=" ">" _
+
+## Attribute #######################################################################################
+    Attribute -> "#" Identifier
+
+## Compile Time Operator ###########################################################################
+    CompileTime -> "!"
+
+## Identifier ######################################################################################
+    Identifier -> %identifier
+
+## Whitespace ######################################################################################
+    __              -> newline:+
+    _               -> newline:*
+
+    WS              -> whitespace:+
+    NL              -> WS:? %newline
+
+    whitespace      -> %comment
+    whitespace      -> %ws
+
+    newline         -> %comment
+    newline         -> %ws
+    newline         -> %newline
+
+## Helpers #########################################################################################
+    COMMA           -> %comma
+    COMMA           -> NL:+ WS:?
+
+    StmtSep         -> ((%comment | %ws):* %newline):*
+    StmtSep         -> ((%comment | %ws):* ";" (%comment | %ws):*)

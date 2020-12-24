@@ -5,7 +5,8 @@ import { Function, Tag, Thing, Type } from './ast/things';
 import { Source } from './common/source';
 import { CompilerError, ConsoleErrorFormatter } from './errors';
 import Grammar from './parser/grammar';
-import { Tag as AstTag } from './parser/post_processor';
+import { convert } from './parser/node2thing';
+import { Parser, registration } from './parser/parser';
 import Polymorpher from './polymorph';
 import TargetCGcc from './targets/c';
 import { registerIntrinsics, removeIntrinsics } from './targets/c/intrinsics';
@@ -32,6 +33,13 @@ class Parse {
             throw new Error();
         }
 
+        if(parser.results.length == 0){
+            console.error("Incomplete parse")
+
+            // TODO: Remove this kludge
+            throw new Error();
+        }
+
         return parser.results[0];
     }
 }
@@ -41,11 +49,20 @@ class AstGeneration {
         const parse = new Parse();
         const results = parse.execute(compiler);
 
+        const parser = new Parser();
+
         // Ast Generation
         console.time("ast-generation");
-        for(const node of results){
-            compiler.parse(node, compiler.scope);
-            // this.parse(node, this.scope);
+        for(let index = 1; index < results.length; index += 2){
+            const node = results[index];
+
+            const output = parser.parse(node);
+
+            if(output === null){
+                throw new Error("Broken Assertion: Output of Parser.parse shouldn't be null if the input isn't null");
+            }
+
+            convert(compiler, compiler.scope, output);
         }
         console.timeEnd("ast-generation");
 
@@ -163,27 +180,9 @@ export class Compiler {
     }
 
     public parse<T = Thing>(node: any, scope: Scope): (T | null) {
-        switch(node.tag){
-            // Run the AST builders on each Nearley node
-            // See: parser/ast_builders for the code that is actually run to build each AST Node
-            // See: parser/post_processor for the code that wraps Nearley nodes with AST builders
-            //      in particular the builder function.
-            case AstTag.NODE: {
-                return node.builder(node.data, this, scope);
-            }
-
-            // Ignore whitespace, this whitespace comes primarily from the whitespace between elements in statement lists.
-            //  It should be removed much earlier in parsing, but we're waiting until we have a better idea how everything
-            //  will pan out.
-            case AstTag.WHITESPACE: {
-                // TODO: Avoid subverting type system
-                return undefined as any;
-            }
-
-            default: {
-                throw new Error(`Unknown node tag: ${node.tag}`);
-            }
-        }
+        const parser = new Parser();
+        const res = parser.parse(node) as any;
+        return res;
     }
 
     public compile(source: Source){
