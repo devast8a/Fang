@@ -1,3 +1,12 @@
+    ## Documentation ###################################################################################
+        # Whitespace does not include comments OR newlines
+        #   _  = optional whitespace
+    #   __ = required whitespace
+    #
+    # Decl/* - Syntax for declaring functions/variables/etc...
+    # Expr/* - Syntax for expressions
+    # Stmt/* - Syntax for statement
+
 ## Abbreviations ###################################################################################
     ## Dc - DeclClass
     ## Df - DeclFunction
@@ -6,6 +15,7 @@
     ## Dv - DeclVariable
     ## Eb - ExprIndexBracket
     ## Ec - ExprCall
+    ## En - ExprConstruct
     ## Ed - ExprIndexDot
     ## Ei - ExprIf
     ## Em - ExprMacro
@@ -25,12 +35,13 @@
     @preprocessor typescript
     @lexer lexer
 
-    STAR[BEGIN, ELEMENT, SEPARATOR, END] -> $BEGIN _ ($ELEMENT ($SEPARATOR $ELEMENT):* _):? $END {%p.ListProcessor%}
-    PLUS[BEGIN, ELEMENT, SEPARATOR, END] -> $BEGIN _ ($ELEMENT ($SEPARATOR $ELEMENT):* _) $END   {%p.ListProcessor%}
-    BODY[ELEMENT] -> "{" (StmtSep Stmt):* StmtSep "}"
+    STAR[BEGIN, WS, ELEMENT, SEPARATOR, END] -> $BEGIN $WS ($ELEMENT ($SEPARATOR $ELEMENT):* $WS):? $END {%p.ListProcessor%}
+    PLUS[BEGIN, WS, ELEMENT, SEPARATOR, END] -> $BEGIN $WS ($ELEMENT ($SEPARATOR $ELEMENT):* $WS) $END   {%p.ListProcessor%}
+
+    BODY[ELEMENT] -> STAR["{", NL, $ELEMENT, StmtSep, "}"]
 
 ## Main ############################################################################################
-    main -> (StmtSep Stmt):* StmtSep        {% function(data){ return [].concat(...data[0]); } %}
+    main -> NL:? (Stmt (StmtSep Stmt):* NL:?)        {% function(data){ return [].concat(...data[0]); } %}
 
 ## Decl/Variable ###################################################################################
     DeclVariable     -> DvKeyword DvName DvType:? DvAttribute:* DvValue:? {%p.DeclVariable%}
@@ -72,13 +83,13 @@
     DfKeyword       -> "fn" __
     DfKeyword       -> "op" __
     DfName          -> Identifier CompileTime:?
-    DfParameters    -> STAR["(", DeclParameter, COMMA, ")"]
+    DfParameters    -> STAR["(", NL:?, DeclParameter, COMMA, ")"]
 
     # Optional After
     DfReturnType    -> _ ":" _ Type
-    DfGeneric       -> __ DeclGeneric
-    DfAttribute     -> __ Attribute
-    DfBody          -> _ BODY[Stmt]
+    DfGeneric       -> NL DeclGeneric
+    DfAttribute     -> NL Attribute
+    DfBody          -> NL:? BODY[Stmt]
 
     # Contexts
     Stmt            -> DeclFunction
@@ -140,7 +151,7 @@
     #   TODO: Fill out some examples
 
     DgKeyword       -> "generic"
-    DgParameters    -> PLUS["<", DgParameter, COMMA, ">"]
+    DgParameters    -> PLUS["<", _, DgParameter, COMMA, ">"]
     DgParameter     -> Identifier
     DgWhere         -> __ "where" __ Identifier __ "impl" __ Type
 
@@ -187,7 +198,7 @@
     Atom            -> %integer_oct            # 0o01234567 0o123_123_123
 
 ## Expr/Literals/List ##############################################################################
-    ExprList        -> STAR["[", Expr, COMMA, "]"]
+    ExprList        -> STAR["[", _, Expr, COMMA, "]"]
     # This quote is a workaround to fix a highlighting bug in vscode "
 
     # Example:
@@ -197,7 +208,7 @@
     Atom            -> ExprList
 
 ## Expr/Literals/Dictionary ########################################################################
-    ExprDictionary  -> STAR["{", LdEntry, COMMA, "}"]
+    ExprDictionary  -> STAR["{", _, LdEntry, COMMA, "}"]
 
     # Example:
     #   {foo: 1 + 2, bar: 3}
@@ -209,9 +220,9 @@
     Atom            -> ExprDictionary
 
 ## Expr/Construct ##################################################################################
-    ExprConstruct   -> EbTarget EbArguments
+    ExprConstruct   -> EnTarget EnArguments
 
-    # Eb - b for "build"
+    # En - n for "new"
 
     # Examples:
     #   foo{bar, baz
@@ -221,10 +232,10 @@
     #   Compile Time Operator
 
     # Required
-    EbTarget        -> Atom CompileTime:?
-    EbArguments     -> STAR["{", EcArgument, COMMA, "}"]
-    EbArgument      -> Expr
-    EbArgument      -> Identifier _ ":" _ Expr
+    EnTarget        -> Atom CompileTime:?
+    EnArguments     -> STAR["{", _, EcArgument, COMMA, "}"]
+    EnArgument      -> Expr
+    EnArgument      -> Identifier _ ":" _ Expr
 
     # Contexts
     Atom            -> ExprConstruct
@@ -240,7 +251,7 @@
 
     # Required
     EcTarget        -> Atom CompileTime:?
-    EcArguments     -> STAR["(", EcArgument, COMMA, ")"]
+    EcArguments     -> STAR["(", _, EcArgument, COMMA, ")"]
     EcArgument      -> Expr
     EcArgument      -> Identifier _ ":" _ Expr
 
@@ -274,7 +285,7 @@
 
     # Required
     EbTarget        -> Atom
-    EbIndex         -> PLUS["[", Expr, COMMA, "]"]
+    EbIndex         -> PLUS["[", _, Expr, COMMA, "]"]
     # This quote is a workaround to fix a highlighting bug in vscode "
 
     # Contexts
@@ -395,7 +406,7 @@
     SrKeyword       -> "return"
     
     # Optional After
-    SrValue         -> WS Expr
+    SrValue         -> __ Expr
 
     # Context
     Stmt            -> StmtReturn
@@ -404,7 +415,7 @@
     Type -> Expr
 
     Atom -> Identifier GenericArguments
-    GenericArguments    -> PLUS["<", GenericArgument, COMMA, ">"]
+    GenericArguments    -> PLUS["<", _, GenericArgument, COMMA, ">"]
     GenericArgument     -> Type
     GenericArgument     -> Identifier _ ":" _ Type
 
@@ -415,8 +426,8 @@
     Pattern -> PdSqrMembers
     Pattern -> PdKeyword:? Identifier
 
-    PdCrlMembers -> PLUS["{", PdMember, COMMA, "}"]
-    PdSqrMembers -> PLUS["[", PdMember, COMMA, "]"]
+    PdCrlMembers -> PLUS["{", _, PdMember, COMMA, "}"]
+    PdSqrMembers -> PLUS["[", _, PdMember, COMMA, "]"]
     # This quote is a workaround to fix a highlighting bug in vscode "
 
     PdMember     -> Pattern
@@ -436,22 +447,14 @@
     Identifier -> %identifier
 
 ## Whitespace ######################################################################################
-    __              -> newline:+
-    _               -> newline:*
+    __              -> %ws
+    _               -> %ws:?
 
-    WS              -> whitespace:+
-    NL              -> WS:? %newline
-
-    whitespace      -> %comment
-    whitespace      -> %ws
-
-    newline         -> %comment
-    newline         -> %ws
-    newline         -> %newline
+    NL              -> (%ws:? %comment:? %newline):+ %ws:?
 
 ## Helpers #########################################################################################
     COMMA           -> %comma
-    COMMA           -> NL:+ WS:?
+    COMMA           -> NL
 
-    StmtSep         -> ((%comment | %ws):* %newline):*
-    StmtSep         -> ((%comment | %ws):* ";" (%comment | %ws):*)
+    StmtSep         -> NL
+    StmtSep         -> _ ";" _
