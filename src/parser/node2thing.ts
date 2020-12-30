@@ -58,6 +58,12 @@ export function convert(compiler: Compiler, scope: Scope, node: Node){
             return new Things.SetVariable(AST, thing, new Things.Constant(AST, type, 100));
         }
 
+        case Tag.ExprCall: {
+            // TODO: Remove placeholder function
+            const thing = new Things.CallStatic(AST, scope.lookupFunction("test")!);
+            return thing;
+        }
+
         default: {
             throw new Error(`Unable to convert node ${Tag[(node as any).tag]}`);
         }

@@ -1,6 +1,6 @@
-    ## Documentation ###################################################################################
-        # Whitespace does not include comments OR newlines
-        #   _  = optional whitespace
+## Documentation ###################################################################################
+    # Whitespace does not include comments OR newlines
+    #   _  = optional whitespace
     #   __ = required whitespace
     #
     # Decl/* - Syntax for declaring functions/variables/etc...
@@ -38,10 +38,10 @@
     STAR[BEGIN, WS, ELEMENT, SEPARATOR, END] -> $BEGIN $WS ($ELEMENT ($SEPARATOR $ELEMENT):* $WS):? $END {%p.ListProcessor%}
     PLUS[BEGIN, WS, ELEMENT, SEPARATOR, END] -> $BEGIN $WS ($ELEMENT ($SEPARATOR $ELEMENT):* $WS) $END   {%p.ListProcessor%}
 
-    BODY[ELEMENT] -> STAR["{", NL, $ELEMENT, StmtSep, "}"]
+    BODY[ELEMENT] -> STAR["{", NL:?, $ELEMENT, StmtSep, "}"]
 
 ## Main ############################################################################################
-    main -> NL:? (Stmt (StmtSep Stmt):* NL:?)        {% function(data){ return [].concat(...data[0]); } %}
+    main -> NL:? (Stmt (StmtSep Stmt):* NL:?):? {%p.MainProcessor%}
 
 ## Decl/Variable ###################################################################################
     DeclVariable     -> DvKeyword DvName DvType:? DvAttribute:* DvValue:? {%p.DeclVariable%}
@@ -162,7 +162,7 @@
 ## Expr ############################################################################################
     # Expr describes expressions that may be comprised of binary and unary operations
     # Atom describes what binary and unary operators may be performed on
-    Expr            -> BinaryExpr
+    Expr            -> ExprBinary
 
     # To avoid potential ambiguity between generics and less than or greater than operators we do
     # not consider "<" and ">" to be legal operators. However, we still want to use these symbols
@@ -176,15 +176,15 @@
 
     # Binary Expressions
     # x + y or x+y
-    BinaryExpr      -> UnaryExpr __ OperatorSpaced __ BinaryExpr
-    BinaryExpr      -> Atom Operator Atom
-    BinaryExpr      -> UnaryExpr
+    ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary
+    ExprBinary      -> Atom Operator Atom
+    ExprBinary      -> ExprUnary
 
     # Unary Expressions
     # ++x or x++
-    UnaryExpr       -> Operator Atom
-    UnaryExpr       -> Atom Operator
-    UnaryExpr       -> Atom
+    ExprUnary       -> Operator Atom
+    ExprUnary       -> Atom Operator
+    ExprUnary       -> Atom
 
     # Atoms
     Atom            -> "(" Expr ")"
@@ -241,7 +241,7 @@
     Atom            -> ExprConstruct
 
 ## Expr/Call #######################################################################################
-    ExprCall        -> EcTarget EcArguments
+    ExprCall        -> EcTarget EcArguments {%p.ExprCall%}
 
     # Examples:
     #   foo(bar, baz)
@@ -274,7 +274,7 @@
 
     # Contexts
     Stmt            -> ExprMacroCall
-    BinaryExpr      -> ExprMacroCall
+    ExprBinary      -> ExprMacroCall
 
 ## Expr/IndexBracket ###############################################################################
     ExprIndexBracket -> EbTarget EbIndex

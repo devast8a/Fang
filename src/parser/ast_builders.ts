@@ -1,21 +1,34 @@
 import { Parser } from './parser';
 
+/**
+ * Current as of 2020-12-31 - devast8a
+ * 
+ * This file is currently performing many roles
+ * - A list of Tags, used to identify the output of the parser
+ * - A list of Nodes, an abstract representation of programs before name-resolution has completed
+ * - Implementation for each of the Nodes
+ * - Implementation for builders that convert parser output into a specific node
+ * - Links tags to appropriate builders
+ */
+// TODO: Separate concerns of this file - See above comment
 
 export enum Tag {
     DeclClass,
     DeclFunction,
     DeclVariable,
+    ExprCall,
+    ExprBinary,
+    ExprUnary,
 }
 
 export type Node =
     | DeclClass
     | DeclFunction
     | DeclVariable
+    | ExprCall
     ;
 
-
-
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
 export class DeclVariable {
     public static readonly tag = Tag.DeclVariable;
     public readonly tag = Tag.DeclVariable;
@@ -46,10 +59,7 @@ export function DeclVariableBuilder(parser: Parser, tree: any[]){
     return new DeclVariable(name, null, null);
 }
 
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
 export class DeclFunction {
     public static readonly tag = Tag.DeclFunction;
     public readonly tag = Tag.DeclFunction;
@@ -69,16 +79,14 @@ export function DeclFunctionBuilder(parser: Parser, tree: any[]){
     const name = tree[1][0].value;
     let body = tree[6]?.[1].elements;
 
-    body = body.map((node: any) => parser.parse(node));
+    if(body !== null){
+        body = body.map((node: any) => parser.parse(node));
+    }
 
     return new DeclFunction(name, body);
 }
 
-
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
 export class DeclClass {
     public static readonly tag = Tag.DeclClass;
     public readonly tag = Tag.DeclClass;
@@ -91,9 +99,40 @@ export class DeclClass {
         this.name = name;
     }
 }
-
 export function DeclClassBuilder(parser: Parser, tree: any[]) {
     const name = tree[1].value;
 
     return new DeclClass(name);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+export class ExprCall {
+    public static readonly tag = Tag.ExprCall;
+    public readonly tag = Tag.ExprCall;
+
+    public target: Node;
+    public args: Node[];
+
+    public constructor(
+        target: Node,
+        args: Node[],
+    ){
+        this.target = target;
+        this.args   = args;
+    }
+}
+export function ExprCallBuilder(parser: Parser, tree: any[]){
+    // TODO: Parse expr properly
+    const target      = undefined as any;
+    const compileTime = tree[0][1] !== null;
+    const args        = tree[1].elements;
+
+    return new ExprCall(target, args);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+export const parserMain = new Parser();
+parserMain.registerBuilderToTag(Tag.DeclClass, DeclClassBuilder);
+parserMain.registerBuilderToTag(Tag.DeclFunction, DeclFunctionBuilder);
+parserMain.registerBuilderToTag(Tag.DeclVariable, DeclVariableBuilder);
+parserMain.registerBuilderToTag(Tag.ExprCall, ExprCallBuilder);

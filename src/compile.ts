@@ -4,9 +4,10 @@ import { Scope } from './ast/scope';
 import { Function, Tag, Thing, Type } from './ast/things';
 import { Source } from './common/source';
 import { CompilerError, ConsoleErrorFormatter } from './errors';
+import { parserMain } from './parser/ast_builders';
 import Grammar from './parser/grammar';
 import { convert } from './parser/node2thing';
-import { Parser, registration } from './parser/parser';
+import { Parser } from './parser/parser';
 import Polymorpher from './polymorph';
 import TargetCGcc from './targets/c';
 import { registerIntrinsics, removeIntrinsics } from './targets/c/intrinsics';
@@ -49,14 +50,16 @@ class AstGeneration {
         const parse = new Parse();
         const results = parse.execute(compiler);
 
-        const parser = new Parser();
+        //const parser = new Parser();
+
+        // console.log(results);
 
         // Ast Generation
         console.time("ast-generation");
-        for(let index = 1; index < results.length; index += 2){
+        for(let index = 0; index < results.length; index += 2){
             const node = results[index];
 
-            const output = parser.parse(node);
+            const output = parserMain.parse(node);
 
             if(output === null){
                 throw new Error("Broken Assertion: Output of Parser.parse shouldn't be null if the input isn't null");

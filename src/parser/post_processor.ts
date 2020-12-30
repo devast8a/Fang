@@ -1,23 +1,28 @@
 import { Tag } from './ast_builders';
-import * as PP from './ast_builders';
 import { register } from './parser';
 
 /**
- * Nearly runs post-processors as the input is parsed.
- * The 'register' function registers an AST builder and runs it *after* the input is parsed.
- * This greatly simplifies the logic surrounding AST builders as they do not need to consider cases
- *  in which the post-processor is run, but the parse tree is ultimately discarded.
+ * Current as of 2020-12-31 - devast8a
+ * 
+ * The 'register' function returns a nearley post-processor that ties matched input for a particular
+ * grammar rule to a Tag. The Parser class is then used to run an AST builder that is tied to the
+ * same tag.
  * 
  * If you want to:
- * - Add new syntax: Write an AST Builder (see one of the ones below) and register it here.
- *      The value returned by the register functions are post-processors that can be used in
- *      grammar/grammar.ne directly.
+ *  - Add your own syntax:
+ *      - Add your rules to grammar/grammar.ne
+ *      - Create a new Tag
+ *      - Register that Tag below
+ *      - Link an AST builder to that tag in ast_builders.ts
  */
 
 // AST Node Builders ///////////////////////////////////////////////////////////////////////////////
-export const DeclClass         = register(Tag.DeclClass,    PP.DeclClassBuilder);
-export const DeclFunction      = register(Tag.DeclFunction, PP.DeclFunctionBuilder);
-export const DeclVariable      = register(Tag.DeclVariable, PP.DeclVariableBuilder);
+export const DeclClass          = register(Tag.DeclClass);
+export const DeclFunction       = register(Tag.DeclFunction);
+export const DeclVariable       = register(Tag.DeclVariable);
+export const ExprBinary         = register(Tag.ExprBinary);
+export const ExprCall           = register(Tag.ExprCall);
+export const ExprUnary          = register(Tag.ExprUnary);
 
 // Post-processors /////////////////////////////////////////////////////////////////////////////////
 export function RejectOperators(node: any, location: any, reject: any){
@@ -70,4 +75,13 @@ export function ListProcessor(node: any[]): List<Node, Node>{
     };
 
     return result
+}
+
+// Similar to list processor but has no begin and end
+export function MainProcessor(node: any[]){
+    if(node[1] === null){
+        return node;
+    }
+
+    return [node[1][0]].concat(...node[1][1]);
 }
