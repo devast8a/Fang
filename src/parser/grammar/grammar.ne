@@ -15,11 +15,12 @@
     ## Dv - DeclVariable
     ## Eb - ExprIndexBracket
     ## Ec - ExprCall
-    ## En - ExprConstruct
+    ## En - ExprConstruct       (En - Expression New)
     ## Ed - ExprIndexDot
     ## Ei - ExprIf
     ## Em - ExprMacro
-    ## Ld - ExprDictionary     (Literal Dictionary)
+    ## Ld - ExprDictionary      (Ld - Literal Dictionary)
+    ## Sa - StmtAssign
     ## Sf - StmtForEach
     ## Si - StmtIf
     ## Sr - StmtReturn
@@ -176,26 +177,26 @@
 
     # Binary Expressions
     # x + y or x+y
-    ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary
-    ExprBinary      -> Atom Operator Atom
+    ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
+    ExprBinary      -> Atom Operator Atom                           {%p.ExprBinary%}    
     ExprBinary      -> ExprUnary
 
     # Unary Expressions
     # ++x or x++
-    ExprUnary       -> Operator Atom
-    ExprUnary       -> Atom Operator
+    ExprUnary       -> Operator Atom                                {%p.ExprUnaryPrefix%}
+    ExprUnary       -> Atom Operator                                {%p.ExprUnaryPostfix%}
     ExprUnary       -> Atom
 
     # Atoms
-    Atom            -> "(" Expr ")"
-    Atom            -> Identifier
+    Atom            -> "(" _ Expr _ ")"
+    Atom            -> Identifier             {%p.ExprIdentifier%}
 
     # Literals
-    Atom            -> %string_double_quote    # "foo"
-    Atom            -> %integer_bin            # 0b1010101101 0b1011_1011
-    Atom            -> %integer_dec            # 208124 012985  1_000_000
-    Atom            -> %integer_hex            # 0x01234567890ABCDEF 0xFF_FF
-    Atom            -> %integer_oct            # 0o01234567 0o123_123_123
+    Atom            -> %string_double_quote   {%p.LiteralString%}       # "foo"
+    Atom            -> %integer_bin           {%p.LiteralIntegerBin%}   # 0b1010101101 0b1011_1011
+    Atom            -> %integer_dec           {%p.LiteralIntegerDec%}   # 208124 012985  1_000_000
+    Atom            -> %integer_hex           {%p.LiteralIntegerHex%}   # 0x01234567890ABCDEF 0xFF_FF
+    Atom            -> %integer_oct           {%p.LiteralIntegerOct%}   # 0o01234567 0o123_123_123
 
 ## Expr/Literals/List ##############################################################################
     ExprList        -> STAR["[", _, Expr, COMMA, "]"]
@@ -300,11 +301,24 @@
 
     # Required
     EdTarget        -> Atom
-    EdOperator      -> _ "." _
+    EdOperator      -> "."
+    EdOperator      -> "." NL
+    EdOperator      -> NL "."
     EdName          -> Identifier
 
     # Contexts
     Atom            -> ExprIndexDot
+
+## Stmt/Assign #####################################################################################
+    StmtAssign      -> SaTarget SaOperator SaValue
+
+    # Required
+    SaTarget        -> Identifier           # TODO: Add other targets to StmtAssign
+    SaOperator      -> _ OperatorSpaced _   # TODO: Add other operators to StmtAssign
+    SaValue         -> Expr
+
+    # Contexts
+    Stmt            -> StmtAssign
 
 ## Stmt/ForEach ####################################################################################
     StmtForEach     -> SfKeyword SfCondition SfBody

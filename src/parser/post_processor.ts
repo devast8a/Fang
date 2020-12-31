@@ -1,28 +1,58 @@
-import { Tag } from './ast_builders';
-import { register } from './parser';
-
 /**
  * Current as of 2020-12-31 - devast8a
  * 
- * The 'register' function returns a nearley post-processor that ties matched input for a particular
- * grammar rule to a Tag. The Parser class is then used to run an AST builder that is tied to the
- * same tag.
+ * The 'tag' function returns a nearley post-processor that tags matched input with the given PTag.
+ * The Parser class can be used to register an AST Builder to a given PTag.
  * 
  * If you want to:
  *  - Add your own syntax:
  *      - Add your rules to grammar/grammar.ne
- *      - Create a new Tag
- *      - Register that Tag below
+ *      - Create your tag below
+ *      - Link your rule to the tag with "{%p.<TAGNAME>%}"
  *      - Link an AST builder to that tag in ast_builders.ts
  */
 
-// AST Node Builders ///////////////////////////////////////////////////////////////////////////////
-export const DeclClass          = register(Tag.DeclClass);
-export const DeclFunction       = register(Tag.DeclFunction);
-export const DeclVariable       = register(Tag.DeclVariable);
-export const ExprBinary         = register(Tag.ExprBinary);
-export const ExprCall           = register(Tag.ExprCall);
-export const ExprUnary          = register(Tag.ExprUnary);
+////////////////////////////////////////////////////////////////////////////////////////////////////
+export enum PTag {
+    DeclClass,
+    DeclFunction,
+    DeclVariable,
+    ExprBinary,
+    ExprCall,
+    ExprIdentifier,
+    ExprUnaryPostfix,
+    ExprUnaryPrefix,
+    LiteralIntegerBin,
+    LiteralIntegerDec,
+    LiteralIntegerHex,
+    LiteralIntegerOct,
+    LiteralString,
+}
+
+function tag(tag: PTag){
+    return function(data: any[]){
+        return {
+            tagName: PTag[tag],
+            tag: tag,
+            data: data,
+        };
+    };
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+export const DeclClass          = tag(PTag.DeclClass);
+export const DeclFunction       = tag(PTag.DeclFunction);
+export const DeclVariable       = tag(PTag.DeclVariable);
+export const ExprBinary         = tag(PTag.ExprBinary);
+export const ExprCall           = tag(PTag.ExprCall);
+export const ExprIdentifier     = tag(PTag.ExprIdentifier);
+export const ExprUnaryPostfix   = tag(PTag.ExprUnaryPostfix);
+export const ExprUnaryPrefix    = tag(PTag.ExprUnaryPrefix);
+export const LiteralIntegerBin  = tag(PTag.LiteralIntegerBin);
+export const LiteralIntegerDec  = tag(PTag.LiteralIntegerDec);
+export const LiteralIntegerHex  = tag(PTag.LiteralIntegerHex);
+export const LiteralIntegerOct  = tag(PTag.LiteralIntegerOct);
+export const LiteralString      = tag(PTag.LiteralString);
 
 // Post-processors /////////////////////////////////////////////////////////////////////////////////
 export function RejectOperators(node: any, location: any, reject: any){

@@ -48,7 +48,7 @@ export function convert(compiler: Compiler, scope: Scope, node: Node){
             // TODO: Remove placeholder type
             const type  = scope.lookupType("Int")!;
 
-            // TODO: Correctly set variable flags based on keyword used when declaring a pointer
+            // TODO: Correctly set variable flags based on keyword used when declaring a variable
             const flags = Things.VariableFlags.Local;
 
             const thing = new Things.Variable(AST, node.name, type, flags, node.name);
@@ -61,6 +61,18 @@ export function convert(compiler: Compiler, scope: Scope, node: Node){
         case Tag.ExprCall: {
             // TODO: Remove placeholder function
             const thing = new Things.CallStatic(AST, scope.lookupFunction("test")!);
+
+            for(const arg of node.args){
+                thing.arguments.push(convert(compiler, scope, arg) as Things.Expr);
+            }
+
+            return thing;
+        }
+
+        case Tag.ExprGetLocal: {
+            const variable = scope.lookupVariable("a")!;
+            const thing    = new Things.GetVariable(AST, variable);
+
             return thing;
         }
 

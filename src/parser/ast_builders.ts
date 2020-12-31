@@ -1,8 +1,9 @@
 import { Parser } from './parser';
+import { PTag } from './post_processor';
 
 /**
  * Current as of 2020-12-31 - devast8a
- * 
+ *
  * This file is currently performing many roles
  * - A list of Tags, used to identify the output of the parser
  * - A list of Nodes, an abstract representation of programs before name-resolution has completed
@@ -18,7 +19,14 @@ export enum Tag {
     DeclVariable,
     ExprCall,
     ExprBinary,
-    ExprUnary,
+    ExprUnaryPostfix,
+    ExprUnaryPrefix,
+    LiteralString,
+    LiteralIntegerBin,
+    LiteralIntegerDec,
+    LiteralIntegerHex,
+    LiteralIntegerOct,
+    ExprGetLocal
 }
 
 export type Node =
@@ -26,6 +34,7 @@ export type Node =
     | DeclFunction
     | DeclVariable
     | ExprCall
+    | GetLocal
     ;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,14 +134,40 @@ export function ExprCallBuilder(parser: Parser, tree: any[]){
     // TODO: Parse expr properly
     const target      = undefined as any;
     const compileTime = tree[0][1] !== null;
-    const args        = tree[1].elements;
+    const args        = tree[1].elements.map((x: any) => Expr.parse(x));
 
     return new ExprCall(target, args);
 }
 
+export class GetLocal {
+    public static readonly tag = Tag.ExprGetLocal;
+    public readonly tag = Tag.ExprGetLocal;
+
+    public name: string;
+
+    public constructor(
+        name: string
+    ){
+        this.name = name;
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export const parserMain = new Parser();
-parserMain.registerBuilderToTag(Tag.DeclClass, DeclClassBuilder);
-parserMain.registerBuilderToTag(Tag.DeclFunction, DeclFunctionBuilder);
-parserMain.registerBuilderToTag(Tag.DeclVariable, DeclVariableBuilder);
-parserMain.registerBuilderToTag(Tag.ExprCall, ExprCallBuilder);
+parserMain.registerBuilderToTag(PTag.DeclClass, DeclClassBuilder);
+parserMain.registerBuilderToTag(PTag.DeclFunction, DeclFunctionBuilder);
+parserMain.registerBuilderToTag(PTag.DeclVariable, DeclVariableBuilder);
+parserMain.registerBuilderToTag(PTag.ExprCall, ExprCallBuilder);
+
+export const Expr = new Parser();
+Expr.registerBuilderToTag(PTag.ExprIdentifier, (parser, node) => {
+    const name = node[0].value;
+    console.log(name);
+
+    return new GetLocal(name);
+});
+
+export const TypeExpr = new Parser();
+TypeExpr.registerBuilderToTag(PTag.ExprIdentifier, (parser, node) => {
+    return "" as any;
+});
