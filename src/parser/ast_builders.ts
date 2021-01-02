@@ -1,4 +1,6 @@
-import { Parser } from './parser';
+import { compile } from 'moo';
+import { VariableFlags } from '../ast/things';
+import { Builder, Parser } from './parser';
 import { PTag } from './post_processor';
 
 /**
@@ -26,7 +28,8 @@ export enum Tag {
     LiteralIntegerDec,
     LiteralIntegerHex,
     LiteralIntegerOct,
-    ExprGetLocal
+    ExprGetLocal,
+    DeclParameter
 }
 
 export type Node =
@@ -35,6 +38,7 @@ export type Node =
     | DeclVariable
     | ExprCall
     | GetLocal
+    | DeclParameter
     ;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -56,17 +60,6 @@ export class DeclVariable {
         this.value = value;
     }
 }
-export function DeclVariableBuilder(parser: Parser, tree: any[]){
-    // TODO: Properly handle compile time and attributes
-    const keyword     = tree[0][0].text;
-    const name        = tree[1][0].value;
-    const compileTime = tree[1][1] != null;
-    //const type        = parser.parse(tree[2]?.[3]);
-    //const attributes  = parser.parse(tree[3]);
-    //const value       = parser.parse(tree[4]);
-
-    return new DeclVariable(name, null, null);
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export class DeclFunction {
@@ -84,16 +77,6 @@ export class DeclFunction {
         this.body = body;
     }
 }
-export function DeclFunctionBuilder(parser: Parser, tree: any[]){
-    const name = tree[1][0].value;
-    let body = tree[6]?.[1].elements;
-
-    if(body !== null){
-        body = body.map((node: any) => parser.parse(node));
-    }
-
-    return new DeclFunction(name, body);
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export class DeclClass {
@@ -107,11 +90,6 @@ export class DeclClass {
     ){
         this.name = name;
     }
-}
-export function DeclClassBuilder(parser: Parser, tree: any[]) {
-    const name = tree[1].value;
-
-    return new DeclClass(name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,14 +108,6 @@ export class ExprCall {
         this.args   = args;
     }
 }
-export function ExprCallBuilder(parser: Parser, tree: any[]){
-    // TODO: Parse expr properly
-    const target      = undefined as any;
-    const compileTime = tree[0][1] !== null;
-    const args        = tree[1].elements.map((x: any) => Expr.parse(x));
-
-    return new ExprCall(target, args);
-}
 
 export class GetLocal {
     public static readonly tag = Tag.ExprGetLocal;
@@ -152,22 +122,98 @@ export class GetLocal {
     }
 }
 
+export class DeclParameter {
+    public static readonly tag = Tag.DeclParameter;
+    public readonly tag = Tag.DeclParameter;
+
+    public flags: VariableFlags;
+    public name: string;
+    public compileTime: boolean;
+    public type: Node | null; // TODO: Replace with Type?
+    // TODO: Attributes
+    public value: Node | null;
+
+    constructor(
+        flags: VariableFlags,
+        name: string,
+        compileTime: boolean,
+        type: Node | null,
+        // TODO: Attributes
+        value: Node | null,
+    ){
+        this.flags = flags;
+        this.name = name;
+        this.compileTime = compileTime;
+        this.type = type;
+        this.value = value;
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-export const parserMain = new Parser();
-parserMain.registerBuilderToTag(PTag.DeclClass, DeclClassBuilder);
-parserMain.registerBuilderToTag(PTag.DeclFunction, DeclFunctionBuilder);
-parserMain.registerBuilderToTag(PTag.DeclVariable, DeclVariableBuilder);
-parserMain.registerBuilderToTag(PTag.ExprCall, ExprCallBuilder);
+export const Main = new Parser();
+Main.register(PTag.DeclClass, (node) => {
+    const name = node[1].value;
+
+    return new DeclClass(name);
+});
+
+Main.register(PTag.DeclFunction, (node, parser) => {
+    const name       = node[1].value;
+    const parameters = node[3].elements.map((node: any) => parser.parse(node));
+    const body       = node[7]?.[1].elements.map((node: any) => parser.parse(node));
+
+    return new DeclFunction(name, body);
+});
+
+Main.register(PTag.DeclVariable, (node) => {
+    // TODO: Properly handle compile time and attributes
+    const keyword     = node[0][0].text;
+    const name        = node[1].value;
+    const compileTime = node[2] != null;
+    //const type        = parser.parse(tree[2]?.[3]);
+    //const attributes  = parser.parse(tree[3]);
+    //const value       = parser.parse(tree[4]);
+
+    return new DeclVariable(name, null, null);
+});
+
+Main.register(PTag.ExprCall, (node) => {
+    const target      = undefined as any;
+    const compileTime = node[1] !== null;
+    const args        = node[2].elements.map((x: any) => Expr.parse(x));
+
+    return new ExprCall(target, args);
+});
+
+function parameterToFlags(keyword: string | null | undefined){
+    switch(keyword){
+        case undefined: return null;
+        case null:  return null;
+        case "own": return VariableFlags.Owns;
+        case "mut": return VariableFlags.Mutates;
+        default: throw new Error(`Unknown parameter keyword ${keyword}`)
+    }
+}
+
+Main.register(PTag.DeclParameter, (node) => {
+    const flags       = parameterToFlags(node[0]?.[0]?.value) ?? VariableFlags.None;
+    const name        = node[1].value;
+    const compileTime = node[2] !== null;
+    const type        = TypeExpr.parse(node[3]?.[3]);
+    // TODO: Attributes
+    const value       = Expr.parse(node[4]?.[3]);
+
+    return new DeclParameter(flags, name, compileTime, type, value);
+});
 
 export const Expr = new Parser();
-Expr.registerBuilderToTag(PTag.ExprIdentifier, (parser, node) => {
+Expr.register(PTag.ExprIdentifier, (node) => {
     const name = node[0].value;
-    console.log(name);
 
     return new GetLocal(name);
 });
 
 export const TypeExpr = new Parser();
-TypeExpr.registerBuilderToTag(PTag.ExprIdentifier, (parser, node) => {
+TypeExpr.register(PTag.ExprIdentifier, (node) => {
     return "" as any;
 });

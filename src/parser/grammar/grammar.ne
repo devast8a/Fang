@@ -45,7 +45,7 @@
     main -> NL:? (Stmt (StmtSep Stmt):* NL:?):? {%p.MainProcessor%}
 
 ## Decl/Variable ###################################################################################
-    DeclVariable     -> DvKeyword DvName DvType:? DvAttribute:* DvValue:? {%p.DeclVariable%}
+    DeclVariable     -> DvKeyword DvName CompileTime:? DvType:? DvAttribute:* DvValue:? {%p.DeclVariable%}
 
     # Exmaples:
     #   val name
@@ -59,7 +59,7 @@
     # Required
     DvKeyword       -> "val" __
     DvKeyword       -> "mut" __
-    DvName          -> Identifier CompileTime:?
+    DvName          -> Identifier
 
     # Optional After
     DvType          -> _ ":" _ Type
@@ -70,7 +70,7 @@
     Stmt            -> DeclVariable
 
 ## Decl/Function ###################################################################################
-    DeclFunction     -> DfKeyword DfName DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.DeclFunction%}
+    DeclFunction     -> DfKeyword DfName CompileTime:? DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.DeclFunction%}
 
     # Examples:
     #   fn name(){ ... }
@@ -83,20 +83,20 @@
     # Required
     DfKeyword       -> "fn" __
     DfKeyword       -> "op" __
-    DfName          -> Identifier CompileTime:?
+    DfName          -> Identifier
     DfParameters    -> STAR["(", NL:?, DeclParameter, COMMA, ")"]
 
     # Optional After
     DfReturnType    -> _ ":" _ Type
-    DfGeneric       -> NL DeclGeneric
-    DfAttribute     -> NL Attribute
-    DfBody          -> NL:? BODY[Stmt]
+    DfGeneric       -> N__ DeclGeneric
+    DfAttribute     -> N__ Attribute
+    DfBody          -> N_ BODY[Stmt]
 
     # Contexts
     Stmt            -> DeclFunction
 
 ## Decl/Parameter ##################################################################################
-    DeclParameter    -> DpKeyword:? DpName DpType:? DpAttribute:* DpValue:?
+    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpValue:? {%p.DeclParameter%}
 
     # Examples:
     #   name
@@ -113,7 +113,7 @@
     DpKeyword       -> "mut" __
 
     # Required
-    DpName          -> Identifier CompileTime:?
+    DpName          -> Identifier
     
     # Optional After
     DpType          -> _ ":" _ Type
@@ -137,10 +137,10 @@
     DcName          -> Identifier
 
     # Optional After
-    DcImplement     -> __ "impl" __ Type
-    DcGeneric       -> __ DeclGeneric
-    DcAttribute     -> __ Attribute
-    DcBody          -> _ BODY[Stmt]
+    DcImplement     -> N__ "impl" __ Type
+    DcGeneric       -> N__ DeclGeneric
+    DcAttribute     -> N__ Attribute
+    DcBody          -> N_ BODY[Stmt]
 
     # Contexts
     Stmt            -> DeclClass
@@ -177,6 +177,8 @@
 
     # Binary Expressions
     # x + y or x+y
+    ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
+    ExprBinary      -> ExprUnary NL OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
     ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
     ExprBinary      -> Atom Operator Atom                           {%p.ExprBinary%}    
     ExprBinary      -> ExprUnary
@@ -221,7 +223,7 @@
     Atom            -> ExprDictionary
 
 ## Expr/Construct ##################################################################################
-    ExprConstruct   -> EnTarget EnArguments
+    ExprConstruct   -> EnTarget CompileTime:? EnArguments
 
     # En - n for "new"
 
@@ -233,7 +235,7 @@
     #   Compile Time Operator
 
     # Required
-    EnTarget        -> Atom CompileTime:?
+    EnTarget        -> Atom
     EnArguments     -> STAR["{", _, EcArgument, COMMA, "}"]
     EnArgument      -> Expr
     EnArgument      -> Identifier _ ":" _ Expr
@@ -242,7 +244,7 @@
     Atom            -> ExprConstruct
 
 ## Expr/Call #######################################################################################
-    ExprCall        -> EcTarget EcArguments {%p.ExprCall%}
+    ExprCall        -> EcTarget CompileTime:? EcArguments {%p.ExprCall%}
 
     # Examples:
     #   foo(bar, baz)
@@ -251,7 +253,7 @@
     #   Compile Time Operator
 
     # Required
-    EcTarget        -> Atom CompileTime:?
+    EcTarget        -> Atom
     EcArguments     -> STAR["(", _, EcArgument, COMMA, ")"]
     EcArgument      -> Expr
     EcArgument      -> Identifier _ ":" _ Expr
@@ -261,14 +263,14 @@
     Atom            -> ExprCall
 
 ## Expr/MacroCall###################################################################################
-    ExprMacroCall   -> EmTarget EmArgument:?
+    ExprMacroCall   -> EmTarget CompileTime EmArgument:?
 
     # Examples:
     #   foo! x + y
     #   bar!
 
     # Required
-    EmTarget        -> Atom CompileTime
+    EmTarget        -> Atom
 
     # Optional After
     EmArgument      -> __ Expr
@@ -321,18 +323,18 @@
     Stmt            -> StmtAssign
 
 ## Stmt/ForEach ####################################################################################
-    StmtForEach     -> SfKeyword SfCondition SfBody
+    StmtForEach     -> SfKeyword CompileTime:? SfCondition SfBody
 
     # Required
-    SfKeyword       -> "for" CompileTime:? _
-    SfCondition     -> "(" _ Identifier __ "in" __ Expr _ ")" _
+    SfKeyword       -> "for"
+    SfCondition     -> _ "(" _ Identifier __ "in" __ Expr _ ")" N_
     SfBody          -> BODY[Stmt]
 
     # Contexts
     Stmt            -> StmtForEach
 
 ## Stmt/While ######################################################################################
-    StmtWhile     -> SwKeyword SwCondition SwBody
+    StmtWhile     -> SwKeyword CompileTime:? SwCondition SwBody
 
     # Examples:
     #   while(x == false){ ... }
@@ -342,8 +344,8 @@
     #   Compile Time Operator
 
     # Required
-    SwKeyword       -> "while" CompileTime:? _
-    SwCondition     -> "(" _ Expr _ ")" _
+    SwKeyword       -> "while"
+    SwCondition     -> _ "(" _ Expr _ ")" N_
     SwBody          -> BODY[Stmt]
 
     # Context
@@ -362,10 +364,10 @@
     #   Compile Time Operator
 
     # Required
-    SiKeyword       -> "if" CompileTime:? _
-    SiElifKeyword   -> _ "else" __ "if" _
-    SiElseKeyword   -> _ "else" _
-    SiCondition     -> "(" _ Expr _ ")" _
+    SiKeyword       -> "if" CompileTime:? N_
+    SiElifKeyword   -> _ "else" __ "if" N_
+    SiElseKeyword   -> _ "else" N_
+    SiCondition     -> "(" _ Expr _ ")" N_
     SiBody          -> BODY[Stmt]
 
     # Optional After
@@ -378,11 +380,11 @@
 ## Stmt/Match ######################################################################################
     StmtMatch       -> SmKeyword SmValue SmCases
 
-    SmKeyword       -> "match" CompileTime:? _
-    SmValue         -> "(" _ Expr _ ")" _
+    SmKeyword       -> "match" CompileTime:? N_
+    SmValue         -> "(" _ Expr _ ")" N_
     SmCases         -> BODY[SmCase]
 
-    SmCase          -> "case" __ Pattern _ ":" _ SmBody
+    SmCase          -> "case" __ Pattern _ ":" N_ SmBody
     SmBody          -> BODY[Stmt]
 
     Stmt            -> StmtMatch
@@ -402,8 +404,8 @@
 
     # Required
     EiKeyword       -> "if" CompileTime:? __
-    EiCondition     -> Atom __
-    EiTrue          -> __ Atom __
+    EiCondition     -> Atom N__
+    EiTrue          -> __ Atom N__
     EiFalse         -> __ Atom
 
     # Context
@@ -461,13 +463,17 @@
     Identifier -> %identifier
 
 ## Whitespace ######################################################################################
-    __              -> %ws
-    _               -> %ws:?
+    # Single underscore is optional whitespace, double is required whitespace
+    # If it begins with a N then newlines and 
+    __    -> %ws
+    _     -> %ws:?
+    N__   -> (%ws | %comment | %newline):+
+    N_    -> N__:?
 
     NL              -> (%ws:? %comment:? %newline):+ %ws:?
 
 ## Helpers #########################################################################################
-    COMMA           -> %comma
+    COMMA           -> _ %comma _
     COMMA           -> NL
 
     StmtSep         -> NL

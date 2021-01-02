@@ -2,10 +2,10 @@ class Base
 class A impl Base
 class B impl Base
 
-fn test(x: Base){}
+fn test(x: Base) {}
 
 fn main(){
     val a: A
     test(a)
-    test()
+    test(a)
 }

@@ -4,7 +4,7 @@ import { Scope } from './ast/scope';
 import { Function, Tag, Thing, Type } from './ast/things';
 import { Source } from './common/source';
 import { CompilerError, ConsoleErrorFormatter } from './errors';
-import { parserMain } from './parser/ast_builders';
+import { Main } from './parser/ast_builders';
 import Grammar from './parser/grammar';
 import { convert } from './parser/node2thing';
 import { Parser } from './parser/parser';
@@ -59,7 +59,7 @@ class AstGeneration {
         for(let index = 0; index < results.length; index += 2){
             const node = results[index];
 
-            const output = parserMain.parse(node);
+            const output = Main.parse(node);
 
             if(output === null){
                 throw new Error("Broken Assertion: Output of Parser.parse shouldn't be null if the input isn't null");

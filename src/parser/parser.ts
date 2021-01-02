@@ -2,13 +2,13 @@ import { Enum } from '../common/enum';
 import {Node} from './ast_builders';
 import { PTag } from './post_processor';
 
-export type Builder = (parser: Parser, node: any[]) => Node;
+export type Builder<T> = (node: any[], parser: Parser<T>) => Node;
 
 // TODO: Consider consistent naming with Node, AST Thing, etc...
 type ParseTree = {tag: PTag, data: ParseTree[]} | null;
 
-export class Parser {
-    private registration = new Array<Builder>(Enum.getCount(PTag));
+export class Parser<T> {
+    private registration = new Array<Builder<T>>(Enum.getCount(PTag));
 
     public parse(node: ParseTree): (Node | null) {
         if(node === undefined || node === null){
@@ -23,10 +23,10 @@ export class Parser {
             throw new Error(`Trying to parse unknown node ${PTag[node.tag]}`);
         }
 
-        return fn(this, node.data);
+        return fn(node.data, this);
     }
 
-    public registerBuilderToTag(tag: PTag, builder: Builder){
+    public register(tag: PTag, builder: Builder<T>){
         this.registration[tag] = builder;
     }
 }

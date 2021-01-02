@@ -37,6 +37,8 @@ export function convert(compiler: Compiler, scope: Scope, node: Node){
 
             scope.declareFunction(thing);
 
+            thing.parameters.push(new Things.Variable(AST, "a", returnType, Things.VariableFlags.Local, "a"));
+
             for(const stmt of node.body){
                 thing.body.block.push(convert(compiler, thing.scope, stmt) as Things.Stmt);
             }
