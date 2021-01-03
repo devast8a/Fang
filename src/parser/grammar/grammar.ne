@@ -45,7 +45,98 @@
 ## Main ############################################################################################
     main -> NL:? (Stmt (StmtSep Stmt):* NL:?):? {%p.MainProcessor%}
 
-## Decl/Variable ###################################################################################
+## Decl/Class ######################################################################################
+    DeclClass    -> DcKeyword DcName DcImplement:* DcGeneric:? DcAttribute:* DcBody:? {%p.DeclClass%}
+
+    # Examples:
+    #   TODO: Fill out some examples
+
+    # Supports:
+    #   Attributes
+
+    # Required
+    DcKeyword       -> "class" __
+    DcName          -> Identifier
+
+    # Optional After
+    DcImplement     -> N__ "impl" __ Type
+    DcGeneric       -> N__ DeclGeneric
+    DcAttribute     -> N__ Attribute
+    DcBody          -> N_ BODY[Stmt]
+
+    # Contexts
+    Stmt            -> DeclClass
+
+## Decl/Function ###################################################################################
+    DeclFunction     -> DfKeyword DfName CompileTime:? DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.DeclFunction%}
+
+    # Examples:
+    #   fn name(){ ... }
+    #   fn name(parameter: Type #parameterAttribute ...): ReturnType #functionAttribute { ... }
+
+    # Supports:
+    #   Attributes
+    #   Compile Time Operator
+
+    # Required
+    DfKeyword       -> "fn" __
+    DfKeyword       -> "op" __
+    DfName          -> Identifier
+    DfParameters    -> STAR["(", NL:?, DeclParameter, COMMA, ")"]
+
+    # Optional After
+    DfReturnType    -> _ ":" _ Type
+    DfGeneric       -> N__ DeclGeneric
+    DfAttribute     -> N__ Attribute
+    DfBody          -> N_ BODY[Stmt]
+
+    # Contexts
+    Stmt            -> DeclFunction
+
+## Decl/Generics ###################################################################################
+    DeclGeneric  -> DgKeyword DgParameters DgWhere:*
+
+    # Examples:
+    #   TODO: Fill out some examples
+
+    DgKeyword       -> "generic"
+    DgParameters    -> PLUS["<", _, DgParameter, COMMA, ">"]
+    DgParameter     -> Identifier
+    DgWhere         -> __ "where" __ Identifier __ "impl" __ Type
+
+    # Contexts
+    # After the class name but before the body in DeclClass
+    # After the function name but before the body in DeclFunction
+
+## Decl/Parameter ##################################################################################
+    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpValue:? {%p.DeclParameter%}
+
+    # Examples:
+    #   name
+    #   name: Type
+    #   mut name
+    #   own name: Type
+
+    # Supports:
+    #   Attributes
+    #   Compile Time Operator
+        
+    # Optional Before
+    DpKeyword       -> "own" __
+    DpKeyword       -> "mut" __
+
+    # Required
+    DpName          -> Identifier
+    
+    # Optional After
+    DpType          -> _ ":" _ Type
+    DpAttribute     -> __ Attribute
+    DpValue         -> _ "=" _ Expr
+
+    # Context
+    # Function declaration parameter's list (DeclFunction)
+
+## Decl/Trait ######################################################################################
     DeclTrait    -> DtKeyword DtName DtImplement:* DtGeneric:? DtAttribute:* DtBody:? {%p.DeclTrait%}
 
     # Examples:
@@ -91,97 +182,6 @@
 
     # Contexts
     Stmt            -> DeclVariable
-
-## Decl/Function ###################################################################################
-    DeclFunction     -> DfKeyword DfName CompileTime:? DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.DeclFunction%}
-
-    # Examples:
-    #   fn name(){ ... }
-    #   fn name(parameter: Type #parameterAttribute ...): ReturnType #functionAttribute { ... }
-
-    # Supports:
-    #   Attributes
-    #   Compile Time Operator
-
-    # Required
-    DfKeyword       -> "fn" __
-    DfKeyword       -> "op" __
-    DfName          -> Identifier
-    DfParameters    -> STAR["(", NL:?, DeclParameter, COMMA, ")"]
-
-    # Optional After
-    DfReturnType    -> _ ":" _ Type
-    DfGeneric       -> N__ DeclGeneric
-    DfAttribute     -> N__ Attribute
-    DfBody          -> N_ BODY[Stmt]
-
-    # Contexts
-    Stmt            -> DeclFunction
-
-## Decl/Parameter ##################################################################################
-    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpValue:? {%p.DeclParameter%}
-
-    # Examples:
-    #   name
-    #   name: Type
-    #   mut name
-    #   own name: Type
-
-    # Supports:
-    #   Attributes
-    #   Compile Time Operator
-        
-    # Optional Before
-    DpKeyword       -> "own" __
-    DpKeyword       -> "mut" __
-
-    # Required
-    DpName          -> Identifier
-    
-    # Optional After
-    DpType          -> _ ":" _ Type
-    DpAttribute     -> __ Attribute
-    DpValue         -> _ "=" _ Expr
-
-    # Context
-    # Function declaration parameter's list (DeclFunction)
-
-## Decl/Class ######################################################################################
-    DeclClass    -> DcKeyword DcName DcImplement:* DcGeneric:? DcAttribute:* DcBody:? {%p.DeclClass%}
-
-    # Examples:
-    #   TODO: Fill out some examples
-
-    # Supports:
-    #   Attributes
-
-    # Required
-    DcKeyword       -> "class" __
-    DcName          -> Identifier
-
-    # Optional After
-    DcImplement     -> N__ "impl" __ Type
-    DcGeneric       -> N__ DeclGeneric
-    DcAttribute     -> N__ Attribute
-    DcBody          -> N_ BODY[Stmt]
-
-    # Contexts
-    Stmt            -> DeclClass
-
-## Decl/Generics ###################################################################################
-    DeclGeneric  -> DgKeyword DgParameters DgWhere:*
-
-    # Examples:
-    #   TODO: Fill out some examples
-
-    DgKeyword       -> "generic"
-    DgParameters    -> PLUS["<", _, DgParameter, COMMA, ">"]
-    DgParameter     -> Identifier
-    DgWhere         -> __ "where" __ Identifier __ "impl" __ Type
-
-    # Contexts
-    # After the class name but before the body in DeclClass
-    # After the function name but before the body in DeclFunction
 
 ## Expr ############################################################################################
     # Expr describes expressions that may be comprised of binary and unary operations
@@ -245,6 +245,25 @@
     # Context
     Atom            -> ExprDictionary
 
+## Expr/Call #######################################################################################
+    ExprCall        -> EcTarget CompileTime:? EcArguments {%p.ExprCall%}
+
+    # Examples:
+    #   foo(bar, baz)
+
+    # Supports:
+    #   Compile Time Operator
+
+    # Required
+    EcTarget        -> Atom
+    EcArguments     -> STAR["(", _, EcArgument, COMMA, ")"]
+    EcArgument      -> Expr
+    EcArgument      -> Identifier _ ":" _ Expr
+
+    # Contexts
+    Stmt            -> ExprCall
+    Atom            -> ExprCall
+
 ## Expr/Construct ##################################################################################
     ExprConstruct   -> EnTarget CompileTime:? EnArguments
 
@@ -266,41 +285,27 @@
     # Contexts
     Atom            -> ExprConstruct
 
-## Expr/Call #######################################################################################
-    ExprCall        -> EcTarget CompileTime:? EcArguments {%p.ExprCall%}
+## Expr/If #########################################################################################
+    ExprIf          -> EiKeyword EiCondition "?" EiTrue ":" EiFalse
+
+    # Disabled for now... we need to see what effect this has on code gen first
 
     # Examples:
-    #   foo(bar, baz)
+    #   if x ? y : z
+    #   if (x == y) ? (y + z) : (z + 10)
+    #   if! (x == y) ? 10 : 20
 
     # Supports:
     #   Compile Time Operator
 
     # Required
-    EcTarget        -> Atom
-    EcArguments     -> STAR["(", _, EcArgument, COMMA, ")"]
-    EcArgument      -> Expr
-    EcArgument      -> Identifier _ ":" _ Expr
+    EiKeyword       -> "if" CompileTime:? __
+    EiCondition     -> Atom N__
+    EiTrue          -> __ Atom N__
+    EiFalse         -> __ Atom
 
-    # Contexts
-    Stmt            -> ExprCall
-    Atom            -> ExprCall
-
-## Expr/MacroCall###################################################################################
-    ExprMacroCall   -> EmTarget CompileTime EmArgument:?
-
-    # Examples:
-    #   foo! x + y
-    #   bar!
-
-    # Required
-    EmTarget        -> Atom
-
-    # Optional After
-    EmArgument      -> __ Expr
-
-    # Contexts
-    Stmt            -> ExprMacroCall
-    ExprBinary      -> ExprMacroCall
+    # Context
+    # Expr            -> ExprIf
 
 ## Expr/IndexBracket ###############################################################################
     ExprIndexBracket -> EbTarget EbIndex
@@ -334,6 +339,23 @@
     # Contexts
     Atom            -> ExprIndexDot
 
+## Expr/MacroCall###################################################################################
+    ExprMacroCall   -> EmTarget CompileTime EmArgument:?
+
+    # Examples:
+    #   foo! x + y
+    #   bar!
+
+    # Required
+    EmTarget        -> Atom
+
+    # Optional After
+    EmArgument      -> __ Expr
+
+    # Contexts
+    Stmt            -> ExprMacroCall
+    ExprBinary      -> ExprMacroCall
+
 ## Stmt/Assign #####################################################################################
     StmtAssign      -> SaTarget SaOperator SaValue
 
@@ -355,24 +377,6 @@
 
     # Contexts
     Stmt            -> StmtForEach
-
-## Stmt/While ######################################################################################
-    StmtWhile     -> SwKeyword CompileTime:? SwCondition SwBody
-
-    # Examples:
-    #   while(x == false){ ... }
-    #   while!(Foo()){ ... }
-
-    # Supports:
-    #   Compile Time Operator
-
-    # Required
-    SwKeyword       -> "while"
-    SwCondition     -> _ "(" _ Expr _ ")" N_
-    SwBody          -> BODY[Stmt]
-
-    # Context
-    Stmt            -> StmtWhile
 
 ## Stmt/If #########################################################################################
     StmtIf          -> SiKeyword SiCondition SiBody SiElif:* SiElse:?
@@ -412,28 +416,6 @@
 
     Stmt            -> StmtMatch
 
-## Expr/If #########################################################################################
-    ExprIf          -> EiKeyword EiCondition "?" EiTrue ":" EiFalse
-
-    # Disabled for now... we need to see what effect this has on code gen first
-
-    # Examples:
-    #   if x ? y : z
-    #   if (x == y) ? (y + z) : (z + 10)
-    #   if! (x == y) ? 10 : 20
-
-    # Supports:
-    #   Compile Time Operator
-
-    # Required
-    EiKeyword       -> "if" CompileTime:? __
-    EiCondition     -> Atom N__
-    EiTrue          -> __ Atom N__
-    EiFalse         -> __ Atom
-
-    # Context
-    # Expr            -> ExprIf
-
 ## Stmt/Return #####################################################################################
     StmtReturn      -> SrKeyword SrValue:?
 
@@ -449,6 +431,24 @@
 
     # Context
     Stmt            -> StmtReturn
+
+## Stmt/While ######################################################################################
+    StmtWhile     -> SwKeyword CompileTime:? SwCondition SwBody
+
+    # Examples:
+    #   while(x == false){ ... }
+    #   while!(Foo()){ ... }
+
+    # Supports:
+    #   Compile Time Operator
+
+    # Required
+    SwKeyword       -> "while"
+    SwCondition     -> _ "(" _ Expr _ ")" N_
+    SwBody          -> BODY[Stmt]
+
+    # Context
+    Stmt            -> StmtWhile
 
 ## Types ###########################################################################################
     Type -> Expr
