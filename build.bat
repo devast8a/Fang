@@ -11,6 +11,12 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 echo Compiling test.fang
 CALL node build\js\cli test.fang -o build\test.c
 if %errorlevel% neq 0 exit /b %errorlevel%
+
+echo ================================================================================
+type build\test.c
+echo ================================================================================
+
+echo Running C compiler
 CALL cc build\test.c -o build\test.exe
 if %errorlevel% neq 0 exit /b %errorlevel%
 

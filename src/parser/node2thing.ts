@@ -1,6 +1,7 @@
 import { Scope } from '../ast/scope';
 import { Compiler } from '../compile';
-import { Node, Tag } from './ast_builders';
+import { UTag } from "../nodes/unresolved/UTag";
+import { UNode } from "../nodes/unresolved/UNode";
 import * as Things from './../ast/things';
 
 /**
@@ -16,14 +17,30 @@ import * as Things from './../ast/things';
 const UNKNOWN: any = undefined;
 const AST: any = undefined;
 
-export function convert(compiler: Compiler, scope: Scope, node: Node){
+export function convert(compiler: Compiler, scope: Scope, node: UNode){
     switch(node.tag){
-        case Tag.DeclClass: {
+        case UTag.DeclClass: {
             const thing = new Things.Class(AST, node.name, "struct " + scope.id + node.name, scope);
+
+            for(const superType of node.superTypes){
+                const type = scope.lookupType(superType as any);
+
+                if(type === undefined){
+                    console.log(type);
+                    throw new Error("Could not find type");
+                } else if(type.tag !== Things.Tag.Trait) {
+                    throw new Error("Type is not correct tag");
+                } else {
+                    thing.traits.set(type.name, type);
+                }
+            }
+            
+            scope.declareClass(thing);
+
             return thing;
         }
 
-        case Tag.DeclFunction: {
+        case UTag.DeclFunction: {
             // TODO: Support setting function names directly through attributes
             let id = node.name;
             if(scope.id !== 'F' || node.name !== 'main'){
@@ -37,7 +54,9 @@ export function convert(compiler: Compiler, scope: Scope, node: Node){
 
             scope.declareFunction(thing);
 
-            thing.parameters.push(new Things.Variable(AST, "a", returnType, Things.VariableFlags.Local, "a"));
+            for(const parameter of node.parameters){
+                thing.parameters.push(convert(compiler, thing.scope, parameter) as Things.Variable);
+            }
 
             for(const stmt of node.body){
                 thing.body.block.push(convert(compiler, thing.scope, stmt) as Things.Stmt);
@@ -46,9 +65,37 @@ export function convert(compiler: Compiler, scope: Scope, node: Node){
             return thing;
         }
 
-        case Tag.DeclVariable: {
-            // TODO: Remove placeholder type
-            const type  = scope.lookupType("Int")!;
+        case UTag.DeclParameter: {
+            const type = scope.lookupType(node.type as any)!; // TODO: Remove type system subversion
+            const thing = new Things.Variable(AST, node.name, type, node.flags, node.name);
+            scope.declareVariable(thing);
+            return thing;
+        }
+
+        case UTag.DeclTrait: {
+            const thing = new Things.Trait(AST, node.name, "struct " + scope.id + node.name, scope);
+
+            for(const superType of node.superTypes){
+                const type = scope.lookupType(superType as any);
+
+                if(type === undefined){
+                    throw new Error("Could not find type");
+                }
+
+                thing.traits.set(type.id, type as any);
+            }
+            
+            scope.declareTrait(thing);
+
+            return thing;
+        }
+
+        case UTag.DeclVariable: {
+            const type  = scope.lookupType(node.type as any); // TODO: Remove type system subversion
+
+            if(type === undefined){
+                throw new Error(`Could not find a type with the name ${node.type}`); // TODO: Hook everything into a compiler error system
+            }
 
             // TODO: Correctly set variable flags based on keyword used when declaring a variable
             const flags = Things.VariableFlags.Local;
@@ -60,7 +107,7 @@ export function convert(compiler: Compiler, scope: Scope, node: Node){
             return new Things.SetVariable(AST, thing, new Things.Constant(AST, type, 100));
         }
 
-        case Tag.ExprCall: {
+        case UTag.ExprCall: {
             // TODO: Remove placeholder function
             const thing = new Things.CallStatic(AST, scope.lookupFunction("test")!);
 
@@ -71,15 +118,15 @@ export function convert(compiler: Compiler, scope: Scope, node: Node){
             return thing;
         }
 
-        case Tag.ExprGetLocal: {
-            const variable = scope.lookupVariable("a")!;
+        case UTag.ExprGet: {
+            const variable = scope.lookupVariable(node.name)!;
             const thing    = new Things.GetVariable(AST, variable);
 
             return thing;
         }
 
         default: {
-            throw new Error(`Unable to convert node ${Tag[(node as any).tag]}`);
+            throw new Error(`Unable to convert node ${UTag[(node as any).tag]}`);
         }
     }
 }

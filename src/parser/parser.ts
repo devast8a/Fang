@@ -1,16 +1,20 @@
 import { Enum } from '../common/enum';
-import {Node} from './ast_builders';
 import { PTag } from './post_processor';
 
-export type Builder<T> = (node: any[], parser: Parser<T>) => Node;
+export type Builder<T> = (node: any[], parser: Parser<T>) => T;
 
 // TODO: Consider consistent naming with Node, AST Thing, etc...
 type ParseTree = {tag: PTag, data: ParseTree[]} | null;
 
 export class Parser<T> {
     private registration = new Array<Builder<T>>(Enum.getCount(PTag));
+    public readonly name: string;
 
-    public parse(node: ParseTree): (Node | null) {
+    constructor(name: string){
+        this.name = name;
+    }
+
+    public parse(node: ParseTree): (T | null) {
         if(node === undefined || node === null){
             return null;
         }
@@ -20,7 +24,7 @@ export class Parser<T> {
 
         // TODO: Throw an error when trying to parse an unknown node
         if(fn === undefined){
-            throw new Error(`Trying to parse unknown node ${PTag[node.tag]}`);
+            throw new Error(`Parser ${this.name} does not have a registered builder for node ${PTag[node.tag]}`);
         }
 
         return fn(node.data, this);

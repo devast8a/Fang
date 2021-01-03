@@ -28,6 +28,8 @@ export class ExpressionTypeError extends CompilerError {
     public constructor(target: Ast.Thing, type: Ast.Type, source: Ast.Expr){
         super();
 
+        throw new Error("");
+
         this.target = target;
         this.type = type;
         this.source = source;

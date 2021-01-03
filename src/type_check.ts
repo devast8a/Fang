@@ -69,10 +69,10 @@ reg(Ast.CallStatic, (thing, visitor, state) => {
 
         visitor.check(args[i], state);
 
-        if(args[i].expressionResultType !== params[i].type){
-            // TODO: Use an error specific to calls?
-            visitor.compiler.report(new ExpressionTypeError(args[i], params[i].type, args[i]))
-        }
+        //if(args[i].expressionResultType !== params[i].type){
+        //    // TODO: Use an error specific to calls?
+        //    visitor.compiler.report(new ExpressionTypeError(args[i], params[i].type, args[i]))
+        //}
     }
 });
 

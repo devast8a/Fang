@@ -182,12 +182,6 @@ export class Compiler {
         this.errors.push(error);
     }
 
-    public parse<T = Thing>(node: any, scope: Scope): (T | null) {
-        const parser = new Parser();
-        const res = parser.parse(node) as any;
-        return res;
-    }
-
     public compile(source: Source){
         (this as any).source = source;
 
