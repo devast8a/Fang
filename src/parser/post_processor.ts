@@ -17,6 +17,7 @@ export enum PTag {
     DeclClass,
     DeclFunction,
     DeclParameter,
+    DeclTrait,
     DeclVariable,
     ExprBinary,
     ExprCall,
@@ -44,6 +45,7 @@ function tag(tag: PTag){
 export const DeclClass          = tag(PTag.DeclClass);
 export const DeclFunction       = tag(PTag.DeclFunction);
 export const DeclParameter      = tag(PTag.DeclParameter);
+export const DeclTrait          = tag(PTag.DeclTrait);
 export const DeclVariable       = tag(PTag.DeclVariable);
 export const ExprBinary         = tag(PTag.ExprBinary);
 export const ExprCall           = tag(PTag.ExprCall);

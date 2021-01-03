@@ -12,6 +12,7 @@
     ## Df - DeclFunction
     ## Dg - DeclGeneric
     ## Dp - DeclParameter
+    ## Dt - DeclTrait
     ## Dv - DeclVariable
     ## Eb - ExprIndexBracket
     ## Ec - ExprCall
@@ -43,6 +44,28 @@
 
 ## Main ############################################################################################
     main -> NL:? (Stmt (StmtSep Stmt):* NL:?):? {%p.MainProcessor%}
+
+## Decl/Variable ###################################################################################
+    DeclTrait    -> DtKeyword DtName DtImplement:* DtGeneric:? DtAttribute:* DtBody:? {%p.DeclTrait%}
+
+    # Examples:
+    #   TODO: Fill out some examples
+
+    # Supports:
+    #   Attributes
+
+    # Required
+    DtKeyword       -> "trait" __
+    DtName          -> Identifier
+
+    # Optional After
+    DtImplement     -> N__ "impl" __ Type
+    DtGeneric       -> N__ DeclGeneric
+    DtAttribute     -> N__ Attribute
+    DtBody          -> N_ BODY[Stmt]
+
+    # Contexts
+    Stmt            -> DeclTrait
 
 ## Decl/Variable ###################################################################################
     DeclVariable     -> DvKeyword DvName CompileTime:? DvType:? DvAttribute:* DvValue:? {%p.DeclVariable%}
