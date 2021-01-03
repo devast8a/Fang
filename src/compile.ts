@@ -1,20 +1,19 @@
 import * as nearley from "nearley";
 import Analyzer from './analysis';
 import { Scope } from './ast/scope';
-import { Function, Tag, Thing, Type } from './ast/things';
+import { Function, Tag, Type } from './ast/things';
 import { Source } from './common/source';
 import { CompilerError, ConsoleErrorFormatter } from './errors';
 import { Main } from './parser/ast_builders';
 import Grammar from './parser/grammar';
 import { convert } from './parser/node2thing';
-import { Parser } from './parser/parser';
 import Polymorpher from './polymorph';
 import TargetCGcc from './targets/c';
 import { registerIntrinsics, removeIntrinsics } from './targets/c/intrinsics';
 import TypeChecker from './type_check';
 
 class Parse {
-    public execute(compiler: Compiler){
+    public execute(compiler: Compiler) {
         // TODO: Properly load source
         const source = (compiler as any).source as Source;
 
@@ -24,7 +23,7 @@ class Parse {
         parser.feed(source.content);
         console.timeEnd("parsing");
 
-        if(parser.results.length > 1){
+        if (parser.results.length > 1) {
             console.error("! AMBIGUOUS GRAMMAR !");
             console.log(JSON.stringify(parser.results[0], null, 4));
             console.log(JSON.stringify(parser.results[1], null, 4));
@@ -34,7 +33,7 @@ class Parse {
             throw new Error();
         }
 
-        if(parser.results.length == 0){
+        if (parser.results.length == 0) {
             console.error("Incomplete parse")
 
             // TODO: Remove this kludge
@@ -46,7 +45,7 @@ class Parse {
 }
 
 class AstGeneration {
-    public execute(compiler: Compiler){
+    public execute(compiler: Compiler) {
         const parse = new Parse();
         const results = parse.execute(compiler);
 
@@ -56,12 +55,12 @@ class AstGeneration {
 
         // Ast Generation
         console.time("ast-generation");
-        for(let index = 0; index < results.length; index += 2){
+        for (let index = 0; index < results.length; index += 2) {
             const node = results[index];
 
             const output = Main.parse(node);
 
-            if(output === null){
+            if (output === null) {
                 throw new Error("Broken Assertion: Output of Parser.parse shouldn't be null if the input isn't null");
             }
 
@@ -74,7 +73,7 @@ class AstGeneration {
 }
 
 class TypeCheck {
-    public execute(compiler: Compiler){
+    public execute(compiler: Compiler) {
         const astGeneration = new AstGeneration();
         astGeneration.execute(compiler);
 
@@ -82,7 +81,7 @@ class TypeCheck {
         console.time("type-checking");
         const checker = new TypeChecker(compiler);
         const state = new TypeChecker.State();
-        for(const type of compiler.scope.typeNameMap.values()){
+        for (const type of compiler.scope.typeNameMap.values()) {
             checker.check(type, state);
             //type.checkTypes(this);
         }
@@ -92,7 +91,7 @@ class TypeCheck {
 }
 
 class Analyze {
-    public execute(compiler: Compiler){
+    public execute(compiler: Compiler) {
         const typeCheck = new TypeCheck();
         typeCheck.execute(compiler);
 
@@ -100,7 +99,7 @@ class Analyze {
         console.time("analysis");
         const analyser = new Analyzer(compiler);
         const state = new Analyzer.State();
-        for(const type of compiler.scope.typeNameMap.values()){
+        for (const type of compiler.scope.typeNameMap.values()) {
             analyser.check(type, state);
         }
         console.timeEnd("analysis");
@@ -109,7 +108,7 @@ class Analyze {
 }
 
 export class Monomorphize {
-    public execute(compiler: Compiler){
+    public execute(compiler: Compiler) {
         const analyze = new Analyze();
         analyze.execute(compiler);
 
@@ -117,10 +116,10 @@ export class Monomorphize {
         console.time("monomorphize");
         const polymorpher = new Polymorpher(compiler, compiler.scope);
         const state = new Polymorpher.State();
-        for(const type of compiler.scope.typeNameMap.values()){
+        for (const type of compiler.scope.typeNameMap.values()) {
             const morphed = polymorpher.polymorph(type, state);
 
-            if(morphed.tag === Tag.Function){
+            if (morphed.tag === Tag.Function) {
                 compiler.scope.typeNameMap.set(morphed.name, morphed);
                 compiler.scope.functionNameMap.set(morphed.name, morphed);
             }
@@ -131,7 +130,7 @@ export class Monomorphize {
 }
 
 class CodeGen {
-    public execute(compiler: Compiler){
+    public execute(compiler: Compiler) {
         const monomorphize = new Monomorphize();
         monomorphize.execute(compiler);
 
@@ -139,7 +138,7 @@ class CodeGen {
 
         // Code-gen
         console.time("code-gen");
-        if(compiler.errors.length === 0){
+        if (compiler.errors.length === 0) {
             const target = new TargetCGcc();
 
             target.compileModule(compiler.scope);
@@ -166,7 +165,7 @@ export class Compiler {
         move: Function,
     };
 
-    constructor(){
+    constructor() {
         this.scope = new Scope('F');
         const result = registerIntrinsics(this);
         this.types = result.types;
@@ -182,7 +181,7 @@ export class Compiler {
         this.errors.push(error);
     }
 
-    public compile(source: Source){
+    public compile(source: Source) {
         (this as any).source = source;
 
         const codegen = new CodeGen();

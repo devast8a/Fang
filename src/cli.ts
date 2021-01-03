@@ -2,7 +2,7 @@ import 'source-map-support/register';
 import * as fs from 'fs';
 import {Compiler, Source} from './index';
 
-async function main(){
+async function main() {
     console.group("Compiling...");
 
     const path = process.argv[2];

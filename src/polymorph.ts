@@ -9,10 +9,10 @@ export class Polymorpher extends Visitor<State, InputType> {
     returnType: Type | null = null;
     compiler: Compiler;
 
-    public constructor(compiler: Compiler, scope: Scope, mapping?: Map<Variable, Type>){
+    public constructor(compiler: Compiler, scope: Scope, mapping?: Map<Variable, Type>) {
         super(setup, Visitor.ErrorByDefault());
 
-        if(mapping === undefined){
+        if (mapping === undefined) {
             this.mapping = new Map();
         } else {
             this.mapping = mapping;
@@ -36,35 +36,35 @@ const State = Polymorpher.State;
 
 export default Polymorpher;
 
-function instantiateWithArgs(input: Function, args: Expr[], polymorpher: Polymorpher, state: State){
+function instantiateWithArgs(input: Function, args: Expr[], polymorpher: Polymorpher, state: State) {
     let name = input.name;
     const params  = input.parameters;
 
     const mapping = new Map<Variable, Type>();
 
     // Should we abstract this out too?
-    for(let i = 0; i < args.length; i++){
+    for (let i = 0; i < args.length; i++) {
         const argument = args[i];
         const parameter = params[i];
 
-        if(parameter.type.tag === Tag.Trait){
+        if (parameter.type.tag === Tag.Trait) {
             mapping.set(parameter, argument.expressionResultType);
             name += `_${i}_${argument.expressionResultType.name}`
         }
     }
 
-    for(let i = 0; i < args.length; i++){
+    for (let i = 0; i < args.length; i++) {
         const argument = args[i];
         const parameter = params[i];
 
-        if(parameter.type.tag === Tag.Trait){
+        if (parameter.type.tag === Tag.Trait) {
             mapping.set(parameter, argument.expressionResultType);
             name += `_${i}_${argument.expressionResultType.name}`
         }
     }
 
     // No instantiation needs to take place
-    if(mapping.size === 0){
+    if (mapping.size === 0) {
         return input;
     }
 
@@ -72,7 +72,7 @@ function instantiateWithArgs(input: Function, args: Expr[], polymorpher: Polymor
     polymorpher.scope.functionNameMap.delete(input.name);
 
     const lookup = polymorpher.scope.functionNameMap.get(name);
-    if(lookup !== undefined){
+    if (lookup !== undefined) {
         return lookup;
     }
 
@@ -85,7 +85,7 @@ function instantiateWithArgs(input: Function, args: Expr[], polymorpher: Polymor
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-function setup(reg: Register<Polymorpher, State, InputType>){
+function setup(reg: Register<Polymorpher, State, InputType>) {
 
 reg(Trait, (input, polymorpher, state) => {
     return input;
@@ -101,8 +101,8 @@ reg(Function, (input, polymorpher, state) => {
     //const body          = input.body.map(x => inner.polymorph(x, state));
 
 
-    if(input.returnType.tag === Tag.Trait){
-        if(inner.returnType === null){
+    if (input.returnType.tag === Tag.Trait) {
+        if (inner.returnType === null) {
             throw new Error("[Internal Error] Polymorph.Function return type is null")
         }
 
@@ -127,10 +127,10 @@ reg(Class, (input, polymorpher, state) => {
 });
 
 reg(CallStatic, (input, polymorpher, state) => {
-    if(input.target === polymorpher.compiler.functions.copy){
+    if (input.target === polymorpher.compiler.functions.copy) {
         return polymorpher.polymorph(input.arguments[0], state) as any;
     }
-    if(input.target === polymorpher.compiler.functions.move){
+    if (input.target === polymorpher.compiler.functions.move) {
         return polymorpher.polymorph(input.arguments[0], state) as any;
     }
 
@@ -141,7 +141,7 @@ reg(CallStatic, (input, polymorpher, state) => {
     output.arguments = args;
 
     // Handle return type polymorphism
-    if(input.target.returnType.tag === Tag.Trait){
+    if (input.target.returnType.tag === Tag.Trait) {
         output.expressionResultType = (input.target as any).realReturnType;
     }
 
@@ -153,12 +153,12 @@ reg(CallField, (input, polymorpher, state) => {
     const args   = input.arguments.map(x => polymorpher.polymorph(x, state));
     let target   = expr.expressionResultType.scope.lookupFunction(input.target.name);
 
-    if(target === undefined){
+    if (target === undefined) {
         throw new Error(`[Internal Error] Polymorph.CallField could not find '${input.target.name}'`);
     }
 
     // TODO: Perform this in its own lowering step
-    if(expr.tag !== Tag.GetType){
+    if (expr.tag !== Tag.GetType) {
         args.unshift(expr);
     }
 
@@ -168,7 +168,7 @@ reg(CallField, (input, polymorpher, state) => {
     output.arguments = args;
 
     // Handle return type polymorphism
-    if(input.target.returnType.tag === Tag.Trait){
+    if (input.target.returnType.tag === Tag.Trait) {
         output.expressionResultType = (input.target as any).realReturnType;
     }
 
@@ -187,7 +187,7 @@ reg(Constant, (input, polymorpher, state) => {
 reg(Variable, (input, polymorpher, state) => {
     const type = polymorpher.mapping.get(input);
 
-    if(type === undefined && input.value === undefined){
+    if (type === undefined && input.value === undefined) {
         return input;
     }
 
@@ -199,11 +199,11 @@ reg(Variable, (input, polymorpher, state) => {
         input.id
     );
 
-    if(input.value !== undefined){
+    if (input.value !== undefined) {
         // TODO: Change variable type
         output.value = polymorpher.polymorph(input.value, state);
 
-        if(output.value.expressionResultType !== input.value.expressionResultType){
+        if (output.value.expressionResultType !== input.value.expressionResultType) {
             // We need to change the type of this variable
             output.type = output.value.expressionResultType;
 
@@ -218,7 +218,7 @@ reg(GetField, (input, polymorpher, state) => {
     const target = polymorpher.polymorph(input.target, state);
     const field = target.expressionResultType.scope.lookupVariable(input.field.name);
 
-    if(field === undefined){
+    if (field === undefined) {
         throw new Error(`[Internal Error] Polymorph.GetField could not find '${input.field.name}'`);
     }
 
@@ -230,7 +230,7 @@ reg(SetField, (input, polymorpher, state) => {
     const source = polymorpher.polymorph(input.source, state);
     const field  = target.expressionResultType.scope.lookupVariable(input.field.name);
 
-    if(field === undefined){
+    if (field === undefined) {
         throw new Error(`[Internal Error] Polymorph.SetField could not find '${input.field.name}'`);
     }
 
@@ -252,8 +252,10 @@ reg(GetVariable, (input, polymorpher, state) => {
 reg(Return, (input, polymorpher, state) => {
     const value = polymorpher.polymorph(input.value, state);
 
-    if(polymorpher.returnType === null){
+    if (polymorpher.returnType === null) {
         polymorpher.returnType = value.expressionResultType;
+    } else if (polymorpher.returnType === undefined) {
+        console.log("X");
     }
 
     return new Return(input.ast, value);

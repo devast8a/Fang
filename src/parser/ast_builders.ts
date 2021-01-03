@@ -10,8 +10,8 @@ import { UExprCall } from '../nodes/unresolved/UExprCall';
 import { UDeclParameter } from '../nodes/unresolved/UDeclParameter';
 import { UExprGet } from '../nodes/unresolved/UExprGet';
 
-function parameterToFlags(keyword: string | null | undefined){
-    switch(keyword){
+function parameterToFlags(keyword: string | null | undefined) {
+    switch (keyword) {
         case undefined: return VariableFlags.None;
         case null:  return VariableFlags.None;
         case "val": return VariableFlags.None;

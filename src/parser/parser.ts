@@ -10,7 +10,7 @@ export class Parser<T> {
     private readonly builders: Array<Builder<T>>;
     public readonly name: string;
 
-    constructor(name: string){
+    constructor(name: string) {
         this.name = name;
 
         this.builders = new Array<Builder<T>>(Enum.getCount(PTag)).
@@ -19,8 +19,8 @@ export class Parser<T> {
             });
     }
 
-    public parse(node: ParseTree): (T | null){
-        if(node === undefined || node === null){
+    public parse(node: ParseTree): (T | null) {
+        if (node === undefined || node === null) {
             return null;
         }
 
@@ -30,7 +30,7 @@ export class Parser<T> {
         return fn(node.data, this);
     }
 
-    public register(tag: PTag, builder: Builder<T>){
+    public register(tag: PTag, builder: Builder<T>) {
         this.builders[tag] = builder;
     }
 }

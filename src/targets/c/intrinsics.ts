@@ -1,11 +1,11 @@
 import { Compiler } from '../../compile';
 import { Class, Function, VariableFlags, Variable, Type, Tag } from '../../ast/things';
-export function registerIntrinsics(compiler: Compiler){
+export function registerIntrinsics(compiler: Compiler) {
     // Intrinsics 2.0
     function createType(
         name: string,
         ffiName: string
-    ): (Type & {createFunction: typeof createFunction}){
+    ): (Type & {createFunction: typeof createFunction}) {
         const type = new Class("", name, ffiName, compiler.scope);
         type.ffiData = true;
 
@@ -13,11 +13,11 @@ export function registerIntrinsics(compiler: Compiler){
             name: string,
             parameters: Array<Variable | Type>,
             returns: Type
-        ){
+        ) {
             const fn = new Function(null, name, name, returns, type.scope);
 
-            for(const parameter of parameters){
-                if(parameter.tag === Tag.Variable){
+            for (const parameter of parameters) {
+                if (parameter.tag === Tag.Variable) {
                     fn.parameters.push(parameter);
                 } else {
                     // TODO: Set a proper name?
@@ -41,11 +41,11 @@ export function registerIntrinsics(compiler: Compiler){
         parameters: Array<Variable | Type>,
         returns: Type,
         ffiName = name
-    ){
+    ) {
         const fn = new Function(null, name, name, returns, compiler.scope);
 
-        for(const parameter of parameters){
-            if(parameter.tag === Tag.Variable){
+        for (const parameter of parameters) {
+            if (parameter.tag === Tag.Variable) {
                 fn.parameters.push(parameter);
             } else {
                 // TODO: Set a proper name?
@@ -70,15 +70,15 @@ export function registerIntrinsics(compiler: Compiler){
     const Ptr   = createType("Ptr",     "void*");
 
     // Operators for Int
-    for(const operator of ["==", "!=", "<=", ">=", "<", ">"]){
+    for (const operator of ["==", "!=", "<=", ">=", "<", ">"]) {
         Int.createFunction(`infix${operator}`, [Int, Int], Bool);
     }
-    for(const operator of ["+", "-", "*", ">>", "<<", "&", "|", "^"]){
+    for (const operator of ["+", "-", "*", ">>", "<<", "&", "|", "^"]) {
         Int.createFunction(`infix${operator}`, [Int, Int], Int);
     }
 
     // Operators for Ptr
-    for(const operator of ["==", "!=", "<=", ">=", "<", ">"]){
+    for (const operator of ["==", "!=", "<=", ">=", "<", ">"]) {
         Ptr.createFunction(`infix${operator}`, [Ptr, Ptr], Bool);
     }
 
@@ -102,16 +102,16 @@ export function registerIntrinsics(compiler: Compiler){
     };
 }
 
-export function removeIntrinsics(compiler: Compiler){
-    for(const type of Array.from(compiler.scope.typeNameMap.values())){
-        if(type.tag === Tag.Class && type.ffiData){
+export function removeIntrinsics(compiler: Compiler) {
+    for (const type of Array.from(compiler.scope.typeNameMap.values())) {
+        if (type.tag === Tag.Class && type.ffiData) {
             compiler.scope.typeNameMap.delete(type.name);
             compiler.scope.classNameMap.delete(type.name);
         }
     }
 
-    for(const func of Array.from(compiler.scope.functionNameMap.values())){
-        if(func.ffiData){
+    for (const func of Array.from(compiler.scope.functionNameMap.values())) {
+        if (func.ffiData) {
             compiler.scope.functionNameMap.delete(func.name);
             compiler.scope.typeNameMap.delete(func.name);
         }

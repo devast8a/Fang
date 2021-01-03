@@ -6,7 +6,7 @@ import { LoanViolationError, SimultaneousLoanError } from './errors';
 export class Analyzer extends Visitor<State, void> {
     public compiler: Compiler;
 
-    public constructor(compiler: Compiler){
+    public constructor(compiler: Compiler) {
         super(setup, Visitor.VisitByDefault());
 
         this.compiler = compiler;
@@ -20,7 +20,7 @@ export module Analyzer {
 
         public alive: Map<Variable, boolean>;
 
-        public constructor(){
+        public constructor() {
             this.alive = new Map();
         }
     }
@@ -33,32 +33,32 @@ export default Analyzer;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-function setup(reg: Register<Analyzer, State, void>){
+function setup(reg: Register<Analyzer, State, void>) {
 
 reg(Function, (thing, analyzer, state) => {
     // Create a new state for functions
     const functionState = new State();
 
-    for(const parameter of thing.parameters){
+    for (const parameter of thing.parameters) {
         analyzer.check(parameter, functionState);
         functionState.alive.set(parameter, true);
     }
 
     // TODO: Don't avoid analyzing block
-    for(const stmt of thing.body.block){
+    for (const stmt of thing.body.block) {
         analyzer.check(stmt, functionState);
     }
 
     // TODO: Do a better check for destructors
-    if(thing.name === 'destructor'){
+    if (thing.name === 'destructor') {
         return;
     }
 
-    for(const [variable, alive] of functionState.alive){
-        if(alive && (variable.flags & (VariableFlags.Local | VariableFlags.Owns))){
+    for (const [variable, alive] of functionState.alive) {
+        if (alive && (variable.flags & (VariableFlags.Local | VariableFlags.Owns))) {
             const destructor = variable.type.scope.lookupFunction("destructor");
 
-            if(destructor !== undefined){
+            if (destructor !== undefined) {
                 const target = new CallStatic(null, destructor);
                 target.arguments.push(new GetVariable(null, variable));
                 thing.body.block.push(target);
@@ -88,21 +88,21 @@ interface Loan {
     parameter: Variable,
 }
 
-function isMove(expression: Expr, analyzer: Analyzer){
-    if(expression.tag !== Tag.CallStatic){
+function isMove(expression: Expr, analyzer: Analyzer) {
+    if (expression.tag !== Tag.CallStatic) {
         return false;
     }
 
     return expression.target === analyzer.compiler.functions.move;
 }
 
-function getCopyOrMoveTarget(expression: Expr, analyzer: Analyzer){
-    if(expression.tag !== Tag.CallStatic){
+function getCopyOrMoveTarget(expression: Expr, analyzer: Analyzer) {
+    if (expression.tag !== Tag.CallStatic) {
         return null;
     }
 
-    if(expression.target !== analyzer.compiler.functions.copy &&
-        expression.target !== analyzer.compiler.functions.move){
+    if (expression.target !== analyzer.compiler.functions.copy &&
+        expression.target !== analyzer.compiler.functions.move) {
         return null;
     }
 
@@ -110,7 +110,7 @@ function getCopyOrMoveTarget(expression: Expr, analyzer: Analyzer){
     return (expression.arguments[0] as GetVariable).variable;
 }
 
-function HandleFunctionCall(thing: CallStatic | CallField, analyzer: Analyzer, state: State){
+function HandleFunctionCall(thing: CallStatic | CallField, analyzer: Analyzer, state: State) {
     // Check that the golden rule is being followed by the program.
     //  "An object must not be mutated using a mutable loan while another loan could observe it"
     //
@@ -131,24 +131,24 @@ function HandleFunctionCall(thing: CallStatic | CallField, analyzer: Analyzer, s
     const as = thing.arguments;
     const ps = thing.target.parameters;
 
-    for(let i = 0; i < as.length; i++){
+    for (let i = 0; i < as.length; i++) {
         // TODO: Support Fields/Arrays
 
         const argument = as[i];
         const parameter = ps[i];
 
-        if(parameter.flags & VariableFlags.Owns){
+        if (parameter.flags & VariableFlags.Owns) {
             HandleOwnedParameter(analyzer, state, argument);
             continue;
         }
 
         analyzer.check(argument, state);
 
-        if(argument.tag !== Tag.GetVariable){
+        if (argument.tag !== Tag.GetVariable) {
             continue;
         }
 
-        if(!state.alive.get(argument.variable)){
+        if (!state.alive.get(argument.variable)) {
             // Variable isn't alive
             analyzer.compiler.report(new LoanViolationError());
             continue;
@@ -156,16 +156,16 @@ function HandleFunctionCall(thing: CallStatic | CallField, analyzer: Analyzer, s
 
         const loan = {argument, parameter};
 
-        if(parameter.flags & VariableFlags.Mutates){
+        if (parameter.flags & VariableFlags.Mutates) {
             // Check call does not result in a mutable and immutable loan of a value
             let other = immutable.get(argument.variable);
-            if(other !== undefined){
+            if (other !== undefined) {
                 reportSimultaneousLoan(analyzer, thing, loan, other);
             }
 
             // Check call does not result in multiple mutable loans of same value
             other = mutable.get(argument.variable);
-            if(other !== undefined){
+            if (other !== undefined) {
                 reportSimultaneousLoan(analyzer, thing, loan, other);
             }
 
@@ -173,7 +173,7 @@ function HandleFunctionCall(thing: CallStatic | CallField, analyzer: Analyzer, s
         } else {
             // Check call does not result in a mutable and immutable loan of a value
             const other = mutable.get(argument.variable);
-            if(other !== undefined){
+            if (other !== undefined) {
                 reportSimultaneousLoan(analyzer, thing, other, loan);
             }
 
@@ -182,29 +182,29 @@ function HandleFunctionCall(thing: CallStatic | CallField, analyzer: Analyzer, s
     }
 }
 
-function HandleOwnedParameter(analyzer: Analyzer, state: State, argument: Expr){
+function HandleOwnedParameter(analyzer: Analyzer, state: State, argument: Expr) {
     const variable = getCopyOrMoveTarget(argument, analyzer);
 
-    if(variable === null){
+    if (variable === null) {
         // Must use copy or move into an owned variable
         // TODO: Add syntax sugar for function results
         analyzer.compiler.report(new LoanViolationError());
         return;
     }
 
-    if(!state.alive.get(variable)){
+    if (!state.alive.get(variable)) {
         // Variable isn't alive
         analyzer.compiler.report(new LoanViolationError());
         return;
     }
 
-    if(isMove(argument, analyzer)){
+    if (isMove(argument, analyzer)) {
         // Moved variables are no longer alive in the scope
         state.alive.set(variable, false);
     }
 }
 
-function reportSimultaneousLoan(analyzer: Analyzer, call: CallStatic | CallField, mutable: Loan, immutable: Loan){
+function reportSimultaneousLoan(analyzer: Analyzer, call: CallStatic | CallField, mutable: Loan, immutable: Loan) {
     analyzer.compiler.report(new SimultaneousLoanError({
         call: call,
         immutableArgument: immutable.argument,
@@ -214,6 +214,6 @@ function reportSimultaneousLoan(analyzer: Analyzer, call: CallStatic | CallField
     }));
 }
 
-function reportMultipleMutates(analyzer: Analyzer, call: CallStatic, mutable: Loan, immutable: Loan){
+function reportMultipleMutates(analyzer: Analyzer, call: CallStatic, mutable: Loan, immutable: Loan) {
     analyzer.compiler.report(new LoanViolationError());
 }

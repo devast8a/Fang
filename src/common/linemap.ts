@@ -3,7 +3,7 @@ import { bisect } from './bisect';
 export class LineMap {
     public entries: readonly Entry[];
 
-    public constructor(content: string){
+    public constructor(content: string) {
         const regex = /(?:\r\n|\r|\n)/g;
         const entries = [];
 
@@ -12,7 +12,7 @@ export class LineMap {
 
         let match: RegExpMatchArray | null = null;
 
-        while((match = regex.exec(content)) != null){
+        while ((match = regex.exec(content)) != null) {
             entries.push({
                 start: offset,
                 endContent: regex.lastIndex - match[0].length,
@@ -39,27 +39,27 @@ export class LineMap {
         return this.entries[line];
     }
 
-    public offsetToEntry(offset: number){
+    public offsetToEntry(offset: number) {
         const line = bisect(this.entries, (entry) => offset < entry.endNewLine);
         return this.entries[line];
     }
 
-    public queryToEntry(query: Query){
-        if(isOffset(query))     { return this.offsetToEntry(query.offset); }
-        if(isLineColumn(query)) { return this.lineToEntry(query.line); }
-        if(isLine(query))       { return this.lineToEntry(query.line); }
+    public queryToEntry(query: Query) {
+        if (isOffset(query))     { return this.offsetToEntry(query.offset); }
+        if (isLineColumn(query)) { return this.lineToEntry(query.line); }
+        if (isLine(query))       { return this.lineToEntry(query.line); }
         throw new Error("Invalid query");
     }
 
-    public queryToOffset(query: Query, anchor: LineAnchor = LineAnchor.Start){
-        if(isOffset(query))     { return query.offset; }
-        if(isLineColumn(query)) { return this.lineToEntry(query.line).start + query.column; }
-        if(isLine(query))       { return getAnchorOffset(this.lineToEntry(query.line), anchor); }
+    public queryToOffset(query: Query, anchor: LineAnchor = LineAnchor.Start) {
+        if (isOffset(query))     { return query.offset; }
+        if (isLineColumn(query)) { return this.lineToEntry(query.line).start + query.column; }
+        if (isLine(query))       { return getAnchorOffset(this.lineToEntry(query.line), anchor); }
         throw new Error("Invalid query");
     }
 
     public queryToLineColumn(query: Query, anchor: LineAnchor = LineAnchor.Start): LineColumn {
-        if(isOffset(query)){
+        if (isOffset(query)) {
             const entry = this.offsetToEntry(query.offset);
 
             return {
@@ -67,10 +67,10 @@ export class LineMap {
                 column: query.offset - entry.start,
             };
         }
-        if(isLineColumn(query)){
+        if (isLineColumn(query)) {
             return query;
         }
-        if(isLine(query)){
+        if (isLine(query)) {
             const entry = this.lineToEntry(query.line);
             const offset = getAnchorOffset(entry, anchor);
 
@@ -128,8 +128,8 @@ export function isLineColumn(query: Query): query is LineColumn {
     return typeof((query as any).line) === 'number' && typeof((query as any).column) === 'number';
 }
 
-export function getAnchorOffset(entry: Entry, anchor: LineAnchor){
-    switch(anchor){
+export function getAnchorOffset(entry: Entry, anchor: LineAnchor) {
+    switch (anchor) {
         case LineAnchor.Start: return entry.start;
         case LineAnchor.EndContent: return entry.endContent;
         case LineAnchor.EndNewLine: return entry.endNewLine;

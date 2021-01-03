@@ -44,7 +44,7 @@ export class Visitor<State, Result> {
     protected constructor(
         setup: (reg: Register<any, State, Result>) => void,
         visitors: Handler<Thing, any, State, Result>[]
-    ){
+    ) {
         // Clone the array
         visitors = visitors.slice();
 
@@ -61,8 +61,8 @@ export class Visitor<State, Result> {
 
     // Throws an exception if a handler for a Thing does not exist.
     //  Reasonable choice if you want to ensure every Thing has a handler.
-    public static ErrorByDefault(){
-        function throw_visitor_error(thing: Thing, visitor: Visitor<any, any>, state: any){
+    public static ErrorByDefault() {
+        function throw_visitor_error(thing: Thing, visitor: Visitor<any, any>, state: any) {
             throw new Error(`${visitor.constructor.name} does not specify a visitor for ${Tag[thing.tag]}`);
         }
 
@@ -71,13 +71,13 @@ export class Visitor<State, Result> {
 
     // Apply the visit function to every child of a Thing if a handler does not exist
     //  Reasonable choice if you only want to apply a function to a handful of Things
-    public static VisitByDefault(){
+    public static VisitByDefault() {
         // TODO: Change how the AST's visit functions work to avoid waste
-        function visit_children(thing: Thing, visitor: Visitor<any, any>, state: any){
+        function visit_children(thing: Thing, visitor: Visitor<any, any>, state: any) {
             const children = new Array<Thing>();
             thing.visit(children);
 
-            for(const child of children){
+            for (const child of children) {
                 visitor.visit(child, state);
             }
         }

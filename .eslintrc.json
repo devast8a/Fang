@@ -9,7 +9,9 @@
         "plugin:@typescript-eslint/eslint-recommended",
         "plugin:@typescript-eslint/recommended"
     ],
-    "ignorePatterns": ["src/parser/grammar/grammar.ts"],
+    "ignorePatterns": [
+        "src/parser/grammar/grammar.ts"
+    ],
     "rules": {
         "@typescript-eslint/camelcase": "off",
         "@typescript-eslint/explicit-function-return-type": "off",
@@ -23,6 +25,16 @@
             "args": "none"
         }],
         "@typescript-eslint/no-use-before-define": "off",
-        "@typescript-eslint/prefer-namespace-keyword": "off"
+        "@typescript-eslint/prefer-namespace-keyword": "off",
+        "keyword-spacing": ["warn", {
+            "after": true,
+            "before": true
+        }],
+        "space-before-blocks": ["warn", "always"],
+        "space-before-function-paren": ["warn", {
+            "anonymous": "never",
+            "named": "never",
+            "asyncArrow": "always"
+        }]
     }
 }

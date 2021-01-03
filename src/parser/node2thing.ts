@@ -17,18 +17,18 @@ import * as Things from './../ast/things';
 const UNKNOWN: any = undefined;
 const AST: any = undefined;
 
-export function convert(compiler: Compiler, scope: Scope, node: UNode){
-    switch(node.tag){
+export function convert(compiler: Compiler, scope: Scope, node: UNode) {
+    switch (node.tag) {
         case UTag.DeclClass: {
             const thing = new Things.Class(AST, node.name, "struct " + scope.id + node.name, scope);
 
-            for(const superType of node.superTypes){
+            for (const superType of node.superTypes) {
                 const type = scope.lookupType(superType as any);
 
-                if(type === undefined){
+                if (type === undefined) {
                     console.log(type);
                     throw new Error("Could not find type");
-                } else if(type.tag !== Things.Tag.Trait) {
+                } else if (type.tag !== Things.Tag.Trait) {
                     throw new Error("Type is not correct tag");
                 } else {
                     thing.traits.set(type.name, type);
@@ -43,7 +43,7 @@ export function convert(compiler: Compiler, scope: Scope, node: UNode){
         case UTag.DeclFunction: {
             // TODO: Support setting function names directly through attributes
             let id = node.name;
-            if(scope.id !== 'F' || node.name !== 'main'){
+            if (scope.id !== 'F' || node.name !== 'main') {
                 id = scope.id + node.name;
             }
 
@@ -54,11 +54,11 @@ export function convert(compiler: Compiler, scope: Scope, node: UNode){
 
             scope.declareFunction(thing);
 
-            for(const parameter of node.parameters){
+            for (const parameter of node.parameters) {
                 thing.parameters.push(convert(compiler, thing.scope, parameter) as Things.Variable);
             }
 
-            for(const stmt of node.body){
+            for (const stmt of node.body) {
                 thing.body.block.push(convert(compiler, thing.scope, stmt) as Things.Stmt);
             }
 
@@ -75,10 +75,10 @@ export function convert(compiler: Compiler, scope: Scope, node: UNode){
         case UTag.DeclTrait: {
             const thing = new Things.Trait(AST, node.name, "struct " + scope.id + node.name, scope);
 
-            for(const superType of node.superTypes){
+            for (const superType of node.superTypes) {
                 const type = scope.lookupType(superType as any);
 
-                if(type === undefined){
+                if (type === undefined) {
                     throw new Error("Could not find type");
                 }
 
@@ -93,7 +93,7 @@ export function convert(compiler: Compiler, scope: Scope, node: UNode){
         case UTag.DeclVariable: {
             const type  = scope.lookupType(node.type as any); // TODO: Remove type system subversion
 
-            if(type === undefined){
+            if (type === undefined) {
                 throw new Error(`Could not find a type with the name ${node.type}`); // TODO: Hook everything into a compiler error system
             }
 
@@ -111,7 +111,7 @@ export function convert(compiler: Compiler, scope: Scope, node: UNode){
             // TODO: Remove placeholder function
             const thing = new Things.CallStatic(AST, scope.lookupFunction("test")!);
 
-            for(const arg of node.args){
+            for (const arg of node.args) {
                 thing.arguments.push(convert(compiler, scope, arg) as Things.Expr);
             }
 

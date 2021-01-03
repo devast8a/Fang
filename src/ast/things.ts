@@ -117,7 +117,7 @@ export class Class implements IThing, IType {
     public scope: Scope;
     public ffiData: any;
 
-    public constructor(ast: Node, name: string, id: string, parentScope: Scope){
+    public constructor(ast: Node, name: string, id: string, parentScope: Scope) {
         this.scope = new Scope(parentScope.id + "C" + name + "_", parentScope);
 
         this.genericParameters = [];
@@ -128,7 +128,7 @@ export class Class implements IThing, IType {
     }
 
     public visit(next: Thing[]) {
-        for(const thing of this.members.values()){
+        for (const thing of this.members.values()) {
             next.push(thing);
         }
     }
@@ -141,7 +141,7 @@ export class GenericInstance implements IThing, IType {
     public readonly type: Ref<Type>;
     public readonly arguments: Array<Ref<Type>>;
 
-    public constructor(type: Ref<Type>, args: Array<Ref<Type>>){
+    public constructor(type: Ref<Type>, args: Array<Ref<Type>>) {
         this.type = type;
         this.arguments = args;
         
@@ -172,7 +172,7 @@ export class GenericParameter implements IThing, IType {
     public readonly scope: Scope;
     public readonly members  = new Map<string, Member>();
 
-    public constructor(name: string){
+    public constructor(name: string) {
         this.id = name;
         this.name = name;
         this.implements = new Set;
@@ -181,7 +181,7 @@ export class GenericParameter implements IThing, IType {
         this.scope = new Scope(name);
     }
 
-    public visit(next: Thing[]){}
+    public visit(next: Thing[]) {}
 }
 
 export class Function implements IThing, IType {
@@ -205,7 +205,7 @@ export class Function implements IThing, IType {
         id: string,
         returnType: Type,
         parentScope: Scope,
-    ){
+    ) {
         this.scope = new Scope(parentScope.id + "F" + name + "_", parentScope);
 
         this.ast = ast;
@@ -216,7 +216,7 @@ export class Function implements IThing, IType {
     }
 
     public visit(next: Thing[]) {
-        for(const thing of this.parameters){
+        for (const thing of this.parameters) {
             next.push(thing);
         }
 
@@ -237,7 +237,7 @@ export class Trait implements IThing, IType {
 
     public scope: Scope;
 
-    public constructor(ast: Node, name: string, id: string, parentScope: Scope){
+    public constructor(ast: Node, name: string, id: string, parentScope: Scope) {
         this.scope = new Scope(parentScope.id + "T" + name + "_", parentScope);
 
         this.ast = ast;
@@ -246,7 +246,7 @@ export class Trait implements IThing, IType {
     }
 
     public visit(next: Thing[]) {
-        for(const thing of this.members.values()){
+        for (const thing of this.members.values()) {
             next.push(thing);
         }
     }
@@ -271,7 +271,7 @@ export class Variable implements IThing, IType {
     public value: Expr | undefined;
     public flags: VariableFlags;
 
-    public constructor(ast: Node, name: string, type: Type, flags: VariableFlags, id: string){
+    public constructor(ast: Node, name: string, type: Type, flags: VariableFlags, id: string) {
         this.ast = ast;
         this.name = name;
         this.id = id;
@@ -280,7 +280,7 @@ export class Variable implements IThing, IType {
     }
 
     public visit(next: Thing[]) {
-        if(this.value){
+        if (this.value) {
             next.push(this.value);
         }
     }
@@ -297,7 +297,7 @@ export class CallField implements IThing, IExpr {
     public target: Function;
     public arguments = new Array<Expr>();
 
-    public constructor(ast: Node, expression: Expr, target: Function){
+    public constructor(ast: Node, expression: Expr, target: Function) {
         this.ast = ast;
         this.expression = expression;
         this.target = target;
@@ -307,7 +307,7 @@ export class CallField implements IThing, IExpr {
     public visit(next: Thing[]) {
         next.push(this.expression);
 
-        for(const thing of this.arguments){
+        for (const thing of this.arguments) {
             next.push(thing);
         }
     }
@@ -323,14 +323,14 @@ export class CallStatic implements IThing, IExpr {
     public target: Function;
     public arguments = new Array<Expr>();
 
-    public constructor(ast: Node, target: Function){
+    public constructor(ast: Node, target: Function) {
         this.ast = ast;
         this.target = target;
         this.expressionResultType = target.returnType;
     }
 
     public visit(next: Thing[]) {
-        for(const thing of this.arguments){
+        for (const thing of this.arguments) {
             next.push(thing);
         }
     }
@@ -344,7 +344,7 @@ export class Constant implements IThing, IExpr {
     public expressionResultType: Type;
     public value: any;
 
-    public constructor(ast: Node, type: Type, value: any){
+    public constructor(ast: Node, type: Type, value: any) {
         this.ast = ast;
         this.expressionResultType = type;
         this.value = value;
@@ -363,14 +363,14 @@ export class Construct implements IThing, IExpr {
     public target: Type;
     public arguments = Array<Expr>();
 
-    public constructor(ast: Node, target: Type){
+    public constructor(ast: Node, target: Type) {
         this.ast = ast;
         this.target = target;
         this.expressionResultType = this.target;
     }
 
     public visit(next: Thing[]) {
-        for(const thing of this.arguments){
+        for (const thing of this.arguments) {
             next.push(thing);
         }
     }
@@ -384,7 +384,7 @@ export class Return implements IThing, IExpr {
     public expressionResultType: Type;
     public value: Expr;
 
-    public constructor(ast: Node, value: Expr){
+    public constructor(ast: Node, value: Expr) {
         this.ast = ast;
 
         this.value = value;
@@ -404,7 +404,7 @@ export class GetType implements IThing, IExpr {
     public expressionResultType: Type;
     public type: Type;
 
-    public constructor(ast: Node, type: Type){
+    public constructor(ast: Node, type: Type) {
         this.type = type;
         this.expressionResultType = type;
     }
@@ -420,7 +420,7 @@ export class GetVariable implements IThing, IExpr {
     public expressionResultType: Type;
     public variable: Variable;
 
-    public constructor(ast: Node, variable: Variable){
+    public constructor(ast: Node, variable: Variable) {
         this.ast = ast;
         this.variable = variable;
         this.expressionResultType = variable.type;
@@ -439,7 +439,7 @@ export class GetField implements IThing, IExpr {
     public target: Expr;
     public field: Variable;
 
-    public constructor(ast: Node, target: Expr, field: Variable){
+    public constructor(ast: Node, target: Expr, field: Variable) {
         this.ast = ast;
 
         this.target = target;
@@ -460,7 +460,7 @@ export class SetVariable implements IThing {
     public target: Variable;
     public source: Expr;
 
-    public constructor(ast: Node, target: Variable, source: Expr){
+    public constructor(ast: Node, target: Variable, source: Expr) {
         this.ast = ast;
 
         this.target = target;
@@ -481,7 +481,7 @@ export class SetField implements IThing {
     public field: Variable;
     public source: Expr;
 
-    public constructor(ast: Node, target: Expr, field: Variable, source: Expr){
+    public constructor(ast: Node, target: Expr, field: Variable, source: Expr) {
         this.ast = ast;
 
         this.target = target;
@@ -499,7 +499,7 @@ export class Case {
     public condition: Expr;
     public body: Block;
 
-    public constructor(condition: Expr, body: Block){
+    public constructor(condition: Expr, body: Block) {
         this.condition = condition;
         this.body = body;
     }
@@ -513,14 +513,14 @@ export class If implements IThing {
     public cases: Case[];
     public defaultCase: Block;
 
-    public constructor(ast: Node, cases: Case[], defaultCase: Block){
+    public constructor(ast: Node, cases: Case[], defaultCase: Block) {
         this.ast = ast;
         this.cases = cases;
         this.defaultCase = defaultCase;
     }
 
     public visit(next: Thing[]) {
-        for(const c of this.cases){
+        for (const c of this.cases) {
             next.push(c.condition);
             next.push(c.body);
         }
@@ -536,13 +536,13 @@ export class Block implements IThing {
 
     public block: Stmt[];
 
-    public constructor(block?: Stmt[]){
+    public constructor(block?: Stmt[]) {
         this.ast = null;
         this.block = block === undefined ? [] : block;
     }
 
     public visit(next: Thing[]) {
-        for(const stmt of this.block){
+        for (const stmt of this.block) {
             next.push(stmt);
         }
     }
@@ -559,12 +559,12 @@ export class While implements IThing {
     public constructor(
         condition: Expr,
         body: Block
-    ){
+    ) {
         this.condition = condition;
         this.body = body;
     }
 
-    public visit(next: Thing[]){
+    public visit(next: Thing[]) {
         next.push(this.condition);
         next.push(this.body);
     }

@@ -31,8 +31,8 @@ export enum PTag {
     LiteralString,
 }
 
-function tag(tag: PTag){
-    return function(data: any[]){
+function tag(tag: PTag) {
+    return function(data: any[]) {
         return {
             tagName: PTag[tag],
             tag: tag,
@@ -59,8 +59,8 @@ export const LiteralIntegerOct  = tag(PTag.LiteralIntegerOct);
 export const LiteralString      = tag(PTag.LiteralString);
 
 // Post-processors /////////////////////////////////////////////////////////////////////////////////
-export function RejectOperators(node: any, location: any, reject: any){
-    switch(node[0].value){
+export function RejectOperators(node: any, location: any, reject: any) {
+    switch (node[0].value) {
         case '!':
         case '.':
         case '#':
@@ -83,8 +83,8 @@ interface List<Element, Separator> {
     end: Node;
 }
 
-export function ListProcessor(node: any[]): List<Node, Node>{
-    if(node[2] === null){
+export function ListProcessor(node: any[]): List<Node, Node> {
+    if (node[2] === null) {
         return {
             begin: node[0],
             begin_ws: node[1],
@@ -112,8 +112,8 @@ export function ListProcessor(node: any[]): List<Node, Node>{
 }
 
 // Similar to list processor but has no begin and end
-export function MainProcessor(node: any[]){
-    if(node[1] === null){
+export function MainProcessor(node: any[]) {
+    if (node[1] === null) {
         return node;
     }
 

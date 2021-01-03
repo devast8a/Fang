@@ -16,7 +16,7 @@ export class Scope {
     public readonly parent: Scope | null;
     public readonly id: string;
 
-    public constructor(id: string, parent?: Scope){
+    public constructor(id: string, parent?: Scope) {
         this.id = id;
         this.parent = parent === undefined ? null : parent;
     }
@@ -34,12 +34,12 @@ export class Scope {
     public declareVariable  = Scope.declare(scope => scope.variables, scope => scope.variableNameMap);
 
     public lookupType       = Scope.lookup(scope => scope.typeNameMap);
-    public declareType(thing: Type){
-        if(this.typeNameMap.has(thing.name)){
+    public declareType(thing: Type) {
+        if (this.typeNameMap.has(thing.name)) {
             throw new Error('Not implemented yet');
         }
 
-        switch(thing.tag){
+        switch (thing.tag) {
             case Tag.Class:             return this.declareClass(thing);
             case Tag.Function:          return this.declareFunction(thing);
             case Tag.Trait:             return this.declareTrait(thing);
@@ -55,38 +55,38 @@ export class Scope {
     private static declare<T>(
         declared: (scope: Scope) => Array<T>,
         map: (scope: Scope) => Map<string, T>
-    ){
-        return function(this: Scope, thing: T){
+    ) {
+        return function(this: Scope, thing: T) {
             const _thing = thing as any;
             const name = _thing.name;
 
-            if(this.typeNameMap.has(name)){
+            if (this.typeNameMap.has(name)) {
                 throw new Error('Not implemented yet');
             }
 
             map(this).set(name, thing);
             declared(this).push(thing);
 
-            if(_thing.tag !== Tag.Variable){
+            if (_thing.tag !== Tag.Variable) {
                 this.typeNameMap.set(name, _thing);
                 this.types.push(_thing);
             }
         }
     }
 
-    private static lookup<T>(getMap: (scope: Scope) => Map<string, T>){
-        return function(this: Scope, name: string){
+    private static lookup<T>(getMap: (scope: Scope) => Map<string, T>) {
+        return function(this: Scope, name: string) {
             const thing = getMap(this).get(name);
 
-            if(thing !== undefined){
+            if (thing !== undefined) {
                 return thing;
             }
 
             let parent = this.parent;
-            while(parent !== null){
+            while (parent !== null) {
                 const thing = getMap(parent).get(name);
 
-                if(thing !== undefined){
+                if (thing !== undefined) {
                     // Import name into local scope for fast lookups
                     getMap(this).set(name, thing);
                     return thing;
