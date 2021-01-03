@@ -235,7 +235,7 @@ const grammar: Grammar = {
     {"name": "Operator", "symbols": [(lexer.has("operator") ? {type: "operator"} : operator)], "postprocess": p.RejectOperators},
     {"name": "ExprBinary", "symbols": ["ExprUnary", "__", "OperatorSpaced", "__", "ExprBinary"], "postprocess": p.ExprBinary},
     {"name": "ExprBinary", "symbols": ["ExprUnary", "NL", "OperatorSpaced", "__", "ExprBinary"], "postprocess": p.ExprBinary},
-    {"name": "ExprBinary", "symbols": ["ExprUnary", "__", "OperatorSpaced", "__", "ExprBinary"], "postprocess": p.ExprBinary},
+    {"name": "ExprBinary", "symbols": ["ExprUnary", "__", "OperatorSpaced", "NL", "ExprBinary"], "postprocess": p.ExprBinary},
     {"name": "ExprBinary", "symbols": ["Atom", "Operator", "Atom"], "postprocess": p.ExprBinary},
     {"name": "ExprBinary", "symbols": ["ExprUnary"]},
     {"name": "ExprUnary", "symbols": ["Operator", "Atom"], "postprocess": p.ExprUnaryPrefix},

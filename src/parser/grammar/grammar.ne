@@ -202,7 +202,7 @@
     # x + y or x+y
     ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
     ExprBinary      -> ExprUnary NL OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
-    ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
+    ExprBinary      -> ExprUnary __ OperatorSpaced NL ExprBinary    {%p.ExprBinary%}
     ExprBinary      -> Atom Operator Atom                           {%p.ExprBinary%}    
     ExprBinary      -> ExprUnary
 
