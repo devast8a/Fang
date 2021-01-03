@@ -7,30 +7,30 @@ export type Builder<T> = (node: any[], parser: Parser<T>) => T;
 type ParseTree = {tag: PTag, data: ParseTree[]} | null;
 
 export class Parser<T> {
-    private registration = new Array<Builder<T>>(Enum.getCount(PTag));
+    private readonly builders: Array<Builder<T>>;
     public readonly name: string;
 
     constructor(name: string){
         this.name = name;
+
+        this.builders = new Array<Builder<T>>(Enum.getCount(PTag)).
+            map((tag) => () => {
+                throw new Error(`Parser ${this.name} does not define a builder for ${PTag[tag as any]}`)
+            });
     }
 
-    public parse(node: ParseTree): (T | null) {
+    public parse(node: ParseTree): (T | null){
         if(node === undefined || node === null){
             return null;
         }
 
         const tag = node.tag;
-        const fn = this.registration[tag];
-
-        // TODO: Throw an error when trying to parse an unknown node
-        if(fn === undefined){
-            throw new Error(`Parser ${this.name} does not have a registered builder for node ${PTag[node.tag]}`);
-        }
+        const fn = this.builders[tag];
 
         return fn(node.data, this);
     }
 
     public register(tag: PTag, builder: Builder<T>){
-        this.registration[tag] = builder;
+        this.builders[tag] = builder;
     }
 }
