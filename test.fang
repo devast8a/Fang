@@ -1,4 +1,4 @@
-class Base
+trait Base
 class A impl Base
 class B impl Base
 
