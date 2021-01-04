@@ -109,7 +109,14 @@ export function convert(compiler: Compiler, scope: Scope, node: UNode) {
 
         case UTag.ExprCall: {
             // TODO: Remove placeholder function
-            const thing = new Things.CallStatic(AST, scope.lookupFunction("test")!);
+            const name = (node.target as any).name;
+            const fn = scope.lookupFunction(name);
+
+            if (fn === undefined) {
+                throw new Error();
+            }
+
+            const thing = new Things.CallStatic(AST, fn);
 
             for (const arg of node.args) {
                 thing.arguments.push(convert(compiler, scope, arg) as Things.Expr);

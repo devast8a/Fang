@@ -2,11 +2,11 @@ trait Base
 class A impl Base
 class B impl Base
 
-fn test(x: Base) {}
+fn test(own x: Base) {}
 
 fn main(){
     val a: A
     val b: B
-    test(a)
-    test(b)
+    test(move(a))
+    test(move(b))
 }

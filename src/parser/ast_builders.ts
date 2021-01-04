@@ -91,6 +91,8 @@ Expr.register(PTag.ExprIdentifier, (node) => {
     return new UExprGet(name);
 });
 
+Expr.register(PTag.ExprCall, Main.builders[PTag.ExprCall]);
+
 export const TypeExpr = new Parser<string>("TypeExpr");
 TypeExpr.register(PTag.ExprIdentifier, (node) => {
     const name = node[0].value;
