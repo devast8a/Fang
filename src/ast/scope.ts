@@ -42,7 +42,7 @@ export class Scope {
         switch (thing.tag) {
             case Tag.DeclClass:             return this.declareClass(thing);
             case Tag.DeclFunction:          return this.declareFunction(thing);
-            case Tag.Trait:             return this.declareTrait(thing);
+            case Tag.DeclTrait:             return this.declareTrait(thing);
             //case Tag.GenericParameter:  return this.declareGenericParameter(thing);
             default: throw new Error('Incomplete switch (declareType)');
         }

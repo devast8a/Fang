@@ -1,11 +1,11 @@
 export enum RTag {
     DeclClass,
+    DeclFunction,
+    DeclParameter,
+    DeclTrait,
     Generic,
     GenericApply,
     GenericParameter,
-    DeclTrait,
-    DeclFunction,
-    DeclParameter,
 
     // TODO: Remove old tags
     Block,
@@ -20,7 +20,6 @@ export enum RTag {
     Return,
     SetField,
     SetVariable,
-    Trait,
     Variable,
     While,
 }

@@ -28,7 +28,7 @@ export function convert(compiler: Compiler, scope: Scope, node: UNode) {
                 if (type === undefined) {
                     console.log(type);
                     throw new Error("Could not find type");
-                } else if (type.tag !== Things.Tag.Trait) {
+                } else if (type.tag !== Things.Tag.DeclTrait) {
                     throw new Error("Type is not correct tag");
                 } else {
                     thing.superTypes.push(type);

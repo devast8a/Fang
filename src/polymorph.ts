@@ -49,7 +49,7 @@ function instantiateWithArgs(input: Function, args: Expr[], polymorpher: Polymor
         const argument = args[i];
         const parameter = params[i];
 
-        if (parameter.type.tag === Tag.Trait) {
+        if (parameter.type.tag === Tag.DeclTrait) {
             mapping.set(parameter, argument.expressionResultType);
             name += `_${i}_${argument.expressionResultType.name}`
         }
@@ -59,7 +59,7 @@ function instantiateWithArgs(input: Function, args: Expr[], polymorpher: Polymor
         const argument = args[i];
         const parameter = params[i];
 
-        if (parameter.type.tag === Tag.Trait) {
+        if (parameter.type.tag === Tag.DeclTrait) {
             mapping.set(parameter, argument.expressionResultType);
             name += `_${i}_${argument.expressionResultType.name}`
         }
@@ -103,7 +103,7 @@ reg(Function, (input, polymorpher, state) => {
     //const body          = input.body.map(x => inner.polymorph(x, state));
 
 
-    if (input.returnType.tag === Tag.Trait) {
+    if (input.returnType.tag === Tag.DeclTrait) {
         if (inner.returnType === null) {
             throw new Error("[Internal Error] Polymorph.Function return type is null")
         }
@@ -143,7 +143,7 @@ reg(CallStatic, (input, polymorpher, state) => {
     output.arguments = args;
 
     // Handle return type polymorphism
-    if (input.target.returnType.tag === Tag.Trait) {
+    if (input.target.returnType.tag === Tag.DeclTrait) {
         output.expressionResultType = (input.target as any).realReturnType;
     }
 
@@ -170,7 +170,7 @@ reg(CallField, (input, polymorpher, state) => {
     output.arguments = args;
 
     // Handle return type polymorphism
-    if (input.target.returnType.tag === Tag.Trait) {
+    if (input.target.returnType.tag === Tag.DeclTrait) {
         output.expressionResultType = (input.target as any).realReturnType;
     }
 

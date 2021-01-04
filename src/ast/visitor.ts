@@ -15,8 +15,8 @@ type Constructor<T = any, P = any> = { new(...args: any[]): T, prototype: P };
  *              super(setup, Visitor.ErrorByDefault());
  *          }
  * 
- *          // Step 4. Expose the visit behavior somehow.
- *          // This is reasonable if you don't want to modify any behavior.
+ *          // Step 4. visit is protected, so you'll want to expose visit as a public API somehow.
+ *          //  A reasonable solution is to alias the function with a publicly accessible name.
  *          public doMyVisit = super.visit;
  *      }
  * 
@@ -55,7 +55,7 @@ export class Visitor<State, Result> {
         this.visitors = visitors;
     }
 
-    protected visit<T>(thing: T & {tag: Tag}, state: State): (Result extends InputType ? T : Result) {
+    protected visit<T extends Thing>(thing: T, state: State): (Result extends InputType ? T : Result) {
         return this.visitors[thing.tag](thing as any, this, state) as any;
     }
 

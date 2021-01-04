@@ -1,9 +1,4 @@
 import { Function, Tag, Type } from './ast/things';
-import { RType } from './nodes/resolved/RType';
-
-export function isSubType(child: Type, parent: Type) {
-    return RType.isSubType(child, parent, {});
-}
 
 export function canSubType(child: Type, parent: Type) {
     if (parent === child) {
@@ -61,21 +56,4 @@ export function canSubTypeFunction(child: Function, parent: Function) {
     }
 
     return true;
-}
-
-export function canMonomorphize(func: Function) {
-    // TODO: Avoid this hack
-    if (func.returnType !== undefined) {
-        if (func.returnType.tag === Tag.Trait) {
-            return true;
-        }
-    }
-
-    for (const parameter of func.parameters) {
-        if (parameter.type.tag === Tag.Trait) {
-            return true;
-        }
-    }
-
-    return false;
 }

@@ -1,6 +1,7 @@
 import { Class, Trait, Variable, Function } from '../../ast/things';
 import { RDeclClass } from './RDeclClass';
-import { RGenericApply } from "./RGenericApply";
+import { RDeclTrait } from './RDeclTrait';
+import { RGenericApply } from './RGenericApply';
 import { RTag } from './RTag';
 
 class Context {}
@@ -8,6 +9,7 @@ class Context {}
 export type RType =
     | RGenericApply<RType>
     | RDeclClass
+    | RDeclTrait
     | Class
     | Function
     | Trait
@@ -19,7 +21,7 @@ export type RType =
  */
 
 export namespace RType {
-    export function isSubType(child: RType, parent: RType, context: Context) {
+    export function isSubType(child: RType, parent: RType, context: Context): boolean {
         if (child === parent) {
             return true;
         }
@@ -28,8 +30,16 @@ export namespace RType {
             case RTag.DeclClass: {
                 switch (parent.tag) {
                     case RTag.DeclClass: { return false; }
+                    case RTag.DeclTrait: { return child.superTypes.some(child => RType.isSubType(child, parent, context)); }
                 }
 
+                break;
+            }
+
+            case RTag.DeclTrait: {
+                switch (parent.tag) {
+                    case RTag.DeclTrait: { return false; }
+                }
                 break;
             }
 
@@ -55,7 +65,6 @@ export namespace RType {
                         return true;
                     }
                 }
-
                 break;
             }
         }

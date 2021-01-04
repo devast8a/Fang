@@ -150,8 +150,8 @@ export class Function implements IThing, IType {
 
 export class Trait implements IThing, IType {
     //public ast: Node;
-    public tag: Tag.Trait = Tag.Trait;
-    public static tag: Tag.Trait = Tag.Trait;
+    public tag: Tag.DeclTrait = Tag.DeclTrait;
+    public static tag: Tag.DeclTrait = Tag.DeclTrait;
 
     public name: string;
     public id: string;

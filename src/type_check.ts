@@ -3,7 +3,8 @@ import { Tag, Thing } from './ast/things';
 import { Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
 import { BadArgumentCountError, ExpressionTypeError, MissingImplementationError } from './errors';
-import { canSubType, isSubType } from './type_api';
+import { RType } from './nodes/resolved/RType';
+import { canSubType } from './type_api';
 
 export class TypeChecker extends Visitor<State, void> {
     public compiler: Compiler;
@@ -69,10 +70,11 @@ reg(Ast.CallStatic, (thing, visitor, state) => {
 
         visitor.check(args[i], state);
 
-        //if(args[i].expressionResultType !== params[i].type){
-        //    // TODO: Use an error specific to calls?
-        //    visitor.compiler.report(new ExpressionTypeError(args[i], params[i].type, args[i]))
-        //}
+        const context = {}; // TODO: Incorporate context properly
+        if (!RType.isSubType(args[i].expressionResultType, params[i].type, context)) {
+            // TODO: Use an error specific to calls?
+            visitor.compiler.report(new ExpressionTypeError(args[i], params[i].type, args[i]))
+        }
     }
 });
 
@@ -99,7 +101,8 @@ reg(Ast.Variable, (thing, visitor) => {
         return;
     }
 
-    if (!isSubType(thing.value.expressionResultType, thing.type)) {
+    const context = {}; // TODO: Incorporate context properly
+    if (!RType.isSubType(thing.value.expressionResultType, thing.type, context)) {
         visitor.compiler.report(new ExpressionTypeError(thing, thing.type, thing.value));
     }
 });
