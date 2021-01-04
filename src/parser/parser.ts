@@ -7,16 +7,19 @@ export type Builder<T> = (node: any[], parser: Parser<T>) => T;
 type ParseTree = {tag: PTag, data: ParseTree[]} | null;
 
 export class Parser<T> {
-    private readonly builders: Array<Builder<T>>;
+    public readonly builders: ReadonlyArray<Builder<T>>;
     public readonly name: string;
 
     constructor(name: string) {
         this.name = name;
 
-        this.builders = new Array<Builder<T>>(Enum.getCount(PTag)).
-            map((tag) => () => {
-                throw new Error(`Parser ${this.name} does not define a builder for ${PTag[tag as any]}`)
-            });
+        const count = Enum.getCount(PTag);
+
+        this.builders = new Array(count);
+
+        for (let i = 0; i < count; i++) {
+            (this.builders as any)[i] = () => {throw new Error(`Parser ${this.name} does not define a builder for ${PTag[i as any]}`)}
+        }
     }
 
     public parse(node: ParseTree): (T | null) {
@@ -36,6 +39,6 @@ export class Parser<T> {
     }
 
     public register(tag: PTag, builder: Builder<T>) {
-        this.builders[tag] = builder;
+        (this.builders as any)[tag] = builder;
     }
 }
