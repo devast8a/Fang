@@ -119,7 +119,7 @@ export class Monomorphize {
         for (const type of compiler.scope.typeNameMap.values()) {
             const morphed = polymorpher.polymorph(type, state);
 
-            if (morphed.tag === Tag.Function) {
+            if (morphed.tag === Tag.DeclFunction) {
                 compiler.scope.typeNameMap.set(morphed.name, morphed);
                 compiler.scope.functionNameMap.set(morphed.name, morphed);
             }

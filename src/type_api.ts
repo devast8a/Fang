@@ -1,19 +1,8 @@
 import { Function, Tag, Type } from './ast/things';
+import { RType } from './nodes/resolved/RType';
 
 export function isSubType(child: Type, parent: Type) {
-    if (parent === child) {
-        return true;
-    }
-
-    if (child.tag === Tag.Function || parent.tag === Tag.Function) {
-        throw new Error("Not implemented yet. isSubType used on functions");
-    }
-
-    if (child.tag === Tag.Class) {
-        return child.traits.has(parent.name);
-    }
-
-    return false;
+    return RType.isSubType(child, parent, {});
 }
 
 export function canSubType(child: Type, parent: Type) {
@@ -21,12 +10,12 @@ export function canSubType(child: Type, parent: Type) {
         return true;
     }
 
-    if (parent.tag === Tag.Function) {
-        if (child.tag === Tag.Function) {
+    if (parent.tag === Tag.DeclFunction) {
+        if (child.tag === Tag.DeclFunction) {
             return canSubTypeFunction(child, parent);
         }
         throw new Error('Not Implemented Yet: canSubType called with function and non-function');
-    } else if (child.tag === Tag.Function) {
+    } else if (child.tag === Tag.DeclFunction) {
         throw new Error('Not Implemented Yet: canSubType called with function and non-function');
     }
 

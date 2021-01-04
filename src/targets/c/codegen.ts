@@ -32,7 +32,7 @@ export class TargetCGcc {
 
         // Declare methods
         for (const member of thing.members.values()) {
-            if (member.tag === Tag.Function) {
+            if (member.tag === Tag.DeclFunction) {
                 this.declareFunction(member);
             }
         }
@@ -201,7 +201,7 @@ export class TargetCGcc {
         // Member Functions
         for (const member of thing.members.values()) {
             switch (member.tag) {
-                case Tag.Function: this.compileFunction(member); break;
+                case Tag.DeclFunction: this.compileFunction(member); break;
                 case Tag.Variable: break; // Handled in previous section
                 default: throw new Error("Incomplete switch statement (compileMember)")
             }

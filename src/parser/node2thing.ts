@@ -31,7 +31,7 @@ export function convert(compiler: Compiler, scope: Scope, node: UNode) {
                 } else if (type.tag !== Things.Tag.Trait) {
                     throw new Error("Type is not correct tag");
                 } else {
-                    thing.traits.set(type.name, type);
+                    thing.superTypes.push(type);
                 }
             }
             

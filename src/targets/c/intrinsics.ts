@@ -1,5 +1,6 @@
 import { Compiler } from '../../compile';
 import { Class, Function, VariableFlags, Variable, Type, Tag } from '../../ast/things';
+
 export function registerIntrinsics(compiler: Compiler) {
     // Intrinsics 2.0
     function createType(
@@ -104,7 +105,7 @@ export function registerIntrinsics(compiler: Compiler) {
 
 export function removeIntrinsics(compiler: Compiler) {
     for (const type of Array.from(compiler.scope.typeNameMap.values())) {
-        if (type.tag === Tag.Class && type.ffiData) {
+        if (type.tag === Tag.DeclClass && type.ffiData) {
             compiler.scope.typeNameMap.delete(type.name);
             compiler.scope.classNameMap.delete(type.name);
         }

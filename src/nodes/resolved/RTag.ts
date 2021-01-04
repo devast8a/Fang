@@ -1,0 +1,26 @@
+export enum RTag {
+    DeclClass,
+    Generic,
+    GenericApply,
+    GenericParameter,
+    DeclTrait,
+    DeclFunction,
+    DeclParameter,
+
+    // TODO: Remove old tags
+    Block,
+    CallField,
+    CallStatic,
+    Constant,
+    Construct,
+    GetField,
+    GetType,
+    GetVariable,
+    If,
+    Return,
+    SetField,
+    SetVariable,
+    Trait,
+    Variable,
+    While,
+}

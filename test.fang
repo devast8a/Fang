@@ -6,6 +6,7 @@ fn test(x: Base) {}
 
 fn main(){
     val a: A
+    val b: B
     test(a)
-    test(a)
+    test(b)
 }

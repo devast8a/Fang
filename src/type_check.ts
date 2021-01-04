@@ -33,12 +33,12 @@ export default TypeChecker;
 function setup(reg: Register<TypeChecker, State, void>) {
 
 reg(Ast.Class, (thing, visitor) => {
-    for (const trait of thing.traits.values()) {
-        if (canSubType(thing, trait)) {
+    for (const trait of thing.superTypes) {
+        if (canSubType(thing, trait as Ast.Trait)) {
             continue;
         }
 
-        visitor.compiler.report(new MissingImplementationError(thing, trait));
+        visitor.compiler.report(new MissingImplementationError(thing, trait as Ast.Trait));
     }
 });
 
