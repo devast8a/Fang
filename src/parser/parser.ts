@@ -25,6 +25,11 @@ export class Parser<T> {
         }
 
         const tag = node.tag;
+
+        if (tag === undefined) {
+            throw new Error(`Parsing node without a tag`);
+        }
+
         const fn = this.builders[tag];
 
         return fn(node.data, this);
