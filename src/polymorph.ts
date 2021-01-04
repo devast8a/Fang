@@ -3,6 +3,8 @@ import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, 
 import { InputType, Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
 
+const AST: any = undefined;
+
 export class Polymorpher extends Visitor<State, InputType> {
     mapping: Map<Variable, Type>;
     scope: Scope;
@@ -111,7 +113,7 @@ reg(Function, (input, polymorpher, state) => {
     }
 
     // TODO: Should we replace scope with a duplicate?
-    const output = new Function(input.ast, input.name, input.id, returnType, input.scope);
+    const output = new Function(AST, input.name, input.id, returnType, input.scope);
     output.parameters = parameters;
     output.body       = body;
     return output;
@@ -137,7 +139,7 @@ reg(CallStatic, (input, polymorpher, state) => {
     const args   = input.arguments.map(x => polymorpher.polymorph(x, state));
     const target = instantiateWithArgs(input.target, args, polymorpher, state);
 
-    const output     = new CallStatic(input.ast, target);
+    const output     = new CallStatic(AST, target);
     output.arguments = args;
 
     // Handle return type polymorphism
@@ -164,7 +166,7 @@ reg(CallField, (input, polymorpher, state) => {
 
     target = instantiateWithArgs(input.target, args, polymorpher, state);
 
-    const output = new CallField(input.ast, expr, target);
+    const output = new CallField(AST, expr, target);
     output.arguments = args;
 
     // Handle return type polymorphism
@@ -192,7 +194,7 @@ reg(Variable, (input, polymorpher, state) => {
     }
 
     const output = new Variable(
-        input.ast,
+        AST,
         input.name,
         type || input.type,
         input.flags,
@@ -222,7 +224,7 @@ reg(GetField, (input, polymorpher, state) => {
         throw new Error(`[Internal Error] Polymorph.GetField could not find '${input.field.name}'`);
     }
 
-    return new GetField(input.ast, target, field);
+    return new GetField(AST, target, field);
 });
 
 reg(SetField, (input, polymorpher, state) => {
@@ -234,19 +236,19 @@ reg(SetField, (input, polymorpher, state) => {
         throw new Error(`[Internal Error] Polymorph.SetField could not find '${input.field.name}'`);
     }
 
-    return new SetField(input.ast, target, field, source);
+    return new SetField(AST, target, field, source);
 });
 
 reg(SetVariable, (input, polymorpher, state) => {
     return new SetVariable(
-        input.ast,
+        AST,
         polymorpher.polymorph(input.target, state),
         polymorpher.polymorph(input.source, state)
     );
 });
 
 reg(GetVariable, (input, polymorpher, state) => {
-    return new GetVariable(input.ast, polymorpher.polymorph(input.variable, state));
+    return new GetVariable(AST, polymorpher.polymorph(input.variable, state));
 });
 
 reg(Return, (input, polymorpher, state) => {
@@ -258,7 +260,7 @@ reg(Return, (input, polymorpher, state) => {
         console.log("X");
     }
 
-    return new Return(input.ast, value);
+    return new Return(AST, value);
 });
 
 reg(Construct, (input, polymorpher, state) => {

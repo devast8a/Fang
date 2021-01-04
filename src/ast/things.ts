@@ -28,11 +28,11 @@ export const TagCount = Math.max(...Object.values(Tag).filter(x => typeof(x) ===
 type Node = any;
 
 interface IThing {
-    ast: Node;
+    //ast: Node;
 
     tag: Tag;
 
-    visit(next: Thing[]): void;
+    //visit(next: Thing[]): void;
 }
 export type Thing =
       Block
@@ -101,7 +101,7 @@ export type Member =
 type Ref<T> = T;
 
 export class Class implements IThing, IType {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.Class = Tag.Class;
     public static tag: Tag.Class = Tag.Class;
 
@@ -122,7 +122,7 @@ export class Class implements IThing, IType {
 
         this.genericParameters = [];
 
-        this.ast = ast;
+        //this.ast = ast;
         this.name = name;
         this.id = id;
     }
@@ -161,7 +161,7 @@ export class GenericInstance implements IThing, IType {
 }
 
 export class GenericParameter implements IThing, IType {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.GenericParameter = Tag.GenericParameter;
     public static tag: Tag.GenericParameter = Tag.GenericParameter;
 
@@ -185,7 +185,7 @@ export class GenericParameter implements IThing, IType {
 }
 
 export class Function implements IThing, IType {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.Function = Tag.Function;
     public static tag: Tag.Function = Tag.Function;
 
@@ -208,7 +208,7 @@ export class Function implements IThing, IType {
     ) {
         this.scope = new Scope(parentScope.id + "F" + name + "_", parentScope);
 
-        this.ast = ast;
+        ////this.ast = ast;
         this.name = name;
         this.id = id;
 
@@ -225,7 +225,7 @@ export class Function implements IThing, IType {
 }
 
 export class Trait implements IThing, IType {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.Trait = Tag.Trait;
     public static tag: Tag.Trait = Tag.Trait;
 
@@ -240,7 +240,7 @@ export class Trait implements IThing, IType {
     public constructor(ast: Node, name: string, id: string, parentScope: Scope) {
         this.scope = new Scope(parentScope.id + "T" + name + "_", parentScope);
 
-        this.ast = ast;
+        //this.ast = ast;
         this.name = name;
         this.id = id;
     }
@@ -260,7 +260,7 @@ export enum VariableFlags {
 }
 
 export class Variable implements IThing, IType {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.Variable = Tag.Variable;
     public static tag: Tag.Variable = Tag.Variable;
 
@@ -272,7 +272,7 @@ export class Variable implements IThing, IType {
     public flags: VariableFlags;
 
     public constructor(ast: Node, name: string, type: Type, flags: VariableFlags, id: string) {
-        this.ast = ast;
+        //this.ast = ast;
         this.name = name;
         this.id = id;
         this.type = type;
@@ -287,7 +287,7 @@ export class Variable implements IThing, IType {
 }
 
 export class CallField implements IThing, IExpr {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.CallField = Tag.CallField;
     public static tag: Tag.CallField = Tag.CallField;
 
@@ -298,7 +298,7 @@ export class CallField implements IThing, IExpr {
     public arguments = new Array<Expr>();
 
     public constructor(ast: Node, expression: Expr, target: Function) {
-        this.ast = ast;
+        //this.ast = ast;
         this.expression = expression;
         this.target = target;
         this.expressionResultType = target.returnType;
@@ -314,7 +314,7 @@ export class CallField implements IThing, IExpr {
 }
 
 export class CallStatic implements IThing, IExpr {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.CallStatic = Tag.CallStatic;
     public static tag: Tag.CallStatic = Tag.CallStatic;
 
@@ -324,7 +324,7 @@ export class CallStatic implements IThing, IExpr {
     public arguments = new Array<Expr>();
 
     public constructor(ast: Node, target: Function) {
-        this.ast = ast;
+        //this.ast = ast;
         this.target = target;
         this.expressionResultType = target.returnType;
     }
@@ -337,7 +337,7 @@ export class CallStatic implements IThing, IExpr {
 }
 
 export class Constant implements IThing, IExpr {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.Constant = Tag.Constant;
     public static tag: Tag.Constant = Tag.Constant;
 
@@ -345,7 +345,7 @@ export class Constant implements IThing, IExpr {
     public value: any;
 
     public constructor(ast: Node, type: Type, value: any) {
-        this.ast = ast;
+        //this.ast = ast;
         this.expressionResultType = type;
         this.value = value;
     }
@@ -354,7 +354,7 @@ export class Constant implements IThing, IExpr {
 }
 
 export class Construct implements IThing, IExpr {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.Construct = Tag.Construct;
     public static tag: Tag.Construct = Tag.Construct;
 
@@ -364,7 +364,7 @@ export class Construct implements IThing, IExpr {
     public arguments = Array<Expr>();
 
     public constructor(ast: Node, target: Type) {
-        this.ast = ast;
+        //this.ast = ast;
         this.target = target;
         this.expressionResultType = this.target;
     }
@@ -377,7 +377,7 @@ export class Construct implements IThing, IExpr {
 }
 
 export class Return implements IThing, IExpr {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.Return = Tag.Return;
     public static tag: Tag.Return = Tag.Return;
 
@@ -385,7 +385,7 @@ export class Return implements IThing, IExpr {
     public value: Expr;
 
     public constructor(ast: Node, value: Expr) {
-        this.ast = ast;
+        //this.ast = ast;
 
         this.value = value;
         this.expressionResultType = value.expressionResultType;
@@ -397,7 +397,7 @@ export class Return implements IThing, IExpr {
 }
 
 export class GetType implements IThing, IExpr {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.GetType = Tag.GetType;
     public static tag: Tag.GetType = Tag.GetType;
 
@@ -413,7 +413,7 @@ export class GetType implements IThing, IExpr {
 }
 
 export class GetVariable implements IThing, IExpr {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.GetVariable = Tag.GetVariable;
     public static tag: Tag.GetVariable = Tag.GetVariable;
 
@@ -421,7 +421,7 @@ export class GetVariable implements IThing, IExpr {
     public variable: Variable;
 
     public constructor(ast: Node, variable: Variable) {
-        this.ast = ast;
+        //this.ast = ast;
         this.variable = variable;
         this.expressionResultType = variable.type;
     }
@@ -430,7 +430,7 @@ export class GetVariable implements IThing, IExpr {
 }
 
 export class GetField implements IThing, IExpr {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.GetField = Tag.GetField;
     public static tag: Tag.GetField = Tag.GetField;
 
@@ -440,7 +440,7 @@ export class GetField implements IThing, IExpr {
     public field: Variable;
 
     public constructor(ast: Node, target: Expr, field: Variable) {
-        this.ast = ast;
+        //this.ast = ast;
 
         this.target = target;
         this.field = field;
@@ -453,7 +453,7 @@ export class GetField implements IThing, IExpr {
 }
 
 export class SetVariable implements IThing {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.SetVariable = Tag.SetVariable;
     public static tag: Tag.SetVariable = Tag.SetVariable;
 
@@ -461,7 +461,7 @@ export class SetVariable implements IThing {
     public source: Expr;
 
     public constructor(ast: Node, target: Variable, source: Expr) {
-        this.ast = ast;
+        //this.ast = ast;
 
         this.target = target;
         this.source = source;
@@ -473,7 +473,7 @@ export class SetVariable implements IThing {
 }
 
 export class SetField implements IThing {
-    public ast: Node;
+    //public ast: Node;
     public tag: Tag.SetField = Tag.SetField;
     public static tag: Tag.SetField = Tag.SetField;
 
@@ -482,7 +482,7 @@ export class SetField implements IThing {
     public source: Expr;
 
     public constructor(ast: Node, target: Expr, field: Variable, source: Expr) {
-        this.ast = ast;
+        //this.ast = ast;
 
         this.target = target;
         this.field = field;
@@ -506,7 +506,7 @@ export class Case {
 }
 
 export class If implements IThing {
-    public ast: any;
+    //public ast: any;
     public tag: Tag.If = Tag.If;
     public static tag: Tag.If = Tag.If;
 
@@ -514,7 +514,7 @@ export class If implements IThing {
     public defaultCase: Block;
 
     public constructor(ast: Node, cases: Case[], defaultCase: Block) {
-        this.ast = ast;
+        //this.ast = ast;
         this.cases = cases;
         this.defaultCase = defaultCase;
     }
@@ -530,14 +530,14 @@ export class If implements IThing {
 }
 
 export class Block implements IThing {
-    public ast: any;
+    //public ast: any;
     public tag: Tag.Block = Tag.Block;
     public static tag: Tag.Block = Tag.Block;
 
     public block: Stmt[];
 
     public constructor(block?: Stmt[]) {
-        this.ast = null;
+        //this.ast = null;
         this.block = block === undefined ? [] : block;
     }
 
@@ -549,7 +549,7 @@ export class Block implements IThing {
 }
 
 export class While implements IThing {
-    public ast: any;
+    //public ast: any;
     public tag: Tag.While = Tag.While;
     public static tag: Tag.While = Tag.While;
 
