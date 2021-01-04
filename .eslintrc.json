@@ -26,6 +26,7 @@
         }],
         "@typescript-eslint/no-use-before-define": "off",
         "@typescript-eslint/prefer-namespace-keyword": "off",
+        "eqeqeq": ["warn", "always"],
         "keyword-spacing": ["warn", {
             "after": true,
             "before": true
