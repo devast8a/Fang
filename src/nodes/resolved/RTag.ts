@@ -13,5 +13,6 @@ export enum RTag {
     Generic,
     GenericApply,
     GenericParameter,
-    ExprSetLocal
+    ExprSetLocal,
+    StmtReturn,
 }

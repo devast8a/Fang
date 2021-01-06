@@ -1,5 +1,6 @@
+import { Enum } from '../common/enum';
 import { RNode } from '../nodes/resolved/RNode';
-import { Thing, Tag, TagCount } from './things';
+import { RTag } from '../nodes/resolved/RTag';
 
 type Constructor<T = any, P = any> = { new(...args: any[]): T, prototype: P };
 
@@ -11,7 +12,7 @@ type Constructor<T = any, P = any> = { new(...args: any[]): T, prototype: P };
  *      class MyVisitor extends Visitor<State, Result> {
  *          // Step 2. Override the constructor
  *          public constructor(){
- *              // Step 3. Choose a default behavior if you don't specify a visitor for a Thing
+ *              // Step 3. Choose a default behavior if you don't specify a visitor for a Node
  *              //  See: ErrorByDefault and VisitByDefault
  *              super(setup, Visitor.ErrorByDefault());
  *          }
@@ -64,35 +65,29 @@ export class Visitor<
         return this.visitors[node.tag](node as N, this, state) as any;
     }
 
-    // Throws an exception if a handler for a Thing does not exist.
-    //  Reasonable choice if you want to ensure every Thing has a handler.
+    // Throws an exception if a handler for a Node does not exist.
+    //  Reasonable choice if you want to ensure every Node has a handler.
     public static ErrorByDefault() {
-        function throw_visitor_error(thing: Thing, visitor: Visitor<any, any, any>, state: any) {
-            throw new Error(`${visitor.constructor.name} does not specify a visitor for ${Tag[thing.tag]}`);
+        function throw_visitor_error(node: RNode, visitor: Visitor<any, any, any>, state: any) {
+            throw new Error(`${visitor.constructor.name} does not specify a visitor for ${RTag[node.tag]}`);
         }
 
-        return new Array(TagCount).fill(throw_visitor_error);
+        return new Array(Enum.getCount(RTag)).fill(throw_visitor_error);
     }
 
-    // Apply the visit function to every child of a Thing if a handler does not exist
-    //  Reasonable choice if you only want to apply a function to a handful of Things
+    // Apply the visit function to every child of a Node if a handler does not exist
+    //  Reasonable choice if you only want to apply a function to a handful of Nodes
     public static VisitByDefault() {
-        // TODO: Change how the AST's visit functions work to avoid waste
-        function visit_children(thing: Thing, visitor: Visitor<any, any, any>, state: any) {
-            const children = new Array<Thing>();
-            thing.visit(children);
-
-            for (const child of children) {
-                visitor.visit(child, state);
-            }
+        function visit_children(node: RNode, visitor: Visitor<any, any, any>, state: any) {
+            // TODO: Fix how this works
         }
 
-        return new Array(TagCount).fill(visit_children);
+        return new Array(Enum.getCount(RTag)).fill(visit_children);
     }
 }
 
-export type Handler<Thing, Visitor, State, Result> =
-    (node: Thing, visitor: Visitor, state: State) => (Result extends InputType ? Thing : Result);
+export type Handler<Node, Visitor, State, Result> =
+    (node: Node, visitor: Visitor, state: State) => (Result extends InputType ? Node : Result);
 
 /*
  * When InputType is used as the Result, the return type of a visit must be the same as its input.
@@ -109,7 +104,7 @@ export type InputType = typeof InputType;
 const InputType: unique symbol = Symbol();
 
 // See Visitor's example on how to use this
-export type Register<Visitor, State, Result> = <Thing>(
-    thing: Constructor<Thing> & {tag: Tag},
-    handler: Handler<Thing, Visitor, State, Result>
+export type Register<Visitor, State, Result> = <Node>(
+    thing: Constructor<Node> & {tag: RTag},
+    handler: Handler<Node, Visitor, State, Result>
 ) => void;

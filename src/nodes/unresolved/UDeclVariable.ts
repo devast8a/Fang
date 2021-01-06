@@ -1,4 +1,4 @@
-import { VariableFlags } from '../../ast/things';
+import { VariableFlags } from '../VariableFlags';
 import { UNode } from './UNode';
 import { UTag } from './UTag';
 

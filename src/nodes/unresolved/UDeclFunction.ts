@@ -1,6 +1,6 @@
 import { UTag } from "./UTag";
-import { UDeclParameter } from './UDeclParameter';
 import { UNode } from './UNode';
+import { UDeclVariable } from './UDeclVariable';
 
 export class UDeclFunction {
     public static readonly tag = UTag.DeclFunction;
@@ -8,14 +8,14 @@ export class UDeclFunction {
 
     public readonly name: string;
     public readonly compileTime: boolean;
-    public readonly parameters: ReadonlyArray<UDeclParameter>;
+    public readonly parameters: ReadonlyArray<UDeclVariable>;
     public readonly returnType: UNode | null;
     public readonly body: ReadonlyArray<UNode>;
 
     public constructor(
         name: string,
         compileTime: boolean,
-        parameters: ReadonlyArray<UDeclParameter>,
+        parameters: ReadonlyArray<UDeclVariable>,
         returnType: UNode | null,
         // TODO: Generics
         // TODO: Attributes
