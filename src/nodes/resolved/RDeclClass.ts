@@ -7,6 +7,7 @@ export class RDeclClass {
 
     public readonly name: string;
     public readonly superTypes: RType[];
+    // TODO: Attributes
     public readonly members = new Map<string, RType>();
 
     public constructor(

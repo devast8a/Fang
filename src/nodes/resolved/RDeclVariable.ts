@@ -1,17 +1,16 @@
-import { VariableFlags } from '../../ast/things';
+import { VariableFlags } from '../VariableFlags';
 import { RNode } from './RNode';
 import { RTag } from './RTag';
 import { RType } from './RType';
 
-export class RDeclParameter {
-    public static readonly tag = RTag.DeclParameter;
-    public readonly tag = RTag.DeclParameter;
+export class RDeclVariable {
+    public static readonly tag = RTag.DeclVariable;
+    public readonly tag = RTag.DeclVariable;
 
     public readonly flags: VariableFlags;
     public readonly name: string;
     public readonly compileTime: boolean;
-    public readonly type: RType | null; // Should we even allow 
-
+    public readonly type: RType | null; // Should we even allow this to be null at this point?
     // TODO: Attributes
     public readonly value: RNode | null;
 

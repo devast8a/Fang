@@ -1,3 +1,4 @@
+import { RNode } from '../nodes/resolved/RNode';
 import { Thing, Tag, TagCount } from './things';
 
 type Constructor<T = any, P = any> = { new(...args: any[]): T, prototype: P };
@@ -38,12 +39,16 @@ type Constructor<T = any, P = any> = { new(...args: any[]): T, prototype: P };
  *          ...
  *      }
  */
-export class Visitor<State, Result> {
-    public readonly visitors: readonly Handler<Thing, this, State, Result>[];
+export class Visitor<
+    N extends {tag: number},
+    State,
+    Result,
+> {
+    public readonly visitors: readonly Handler<N, this, State, Result>[];
 
     protected constructor(
         setup: (reg: Register<any, State, Result>) => void,
-        visitors: Handler<Thing, any, State, Result>[]
+        visitors: Handler<N, any, State, Result>[]
     ) {
         // Clone the array
         visitors = visitors.slice();
@@ -55,14 +60,14 @@ export class Visitor<State, Result> {
         this.visitors = visitors;
     }
 
-    protected visit<T extends Thing>(thing: T, state: State): (Result extends InputType ? T : Result) {
-        return this.visitors[thing.tag](thing as any, this, state) as any;
+    protected visit<T extends N>(node: T, state: State): (Result extends InputType ? T : Result) {
+        return this.visitors[node.tag](node as N, this, state) as any;
     }
 
     // Throws an exception if a handler for a Thing does not exist.
     //  Reasonable choice if you want to ensure every Thing has a handler.
     public static ErrorByDefault() {
-        function throw_visitor_error(thing: Thing, visitor: Visitor<any, any>, state: any) {
+        function throw_visitor_error(thing: Thing, visitor: Visitor<any, any, any>, state: any) {
             throw new Error(`${visitor.constructor.name} does not specify a visitor for ${Tag[thing.tag]}`);
         }
 
@@ -73,7 +78,7 @@ export class Visitor<State, Result> {
     //  Reasonable choice if you only want to apply a function to a handful of Things
     public static VisitByDefault() {
         // TODO: Change how the AST's visit functions work to avoid waste
-        function visit_children(thing: Thing, visitor: Visitor<any, any>, state: any) {
+        function visit_children(thing: Thing, visitor: Visitor<any, any, any>, state: any) {
             const children = new Array<Thing>();
             thing.visit(children);
 
@@ -87,7 +92,7 @@ export class Visitor<State, Result> {
 }
 
 export type Handler<Thing, Visitor, State, Result> =
-    (thing: Thing, visitor: Visitor, state: State) => (Result extends InputType ? Thing : Result);
+    (node: Thing, visitor: Visitor, state: State) => (Result extends InputType ? Thing : Result);
 
 /*
  * When InputType is used as the Result, the return type of a visit must be the same as its input.

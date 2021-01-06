@@ -1,11 +1,12 @@
 import { Scope } from './ast/scope';
-import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable, If, Block, While, Expr, SetVariable } from './ast/things';
+import { CallField, CallStatic, Class, Constant, Construct, Function, GetField, GetType, GetVariable, Return, SetField, Tag, Trait, Type, Variable, If, Block, While, Expr, SetVariable, Thing } from './ast/things';
 import { InputType, Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
+import { RType } from './nodes/resolved/RType';
 
-const AST: any = undefined;
+const REMOVE_THIS: any = undefined;
 
-export class Polymorpher extends Visitor<State, InputType> {
+export class Polymorpher extends Visitor<Thing, State, InputType> {
     mapping: Map<Variable, Type>;
     scope: Scope;
     returnType: Type | null = null;
@@ -29,7 +30,7 @@ export class Polymorpher extends Visitor<State, InputType> {
 
 export module Polymorpher {
     export class State {
-
+        public nodes = new Array<Thing>();
     }
 }
 
@@ -81,7 +82,7 @@ function instantiateWithArgs(input: Function, args: Expr[], polymorpher: Polymor
     const inner = new Polymorpher(polymorpher.compiler, polymorpher.scope, mapping);
     const monomorphized = inner.polymorph(input, state);
     monomorphized.name = name;
-    monomorphized.id = name;
+    //monomorphized.id = name;
     polymorpher.scope.declareFunction(monomorphized);
     return monomorphized;
 }
@@ -112,8 +113,7 @@ reg(Function, (input, polymorpher, state) => {
         (input as any).realReturnType = returnType;
     }
 
-    // TODO: Should we replace scope with a duplicate?
-    const output = new Function(AST, input.name, input.id, returnType, input.scope);
+    const output = new Function(REMOVE_THIS, input.name, REMOVE_THIS, returnType, REMOVE_THIS);
     output.parameters = parameters;
     output.body       = body;
     return output;
@@ -139,7 +139,7 @@ reg(CallStatic, (input, polymorpher, state) => {
     const args   = input.arguments.map(x => polymorpher.polymorph(x, state));
     const target = instantiateWithArgs(input.target, args, polymorpher, state);
 
-    const output     = new CallStatic(AST, target);
+    const output     = new CallStatic(REMOVE_THIS, target);
     output.arguments = args;
 
     // Handle return type polymorphism
@@ -153,20 +153,22 @@ reg(CallStatic, (input, polymorpher, state) => {
 reg(CallField, (input, polymorpher, state) => {
     const expr   = polymorpher.polymorph(input.expression, state);
     const args   = input.arguments.map(x => polymorpher.polymorph(x, state));
-    let target   = expr.expressionResultType.scope.lookupFunction(input.target.name);
+    //let target   = expr.expressionResultType.scope.lookupFunction(input.target.name);
+    let target = RType.getMember(expr.expressionResultType, input.target.name);
 
-    if (target === undefined) {
+    if (target === null) {
         throw new Error(`[Internal Error] Polymorph.CallField could not find '${input.target.name}'`);
     }
 
     // TODO: Perform this in its own lowering step
+    // Handle self/this parameters
     if (expr.tag !== Tag.GetType) {
         args.unshift(expr);
     }
 
     target = instantiateWithArgs(input.target, args, polymorpher, state);
 
-    const output = new CallField(AST, expr, target);
+    const output = new CallField(REMOVE_THIS, expr, target);
     output.arguments = args;
 
     // Handle return type polymorphism
@@ -194,11 +196,11 @@ reg(Variable, (input, polymorpher, state) => {
     }
 
     const output = new Variable(
-        AST,
+        REMOVE_THIS,
         input.name,
         type || input.type,
         input.flags,
-        input.id
+        REMOVE_THIS,
     );
 
     if (input.value !== undefined) {
@@ -216,39 +218,41 @@ reg(Variable, (input, polymorpher, state) => {
     return output;
 });
 
-reg(GetField, (input, polymorpher, state) => {
-    const target = polymorpher.polymorph(input.target, state);
-    const field = target.expressionResultType.scope.lookupVariable(input.field.name);
-
-    if (field === undefined) {
-        throw new Error(`[Internal Error] Polymorph.GetField could not find '${input.field.name}'`);
-    }
-
-    return new GetField(AST, target, field);
-});
-
-reg(SetField, (input, polymorpher, state) => {
-    const target = polymorpher.polymorph(input.target, state);
-    const source = polymorpher.polymorph(input.source, state);
-    const field  = target.expressionResultType.scope.lookupVariable(input.field.name);
-
-    if (field === undefined) {
-        throw new Error(`[Internal Error] Polymorph.SetField could not find '${input.field.name}'`);
-    }
-
-    return new SetField(AST, target, field, source);
-});
+//reg(GetField, (input, polymorpher, state) => {
+//    const target = polymorpher.polymorph(input.target, state);
+//    const field = RType.getMember(target.expressionResultType, input.field.name);
+//
+//    //const field = target.expressionResultType.scope.lookupVariable(input.field.name);
+//
+//    if (field === null) {
+//        throw new Error(`[Internal Error] Polymorph.GetField could not find '${input.field.name}'`);
+//    }
+//
+//    return new GetField(REMOVE_THIS, target, field);
+//});
+//
+//reg(SetField, (input, polymorpher, state) => {
+//    const target = polymorpher.polymorph(input.target, state);
+//    const source = polymorpher.polymorph(input.source, state);
+//    const field  = target.expressionResultType.scope.lookupVariable(input.field.name);
+//
+//    if (field === undefined) {
+//        throw new Error(`[Internal Error] Polymorph.SetField could not find '${input.field.name}'`);
+//    }
+//
+//    return new SetField(REMOVE_THIS, target, field, source);
+//});
 
 reg(SetVariable, (input, polymorpher, state) => {
     return new SetVariable(
-        AST,
+        REMOVE_THIS,
         polymorpher.polymorph(input.target, state),
         polymorpher.polymorph(input.source, state)
     );
 });
 
 reg(GetVariable, (input, polymorpher, state) => {
-    return new GetVariable(AST, polymorpher.polymorph(input.variable, state));
+    return new GetVariable(REMOVE_THIS, polymorpher.polymorph(input.variable, state));
 });
 
 reg(Return, (input, polymorpher, state) => {
@@ -260,7 +264,7 @@ reg(Return, (input, polymorpher, state) => {
         console.log("X");
     }
 
-    return new Return(AST, value);
+    return new Return(REMOVE_THIS, value);
 });
 
 reg(Construct, (input, polymorpher, state) => {

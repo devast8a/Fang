@@ -1,19 +1,21 @@
-import { Class, Trait, Variable, Function } from '../../ast/things';
 import { RDeclClass } from './RDeclClass';
+import { RDeclFunction } from './RDeclFunction';
 import { RDeclTrait } from './RDeclTrait';
+import { RDeclVariable } from './RDeclVariable';
+import { RGeneric } from './RGeneric';
 import { RGenericApply } from './RGenericApply';
+import { RGenericParameter } from './RGenericParameter';
+import { RNode } from './RNode';
 import { RTag } from './RTag';
 
-class Context {}
-
 export type RType =
-    | RGenericApply<RType>
     | RDeclClass
+    | RDeclFunction
     | RDeclTrait
-    | Class
-    | Function
-    | Trait
-    | Variable
+    | RDeclVariable
+    | RGeneric<RType>
+    | RGenericApply<RType>
+    | RGenericParameter<RType>
     ;
 
 /**
@@ -21,12 +23,18 @@ export type RType =
  */
 
 export namespace RType {
-    export function isSubType(child: RType, parent: RType, context: Context): boolean {
+    // Returns true if child is a subtype of parent (or child is parent)
+    export function isSubType(child: RType, parent: RType, context?: Context): boolean {
         if (child === parent) {
             return true;
         }
 
+        if (context === undefined) {
+            context = new Context();
+        }
+
         switch (child.tag) {
+            // Classes
             case RTag.DeclClass: {
                 switch (parent.tag) {
                     case RTag.DeclClass: { return false; }
@@ -36,9 +44,11 @@ export namespace RType {
                 break;
             }
 
+            // Traits
             case RTag.DeclTrait: {
                 switch (parent.tag) {
-                    case RTag.DeclTrait: { return false; }
+                    case RTag.DeclClass: { return false; }
+                    case RTag.DeclTrait: { return false; } // This should actually be the same as DeclClass
                 }
                 break;
             }
@@ -72,7 +82,50 @@ export namespace RType {
         throw new Error(`Unhandled child=${RTag[child.tag]} parent=${RTag[parent.tag]}`);
     }
 
-    export function isSuperType(parent: RType, child: RType, context: Context) {
+    // Returns true if parent is a supertype of child (or parent is child)
+    export function isSuperType(parent: RType, child: RType, context?: Context) {
         return RType.isSubType(child, parent, context);
     }
+
+    export function getMember(type: RType, member: string, context?: Context): RType | null {
+        throw new Error(`Unhandled type=${RTag[type.tag]}`);
+    }
+
+    export class Context {
+        private readonly _generics = new Array<RGeneric<RNode>>();
+        public readonly generics: ReadonlyArray<RGeneric<RNode>> = this._generics;
+
+        private readonly _arguments = new Array<ReadonlyArray<RType>>();
+        public readonly arguments: ReadonlyArray<ReadonlyArray<RType>> = this._arguments;
+
+        public push(apply: RGenericApply<RNode>) {
+            this._generics.push(apply.generic);
+            this._arguments.push(apply.args);
+        }
+
+        public pop() {
+            this._generics.pop();
+            this._arguments.pop();
+        }
+
+        public resolve(parameter: RType) {
+            let index = this._generics.length - 1;
+
+            while (parameter.tag === RTag.GenericParameter) {
+                while (index >= 0 && this._generics[index] !== parameter.generic) {
+                    index--;
+                }
+
+                if (index < 0) {
+                    break;
+                }
+
+                parameter = this._arguments[index][parameter.index];
+            }
+
+            return parameter;
+        }
+    }
 }
+
+

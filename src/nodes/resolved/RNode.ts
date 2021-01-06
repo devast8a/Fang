@@ -2,18 +2,18 @@ import { RDeclClass } from './RDeclClass';
 import { RGenericParameter } from "./RGenericParameter";
 import { RGenericApply } from "./RGenericApply";
 import { RGeneric } from "./RGeneric";
-import { Thing } from '../../ast/things';
-import { RDeclParameter } from './RDeclParameter';
 import { RDeclFunction } from './RDeclFunction';
 import { RDeclTrait } from './RDeclTrait';
+import { RExprCallField } from './RExprCallfield';
+import { RExprCallStatic } from './RExprCallStatic';
 
 export type RNode =
     | RDeclClass
     | RDeclFunction
-    | RDeclParameter
     | RDeclTrait
+    | RExprCallField
+    | RExprCallStatic
     | RGeneric<RNode>
     | RGenericApply<RNode>
-    | RGenericParameter
-    | Thing // TODO: Remove backwards compatibility
+    | RGenericParameter<RNode>
     ;

@@ -1,10 +1,9 @@
 import { RGeneric } from './RGeneric';
-import { RNode } from './RNode';
 import { RTag } from './RTag';
 import { RType } from './RType';
 
 
-export class RGenericApply<T extends RNode> {
+export class RGenericApply<T> {
     public static readonly tag = RTag.GenericApply;
     public readonly tag = RTag.GenericApply;
 

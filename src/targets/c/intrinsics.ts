@@ -1,6 +1,8 @@
 import { Compiler } from '../../compile';
 import { Class, Function, VariableFlags, Variable, Type, Tag } from '../../ast/things';
 
+const REMOVE_THIS = undefined as any;
+
 export function registerIntrinsics(compiler: Compiler) {
     // Intrinsics 2.0
     function createType(
@@ -15,7 +17,7 @@ export function registerIntrinsics(compiler: Compiler) {
             parameters: Array<Variable | Type>,
             returns: Type
         ) {
-            const fn = new Function(null, name, name, returns, type.scope);
+            const fn = new Function(null, name, name, returns, REMOVE_THIS);
 
             for (const parameter of parameters) {
                 if (parameter.tag === Tag.Variable) {
@@ -28,11 +30,11 @@ export function registerIntrinsics(compiler: Compiler) {
 
             fn.ffiData = ' ' + name.substr(5) + ' ';
 
-            type.scope.declareFunction(fn);
+            // type.scope.declareFunction(fn);
             return fn;
         }
 
-        (type as any).createFunction = (...args: any[]) => (createFunction as any)(...args, type.scope);
+        (type as any).createFunction = (...args: any[]) => (createFunction as any)(...args);
         compiler.scope.declareType(type);
         return type as any;
     }

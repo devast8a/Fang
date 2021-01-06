@@ -1,14 +1,12 @@
-import { RNode } from './RNode';
 import { RTag } from './RTag';
 import { RGenericParameter } from "./RGenericParameter";
 
-
-export class RGeneric<T extends RNode> {
+export class RGeneric<T> {
     public static readonly tag = RTag.Generic;
     public readonly tag = RTag.Generic;
 
     public readonly target: T;
-    public readonly parameters: ReadonlyArray<RGenericParameter>;
+    public readonly parameters: ReadonlyArray<RGenericParameter<T>>;
 
     public constructor(
         target: T

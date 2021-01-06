@@ -1,9 +1,9 @@
-import { CallField, CallStatic, Expr, Function, GetVariable, SetVariable, Tag, Variable, VariableFlags } from './ast/things';
+import { CallField, CallStatic, Expr, Function, GetVariable, SetVariable, Tag, Thing, Variable, VariableFlags } from './ast/things';
 import { Register, Visitor } from './ast/visitor';
 import { Compiler } from './compile';
 import { LoanViolationError, SimultaneousLoanError } from './errors';
 
-export class Analyzer extends Visitor<State, void> {
+export class Analyzer extends Visitor<Thing, State, void> {
     public compiler: Compiler;
 
     public constructor(compiler: Compiler) {
@@ -17,12 +17,8 @@ export class Analyzer extends Visitor<State, void> {
 
 export module Analyzer {
     export class State {
-
-        public alive: Map<Variable, boolean>;
-
-        public constructor() {
-            this.alive = new Map();
-        }
+        public nodes = new Array<Thing>();
+        public alive = new Map<Variable, boolean>();
     }
 }
 
@@ -56,13 +52,14 @@ reg(Function, (thing, analyzer, state) => {
 
     for (const [variable, alive] of functionState.alive) {
         if (alive && (variable.flags & (VariableFlags.Local | VariableFlags.Owns))) {
-            const destructor = variable.type.scope.lookupFunction("destructor");
+            // TODO: Fix
+            //const destructor = variable.type.scope.lookupFunction("destructor");
 
-            if (destructor !== undefined) {
-                const target = new CallStatic(null, destructor);
-                target.arguments.push(new GetVariable(null, variable));
-                thing.body.block.push(target);
-            }
+            //if (destructor !== undefined) {
+            //    const target = new CallStatic(null, destructor);
+            //    target.arguments.push(new GetVariable(null, variable));
+            //    thing.body.block.push(target);
+            //}
         }
     }
 });

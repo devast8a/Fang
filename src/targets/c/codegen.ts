@@ -9,17 +9,17 @@ export class TargetCGcc {
     }
 
     public compileModule(scope: Scope) {
-        Array.from(scope.classNameMap.values()).sort((a, b) => a.id.localeCompare(b.id)).forEach(thing => this.declareClass(thing));
-        Array.from(scope.functionNameMap.values()).sort((a, b) => a.id.localeCompare(b.id)).forEach(thing => this.declareFunction(thing));
+        Array.from(scope.classNameMap.values()).sort((a, b) => a.name.localeCompare(b.name)).forEach(thing => this.declareClass(thing));
+        Array.from(scope.functionNameMap.values()).sort((a, b) => a.name.localeCompare(b.name)).forEach(thing => this.declareFunction(thing));
         this.output.push("\n");
 
-        Array.from(scope.classNameMap.values()).sort((a, b) => a.id.localeCompare(b.id)).forEach(thing => this.compileClass(thing));
-        Array.from(scope.functionNameMap.values()).sort((a, b) => a.id.localeCompare(b.id)).forEach(thing => this.compileFunction(thing));
+        Array.from(scope.classNameMap.values()).sort((a, b) => a.name.localeCompare(b.name)).forEach(thing => this.compileClass(thing));
+        Array.from(scope.functionNameMap.values()).sort((a, b) => a.name.localeCompare(b.name)).forEach(thing => this.compileFunction(thing));
     }
 
     public declareClass(thing: Class) {
         // Declare structure
-        this.output.push(thing.id, "{");
+        this.output.push(thing.name, "{");
         if (thing.members.size > 0) {
             this.output.push("\n");
         }
@@ -40,15 +40,15 @@ export class TargetCGcc {
     }
 
     public declareClassField(member: Variable) {
-        this.output.push('    ', member.type.id, " ", member.id, ';\n');
+        this.output.push('    ', member.type.name, " ", member.name, ';\n');
     }
 
     public declareFunction(thing: Function) {
         const output = this.output;
-        if (thing.name !== "main") {
+        if (thing.name !== "main") { // ACTUAL USE OF NAME
             output.push("static ");
         }
-        output.push(thing.returnType.id, " ", thing.id)
+        output.push(thing.returnType.name, " ", thing.name)
 
         // Parameters
         output.push("(");
@@ -59,7 +59,7 @@ export class TargetCGcc {
             }
 
             const parameter = parameters[i];
-            output.push(parameter.type.id);     // Parameter type
+            output.push(parameter.type.name);     // Parameter type
 
             // TODO remove indirection for types that only have immutable operations (integers)
             if (parameter.flags & VariableFlags.Mutates) {
@@ -67,7 +67,7 @@ export class TargetCGcc {
             }
 
             output.push(" ");
-            output.push(parameter.id);
+            output.push(parameter.name);
         }
         output.push(");\n");
     }
@@ -75,10 +75,10 @@ export class TargetCGcc {
     public compileFunction(thing: Function) {
         const output = this.output;
 
-        if (thing.name !== "main") {
+        if (thing.name !== "main") { // ACTUAL USE OF NAME
             output.push("static ");
         }
-        output.push(thing.returnType.id, " ", thing.id)
+        output.push(thing.returnType.name, " ", thing.name)
 
         // Parameters
         output.push("(");
@@ -89,14 +89,14 @@ export class TargetCGcc {
             }
 
             const parameter = parameters[i];
-            output.push(parameter.type.id);     // Parameter type
+            output.push(parameter.type.name);     // Parameter type
 
             if (parameter.flags & VariableFlags.Mutates) {
                 output.push("* restrict");
             }
 
             output.push(" ");
-            output.push(parameter.id);
+            output.push(parameter.name);
         }
         output.push("){");
         if (thing.body.block.length > 0) {
@@ -183,16 +183,16 @@ export class TargetCGcc {
         this.compileExpr(thing.target);
 
         if (thing.target.tag === Tag.GetVariable && (thing.target.variable.flags & VariableFlags.Mutates)) {
-            this.output.push("->", thing.field.id, " = ");
+            this.output.push("->", thing.field.name, " = ");
         } else {
-            this.output.push(".", thing.field.id, " = ");
+            this.output.push(".", thing.field.name, " = ");
         }
 
         this.compileExpr(thing.source);
     }
 
     public compileSetVariable(thing: SetVariable) {
-        this.output.push(thing.target.id);
+        this.output.push(thing.target.name);
         this.output.push(" = ");
         this.compileExpr(thing.source);
     }
@@ -209,7 +209,7 @@ export class TargetCGcc {
     }
 
     public compileVariable(thing: Variable) {
-        this.output.push(thing.type.id, " ", thing.id);
+        this.output.push(thing.type.name, " ", thing.name);
         if (thing.value !== undefined) {
             this.output.push(" = ");
             this.compileExpr(thing.value);
@@ -224,7 +224,7 @@ export class TargetCGcc {
     public compileGetVariable(node: GetVariable) {
         const output = this.output;
 
-        output.push(node.variable.id);
+        output.push(node.variable.name);
     }
 
     public compileGetField(node: GetField) {
@@ -232,9 +232,9 @@ export class TargetCGcc {
 
         this.compileExpr(node.target);
         if (node.target.tag === Tag.GetVariable && (node.target.variable.flags & VariableFlags.Mutates)) {
-            output.push("->", node.field.id);
+            output.push("->", node.field.name);
         } else {
-            output.push(".", node.field.id);
+            output.push(".", node.field.name);
         }
     }
 
@@ -242,7 +242,7 @@ export class TargetCGcc {
         const output = this.output;
 
         // TODO: Create a better way of representing various calls to operators
-        if (node.target.name.startsWith("infix")) {
+        if (node.target.name.startsWith("infix")) { // ACTUAL USE OF NAME
             this.compileExpr(node.arguments[0]);
             output.push(node.target.ffiData);
             this.compileExpr(node.arguments[1]);
@@ -253,7 +253,7 @@ export class TargetCGcc {
         if (node.target.ffiData !== undefined) {
             output.push(node.target.ffiData);
         } else {
-            output.push(node.target.id);
+            output.push(node.target.name);
         }
 
         // Function arguments
@@ -268,15 +268,15 @@ export class TargetCGcc {
             if (arg.tag === Tag.GetVariable) {
                 if (arg.variable.flags & VariableFlags.Mutates) {
                     if (node.target.parameters[i].flags & VariableFlags.Mutates) {
-                        output.push(arg.variable.id);
+                        output.push(arg.variable.name);
                     } else {
-                        output.push("*", arg.variable.id);
+                        output.push("*", arg.variable.name);
                     }
                 } else {
                     if (node.target.parameters[i].flags & VariableFlags.Mutates) {
-                        output.push("&", arg.variable.id);
+                        output.push("&", arg.variable.name);
                     } else {
-                        output.push(arg.variable.id);
+                        output.push(arg.variable.name);
                     }
                 }
             } else {
