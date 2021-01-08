@@ -22,6 +22,7 @@ export enum PTag {
     ExprBinary,
     ExprCall,
     ExprIdentifier,
+    ExprMacroCall,
     ExprUnaryPostfix,
     ExprUnaryPrefix,
     LiteralIntegerBin,
@@ -50,6 +51,7 @@ export const DeclVariable       = tag(PTag.DeclVariable);
 export const ExprBinary         = tag(PTag.ExprBinary);
 export const ExprCall           = tag(PTag.ExprCall);
 export const ExprIdentifier     = tag(PTag.ExprIdentifier);
+export const ExprMacroCall      = tag(PTag.ExprMacroCall);
 export const ExprUnaryPostfix   = tag(PTag.ExprUnaryPostfix);
 export const ExprUnaryPrefix    = tag(PTag.ExprUnaryPrefix);
 export const LiteralIntegerBin  = tag(PTag.LiteralIntegerBin);
@@ -63,8 +65,11 @@ export function RejectOperators(node: any, location: any, reject: any) {
     switch (node[0].value) {
         case '!':
         case '.':
+        case ':':
+        case '->':
+        case '=>':
         case '#':
-        case '=':
+        //case '=':
             return reject;
 
         default:

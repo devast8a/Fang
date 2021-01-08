@@ -14,6 +14,7 @@ import { RExprSetField } from './RExprSetField';
 import { RExprSetLocal } from './RExprSetLocal';
 import { RStmtReturn } from './RStmtReturn';
 import { RDeclVariable } from './RDeclVariable';
+import { RTypeAtom } from './RTypeAtom';
 
 export type RNode =
     | RDeclClass
@@ -32,40 +33,43 @@ export type RNode =
     | RGenericApply<RNode>
     | RGenericParameter<RNode>
     | RStmtReturn
+    | RTypeAtom
     ;
 
 export namespace RNodes {
-    export type DeclClass               = RDeclClass;
-    export type DeclFunction            = RDeclFunction;
-    export type DeclTrait               = RDeclTrait;
-    export type DeclVariable            = RDeclVariable;
-    export type ExprCallField           = RExprCallField;
-    export type ExprCallStatic          = RExprCallStatic;
-    export type ExprConstant            = RExprConstant;
-    export type ExprConstruct           = RExprConstruct;
-    export type ExprGetField            = RExprGetField;
-    export type ExprGetLocal            = RExprGetLocal;
-    export type ExprSetField            = RExprSetField;
-    export type ExprSetLocal            = RExprSetLocal;
-    export type Generic<T>              = RGeneric<T>;
-    export type GenericApply<T>         = RGenericApply<T>;
-    export type GenericParameter<T>     = RGenericParameter<T>;
-    export type StmtReturn              = RStmtReturn;
+    export const DeclClass          = RDeclClass;
+    export const DeclFunction       = RDeclFunction;
+    export const DeclTrait          = RDeclTrait;
+    export const DeclVariable       = RDeclVariable;
+    export const ExprCallField      = RExprCallField;
+    export const ExprCallStatic     = RExprCallStatic;
+    export const ExprConstant       = RExprConstant;
+    export const ExprConstruct      = RExprConstruct;
+    export const ExprGetField       = RExprGetField;
+    export const ExprGetLocal       = RExprGetLocal;
+    export const ExprSetField       = RExprSetField;
+    export const ExprSetLocal       = RExprSetLocal;
+    export const Generic            = RGeneric;
+    export const GenericApply       = RGenericApply;
+    export const GenericParameter   = RGenericParameter;
+    export const StmtReturn         = RStmtReturn;
+    export const TypeAtom           = RTypeAtom;
 
-    export const DeclClass        = RDeclClass;
-    export const DeclFunction     = RDeclFunction;
-    export const DeclTrait        = RDeclTrait;
-    export const DeclVariable     = RDeclVariable;
-    export const ExprCallField    = RExprCallField;
-    export const ExprCallStatic   = RExprCallStatic;
-    export const ExprConstant     = RExprConstant;
-    export const ExprConstruct    = RExprConstruct;
-    export const ExprGetField     = RExprGetField;
-    export const ExprGetLocal     = RExprGetLocal;
-    export const ExprSetField     = RExprSetField;
-    export const ExprSetLocal     = RExprSetLocal;
-    export const Generic          = RGeneric;
-    export const GenericApply     = RGenericApply;
-    export const GenericParameter = RGenericParameter;
-    export const StmtReturn       = RStmtReturn;
+    export type DeclClass           = RDeclClass;
+    export type DeclFunction        = RDeclFunction;
+    export type DeclTrait           = RDeclTrait;
+    export type DeclVariable        = RDeclVariable;
+    export type ExprCallField       = RExprCallField;
+    export type ExprCallStatic      = RExprCallStatic;
+    export type ExprConstant        = RExprConstant;
+    export type ExprConstruct       = RExprConstruct;
+    export type ExprGetField        = RExprGetField;
+    export type ExprGetLocal        = RExprGetLocal;
+    export type ExprSetField        = RExprSetField;
+    export type ExprSetLocal        = RExprSetLocal;
+    export type Generic<T>          = RGeneric<T>;
+    export type GenericApply<T>     = RGenericApply<T>;
+    export type GenericParameter<T> = RGenericParameter<T>;
+    export type StmtReturn          = RStmtReturn;
+    export type TypeAtom            = RTypeAtom;
 }

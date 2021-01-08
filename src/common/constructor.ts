@@ -1,0 +1,1 @@
+export type Constructor<T = any, P = any> = { new(...args: any[]): T, prototype: P };

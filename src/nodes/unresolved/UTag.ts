@@ -7,11 +7,13 @@ export enum UTag {
     ExprBinary,
     ExprCall,
     ExprGet,
+    ExprMacroCall,
     ExprUnaryPostfix,
     ExprUnaryPrefix,
     LiteralIntegerBin,
     LiteralIntegerDec,
     LiteralIntegerHex,
     LiteralIntegerOct,
-    LiteralString
+    LiteralString,
+    TypeAtom,
 }

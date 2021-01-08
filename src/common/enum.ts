@@ -1,6 +1,7 @@
-type Enum = {
+export type Enum = {
     [value: string]: number | string;
 };
+
 export namespace Enum {
     export function getMaximumValue(e: Enum) {
         const numbers = Object.values(e).filter(x => typeof(x) === 'number') as number[];

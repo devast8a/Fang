@@ -1,21 +1,21 @@
 import { RDeclClass } from './RDeclClass';
 import { RDeclFunction } from './RDeclFunction';
 import { RDeclTrait } from './RDeclTrait';
-import { RDeclVariable } from './RDeclVariable';
 import { RGeneric } from './RGeneric';
 import { RGenericApply } from './RGenericApply';
 import { RGenericParameter } from './RGenericParameter';
 import { RNode } from './RNode';
 import { RTag } from './RTag';
+import { RTypeAtom } from './RTypeAtom';
 
 export type RType =
     | RDeclClass
     | RDeclFunction
     | RDeclTrait
-    | RDeclVariable
     | RGeneric<RType>
     | RGenericApply<RType>
     | RGenericParameter<RType>
+    | RTypeAtom
     ;
 
 /**
@@ -25,6 +25,9 @@ export type RType =
 export namespace RType {
     // Returns true if child is a subtype of parent (or child is parent)
     export function isSubType(child: RType, parent: RType, context?: Context): boolean {
+        if (child.tag === RTag.TypeAtom) { child = child.type; }
+        if (parent.tag === RTag.TypeAtom) { parent = parent.type; }
+
         if (child === parent) {
             return true;
         }
@@ -67,7 +70,7 @@ export namespace RType {
                         }
 
                         for (let index = 0; index < child.parameters.length; index++) {
-                            if (!RType.isSuperType(child.parameters[index], parent.parameters[index], context)) {
+                            if (!RType.isSuperType(child.parameters[index].type!, parent.parameters[index].type!, context)) {
                                 return false;
                             }
                         }
@@ -108,11 +111,15 @@ export namespace RType {
             this._arguments.pop();
         }
 
-        public resolve(parameter: RType) {
+        public map(source: RType, target: RType) {
+
+        }
+
+        public resolve(type: RType) {
             let index = this._generics.length - 1;
 
-            while (parameter.tag === RTag.GenericParameter) {
-                while (index >= 0 && this._generics[index] !== parameter.generic) {
+            while (type.tag === RTag.GenericParameter) {
+                while (index >= 0 && this._generics[index] !== type.generic) {
                     index--;
                 }
 
@@ -120,12 +127,10 @@ export namespace RType {
                     break;
                 }
 
-                parameter = this._arguments[index][parameter.index];
+                type = this._arguments[index][type.index];
             }
 
-            return parameter;
+            return type;
         }
     }
 }
-
-

@@ -1,18 +1,17 @@
 import 'source-map-support/register';
 import * as fs from 'fs';
-import {Compiler, Source} from './index';
+import {Compiler} from '.';
 
 async function main() {
     console.group("Compiling...");
 
     const path = process.argv[2];
-    const compiler = new Compiler();
-    const source = new Source(path, await fs.promises.readFile(path, 'utf8'));
-    const output = compiler.compile(source);
 
-    await fs.promises.writeFile("build/test.c", output);
+    const output = await Compiler.compile(path);
 
     console.groupEnd();
+
+    await fs.promises.writeFile("build/test.c", output);
 }
 
 main().catch((e) => {

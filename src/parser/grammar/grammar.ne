@@ -40,7 +40,7 @@
     STAR[BEGIN, WS, ELEMENT, SEPARATOR, END] -> $BEGIN $WS ($ELEMENT ($SEPARATOR $ELEMENT):* $WS):? $END {%p.ListProcessor%}
     PLUS[BEGIN, WS, ELEMENT, SEPARATOR, END] -> $BEGIN $WS ($ELEMENT ($SEPARATOR $ELEMENT):* $WS) $END   {%p.ListProcessor%}
 
-    BODY[ELEMENT] -> STAR["{", NL:?, $ELEMENT, StmtSep, "}"]
+    BODY[ELEMENT] -> STAR["{", N_, $ELEMENT, StmtSep, "}"]
 
 ## Main ############################################################################################
     main -> NL:? (Stmt (StmtSep Stmt):* NL:?):? {%p.MainProcessor%}
@@ -68,7 +68,7 @@
     Stmt            -> DeclClass
 
 ## Decl/Function ###################################################################################
-    DeclFunction     -> DfKeyword DfName CompileTime:? DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.DeclFunction%}
+    DeclFunction     -> DfKeyword DfName:? CompileTime:? DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.DeclFunction%}
 
     # Examples:
     #   fn name(){ ... }
@@ -79,19 +79,21 @@
     #   Compile Time Operator
 
     # Required
-    DfKeyword       -> "fn" __
-    DfKeyword       -> "op" __
-    DfName          -> Identifier
+    DfKeyword       -> "fn"
+    DfKeyword       -> "op"
+    DfName          -> __ Identifier
     DfParameters    -> STAR["(", NL:?, DeclParameter, COMMA, ")"]
 
     # Optional After
-    DfReturnType    -> _ ":" _ Type
+    DfReturnType    -> _ "->" _ Type
     DfGeneric       -> N__ DeclGeneric
     DfAttribute     -> N__ Attribute
     DfBody          -> N_ BODY[Stmt]
+    DfBody          -> __ "=>" _ Expr
 
     # Contexts
     Stmt            -> DeclFunction
+    Expr            -> DeclFunction
 
 ## Decl/Generics ###################################################################################
     DeclGeneric  -> DgKeyword DgParameters DgWhere:*
@@ -340,14 +342,14 @@
     Atom            -> ExprIndexDot
 
 ## Expr/MacroCall###################################################################################
-    ExprMacroCall   -> EmTarget CompileTime EmArgument:?
+    ExprMacroCall   -> EmTarget CompileTime EmArgument:? {%p.ExprMacroCall%}
 
     # Examples:
     #   foo! x + y
     #   bar!
 
     # Required
-    EmTarget        -> Atom
+    EmTarget        -> Identifier
 
     # Optional After
     EmArgument      -> __ Expr
@@ -361,7 +363,7 @@
 
     # Required
     SaTarget        -> Identifier           # TODO: Add other targets to StmtAssign
-    SaOperator      -> _ OperatorSpaced _   # TODO: Add other operators to StmtAssign
+    SaOperator      -> __ OperatorSpaced __
     SaValue         -> Expr
 
     # Contexts
@@ -392,14 +394,14 @@
 
     # Required
     SiKeyword       -> "if" CompileTime:? N_
-    SiElifKeyword   -> _ "else" __ "if" N_
-    SiElseKeyword   -> _ "else" N_
+    SiElifKeyword   -> N_ "else" __ "if" N_
+    SiElseKeyword   -> N_ "else" N_
     SiCondition     -> "(" _ Expr _ ")" N_
     SiBody          -> BODY[Stmt]
 
     # Optional After
     SiElif          -> SiElifKeyword SiCondition SiBody
-    SiElse          -> SiElseKeyword SiCondition SiBody
+    SiElse          -> SiElseKeyword SiBody
 
     # Context
     Stmt            -> StmtIf

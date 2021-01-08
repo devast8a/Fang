@@ -30,6 +30,7 @@ export class Parser<T> {
         const tag = node.tag;
 
         if (tag === undefined) {
+            console.error(node);
             throw new Error(`Parsing node without a tag`);
         }
 

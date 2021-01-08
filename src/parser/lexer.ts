@@ -1,7 +1,7 @@
 import * as moo from 'moo';
 
 const lexer = moo.compile({
-  comment:          /##[ -~]*/,
+  comment:          /#[ #][ -~]*/,
   newline:          {match: '\n', lineBreaks: true},
   ws:               /[ \t]+/,
 

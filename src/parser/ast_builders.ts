@@ -8,6 +8,9 @@ import { UDeclVariable } from '../nodes/unresolved/UDeclVariable';
 import { UExprCall } from '../nodes/unresolved/UExprCall';
 import { UExprGet } from '../nodes/unresolved/UExprGet';
 import { VariableFlags } from '../nodes/VariableFlags';
+import { UExprMacroCall } from '../nodes/unresolved/UExprMacroCall';
+import { ULiteralString } from '../nodes/unresolved/ULiteralString';
+import { UTypeAtom } from '../nodes/unresolved/UTypeATom';
 
 function parameterToFlags(keyword: string | null | undefined) {
     switch (keyword) {
@@ -22,7 +25,7 @@ function parameterToFlags(keyword: string | null | undefined) {
 
 export const Main = new Parser<UNode>("Main");
 export const Expr = new Parser<UNode>("Expr");
-export const TypeExpr = new Parser<string>("TypeExpr");
+export const TypeExpr = new Parser<UNode>("TypeExpr");
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 Main.register(PTag.DeclClass, (node, parser) => {
@@ -36,13 +39,13 @@ Main.register(PTag.DeclClass, (node, parser) => {
 });
 
 Main.register(PTag.DeclFunction, (node, parser) => {
-    const name        = node[1].value;
+    const name        = node[1][1].value;
     const compileTime = node[2] !== null;
     const parameters  = node[3].elements.map((node: any) => parser.parse(node));
     const returnType  = TypeExpr.parse(node[4]?.[3]);
     const body        = node[7]?.[1].elements.map((node: any) => parser.parse(node));
 
-    return new UDeclFunction(name, compileTime, parameters, returnType as any, body);
+    return new UDeclFunction(name, compileTime, parameters, returnType, body);
 });
 
 Main.register(PTag.DeclTrait, (node, parser) => {
@@ -64,7 +67,7 @@ Main.register(PTag.DeclParameter, (node) => {
     // TODO: Attributes
     const value       = Expr.parse(node[4]?.[3]);
 
-    return new UDeclVariable(flags, name, compileTime, type as any, value);
+    return new UDeclVariable(flags, name, compileTime, type, value);
 });
 
 Main.register(PTag.DeclVariable, (node) => {
@@ -75,7 +78,14 @@ Main.register(PTag.DeclVariable, (node) => {
     // TODO: Attributes
     const value       = Expr.parse(node[4]?.[3]);
 
-    return new UDeclVariable(flags, name, compileTime, type as any, value);
+    return new UDeclVariable(flags, name, compileTime, type, value);
+});
+
+Main.register(PTag.ExprMacroCall, (node) => {
+    const target     = node[0].value;
+    const argument   = Expr.parse(node[2][1])!;
+
+    return new UExprMacroCall(target, argument);
 });
 
 Main.register(PTag.ExprCall, (node) => {
@@ -97,5 +107,11 @@ Expr.register(PTag.ExprCall, Main.builders[PTag.ExprCall]);
 TypeExpr.register(PTag.ExprIdentifier, (node) => {
     const name = node[0].value;
 
-    return name;
+    return new UTypeAtom(name);
+});
+
+Expr.register(PTag.LiteralString, (node) => {
+    const value = node[0].value.slice(1, -1);
+
+    return new ULiteralString(value);
 });

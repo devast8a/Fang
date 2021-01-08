@@ -15,4 +15,5 @@ export enum RTag {
     GenericParameter,
     ExprSetLocal,
     StmtReturn,
+    TypeAtom,
 }

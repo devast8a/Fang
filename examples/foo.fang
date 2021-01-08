@@ -1,0 +1,15 @@
+class A impl Base
+
+fn test(base: Base) -> Base {
+}
+
+fn main() -> Base {
+    val a: A
+    val b: B
+
+    test(a)
+    test(b)
+}
+
+trait Base
+class B impl Base
