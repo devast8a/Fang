@@ -7,11 +7,10 @@ export class RExprGetLocal {
     public readonly tag = RTag.ExprGetLocal;
 
     public get resultType(): RType {
-        // TODO: Sort out RDeclField's null type
-        return this.local.type!;
+        return this.local.type;
     }
 
-    public readonly local: RDeclVariable;
+    public local: RDeclVariable;
 
     public constructor(
         local: RDeclVariable

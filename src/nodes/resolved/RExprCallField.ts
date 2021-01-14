@@ -13,14 +13,14 @@ export class RExprCallField {
         return this.target.returnType;
     }
 
-    public readonly object: RExpr;
-    public readonly target: RDeclFunction;
-    public readonly args: ReadonlyArray<RExpr>;
+    public object: RExpr;
+    public target: RDeclFunction;
+    public args: Array<RExpr>;
 
     public constructor(
         object: RExpr,
         target: RDeclFunction,
-        args: ReadonlyArray<RExpr>,
+        args: Array<RExpr>,
     ) {
         this.object = object;
         this.target = target;

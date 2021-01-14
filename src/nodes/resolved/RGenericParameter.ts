@@ -7,6 +7,6 @@ export class RGenericParameter<T> {
     public readonly tag = RTag.GenericParameter;
 
     //TODO: Set both of these correctly
-    public readonly index!: number;
-    public readonly generic!: RGeneric<T>;
+    public index!: number;
+    public generic!: RGeneric<T>;
 }

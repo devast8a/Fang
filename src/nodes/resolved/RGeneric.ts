@@ -5,8 +5,8 @@ export class RGeneric<T> {
     public static readonly tag = RTag.Generic;
     public readonly tag = RTag.Generic;
 
-    public readonly target: T;
-    public readonly parameters: ReadonlyArray<RGenericParameter<T>>;
+    public target: T;
+    public parameters: Array<RGenericParameter<T>>;
 
     public constructor(
         target: T

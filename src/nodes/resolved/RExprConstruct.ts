@@ -12,12 +12,12 @@ export class RExprConstruct {
         return this.target;
     }
 
-    public readonly target: RType;
-    public readonly args: ReadonlyArray<RExpr>;
+    public target: RType;
+    public args: Array<RExpr>;
 
     public constructor(
         target: RType,
-        args: ReadonlyArray<RExpr>
+        args: Array<RExpr>
     ) {
         this.target = target;
         this.args = args;

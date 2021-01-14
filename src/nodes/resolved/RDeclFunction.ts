@@ -7,17 +7,18 @@ export class RDeclFunction {
     public static readonly tag = RTag.DeclFunction;
     public readonly tag = RTag.DeclFunction;
 
-    public readonly name: string;
-    public readonly compileTime: boolean;
-    public readonly returnType: RType;
-    // TODO: Attributes
-    public readonly parameters: ReadonlyArray<RDeclVariable>;
-    public readonly body: ReadonlyArray<RNode>;
+    public name: string;
+    public compileTime: boolean;
+    public returnType: RType;
+    public parameters: Array<RDeclVariable>;
+    public body: Array<RNode>;
 
     constructor(
         name: string,
         returnType: RType,
-        parameters: ReadonlyArray<RDeclVariable>,
+        parameters: Array<RDeclVariable>,
+        compileTime = false,
+        body = new Array<RNode>()
     ) {
         this.name = name;
         this.compileTime = false;

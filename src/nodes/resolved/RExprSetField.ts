@@ -9,12 +9,12 @@ export class RExprSetField {
 
     public get resultType(): RType {
         // TODO: Sort out RDeclField's null type
-        return this.field.type!;
+        return this.field.type;
     }
 
-    public readonly object: RExpr;
-    public readonly field: RDeclVariable;
-    public readonly value: RExpr;
+    public object: RExpr;
+    public field: RDeclVariable;
+    public value: RExpr;
 
     public constructor(
         object: RExpr,

@@ -6,13 +6,15 @@ export class RDeclTrait {
     public static readonly tag = RTag.DeclTrait;
     public readonly tag = RTag.DeclTrait;
 
-    public readonly name: string;
-    public readonly superTypes = new Array<RType>();
+    public name: string;
+    public superTypes = new Array<RType>();
     // TODO: Attributes
-    public readonly members = new Array<RType>();
+    public members = new Array<RType>();
 
     public constructor(
-        name: string
+        name: string,
+        superTypes = new Array<RType>(),
+        members = new Array<RType>()
     ) {
         this.name = name;
     }

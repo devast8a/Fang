@@ -9,11 +9,11 @@ export class RExprSetLocal {
 
     public get resultType(): RType {
         // TODO: Sort out RDeclField's null type
-        return this.local.type!;
+        return this.local.type;
     }
 
-    public readonly local: RDeclVariable;
-    public readonly value: RExpr;
+    public local: RDeclVariable;
+    public value: RExpr;
 
     public constructor(
         local: RDeclVariable,

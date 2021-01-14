@@ -9,8 +9,8 @@ export class RExprConstant {
         return this.type;
     }
 
-    public readonly type: RType;
-    public readonly value: any;
+    public type: RType;
+    public value: any;
 
     public constructor(
         type: RType,

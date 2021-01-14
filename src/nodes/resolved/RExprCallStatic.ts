@@ -11,12 +11,12 @@ export class RExprCallStatic {
         return this.target.returnType;
     }
 
-    public readonly target: RDeclFunction;
-    public readonly args: ReadonlyArray<RExpr>;
+    public target: RDeclFunction;
+    public args: Array<RExpr>;
 
     public constructor(
         target: RDeclFunction,
-        args: ReadonlyArray<RExpr>
+        args: Array<RExpr>
     ) {
         this.target = target;
         this.args = args;
