@@ -359,7 +359,7 @@
     ExprBinary      -> ExprMacroCall
 
 ## Stmt/Assign #####################################################################################
-    StmtAssign      -> SaTarget SaOperator SaValue
+    StmtAssign      -> SaTarget SaOperator SaValue {%p.StmtAssign%}
 
     # Required
     SaTarget        -> Identifier           # TODO: Add other targets to StmtAssign
@@ -370,7 +370,7 @@
     Stmt            -> StmtAssign
 
 ## Stmt/ForEach ####################################################################################
-    StmtForEach     -> SfKeyword CompileTime:? SfCondition SfBody
+    StmtForEach     -> SfKeyword CompileTime:? SfCondition SfBody {%p.StmtForEach%}
 
     # Required
     SfKeyword       -> "for"
@@ -381,7 +381,7 @@
     Stmt            -> StmtForEach
 
 ## Stmt/If #########################################################################################
-    StmtIf          -> SiKeyword SiCondition SiBody SiElif:* SiElse:?
+    StmtIf          -> SiKeyword SiCondition SiBody SiElif:* SiElse:? {%p.StmtIf%}
 
     # Examples:
     #   if(x == false){ ... }
@@ -407,7 +407,7 @@
     Stmt            -> StmtIf
 
 ## Stmt/Match ######################################################################################
-    StmtMatch       -> SmKeyword SmValue SmCases
+    StmtMatch       -> SmKeyword SmValue SmCases {%p.StmtMatch%}
 
     SmKeyword       -> "match" CompileTime:? N_
     SmValue         -> "(" _ Expr _ ")" N_
@@ -419,7 +419,7 @@
     Stmt            -> StmtMatch
 
 ## Stmt/Return #####################################################################################
-    StmtReturn      -> SrKeyword SrValue:?
+    StmtReturn      -> SrKeyword SrValue:? {%p.StmtReturn%}
 
     # Examples
     #   return
@@ -435,7 +435,7 @@
     Stmt            -> StmtReturn
 
 ## Stmt/While ######################################################################################
-    StmtWhile     -> SwKeyword CompileTime:? SwCondition SwBody
+    StmtWhile     -> SwKeyword CompileTime:? SwCondition SwBody {%p.StmtWhile%}
 
     # Examples:
     #   while(x == false){ ... }

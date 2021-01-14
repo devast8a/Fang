@@ -98,6 +98,14 @@ Main.register(PTag.ExprCall, (node) => {
     return new UExprCall(target, args);
 });
 
+Main.register(PTag.StmtAssign, (node) => {
+    const target     = Expr.parse(node[0]!);
+    const operator   = Expr.parse(node[1]!);
+    const source     = Expr.parse(node[2]!);
+
+    return new UExprCall(null as any, null as any);
+});
+
 Expr.register(PTag.ExprIdentifier, (node) => {
     const name = node[0]!.value;
 

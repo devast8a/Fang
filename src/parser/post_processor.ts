@@ -1,9 +1,9 @@
 /**
  * Current as of 2020-12-31 - devast8a
- * 
+ *
  * The 'tag' function returns a nearley post-processor that tags matched input with the given PTag.
  * The Parser class can be used to register an AST Builder to a given PTag.
- * 
+ *
  * If you want to:
  *  - Add your own syntax:
  *      - Add your rules to grammar/grammar.ne
@@ -11,7 +11,6 @@
  *      - Link your rule to the tag with "{%p.<TAGNAME>%}"
  *      - Link an AST builder to that tag in ast_builders.ts
  */
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export enum PTag {
     DeclClass,
@@ -30,6 +29,12 @@ export enum PTag {
     LiteralIntegerHex,
     LiteralIntegerOct,
     LiteralString,
+    StmtAssign,
+    StmtForEach,
+    StmtIf,
+    StmtMatch,
+    StmtReturn,
+    StmtWhile,
 }
 
 export type PNode =
@@ -66,6 +71,12 @@ export const LiteralIntegerDec  = tag(PTag.LiteralIntegerDec);
 export const LiteralIntegerHex  = tag(PTag.LiteralIntegerHex);
 export const LiteralIntegerOct  = tag(PTag.LiteralIntegerOct);
 export const LiteralString      = tag(PTag.LiteralString);
+export const StmtAssign         = tag(PTag.StmtAssign);
+export const StmtForEach        = tag(PTag.StmtForEach);
+export const StmtIf             = tag(PTag.StmtIf);
+export const StmtMatch          = tag(PTag.StmtMatch);
+export const StmtReturn         = tag(PTag.StmtReturn);
+export const StmtWhile          = tag(PTag.StmtWhile);
 
 // Post-processors /////////////////////////////////////////////////////////////////////////////////
 export function RejectOperators(node: any, location: any, reject: any) {
