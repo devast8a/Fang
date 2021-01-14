@@ -24,7 +24,7 @@ export class TypeCheckingStage extends Visitor<RNode, [], void> {
 
 
         reg(RNodes.DeclVariable, (node, visitor) => {
-            if (node.value !== null && !RType.isSameType(node.type!, node.value.resultType)) {
+            if (node.value !== null && !RType.isSameType(node.type, node.value.resultType)) {
                 throw new Error("");
             }
         });
@@ -34,7 +34,7 @@ export class TypeCheckingStage extends Visitor<RNode, [], void> {
             const parameters = node.target.parameters;
 
             for (let index = 0; index < args.length; index++) {
-                if (!RType.isSubType(args[index].resultType, parameters[index].type!)) {
+                if (!RType.isSubType(args[index].resultType, parameters[index].type)) {
                     throw new Error("");
                 }
             }

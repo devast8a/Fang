@@ -32,6 +32,14 @@ export enum PTag {
     LiteralString,
 }
 
+export type PNode =
+    & (PNode | null)[]
+    & {value: string}
+    & List<(PNode | null), (PNode | null)>
+    & {tag: PTag, data: PNode}
+    ;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 function tag(tag: PTag) {
     return function(data: any[]) {
         return {
@@ -42,7 +50,6 @@ function tag(tag: PTag) {
     };
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
 export const DeclClass          = tag(PTag.DeclClass);
 export const DeclFunction       = tag(PTag.DeclFunction);
 export const DeclParameter      = tag(PTag.DeclParameter);

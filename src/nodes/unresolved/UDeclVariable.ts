@@ -1,6 +1,7 @@
 import { VariableFlags } from '../VariableFlags';
 import { UNode } from './UNode';
 import { UTag } from './UTag';
+import { UType } from './UType';
 
 export class UDeclVariable {
     public static readonly tag = UTag.DeclVariable;
@@ -9,7 +10,7 @@ export class UDeclVariable {
     public readonly flags: VariableFlags;
     public readonly name: string;
     public readonly compileTime: boolean;
-    public readonly type: UNode | null; // TODO: Replace with Type?
+    public readonly type: UType | null;
     // TODO: Attributes
     public readonly value: UNode | null;
 
@@ -17,7 +18,7 @@ export class UDeclVariable {
         flags: VariableFlags,
         name: string,
         compileTime: boolean,
-        type: UNode | null,
+        type: UType | null,
         // TODO: Attributes
         value: UNode | null
     ) {

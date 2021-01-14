@@ -1,5 +1,6 @@
 import { Register, Visitor } from '../ast/visitor';
 import { Compiler } from '../compile';
+import { RExpr } from '../nodes/resolved/RExpr';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RType } from '../nodes/resolved/RType';
 import { UNode, UNodes } from '../nodes/unresolved/UNode';
@@ -115,7 +116,11 @@ export class NameResolutionStage extends Visitor<UNode, [Scope], RNode> {
         });
 
         reg(UNodes.DeclVariable, (node, visitor, scope) => {
-            const thing = new RNodes.DeclVariable(node.flags, node.name, node.compileTime, null, null);
+            const thing = new RNodes.DeclVariable(
+                node.name,
+                visitor.declare(node.type!, scope),
+            );
+
             scope.declare(node.name, thing);
 
             // TODO: Avoid subverting readonly with cast to any
@@ -130,11 +135,11 @@ export class NameResolutionStage extends Visitor<UNode, [Scope], RNode> {
             const thing = new RNodes.ExprCallStatic(UNRESOLVED, []);
             
             for (const arg of node.args) {
-                (thing.args as any).push(visitor.declare(arg, scope));
+                thing.args.push(visitor.declare(arg, scope) as RExpr);
             }
 
             visitor.resolvers.push(() => {
-                (thing as any).target = scope.lookup("test");
+                thing.target = scope.lookup("test") as RNodes.DeclFunction;
             });
 
             return thing;
@@ -144,8 +149,7 @@ export class NameResolutionStage extends Visitor<UNode, [Scope], RNode> {
             const thing = new RNodes.ExprGetLocal(UNRESOLVED);
 
             visitor.resolvers.push(() => {
-                // TODO: Avoid subverting readonly with cast to any
-                (thing as any).local = scope.lookup(node.name);
+                thing.local = scope.lookup(node.name) as RNodes.DeclVariable;
             });
 
             return thing;

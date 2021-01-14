@@ -16,8 +16,8 @@ export class RDeclVariable {
     constructor(
         name: string,
         type: RType,
-        flags: VariableFlags,
-        compileTime = false,
+        flags               = VariableFlags.None,
+        compileTime         = false,
         value: RExpr | null = null,
     ) {
         this.flags       = flags;

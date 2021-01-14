@@ -1,10 +1,7 @@
 import { Enum } from '../common/enum';
-import { PTag } from './post_processor';
+import { PNode, PTag } from './post_processor';
 
-export type Builder<T> = (node: any[], parser: Parser<T>) => T;
-
-// TODO: Consider consistent naming with Node, AST Thing, etc...
-type ParseTree = {tag: PTag, data: ParseTree[]} | null;
+export type Builder<T> = (node: PNode, parser: Parser<T>) => T;
 
 export class Parser<T> {
     public readonly builders: ReadonlyArray<Builder<T>>;
@@ -22,7 +19,9 @@ export class Parser<T> {
         }
     }
 
-    public parse(node: ParseTree): (T | null) {
+    public parse(node: PNode): T
+    public parse(node: PNode | null | undefined): (T | null)
+    public parse(node: PNode | null | undefined): (T | null) {
         if (node === undefined || node === null) {
             return null;
         }
