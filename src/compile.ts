@@ -8,7 +8,7 @@ import { Macro0Stage } from './stages/Macro0Stage';
 import { NameResolutionStage } from './stages/NameResolutionStage';
 import { MonomorphizeStage } from './stages/MonomorphizeStage';
 import { TargetC } from './stages/TargetC';
-import { TypeCheckingStage } from './stages/TypeCheckingStage';
+import { TypeChecker } from './stages/TypeChecker';
 
 export class Compiler {
     private parse = new ParseStage();
@@ -16,7 +16,7 @@ export class Compiler {
     private macro0Stage = new Macro0Stage();
     private nameResolution = new NameResolutionStage();
     private monomorphize = new MonomorphizeStage();
-    private typeChecker = new TypeCheckingStage();
+    private typeChecker = new TypeChecker();
     private target = new TargetC();
 
     private map = new Map<string, UNode[]>();
@@ -69,7 +69,8 @@ export class Compiler {
         console.timeEnd("Macro Execution");
 
         console.time("Type Checking");
-        const typeChecking = this.typeChecker.check(rNodes);
+        const errors = this.typeChecker.checkNodes(rNodes);
+        console.log(errors);
         console.timeEnd("Type Checking");
 
         console.time("Monomorphization");

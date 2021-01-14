@@ -100,6 +100,16 @@ export namespace RType {
         throw new Error(`Unhandled type=${RTag[type.tag]}`);
     }
 
+    export function getMembers(type: RType, context?: Context): RType[] {
+        switch (type.tag) {
+            case RTag.DeclClass: { return type.members as RType[]; /* TODO: Remove cast */ }
+            case RTag.DeclFunction: { return []; }
+            case RTag.DeclTrait: { return type.members as RType[]; /* TODO: Remove cast */ }
+        }
+
+        throw new Error(`Unhandled type=${RTag[type.tag]}`);
+    }
+
     export class Context {
         private readonly _generics = new Array<RGeneric<RNode>>();
         public readonly generics: ReadonlyArray<RGeneric<RNode>> = this._generics;
