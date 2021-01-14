@@ -1,168 +1,101 @@
 import { Register, Visitor } from '../ast/visitor';
 import { Compiler } from '../compile';
-import { RExpr } from '../nodes/resolved/RExpr';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
+import { RTag } from '../nodes/resolved/RTag';
 import { RType } from '../nodes/resolved/RType';
-import { UNode, UNodes } from '../nodes/unresolved/UNode';
-import { UTag } from '../nodes/unresolved/UTag';
-import { UType } from '../nodes/unresolved/UType';
+import { Scope } from './Scope';
 
-class Scope {
-    private map = new Map<string, RNode>();
-    private parent: Scope | null;
-
-    public constructor(parent: Scope | null = null) {
-        this.parent = parent;
-    }
-
-    public declare(name: string, node: RNode) {
-        this.map.set(name, node);
-    }
-
-    public lookup(name: string): RNode | null {
-        const symbol = this.map.get(name);
-        
-        if (symbol !== undefined) {
-            return symbol;
-        }
-
-        if (this.parent !== null) {
-            return this.parent.lookup(name);
-        }
-
-        return null;
-    }
-
-    public createScope(): Scope {
-        return new Scope(this);
-    }
-}
-
-const UNRESOLVED = undefined as any;
-
-export class NameResolutionStage extends Visitor<UNode, [Scope], RNode> {
+export class NameResolutionStage extends Visitor<RNode, [Scope], void> {
     public constructor() {
-        super(UTag, NameResolutionStage.setup);
+        super(RTag, setup);
     }
 
-    public execute(compiler: Compiler, nodes: UNode[]) {
+    public execute(compiler: Compiler, nodes: RNode[]) {
         const scope = new Scope();
-        const global = [];
 
         for (const node of nodes) {
-            global.push(this.declare(node, scope));
+            this.declare(node, scope);
         }
 
         for (const resolver of this.resolvers) {
             resolver();
         }
+        this.resolvers.length = 0;
 
-        return global;
+        return nodes;
     }
 
     private resolvers = new Array<() => void>();
 
-    private declare(node: UType, scope: Scope): RType
-    private declare(node: UNode, scope: Scope): RNode
-    private declare(node: UNode, scope: Scope): RNode {
+    public addResolver(resolve: () => void) {
+        this.resolvers.push(resolve);
+    }
+
+    public declare(node: RNode, scope: Scope) {
         return this.visit(node, scope);
     }
-    
-    private static setup(reg: Register<NameResolutionStage, UNode, [Scope], RNode>) {
-        // Handlers
-        ////////////////////////////////////////////////////////////
-        reg(UNodes.DeclClass, (node, visitor, scope) => {
-            const thing = new RNodes.DeclClass(node.name);
-            scope.declare(node.name, thing);
+}
 
-            for (const superType of node.superTypes) {
-                thing.superTypes.push(visitor.declare(superType, scope));
-            }
+function setup(reg: Register<NameResolutionStage, RNode, [Scope], void>) {
+    // Handlers
+    ////////////////////////////////////////////////////////////
+    reg(RNodes.DeclClass, (node, visitor, scope) => {
+        scope.declare(node.name, node);
 
-            return thing;
+        for (const superType of node.superTypes) {
+            visitor.declare(superType, scope);
+        }
+
+        const childScope = scope.newChildScope();
+        for (const member of node.members) {
+            visitor.declare(member, childScope);
+        }
+    });
+
+    reg(RNodes.DeclFunction, (node, visitor, scope) => {
+        scope.declare(node.name, node);
+
+        visitor.declare(node.returnType, scope);
+
+        const childScope = scope.newChildScope();
+        for (const parameter of node.parameters) {
+            visitor.declare(parameter, childScope);
+        }
+
+        for (const child of node.body) {
+            visitor.declare(child, scope);
+        }
+    });
+
+    reg(RNodes.DeclTrait, (node, visitor, scope) => {
+        scope.declare(node.name, node);
+    });
+
+    reg(RNodes.ExprCallStatic, (node, visitor, scope) => {
+        node.target = scope.lookup("test") as any;
+
+        for (const arg of node.args) {
+            visitor.declare(arg, scope);
+        }
+    });
+
+    reg(RNodes.ExprGetLocal, (node, visitor, scope) => {
+        node.local = scope.lookup("a") as RNodes.DeclVariable;
+    });
+
+    reg(RNodes.DeclVariable, (node, visitor, scope) => {
+        scope.declare(node.name, node);
+
+        visitor.declare(node.type, scope);
+
+        if (node.value !== null) {
+            visitor.declare(node.value, scope);
+        }
+    });
+
+    reg(RNodes.TypeAtom, (node, visitor, scope) => {
+        visitor.addResolver(() => {
+            node.type = scope.lookup(node.value) as RType;
         });
-
-        reg(UNodes.DeclFunction, (node, visitor, scope) => {
-            const thing = new RNodes.DeclFunction(node.name, UNRESOLVED, []);
-            scope.declare(node.name, thing);
-
-            // TODO: Avoid subverting readonly with cast to any
-            if (node.returnType !== null) {
-                (thing as any).returnType = visitor.declare(node.returnType, scope);
-            }
-
-            for (const parameter of node.parameters) {
-                (thing.parameters as any).push(visitor.declare(parameter, scope));
-            }
-
-            // Body
-            const childScope = scope.createScope();
-            for (const child of node.body) {
-                (thing.body as any).push(visitor.declare(child, childScope));
-            }
-
-            return thing;
-        });
-
-        reg(UNodes.DeclTrait, (node, visitor, scope) => {
-            const thing = new RNodes.DeclTrait(node.name);
-            scope.declare(node.name, thing);
-
-            for (const superType of node.superTypes) {
-                thing.superTypes.push(visitor.declare(superType, scope));
-            }
-
-            return thing;
-        });
-
-        reg(UNodes.DeclVariable, (node, visitor, scope) => {
-            const thing = new RNodes.DeclVariable(
-                node.name,
-                visitor.declare(node.type!, scope),
-            );
-
-            scope.declare(node.name, thing);
-
-            // TODO: Avoid subverting readonly with cast to any
-            if (node.type !== null) {
-                (thing as any).type = visitor.declare(node.type, scope);
-            }
-
-            return thing;
-        });
-
-        reg(UNodes.ExprCall, (node, visitor, scope) => {
-            const thing = new RNodes.ExprCallStatic(UNRESOLVED, []);
-            
-            for (const arg of node.args) {
-                thing.args.push(visitor.declare(arg, scope) as RExpr);
-            }
-
-            visitor.resolvers.push(() => {
-                thing.target = scope.lookup("test") as RNodes.DeclFunction;
-            });
-
-            return thing;
-        });
-
-        reg(UNodes.ExprGet, (node, visitor, scope) => {
-            const thing = new RNodes.ExprGetLocal(UNRESOLVED);
-
-            visitor.resolvers.push(() => {
-                thing.local = scope.lookup(node.name) as RNodes.DeclVariable;
-            });
-
-            return thing;
-        });
-
-        reg(UNodes.TypeAtom, (node, visitor, scope) => {
-            const thing = new RNodes.TypeAtom(node.value, UNRESOLVED);
-
-            visitor.resolvers.push(() => {
-                thing.type = scope.lookup(node.value) as RType;
-            });
-
-            return thing;
-        });
-    }
+    });
 }

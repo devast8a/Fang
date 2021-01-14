@@ -6,11 +6,11 @@ export class RTypeAtom {
     public readonly tag = RTag.TypeAtom;
 
     public value: string;
-    public type: RType;
+    public type: RType | null;
 
     public constructor(
         value: string,
-        type: RType,
+        type: RType | null,
     ) {
         this.value = value;
         this.type = type;

@@ -51,8 +51,8 @@ export class MonomorphizeStage extends Visitor<RNode, [RType.Context], RNode> {
                 for (let i = 0; i < node.args.length; i++) {
                     const param = node.target.parameters[i];
 
-                    if (isGenericType(param.type!, context)) {
-                        context.map(param.type!, node.args[i].resultType);
+                    if (isGenericType(param.type, context)) {
+                        context.map(param.type, node.args[i].resultType);
                     }
                 }
 
@@ -86,12 +86,12 @@ export function isGenericType(type: RType, context: RType.Context): boolean {
         case RTag.Generic:          return true;
         case RTag.GenericApply:     return type.args.some(type => isGenericType(type, context));
         case RTag.GenericParameter: return isGenericType(context.resolve(type), context);
-        case RTag.TypeAtom:         return isGenericType(type.type, context);
+        case RTag.TypeAtom:         return type.type !== null && isGenericType(type.type, context);
     }
 
     throw new Error(`needsRewriteType does not handle node with tag ${RTag[(type as any).tag]}`);
 }
 
 export function isGenericFunction(func: RDeclFunction, context: RType.Context) {
-    return func.parameters.some(parameter => isGenericType(parameter.type!, context));
+    return func.parameters.some(parameter => isGenericType(parameter.type, context));
 }

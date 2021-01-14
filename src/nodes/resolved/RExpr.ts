@@ -1,22 +1,17 @@
-import { RExprCallField } from './RExprCallfield';
-import { RExprCallStatic } from './RExprCallStatic';
-import { RExprConstant } from './RExprConstant';
-import { RExprConstruct } from './RExprConstruct';
-import { RExprGetField } from './RExprGetField';
-import { RExprSetField } from './RExprSetField';
-import { RExprSetLocal } from './RExprSetLocal';
+import { RNodes } from './RNode';
 
 /*
     tag: RTag;
     resultType: RType
 */
 export type RExpr =
-    | RExprCallField
-    | RExprCallStatic
-    | RExprConstant
-    | RExprConstruct
-    | RExprGetField
-    | RExprSetField
-    | RExprSetLocal
+    | RNodes.Constant
+    | RNodes.ExprCallField
+    | RNodes.ExprCallStatic
+    | RNodes.ExprConstant
+    | RNodes.ExprConstruct
+    | RNodes.ExprGetField
+    | RNodes.ExprGetLocal
+    | RNodes.ExprSetField
+    | RNodes.ExprSetLocal
     ;
-

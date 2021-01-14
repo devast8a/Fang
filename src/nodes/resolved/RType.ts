@@ -25,8 +25,8 @@ export type RType =
 export namespace RType {
     // Returns true if child is a subtype of parent (or child is parent)
     export function isSubType(child: RType, parent: RType, context?: Context): boolean {
-        if (child.tag === RTag.TypeAtom) { child = child.type; }
-        if (parent.tag === RTag.TypeAtom) { parent = parent.type; }
+        if (child.tag === RTag.TypeAtom) { child = child.type!; }
+        if (parent.tag === RTag.TypeAtom) { parent = parent.type!; }
 
         if (child === parent) {
             return true;
@@ -70,7 +70,7 @@ export namespace RType {
                         }
 
                         for (let index = 0; index < child.parameters.length; index++) {
-                            if (!RType.isSuperType(child.parameters[index].type!, parent.parameters[index].type!, context)) {
+                            if (!RType.isSuperType(child.parameters[index].type, parent.parameters[index].type, context)) {
                                 return false;
                             }
                         }

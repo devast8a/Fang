@@ -1,5 +1,4 @@
 import { Source } from './common/source';
-import { UNode } from './nodes/unresolved/UNode';
 import { ParseStage } from './stages/ParseStage';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
 import * as Fs from 'fs';
@@ -9,6 +8,7 @@ import { NameResolutionStage } from './stages/NameResolutionStage';
 import { MonomorphizeStage } from './stages/MonomorphizeStage';
 import { TargetC } from './stages/TargetC';
 import { TypeChecker } from './stages/TypeChecker';
+import { RNode } from './nodes/resolved/RNode';
 
 export class Compiler {
     private parse = new ParseStage();
@@ -19,9 +19,9 @@ export class Compiler {
     private typeChecker = new TypeChecker();
     private target = new TargetC();
 
-    private map = new Map<string, UNode[]>();
+    private map = new Map<string, RNode[]>();
 
-    public async parseFile(arg0: string | Source): Promise<UNode[]>
+    public async parseFile(arg0: string | Source): Promise<RNode[]>
     {
         let source: Source;
         if (arg0 instanceof Source) {

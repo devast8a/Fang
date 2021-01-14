@@ -19,4 +19,5 @@ export enum RTag {
     StmtReturn,
     StmtWhile,
     TypeAtom,
+    StmtAssign
 }

@@ -15,8 +15,10 @@ import { RExprSetLocal } from './RExprSetLocal';
 import { RStmtReturn } from './RStmtReturn';
 import { RDeclVariable } from './RDeclVariable';
 import { RTypeAtom } from './RTypeAtom';
+import { RConstant } from './RConstant';
 
 export type RNode =
+    | RConstant
     | RDeclClass
     | RDeclFunction
     | RDeclTrait
@@ -37,6 +39,7 @@ export type RNode =
     ;
 
 export namespace RNodes {
+    export const Constant           = RConstant;
     export const DeclClass          = RDeclClass;
     export const DeclFunction       = RDeclFunction;
     export const DeclTrait          = RDeclTrait;
@@ -55,6 +58,7 @@ export namespace RNodes {
     export const StmtReturn         = RStmtReturn;
     export const TypeAtom           = RTypeAtom;
 
+    export type Constant            = RConstant;
     export type DeclClass           = RDeclClass;
     export type DeclFunction        = RDeclFunction;
     export type DeclTrait           = RDeclTrait;

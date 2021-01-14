@@ -2,10 +2,9 @@
 
 import { Source } from '../common/source';
 import { Compiler } from '../compile';
-import { UNode } from '../nodes/unresolved/UNode';
-import { UTag } from '../nodes/unresolved/UTag';
+import { RNode } from '../nodes/resolved/RNode';
 
-type Macro = (compiler: Compiler, node: UNode) => Promise<void>;
+type Macro = (compiler: Compiler, node: RNode) => Promise<void>;
 
 //  This is primarily used by things like "import"
 export class Macro0Stage {
@@ -17,18 +16,10 @@ export class Macro0Stage {
         });
     }
 
-    public async execute(compiler: Compiler, nodes: UNode[], source: Source) {
+    public async execute(compiler: Compiler, nodes: RNode[], source: Source) {
         // Find any macro calls at the highest level
         for (const node of nodes) {
-            if (node.tag === UTag.ExprMacroCall) {
-                const macro = this.macros.get(node.target);
-
-                if (macro === undefined) {
-                    continue;
-                }
-
-                await macro(compiler, node);
-            }
+            //
         }
     }
 }
