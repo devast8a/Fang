@@ -90,6 +90,12 @@ export namespace RType {
         return RType.isSubType(child, parent, context);
     }
 
+    // Returns true if child and parent are the same type
+    export function isSameType(a: RType, b: RType, context?: Context) {
+        // TODO: Properly implement
+        return a === b;
+    }
+
     export function getMember(type: RType, member: string, context?: Context): RType | null {
         throw new Error(`Unhandled type=${RTag[type.tag]}`);
     }
@@ -100,6 +106,8 @@ export namespace RType {
 
         private readonly _arguments = new Array<ReadonlyArray<RType>>();
         public readonly arguments: ReadonlyArray<ReadonlyArray<RType>> = this._arguments;
+
+        private mapping = new Map<RType, RType>();
 
         public push(apply: RGenericApply<RNode>) {
             this._generics.push(apply.generic);
@@ -112,7 +120,7 @@ export namespace RType {
         }
 
         public map(source: RType, target: RType) {
-
+            this.mapping.set(source, target);
         }
 
         public resolve(type: RType) {
@@ -130,7 +138,7 @@ export namespace RType {
                 type = this._arguments[index][type.index];
             }
 
-            return type;
+            return this.mapping.get(type) ?? type;
         }
     }
 }

@@ -16,8 +16,9 @@ export class Visitor<
             throw new Error(`${this.constructor.name} does not define a visitor for ${tag[node.tag]}`);
         });
 
-        setup((constructor, handler) => {
-            (this.visitors as any)[constructor.tag] = handler as any;
+        setup((constructor: {tag: number} | number, handler: any) => {
+            const tag = typeof(constructor) === 'number' ? constructor : constructor.tag;
+            (this.visitors as any)[tag] = handler as any;
         });
     }
 
@@ -33,7 +34,5 @@ export type Setup<Visitor, Node, Parameters extends Array<any>, Result> =
     (reg: Register<Visitor, Node, Parameters, Result>) => void;
 
 export type Register<Visitor, Node, Parameters extends Array<any>, Result> =
-    <N extends Node>(
-        constructor: Constructor<N> & {tag: number},
-        handler: Handler<Visitor, N, Parameters, Result>
-    ) => void;
+    (<N extends Node>(constructor: Constructor<N> & {tag: number}, handler: Handler<Visitor, N, Parameters, Result>) => void) &
+    ((tag: number, handler: Handler<Visitor, Node, Parameters, Result>) => void);

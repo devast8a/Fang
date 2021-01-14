@@ -1,14 +1,18 @@
 class A impl Base
 
+class C
+
 fn test(base: Base) -> Base {
 }
 
 fn main() -> Base {
     val a: A
     val b: B
+    val c: C
 
     test(a)
     test(b)
+    test(c)
 }
 
 trait Base
