@@ -21,9 +21,9 @@ export class RDeclFunction {
         body = new Array<RNode>()
     ) {
         this.name = name;
-        this.compileTime = false;
+        this.compileTime = compileTime;
         this.returnType = returnType;
         this.parameters = parameters;
-        this.body = [];
+        this.body = body;
     }
 }

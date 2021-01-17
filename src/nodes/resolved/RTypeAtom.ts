@@ -5,14 +5,14 @@ export class RTypeAtom {
     public static readonly tag = RTag.TypeAtom;
     public readonly tag = RTag.TypeAtom;
 
-    public value: string;
+    public name: string;
     public type: RType | null;
 
     public constructor(
-        value: string,
+        name: string,
         type: RType | null,
     ) {
-        this.value = value;
+        this.name = name;
         this.type = type;
     }
 }

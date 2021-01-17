@@ -5,7 +5,6 @@ import { RNodes } from './RNode';
     resultType: RType
 */
 export type RExpr =
-    | RNodes.Constant
     | RNodes.ExprCallField
     | RNodes.ExprCallStatic
     | RNodes.ExprConstant

@@ -8,7 +8,6 @@ export class RExprSetField {
     public readonly tag = RTag.ExprSetField;
 
     public get resultType(): RType {
-        // TODO: Sort out RDeclField's null type
         return this.field.type;
     }
 

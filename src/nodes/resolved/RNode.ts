@@ -15,10 +15,12 @@ import { RExprSetLocal } from './RExprSetLocal';
 import { RStmtReturn } from './RStmtReturn';
 import { RDeclVariable } from './RDeclVariable';
 import { RTypeAtom } from './RTypeAtom';
-import { RConstant } from './RConstant';
+import { UExprAssign } from './UAssign';
+import { UExprAtom } from './UAtom';
+import { UExprCall } from './UCall';
+import { UExprField } from './UField';
 
 export type RNode =
-    | RConstant
     | RDeclClass
     | RDeclFunction
     | RDeclTrait
@@ -36,10 +38,13 @@ export type RNode =
     | RGenericParameter<RNode>
     | RStmtReturn
     | RTypeAtom
+    | UExprAssign
+    | UExprAtom
+    | UExprCall
+    | UExprField
     ;
 
 export namespace RNodes {
-    export const Constant           = RConstant;
     export const DeclClass          = RDeclClass;
     export const DeclFunction       = RDeclFunction;
     export const DeclTrait          = RDeclTrait;
@@ -57,8 +62,11 @@ export namespace RNodes {
     export const GenericParameter   = RGenericParameter;
     export const StmtReturn         = RStmtReturn;
     export const TypeAtom           = RTypeAtom;
+    export const UUExprAssign       = UExprAssign;
+    export const UUExprAtom         = UExprAtom;
+    export const UUExprCall         = UExprCall;
+    export const UUExprField        = UExprField;
 
-    export type Constant            = RConstant;
     export type DeclClass           = RDeclClass;
     export type DeclFunction        = RDeclFunction;
     export type DeclTrait           = RDeclTrait;
@@ -76,4 +84,8 @@ export namespace RNodes {
     export type GenericParameter<T> = RGenericParameter<T>;
     export type StmtReturn          = RStmtReturn;
     export type TypeAtom            = RTypeAtom;
+    export type UUExprAssign        = UExprAssign;
+    export type UUExprAtom          = UExprAtom;
+    export type UUExprCall          = UExprCall;
+    export type UUExprField         = UExprField;
 }

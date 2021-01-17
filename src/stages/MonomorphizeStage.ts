@@ -56,8 +56,7 @@ export class MonomorphizeStage extends Visitor<RNode, [RType.Context], RNode> {
                     }
                 }
 
-                // TODO: Avoid subverting readonly access modifier with any
-                (node as any).target = instantiate(node.target, context);
+                node.target = instantiate(node.target, context);
             }
 
             if (isGenericType(node.target.returnType, context)) {
@@ -74,11 +73,6 @@ export function instantiate(func: RNodes.DeclFunction, context: RType.Context) {
 }
 
 export function isGenericType(type: RType, context: RType.Context): boolean {
-    // TODO: Types should be completely resolved at this point.
-    if (type === undefined) {
-        return false;
-    }
-
     switch (type.tag) {
         case RTag.DeclClass:        return false;
         case RTag.DeclFunction:     return true;

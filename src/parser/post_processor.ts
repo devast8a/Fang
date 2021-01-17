@@ -48,7 +48,6 @@ export type PNode =
 function tag(tag: PTag) {
     return function(data: any[]) {
         return {
-            tagName: PTag[tag],
             tag: tag,
             data: data,
         };

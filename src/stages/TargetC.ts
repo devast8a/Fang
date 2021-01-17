@@ -1,4 +1,3 @@
-import { RGenericParameter } from '../nodes/resolved/RGenericParameter';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RTag } from '../nodes/resolved/RTag';
 
@@ -23,7 +22,7 @@ export class TargetC {
             case RTag.DeclFunction: {
                 this.output.push("\n\n");
                 this.output.push(indent);
-                this.output.push((node.returnType as RNodes.TypeAtom).value);
+                this.output.push((node.returnType as RNodes.TypeAtom).name);
                 this.output.push(" ");
                 this.output.push((node.name));
                 this.output.push("(");
@@ -36,7 +35,7 @@ export class TargetC {
 
                     const parameter = node.parameters[index];
 
-                    this.output.push((parameter.type as RNodes.TypeAtom).value);
+                    this.output.push((parameter.type as RNodes.TypeAtom).name);
                     this.output.push(" ");
                     this.output.push(parameter.name);
                 }
@@ -62,7 +61,7 @@ export class TargetC {
             }
 
             case RTag.DeclVariable: {
-                this.output.push((node.type as RNodes.TypeAtom).value);
+                this.output.push((node.type as RNodes.TypeAtom).name);
                 this.output.push(" ");
                 this.output.push(node.name);
                 break;

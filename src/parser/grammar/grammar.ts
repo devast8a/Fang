@@ -353,6 +353,8 @@ const grammar: Grammar = {
     {"name": "ExprBinary", "symbols": ["ExprMacroCall"]},
     {"name": "StmtAssign", "symbols": ["SaTarget", "SaOperator", "SaValue"], "postprocess": p.StmtAssign},
     {"name": "SaTarget", "symbols": ["Identifier"]},
+    {"name": "SaTarget", "symbols": ["ExprIndexDot"]},
+    {"name": "SaTarget", "symbols": ["ExprIndexBracket"]},
     {"name": "SaOperator", "symbols": ["__", "OperatorSpaced", "__"]},
     {"name": "SaValue", "symbols": ["Expr"]},
     {"name": "Stmt", "symbols": ["StmtAssign"]},

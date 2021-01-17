@@ -4,11 +4,10 @@ import { RTag } from './RTag';
 import { RType } from './RType';
 
 export class RExprSetLocal {
-    public static readonly tag = RTag.ExprGetLocal;
-    public readonly tag = RTag.ExprGetLocal;
+    public static readonly tag = RTag.ExprSetLocal;
+    public readonly tag = RTag.ExprSetLocal;
 
     public get resultType(): RType {
-        // TODO: Sort out RDeclField's null type
         return this.local.type;
     }
 

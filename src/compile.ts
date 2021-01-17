@@ -62,7 +62,7 @@ export class Compiler {
         const uNodes = await this.parseFile(arg0);
 
         console.time("Name Resolution");
-        const rNodes = this.nameResolution.execute(this, uNodes);
+        const rNodes = this.nameResolution.execute(uNodes);
         console.timeEnd("Name Resolution");
 
         console.time("Macro Execution");

@@ -4,6 +4,7 @@ import { Compiler } from '../compile';
 import { RExpr } from '../nodes/resolved/RExpr';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RType } from '../nodes/resolved/RType';
+import { UExpr } from '../nodes/resolved/UExpr';
 import { VariableFlags } from '../nodes/VariableFlags';
 import { Parser } from '../parser/parser';
 import { PTag } from '../parser/post_processor';
@@ -13,13 +14,7 @@ export class AstGenerationStage {
         const nodes = [];
 
         for (const parseNode of parseNodes) {
-            const node = Main.parse(parseNode);
-
-            if (node === null) {
-                throw new Error("Broken Assertion: Output of Parser.parse shouldn't be null if the input isn't null");
-            }
-
-            nodes.push(node);
+            nodes.push(Main.parse(parseNode));
         }
 
         return nodes;
@@ -38,7 +33,7 @@ function parameterToFlags(keyword: string | null | undefined) {
 }
 
 const Main = new Parser<RNode>("Main");
-const Expr = new Parser<RExpr>("Expr");
+const Expr = new Parser<UExpr>("Expr");
 const Type = new Parser<RType>("TypeExpr");
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +86,7 @@ Main.register(PTag.DeclParameter, (node) => {
         type!,
         flags,
         compileTime,
-        value,
+        value as any,
     );
 });
 
@@ -107,15 +102,15 @@ Main.register(PTag.DeclVariable, (node) => {
         type!,
         flags,
         compileTime,
-        value
+        value as any
     );
 });
 
 Main.register(PTag.ExprMacroCall, (node) => {
-    const target     = node[0]!.value;
+    const target     = Expr.parse(node[0]!);
     const argument   = Expr.parse(node[2]![1]!);
 
-    return new RNodes.ExprCallField(undefined as any, undefined as any, []);
+    return new RNodes.UUExprCall(target, [argument], true);
 });
 
 Main.register(PTag.ExprCall, (node) => {
@@ -123,21 +118,21 @@ Main.register(PTag.ExprCall, (node) => {
     const compileTime = node[1] !== null;
     const args        = node[2]!.elements.map((node) => Expr.parse(node!));
 
-    return new RNodes.ExprCallStatic(undefined as any, args);
+    return new RNodes.UUExprCall(target, args, compileTime);
 });
 
 Main.register(PTag.StmtAssign, (node) => {
     const target     = Expr.parse(node[0]!);
-    const operator   = Expr.parse(node[1]!);
+    // TODO: Include operator
     const source     = Expr.parse(node[2]!);
 
-    return new RNodes.ExprSetLocal(undefined as any, source);
+    return new RNodes.UUExprAssign(target, source);
 });
 
 Expr.register(PTag.ExprIdentifier, (node) => {
     const name = node[0]!.value;
 
-    return new RNodes.ExprGetLocal(undefined as any);
+    return new RNodes.UUExprAtom(name) as any;
 });
 
 Expr.register(PTag.ExprCall, Main.builders[PTag.ExprCall] as any);
@@ -151,8 +146,8 @@ Type.register(PTag.ExprIdentifier, (node) => {
 Expr.register(PTag.LiteralString, (node) => {
     const value = node[0]!.value.slice(1, -1);
 
-    return new RNodes.Constant(
+    return new RNodes.ExprConstant(
+        undefined as any,    // TODO: Set to string
         value.slice(1, -1),
-        undefined as any    // TODO: Set to string
-    );
+    ) as any;
 });

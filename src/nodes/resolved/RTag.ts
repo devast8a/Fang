@@ -19,5 +19,9 @@ export enum RTag {
     StmtReturn,
     StmtWhile,
     TypeAtom,
-    StmtAssign
+    StmtAssign,
+    UExprAssign,
+    UExprAtom,
+    UExprCall,
+    UExprField,
 }

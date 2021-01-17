@@ -49,7 +49,7 @@
     DeclClass    -> DcKeyword DcName DcImplement:* DcGeneric:? DcAttribute:* DcBody:? {%p.DeclClass%}
 
     # Examples:
-    #   TODO: Fill out some examples
+    #   class Foo impl ClassName #attribute {}
 
     # Supports:
     #   Attributes
@@ -99,7 +99,7 @@
     DeclGeneric  -> DgKeyword DgParameters DgWhere:*
 
     # Examples:
-    #   TODO: Fill out some examples
+    #   generic<A> where A impl B
 
     DgKeyword       -> "generic"
     DgParameters    -> PLUS["<", _, DgParameter, COMMA, ">"]
@@ -142,7 +142,7 @@
     DeclTrait    -> DtKeyword DtName DtImplement:* DtGeneric:? DtAttribute:* DtBody:? {%p.DeclTrait%}
 
     # Examples:
-    #   TODO: Fill out some examples
+    #   trait Foo impl ClassName #attribute {}
 
     # Supports:
     #   Attributes
@@ -362,7 +362,9 @@
     StmtAssign      -> SaTarget SaOperator SaValue {%p.StmtAssign%}
 
     # Required
-    SaTarget        -> Identifier           # TODO: Add other targets to StmtAssign
+    SaTarget        -> Identifier
+    SaTarget        -> ExprIndexDot
+    SaTarget        -> ExprIndexBracket
     SaOperator      -> __ OperatorSpaced __
     SaValue         -> Expr
 

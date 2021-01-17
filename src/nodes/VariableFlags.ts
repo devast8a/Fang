@@ -1,4 +1,3 @@
-// TODO: Move the file somewhere more appropriate
 export enum VariableFlags {
     None    = 0,
     Local   = 1 << 0,
