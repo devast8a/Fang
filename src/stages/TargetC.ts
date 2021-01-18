@@ -1,11 +1,25 @@
+import { RDeclVariable } from '../nodes/resolved/RDeclVariable';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RTag } from '../nodes/resolved/RTag';
+import { VariableFlags } from '../nodes/VariableFlags';
 
 export class TargetC {
     public constructor() {
     }
 
     public output = new Array<string>();
+
+    protected emitParameter(variable: RDeclVariable) {
+        this.output.push((variable.type as RNodes.TypeAtom).name);
+        if ((variable.flags & VariableFlags.Mutates) > 0) {
+            this.output.push("* restrict");
+        }
+        this.output.push(" ");
+        this.output.push(variable.name);
+    }
+
+    protected emitArgument(variable: RDeclVariable) {
+    }
 
     public emit(node: RNode, indent = "") {
         switch (node.tag) {
@@ -33,11 +47,7 @@ export class TargetC {
                         this.output.push(", ");
                     }
 
-                    const parameter = node.parameters[index];
-
-                    this.output.push((parameter.type as RNodes.TypeAtom).name);
-                    this.output.push(" ");
-                    this.output.push(parameter.name);
+                    this.emitParameter(node.parameters[index]);
                 }
 
                 this.output.push(indent);
@@ -77,7 +87,29 @@ export class TargetC {
                         this.output.push(", ");
                     }
 
-                    this.emit(node.args[index], "");
+                    const arg = node.args[index];
+                    switch (arg.tag) {
+                        case RTag.ExprGetLocal: {
+                            if (arg.local.flags & VariableFlags.Mutates) {
+                                if (node.target.parameters[index].flags & VariableFlags.Mutates) {
+                                    this.output.push(arg.local.name);
+                                } else {
+                                    this.output.push("*");
+                                    this.output.push(arg.local.name);
+                                }
+                            } else {
+                                if (node.target.parameters[index].flags & VariableFlags.Mutates) {
+                                    this.output.push("&");
+                                    this.output.push(arg.local.name);
+                                } else {
+                                    this.output.push(arg.local.name);
+                                }
+                            }
+                            break;
+                        }
+
+                        default: this.emit(arg, "");
+                    }
                 }
 
                 this.output.push(")");
