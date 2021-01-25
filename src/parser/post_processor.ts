@@ -49,6 +49,7 @@ function tag(tag: PTag) {
     return function(data: any[]) {
         return {
             tag: tag,
+            name: PTag[tag],
             data: data,
         };
     };
@@ -86,7 +87,7 @@ export function RejectOperators(node: any, location: any, reject: any) {
         case '->':
         case '=>':
         case '#':
-        //case '=':
+        case '=':
             return reject;
 
         default:
@@ -123,8 +124,8 @@ export function ListProcessor(node: any[]): List<Node, Node> {
     const result = {
         begin:      node[0],
         begin_ws:   node[1],
-        elements:   all.filter((_, i) => i % 2 == 0),
-        separators: all.filter((_, i) => i % 2 == 1),
+        elements:   all.filter((_, i) => i % 2 === 0),
+        separators: all.filter((_, i) => i % 2 === 1),
         all:        all,
         end_ws:     node[2][2],
         end:        node[3],

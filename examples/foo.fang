@@ -1,19 +1,25 @@
-class A impl Base
+class Int {
 
-class C
-
-fn test(base: Base) -> Base {
 }
 
-fn main() -> Base {
-    val a: A
-    val b: B
-    val c: C
+class Str {
 
-    test(a)
-    test(b)
-    test(c)
 }
 
-trait Base
-class B impl Base
+class Bool {
+
+}
+
+fn lessThan(x: Int, y: Int) -> Bool {
+
+}
+
+fn main(a: A, mut b: B) -> Base {
+    mut v: Int = 123
+
+    if (v > 42) {
+        v += 32
+    } else {
+        v += 64
+    }
+}

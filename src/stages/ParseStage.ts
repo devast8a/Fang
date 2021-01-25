@@ -9,6 +9,10 @@ export class ParseStage {
         parser.feed(source.content);
 
         if (parser.results.length > 1) {
+            parser.results.forEach((result, index) => {
+                console.log(`========== ${index} ==========`)
+                console.log(JSON.stringify(result, undefined, 4));
+            });
             throw new Error("Internal Error: AMBIGUOUS GRAMMAR");
         }
 

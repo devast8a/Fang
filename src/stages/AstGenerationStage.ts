@@ -3,6 +3,7 @@ import { Source } from '../common/source';
 import { Compiler } from '../compile';
 import { RExpr } from '../nodes/resolved/RExpr';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
+import { RStmtIfCase } from "../nodes/resolved/RStmtIfCase";
 import { RType } from '../nodes/resolved/RType';
 import { UExpr } from '../nodes/resolved/UExpr';
 import { VariableFlags } from '../nodes/VariableFlags';
@@ -40,7 +41,7 @@ const Type = new Parser<RType>("TypeExpr");
 Main.register(PTag.DeclClass, (node, parser) => {
     const name       = node[1]!.value;
     const superTypes = node[2]!.map((node) => Type.parse(node![3]!));
-    const body       = node[5] !== null ? node[5]![1]!.map((node: any) => parser.parse(node)) : [];
+    const body       = node[5] !== null ? node[5]![1]!.elements.map((node: any) => parser.parse(node)) : [];
 
     return new RNodes.DeclClass(name, superTypes, body);
 });
@@ -64,7 +65,7 @@ Main.register(PTag.DeclFunction, (node, parser) => {
 Main.register(PTag.DeclTrait, (node, parser) => {
     const name       = node[1]!.value;
     const superTypes = node[2]!.map((node: any) => Type.parse(node[3]));
-    const body       = node[5] !== null ? node[5]![1]!.map((node: any) => parser.parse(node)) : [];
+    const body       = node[5] !== null ? node[5]![1]!.elements.map((node: any) => parser.parse(node)) : [];
 
     return new RNodes.DeclTrait(
         name,
@@ -129,25 +130,76 @@ Main.register(PTag.StmtAssign, (node) => {
     return new RNodes.UUExprAssign(target, source);
 });
 
+Main.register(PTag.StmtIf, (node) => {
+    // StmtIf -> SiKeyword SiCondition SiBody SiElif:* SiElse:? {%p.StmtIf%}
+    const condition = Expr.parse(node[1]![2]!);
+    const body      = node[2]!.elements.map((node) => Main.parse(node!));
+    const elseBody  = node[4]?.[1]?.elements.map((node) => Main.parse(node!)) ?? [];
+
+    return new RNodes.StmtIf([
+        new RStmtIfCase(condition as any, body) as any,
+    ], elseBody);
+});
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+Expr.register(PTag.ExprBinary, (node, parser) => {
+    // ExprBinary -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
+    // ExprBinary -> ExprUnary NL OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
+    // ExprBinary -> ExprUnary __ OperatorSpaced NL ExprBinary    {%p.ExprBinary%}
+    // ExprBinary -> Atom Operator Atom                           {%p.ExprBinary%}
+
+    switch (node.length) {
+        case 5: {
+            const left = parser.parse(node[0]!);
+            // TODO: Include operator
+            const right = parser.parse(node[4]!);
+
+            return new RNodes.UUExprCall(new RNodes.UUExprAtom("lessThan"), [left, right]);
+        }
+
+        case 3: {
+            const left = parser.parse(node[0]!);
+            // TODO: Include operator
+            const right = parser.parse(node[2]!);
+
+            return new RNodes.UUExprCall(new RNodes.UUExprAtom("lessThan"), [left, right]);
+        }
+
+        default: {
+            throw new Error("Expr.register - Unexpected number of nodes passed in as argument");
+        }
+    }
+});
+
+Expr.register(PTag.ExprCall, Main.builders[PTag.ExprCall] as any);
+
 Expr.register(PTag.ExprIdentifier, (node) => {
     const name = node[0]!.value;
 
     return new RNodes.UUExprAtom(name) as any;
 });
 
-Expr.register(PTag.ExprCall, Main.builders[PTag.ExprCall] as any);
-
-Type.register(PTag.ExprIdentifier, (node) => {
-    const name = node[0]!.value;
-
-    return new RNodes.TypeAtom(name, null);
-});
-
 Expr.register(PTag.LiteralString, (node) => {
     const value = node[0]!.value.slice(1, -1);
 
     return new RNodes.ExprConstant(
-        undefined as any,    // TODO: Set to string
-        value.slice(1, -1),
+        new RNodes.TypeAtom("Str", null),
+        value,
     ) as any;
+});
+
+Expr.register(PTag.LiteralIntegerDec, (node) => {
+    const value = node[0]!.value.replace(/_/g, '');
+
+    return new RNodes.ExprConstant(
+        new RNodes.TypeAtom("Int", null),
+        value,
+    ) as any;
+});
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+Type.register(PTag.ExprIdentifier, (node) => {
+    const name = node[0]!.value;
+
+    return new RNodes.TypeAtom(name, null);
 });

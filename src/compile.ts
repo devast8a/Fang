@@ -69,7 +69,8 @@ export class Compiler {
         console.timeEnd("Macro Execution");
 
         console.time("Type Checking");
-        const errors = this.typeChecker.checkNodes(rNodes);
+        const errors = new Array<any>();
+        this.typeChecker.check(rNodes, errors);
         console.log(errors);
         console.timeEnd("Type Checking");
 

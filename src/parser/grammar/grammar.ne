@@ -205,7 +205,7 @@
     ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
     ExprBinary      -> ExprUnary NL OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
     ExprBinary      -> ExprUnary __ OperatorSpaced NL ExprBinary    {%p.ExprBinary%}
-    ExprBinary      -> Atom Operator Atom                           {%p.ExprBinary%}    
+    ExprBinary      -> Atom Operator Atom                           {%p.ExprBinary%}
     ExprBinary      -> ExprUnary
 
     # Unary Expressions
@@ -216,7 +216,9 @@
 
     # Atoms
     Atom            -> "(" _ Expr _ ")"
-    Atom            -> Identifier             {%p.ExprIdentifier%}
+    Atom            -> ExprIdentifier
+
+    ExprIdentifier  -> Identifier {%p.ExprIdentifier%}
 
     # Literals
     Atom            -> %string_double_quote   {%p.LiteralString%}       # "foo"
@@ -362,7 +364,7 @@
     StmtAssign      -> SaTarget SaOperator SaValue {%p.StmtAssign%}
 
     # Required
-    SaTarget        -> Identifier
+    SaTarget        -> ExprIdentifier
     SaTarget        -> ExprIndexDot
     SaTarget        -> ExprIndexBracket
     SaOperator      -> __ OperatorSpaced __
@@ -392,10 +394,10 @@
     #   if!(x == 0)!{ ... } else if(x == 1) { ... } else { ... }
 
     # Supports:
-    #   Compile Time Operator
+    # TODO: Support compile time operator
 
     # Required
-    SiKeyword       -> "if" CompileTime:? N_
+    SiKeyword       -> "if" N_
     SiElifKeyword   -> N_ "else" __ "if" N_
     SiElseKeyword   -> N_ "else" N_
     SiCondition     -> "(" _ Expr _ ")" N_

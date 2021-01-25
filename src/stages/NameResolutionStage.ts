@@ -74,6 +74,27 @@ export class NameResolutionStage {
                 break;
             }
 
+            case RTag.StmtIf: {
+                this.declare(node.cases, scope);
+                this.declare(node.final, scope);
+                break;
+            }
+
+            case RTag.StmtIfCase: {
+                this.declare(node.condition, scope);
+                this.declare(node.body, scope);
+                break;
+            }
+
+            case RTag.ExprConstant: {
+                break;
+            }
+
+            case RTag.UExprAssign: {
+                // We might need to declare?
+                break;
+            }
+
             default: {
                 throw new Error(`Unknown node ${RTag[(node as any).tag]} (declare)`);
             }
@@ -113,7 +134,6 @@ export class NameResolutionStage {
 
             case RTag.UExprCall: {
                 const target = node.target;
-                const args = this.resolve(node.args);
 
                 switch (target.tag) {
                     case RTag.UExprAtom: {
@@ -125,6 +145,42 @@ export class NameResolutionStage {
                         throw new Error(`Unknown node ${RTag[(target as any).tag]} (resolve)`);
                     }
                 }
+            }
+
+            case RTag.StmtIf: {
+                node.cases = this.resolve(node.cases);
+                node.final = this.resolve(node.final);
+
+                return node;
+            }
+
+            case RTag.StmtIfCase: {
+                node.condition = this.resolve(node.condition);
+                node.body      = this.resolve(node.body);
+
+                return node;
+            }
+
+            case RTag.ExprConstant: {
+                return node;
+            }
+
+            case RTag.UExprAssign: {
+                const target = node.target;
+                const value  = this.resolve(node.value);
+
+                switch (target.tag) {
+                    case RTag.UExprAtom: {
+                        const variable = this.scopeMap.get(node)!.lookup(target.name) as any;
+                        return new RNodes.ExprSetLocal(variable, value as any);
+                    }
+
+                    default: {
+                        throw new Error("");
+                    }
+                }
+
+                return node;
             }
 
             case RTag.UExprAtom: {

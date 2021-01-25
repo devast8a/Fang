@@ -19,6 +19,9 @@ import { UExprAssign } from './UAssign';
 import { UExprAtom } from './UAtom';
 import { UExprCall } from './UCall';
 import { UExprField } from './UField';
+import { RStmtIf } from './RStmtIf';
+import { RStmtWhile } from './RStmtWhile';
+import { RStmtIfCase } from './RStmtIfCase';
 
 export type RNode =
     | RDeclClass
@@ -36,7 +39,10 @@ export type RNode =
     | RGeneric<RNode>
     | RGenericApply<RNode>
     | RGenericParameter<RNode>
+    | RStmtIf
+    | RStmtIfCase
     | RStmtReturn
+    | RStmtWhile
     | RTypeAtom
     | UExprAssign
     | UExprAtom
@@ -60,7 +66,10 @@ export namespace RNodes {
     export const Generic            = RGeneric;
     export const GenericApply       = RGenericApply;
     export const GenericParameter   = RGenericParameter;
+    export const StmtIf             = RStmtIf;
+    export const StmtIfCase         = RStmtIfCase;
     export const StmtReturn         = RStmtReturn;
+    export const StmtWhile          = RStmtWhile;
     export const TypeAtom           = RTypeAtom;
     export const UUExprAssign       = UExprAssign;
     export const UUExprAtom         = UExprAtom;
@@ -82,7 +91,10 @@ export namespace RNodes {
     export type Generic<T>          = RGeneric<T>;
     export type GenericApply<T>     = RGenericApply<T>;
     export type GenericParameter<T> = RGenericParameter<T>;
+    export type StmtIf              = RStmtIf;
+    export type StmtIfCase          = RStmtIfCase;
     export type StmtReturn          = RStmtReturn;
+    export type StmtWhile           = RStmtWhile;
     export type TypeAtom            = RTypeAtom;
     export type UUExprAssign        = UExprAssign;
     export type UUExprAtom          = UExprAtom;
