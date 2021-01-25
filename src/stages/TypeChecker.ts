@@ -3,28 +3,6 @@ import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RTag } from '../nodes/resolved/RTag';
 import { RType } from '../nodes/resolved/RType';
 
-class TypeError {
-
-}
-
-export class TypeChecker extends Visitor<RNode, [Array<TypeError>], void> {
-    public constructor() {
-        super(RTag, setup);
-    }
-
-    public check(node: RNode, errors: Array<TypeError>): void
-    public check(nodes: RNode[], errors: Array<TypeError>): void
-    public check(nodes: RNode | RNode[], errors: Array<TypeError>): void {
-        if (nodes instanceof Array) {
-            for (const node of nodes) {
-                this.visit(node, errors);
-            }
-        } else {
-            this.visit(nodes, errors);
-        }
-    }
-}
-
 function setup(reg: Register<TypeChecker, RNode, [Array<TypeError>], void>) {
     reg(RNodes.DeclClass, (node, checker, errors) => {
         // TODO: Check class implements all traits correctly
@@ -117,4 +95,28 @@ function setup(reg: Register<TypeChecker, RNode, [Array<TypeError>], void>) {
         checker.check(node.condition, errors);
         checker.check(node.body, errors);
     });
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class TypeError {
+
+}
+
+export class TypeChecker extends Visitor<RNode, [Array<TypeError>], void> {
+    public constructor() {
+        super(RTag, setup);
+    }
+
+    public check(node: RNode, errors: Array<TypeError>): void
+    public check(nodes: RNode[], errors: Array<TypeError>): void
+    public check(nodes: RNode | RNode[], errors: Array<TypeError>): void {
+        if (nodes instanceof Array) {
+            for (const node of nodes) {
+                this.visit(node, errors);
+            }
+        } else {
+            this.visit(nodes, errors);
+        }
+    }
 }
