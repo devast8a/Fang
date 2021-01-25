@@ -40,6 +40,7 @@ function setup(reg: Register<TypeChecker, RNode, [Array<TypeError>], void>) {
     });
 
     reg(RNodes.DeclTrait, (node, checker) => {
+        // TODO: Implement type checking for traits
     });
 
     reg(RNodes.DeclVariable, (node, checker, errors) => {
@@ -74,12 +75,21 @@ function setup(reg: Register<TypeChecker, RNode, [Array<TypeError>], void>) {
         }
     });
 
-    // TODO: Make sure these are correct
-    reg(RNodes.ExprConstant, (node, checker, errors) => {});
-    reg(RNodes.ExprGetField, (node, checker, errors) => {});
-    reg(RNodes.ExprGetLocal, (node, checker, errors) => {});
-    reg(RNodes.ExprSetField, (node, checker, errors) => {});
-    reg(RNodes.ExprSetLocal, (node, checker, errors) => {});
+    reg(RNodes.ExprConstant, (node, checker, errors) => {}); // Nothing to check
+    reg(RNodes.ExprGetField, (node, checker, errors) => {}); // Nothing to check
+    reg(RNodes.ExprGetLocal, (node, checker, errors) => {}); // Nothing to check
+
+    reg(RNodes.ExprSetField, (node, checker, errors) => {
+        if (!RType.isSameType(node.field.type, node.value.resultType)) {
+            errors.push(new TypeError());
+        }
+    });
+
+    reg(RNodes.ExprSetLocal, (node, checker, errors) => {
+        if (!RType.isSameType(node.local.type, node.value.resultType)) {
+            errors.push(new TypeError());
+        }
+    });
 
     // RGeneric
     // RGenericApply
@@ -92,7 +102,18 @@ function setup(reg: Register<TypeChecker, RNode, [Array<TypeError>], void>) {
 
     reg(RNodes.StmtIfCase, (node, checker, errors) => {
         // TODO: Check condition is a boolean
+        checker.check(node.condition, errors);
+        checker.check(node.body, errors);
+    });
 
+    reg(RNodes.StmtReturn, (node, checker, errors) => {
+        if (node.value !== null) {
+            checker.check(node.value, errors);
+        }
+    });
+
+    reg(RNodes.StmtWhile, (node, checker, errors) => {
+        // TODO: Check condition is a boolean
         checker.check(node.condition, errors);
         checker.check(node.body, errors);
     });
