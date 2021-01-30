@@ -1,4 +1,3 @@
-import { VariableFlags } from '../VariableFlags';
 import { RExpr } from './RExpr';
 import { RTag } from './RTag';
 import { RType } from './RType';
@@ -28,3 +27,9 @@ export class RDeclVariable {
     }
 }
 
+export enum VariableFlags {
+    None    = 0,
+    Local   = 1 << 0,
+    Mutates = 1 << 1,
+    Owns    = 1 << 2,
+}

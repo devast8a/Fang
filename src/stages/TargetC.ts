@@ -1,9 +1,8 @@
 import { Register, Visitor } from '../ast/visitor';
-import { RDeclVariable } from '../nodes/resolved/RDeclVariable';
+import { RDeclVariable, VariableFlags } from '../nodes/resolved/RDeclVariable';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RTag } from '../nodes/resolved/RTag';
 import { RType } from '../nodes/resolved/RType';
-import { VariableFlags } from '../nodes/VariableFlags';
 
 function setup(reg: Register<TargetC, RNode, [string], void>) {
     reg(RNodes.DeclClass, (node, output, indent) => {
