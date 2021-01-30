@@ -2,7 +2,6 @@ import { Source } from './common/source';
 import { ParseStage } from './stages/ParseStage';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
 import * as Fs from 'fs';
-import * as Path from 'path';
 import { Macro0Stage } from './stages/Macro0Stage';
 import { NameResolutionStage } from './stages/NameResolutionStage';
 import { MonomorphizeStage } from './stages/MonomorphizeStage';
@@ -84,7 +83,7 @@ export class Compiler {
         console.time("Code Generation");
         //console.log(mNodes);
         for (const node of mNodes) {
-            this.target.emit(node);
+            this.target.emit(node, "");
         }
         console.log(this.target.output.join(""));
         console.timeEnd("Code Generation");

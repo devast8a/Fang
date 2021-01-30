@@ -1,129 +1,165 @@
+import { Register, Visitor } from '../ast/visitor';
 import { RDeclVariable } from '../nodes/resolved/RDeclVariable';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RTag } from '../nodes/resolved/RTag';
+import { RType } from '../nodes/resolved/RType';
 import { VariableFlags } from '../nodes/VariableFlags';
 
-export class TargetC {
-    public constructor() {
-    }
+function setup(reg: Register<TargetC, RNode, [string], void>) {
+    reg(RNodes.DeclClass, (node, output, indent) => {
+        output.emitStr("\n\n", indent, "struct ", node.name);
+        output.emitBody(node.members, indent);
+    });
 
-    public output = new Array<string>();
+    reg(RNodes.DeclFunction, (node, output, indent) => {
+        output.emitStr("\n\n", indent);
+        output.emitTypeName(node.returnType);
+        output.emitStr(" ", node.name, "(");
+        emitParameters(node.parameters, output);
+        output.emitStr(") ");
+        output.emitBody(node.body, indent);
+    });
 
-    protected emitParameter(variable: RDeclVariable) {
-        this.output.push((variable.type as RNodes.TypeAtom).name);
-        if ((variable.flags & VariableFlags.Mutates) > 0) {
-            this.output.push("* restrict");
+    reg(RNodes.DeclTrait, (node, output, indent) => {
+    });
+
+    reg(RNodes.DeclVariable, (node, output, indent) => {
+        output.emitTypeName(node.type);
+        output.emitStr(" ", node.name);
+    });
+
+    reg(RNodes.ExprCallStatic, (node, output, indent) => {
+        output.emitStr(node.target.name, "(");
+        emitArguments(node.target, node.args, output);
+        output.emitStr(")");
+    });
+
+    reg(RNodes.ExprConstant, (node, output, indent) => {
+        output.emitStr(node.value);
+    });
+
+    reg(RNodes.ExprSetLocal, (node, output, indent) => {
+        output.emitStr(node.local.name, " = ");
+        output.emit(node.value, indent);
+    });
+
+    reg(RNodes.ExprGetLocal, (node, output, indent) => {
+        output.emitStr(node.local.name);
+    });
+
+    reg(RNodes.StmtIf, (node, output, indent) => {
+        // Main if case
+        output.emitStr("if (");
+        output.emit(node.cases[0].condition, indent);
+        output.emitStr(') ');
+        output.emitBody(node.cases[0].body, indent);
+
+        // Else if cases
+        for (let i = 1; i < node.cases.length; i++) {
+            output.emitStr(' else if (')
+            output.emit(node.cases[i].condition, indent);
+            output.emitStr(') ');
+            output.emitBody(node.cases[i].body, indent);
         }
-        this.output.push(" ");
-        this.output.push(variable.name);
-    }
 
-    protected emitArgument(variable: RDeclVariable) {
-    }
+        // Else case
+        if (node.final.length > 0) {
+            output.emitStr(' else ');
+            output.emitBody(node.final, indent);
+        }
+    });
+}
 
-    public emit(node: RNode, indent = "") {
-        switch (node.tag) {
-            case RTag.DeclClass: {
-                this.output.push("\n\n");
-                this.output.push(indent);
-                this.output.push("struct ");
-                this.output.push(node.name);
-                this.output.push(" {\n");
-                this.output.push("}");
-                break;
-            }
+function emitArguments(target: RNodes.DeclFunction, args: RNode[], output: TargetC) {
+    for (let index = 0; index < args.length; index++) {
+        if (index > 0) {
+            output.emitStr(", ");
+        }
 
-            case RTag.DeclFunction: {
-                this.output.push("\n\n");
-                this.output.push(indent);
-                this.output.push((node.returnType as RNodes.TypeAtom).name);
-                this.output.push(" ");
-                this.output.push((node.name));
-                this.output.push("(");
+        const arg = args[index];
 
-                // Parameters
-                for (let index = 0; index < node.parameters.length; index++) {
-                    if (index > 0) {
-                        this.output.push(", ");
-                    }
-
-                    this.emitParameter(node.parameters[index]);
-                }
-
-                this.output.push(indent);
-                this.output.push(") {\n");
-
-                const childIndent = indent + "    ";
-                for (const child of node.body) {
-                    this.output.push(childIndent);
-                    this.emit(child, childIndent);
-                    this.output.push(";\n");
-                }
-
-                this.output.push(indent);
-                this.output.push("}");
-
-                break;
-            }
-
-            case RTag.DeclTrait: {
-                break;
-            }
-
-            case RTag.DeclVariable: {
-                this.output.push((node.type as RNodes.TypeAtom).name);
-                this.output.push(" ");
-                this.output.push(node.name);
-                break;
-            }
-
-            case RTag.ExprCallStatic: {
-                this.output.push(node.target.name);
-                this.output.push("(");
-
-                // Arguments
-                for (let index = 0; index < node.args.length; index++) {
-                    if (index > 0) {
-                        this.output.push(", ");
-                    }
-
-                    const arg = node.args[index];
-                    switch (arg.tag) {
-                        case RTag.ExprGetLocal: {
-                            if (arg.local.flags & VariableFlags.Mutates) {
-                                if (node.target.parameters[index].flags & VariableFlags.Mutates) {
-                                    this.output.push(arg.local.name);
-                                } else {
-                                    this.output.push("*");
-                                    this.output.push(arg.local.name);
-                                }
-                            } else {
-                                if (node.target.parameters[index].flags & VariableFlags.Mutates) {
-                                    this.output.push("&");
-                                    this.output.push(arg.local.name);
-                                } else {
-                                    this.output.push(arg.local.name);
-                                }
-                            }
-                            break;
-                        }
-
-                        default: this.emit(arg, "");
-                    }
-                }
-
-                this.output.push(")");
+        switch (arg.tag) {
+            case RTag.ExprConstant: {
+                output.emit(arg, "");
                 break;
             }
 
             case RTag.ExprGetLocal: {
-                this.output.push(node.local.name);
+                if (arg.local.flags & VariableFlags.Mutates) {
+                    if (target.parameters[index].flags & VariableFlags.Mutates) {
+                        output.emitStr(arg.local.name);
+                    } else {
+                        output.emitStr("*");
+                        output.emitStr(arg.local.name);
+                    }
+                } else {
+                    if (target.parameters[index].flags & VariableFlags.Mutates) {
+                        output.emitStr("&");
+                        output.emitStr(arg.local.name);
+                    } else {
+                        output.emitStr(arg.local.name);
+                    }
+                }
                 break;
             }
 
             default: {
-                throw new Error(`TargetC does not handle node with tag ${RTag[(node as any).tag]}`);
+                throw new Error("Incomplete switch");
             }
         }
+    }
+}
+
+function emitParameters(parameters: RDeclVariable[], output: TargetC) {
+    // Parameters
+    for (let index = 0; index < parameters.length; index++) {
+        if (index > 0) {
+            output.emitStr(", ");
+        }
+
+        const parameter = parameters[index];
+        output.output.push((parameter.type as RNodes.TypeAtom).name);
+        if ((parameter.flags & VariableFlags.Mutates) > 0) {
+            output.output.push("* restrict");
+        }
+        output.output.push(" ");
+        output.output.push(parameter.name);
+    }
+}
+
+export class TargetC extends Visitor<RNode, [string], void> {
+    public constructor() {
+        super(RTag, setup);
+    }
+
+    public output = new Array<string>();
+
+    public emit = super.visit;
+
+    public emitStr(...text: string[]) {
+        this.output.push(...text);
+    }
+
+    public emitBody(nodes: RNode[], indent: string) {
+        if (nodes.length === 0) {
+            this.emitStr("{}");
+            return;
+        }
+
+        const childIndent = indent + "    ";
+
+        this.emitStr("{\n");
+        for (const child of nodes) {
+            this.emitStr(childIndent);
+            this.emit(child, childIndent);
+            this.emitStr(";\n");
+        }
+        this.emitStr(indent);
+        this.emitStr("}");
+    }
+
+    public emitTypeName(type: RType) {
+        // TODO: Properly do this
+        this.output.push((type as RNodes.TypeAtom).name);
     }
 }
