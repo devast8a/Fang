@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { builtin } from '../Builtin';
 import { Source } from '../common/source';
 import { Compiler } from '../compile';
-import { RExpr } from '../nodes/resolved/RExpr';
+import { VariableFlags } from '../nodes/resolved/RDeclVariable';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RStmtIfCase } from "../nodes/resolved/RStmtIfCase";
 import { RType } from '../nodes/resolved/RType';
 import { UExpr } from '../nodes/resolved/UExpr';
-import { VariableFlags } from '../nodes/VariableFlags';
 import { Parser } from '../parser/parser';
 import { PTag } from '../parser/post_processor';
 
@@ -183,7 +183,7 @@ Expr.register(PTag.LiteralString, (node) => {
     const value = node[0]!.value.slice(1, -1);
 
     return new RNodes.ExprConstant(
-        new RNodes.TypeAtom("Str", null),
+        new RNodes.TypeAtom("str", builtin.types.str),
         value,
     ) as any;
 });
@@ -192,7 +192,7 @@ Expr.register(PTag.LiteralIntegerDec, (node) => {
     const value = node[0]!.value.replace(/_/g, '');
 
     return new RNodes.ExprConstant(
-        new RNodes.TypeAtom("Int", null),
+        new RNodes.TypeAtom("s32", builtin.types.s32),
         value,
     ) as any;
 });

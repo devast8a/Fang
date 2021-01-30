@@ -65,6 +65,10 @@ export class MonomorphizeStage extends Visitor<RNode, [RType.Context], RNode> {
 
             return node;
         });
+
+        reg(RNodes.StmtIf, (node, visitor, context) => {
+            return node;
+        });
     }
 }
 

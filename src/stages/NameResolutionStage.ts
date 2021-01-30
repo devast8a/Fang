@@ -1,4 +1,5 @@
 import { Register, Visitor } from '../ast/visitor';
+import { builtin } from '../Builtin';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RTag } from '../nodes/resolved/RTag';
 import { RType } from '../nodes/resolved/RType';
@@ -121,6 +122,11 @@ function setup(
         // Nothing to declare
     });
     resolve(RNodes.TypeAtom, (node, resolver, scope) => {
+        // Already resolved
+        if (node.type !== null) {
+            return node;
+        }
+
         const type = scope.lookup(node.name);
 
         if (type === undefined) {
@@ -224,6 +230,10 @@ export class NameResolutionStage {
 
     public execute(nodes: RNode[]) {
         const scope = new Scope();
+
+        scope.declare("S32", builtin.types.s32);
+        scope.declare("Str", builtin.types.str);
+        scope.declare("Bool", builtin.types.bool);
 
         this.declare.declare(nodes, scope);
         return this.resolve.resolve(nodes);
