@@ -8,6 +8,7 @@ import { MonomorphizeStage } from './stages/MonomorphizeStage';
 import { TargetC } from './stages/TargetC';
 import { TypeChecker } from './stages/TypeChecker';
 import { RNode } from './nodes/resolved/RNode';
+import { Analysis, State } from './stages/LifetimeAnalysis';
 
 export class Compiler {
     private parse = new ParseStage();
@@ -16,6 +17,7 @@ export class Compiler {
     private nameResolution = new NameResolutionStage();
     private monomorphize = new MonomorphizeStage();
     private typeChecker = new TypeChecker();
+    private analysis = new Analysis();
     private target = new TargetC();
 
     private map = new Map<string, RNode[]>();
@@ -78,6 +80,10 @@ export class Compiler {
         console.timeEnd("Monomorphization");
 
         console.time("Analysis");
+        //const state = new State();
+        //for (const node of mNodes) {
+        //    this.analysis.analyze(state, node);
+        //}
         console.timeEnd("Analysis");
 
         console.time("Code Generation");
@@ -85,10 +91,10 @@ export class Compiler {
         for (const node of mNodes) {
             this.target.emit(node, "");
         }
-        console.log(this.target.output.join(""));
+        const output = this.target.output.join("") + "\n";
         console.timeEnd("Code Generation");
 
-        return "";
+        return output;
     }
 
     public static async compile(path: string) {
