@@ -129,7 +129,7 @@ function setup(
 
         const type = scope.lookup(node.name);
 
-        if (type === undefined) {
+        if (type === null) {
             // TODO: Create a better error system
             throw new Error("Type does not exist");
         }
@@ -147,7 +147,7 @@ function setup(
         // TODO: Support up values
         const variable = scope.lookup(node.name);
 
-        if (variable === undefined) {
+        if (variable === null) {
             // TODO: Create a better error system
             throw new Error("Variable does not exist");
         }
@@ -167,7 +167,7 @@ function setup(
             case RTag.UExprAtom: {
                 const variable = scope.lookup(target.name);
 
-                if (variable === undefined) {
+                if (variable === null) {
                     // TODO: Create a better error system
                     throw new Error("Variable does not exist");
                 }
@@ -197,7 +197,7 @@ function setup(
             case RTag.UExprAtom: {
                 const fn = scope.lookup(target.name);
 
-                if (fn === undefined) {
+                if (fn === null) {
                     // TODO: Create a better error system
                     throw new Error("Function does not exist");
                 }
