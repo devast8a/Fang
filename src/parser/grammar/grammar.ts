@@ -520,7 +520,7 @@ const grammar: Grammar = {
     {"name": "PdKeyword", "symbols": [{"literal":"mut"}, "__"]},
     {"name": "PdKeyword", "symbols": [{"literal":"val"}, "__"]},
     {"name": "PdRebind", "symbols": ["_", {"literal":"="}, {"literal":">"}, "_"]},
-    {"name": "Attribute", "symbols": [{"literal":"#"}, "Identifier"]},
+    {"name": "Attribute", "symbols": [{"literal":"#"}, "Atom"]},
     {"name": "CompileTime", "symbols": [{"literal":"!"}]},
     {"name": "Identifier", "symbols": [(lexer.has("identifier") ? {type: "identifier"} : identifier)]},
     {"name": "__", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)]},
