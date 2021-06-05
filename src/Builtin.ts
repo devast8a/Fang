@@ -1,18 +1,23 @@
+import { VariableFlags } from './nodes/resolved/RDeclVariable';
 import { RNodes } from './nodes/resolved/RNode';
-import { RType } from './nodes/resolved/RType';
 
-export interface Builtin {
-    types: {
-        bool: RType;
-        s32: RType;
-        str: RType;
-    };
-}
+const empty = new RNodes.DeclClass("empty");
+const bool  = new RNodes.DeclClass("bool");
+const s32   = new RNodes.DeclClass("s32");
+const str   = new RNodes.DeclClass("str");
 
-export const builtin: Builtin = {
+const print = new RNodes.DeclFunction("print", empty, [
+    new RNodes.DeclVariable("format", str, VariableFlags.Local)
+]);
+
+export const builtin = {
     types: {
-        bool: new RNodes.DeclClass("bool"),
-        s32:  new RNodes.DeclClass("s32"),
-        str:  new RNodes.DeclClass("str"),
+        void: empty,
+        bool,
+        s32,
+        str,
+    },
+    functions: {
+        print,
     }
 };

@@ -183,7 +183,7 @@ Expr.register(PTag.LiteralString, (node) => {
     const value = node[0]!.value.slice(1, -1);
 
     return new RNodes.ExprConstant(
-        new RNodes.TypeAtom("str", builtin.types.str),
+        builtin.types.str,
         value,
     ) as any;
 });
@@ -192,7 +192,7 @@ Expr.register(PTag.LiteralIntegerDec, (node) => {
     const value = node[0]!.value.replace(/_/g, '');
 
     return new RNodes.ExprConstant(
-        new RNodes.TypeAtom("s32", builtin.types.s32),
+        builtin.types.s32,
         value,
     ) as any;
 });

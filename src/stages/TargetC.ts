@@ -1,4 +1,5 @@
 import { Register, Visitor } from '../ast/visitor';
+import { builtin } from '../Builtin';
 import { RDeclVariable, VariableFlags } from '../nodes/resolved/RDeclVariable';
 import { RNode, RNodes } from '../nodes/resolved/RNode';
 import { RTag } from '../nodes/resolved/RTag';
@@ -34,7 +35,19 @@ function setup(reg: Register<TargetC, RNode, [string], void>) {
     });
 
     reg(RNodes.ExprConstant, (node, output, indent) => {
-        output.emitStr(node.value);
+        switch (node.type) {
+            case builtin.types.str: {
+                // TODO: Escape output
+                output.emitStr("\"");
+                output.emitStr(node.value);
+                output.emitStr("\"");
+                break;
+            }
+
+            default: {
+                output.emitStr(node.value);
+            }
+        }
     });
 
     reg(RNodes.ExprSetLocal, (node, output, indent) => {

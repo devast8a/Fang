@@ -234,6 +234,9 @@ export class NameResolutionStage {
         scope.declare("S32", builtin.types.s32);
         scope.declare("Str", builtin.types.str);
         scope.declare("Bool", builtin.types.bool);
+        scope.declare("void", builtin.types.void);
+
+        scope.declare("print", builtin.functions.print);
 
         this.declare.declare(nodes, scope);
         return this.resolve.resolve(nodes);
