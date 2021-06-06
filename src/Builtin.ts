@@ -3,8 +3,8 @@ import { RNodes } from './nodes/resolved/RNode';
 
 const empty = new RNodes.DeclClass("empty");
 const bool  = new RNodes.DeclClass("bool");
-const s32   = new RNodes.DeclClass("s32");
-const str   = new RNodes.DeclClass("str");
+const s32   = new RNodes.DeclClass("S32");
+const str   = new RNodes.DeclClass("Str");
 
 const print = new RNodes.DeclFunction("print", empty, [
     new RNodes.DeclVariable("format", str, VariableFlags.Local)
