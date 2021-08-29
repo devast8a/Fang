@@ -3,6 +3,7 @@
 // Bypasses TS6133. Allow declared but unused functions.
 // @ts-ignore
 function id(d: any[]): any { return d[0]; }
+declare var lifetime: any;
 declare var operator: any;
 declare var string_double_quote: any;
 declare var integer_bin: any;
@@ -167,15 +168,18 @@ const grammar: Grammar = {
     {"name": "DeclParameter$ebnf$3", "symbols": [], "postprocess": () => null},
     {"name": "DeclParameter$ebnf$4", "symbols": []},
     {"name": "DeclParameter$ebnf$4", "symbols": ["DeclParameter$ebnf$4", "DpAttribute"], "postprocess": (d) => d[0].concat([d[1]])},
-    {"name": "DeclParameter$ebnf$5", "symbols": ["DpValue"], "postprocess": id},
+    {"name": "DeclParameter$ebnf$5", "symbols": ["DpLifetime"], "postprocess": id},
     {"name": "DeclParameter$ebnf$5", "symbols": [], "postprocess": () => null},
-    {"name": "DeclParameter", "symbols": ["DeclParameter$ebnf$1", "DpName", "DeclParameter$ebnf$2", "DeclParameter$ebnf$3", "DeclParameter$ebnf$4", "DeclParameter$ebnf$5"], "postprocess": p.DeclParameter},
+    {"name": "DeclParameter$ebnf$6", "symbols": ["DpValue"], "postprocess": id},
+    {"name": "DeclParameter$ebnf$6", "symbols": [], "postprocess": () => null},
+    {"name": "DeclParameter", "symbols": ["DeclParameter$ebnf$1", "DpName", "DeclParameter$ebnf$2", "DeclParameter$ebnf$3", "DeclParameter$ebnf$4", "DeclParameter$ebnf$5", "DeclParameter$ebnf$6"], "postprocess": p.DeclParameter},
     {"name": "DpKeyword", "symbols": [{"literal":"own"}, "__"]},
     {"name": "DpKeyword", "symbols": [{"literal":"mut"}, "__"]},
     {"name": "DpName", "symbols": ["Identifier"]},
     {"name": "DpType", "symbols": ["_", {"literal":":"}, "_", "Type"]},
     {"name": "DpAttribute", "symbols": ["__", "Attribute"]},
     {"name": "DpValue", "symbols": ["_", {"literal":"="}, "_", "Expr"]},
+    {"name": "DpLifetime", "symbols": ["__", (lexer.has("lifetime") ? {type: "lifetime"} : lifetime)]},
     {"name": "DeclTrait$ebnf$1", "symbols": []},
     {"name": "DeclTrait$ebnf$1", "symbols": ["DeclTrait$ebnf$1", "DtImplement"], "postprocess": (d) => d[0].concat([d[1]])},
     {"name": "DeclTrait$ebnf$2", "symbols": ["DtGeneric"], "postprocess": id},
@@ -299,7 +303,7 @@ const grammar: Grammar = {
     {"name": "Atom", "symbols": ["ExprCall"]},
     {"name": "ExprConstruct$ebnf$1", "symbols": ["CompileTime"], "postprocess": id},
     {"name": "ExprConstruct$ebnf$1", "symbols": [], "postprocess": () => null},
-    {"name": "ExprConstruct", "symbols": ["EnTarget", "ExprConstruct$ebnf$1", "EnArguments"]},
+    {"name": "ExprConstruct", "symbols": ["EnTarget", "ExprConstruct$ebnf$1", "EnArguments"], "postprocess": p.ExprConstruct},
     {"name": "EnTarget", "symbols": ["Atom"]},
     {"name": "EnArguments$macrocall$2", "symbols": [{"literal":"{"}]},
     {"name": "EnArguments$macrocall$3", "symbols": ["_"]},
@@ -357,6 +361,7 @@ const grammar: Grammar = {
     {"name": "SaTarget", "symbols": ["ExprIndexDot"]},
     {"name": "SaTarget", "symbols": ["ExprIndexBracket"]},
     {"name": "SaOperator", "symbols": ["__", "OperatorSpaced", "__"]},
+    {"name": "SaOperator", "symbols": ["__", {"literal":"="}, "__"]},
     {"name": "SaValue", "symbols": ["Expr"]},
     {"name": "Stmt", "symbols": ["StmtAssign"]},
     {"name": "StmtForEach$ebnf$1", "symbols": ["CompileTime"], "postprocess": id},

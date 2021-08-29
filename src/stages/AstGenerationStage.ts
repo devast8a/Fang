@@ -2,204 +2,196 @@
 import { builtin } from '../Builtin';
 import { Source } from '../common/source';
 import { Compiler } from '../compile';
-import { VariableFlags } from '../nodes/resolved/RDeclVariable';
-import { RNode, RNodes } from '../nodes/resolved/RNode';
-import { RStmtIfCase } from "../nodes/resolved/RStmtIfCase";
-import { RType } from '../nodes/resolved/RType';
-import { UExpr } from '../nodes/resolved/UExpr';
-import { Parser } from '../parser/parser';
-import { PTag } from '../parser/post_processor';
+import * as Nodes from '../nodes';
+import { Node } from '../nodes';
+import { PNode, PTag } from '../parser/post_processor';
+
+const InferType = new Nodes.TypeInfer();
+const UnresolvedId = -1;
 
 export class AstGenerationStage {
-    public execute(compiler: Compiler, parseNodes: any[], source: Source) {
-        const nodes = [];
+    public execute(compiler: Compiler, nodes: PNode, source: Source): Node[] {
+        const output = [];
 
-        for (const parseNode of parseNodes) {
-            nodes.push(Main.parse(parseNode));
+        for (const node of nodes) {
+            output.push(parseStmt(node!));
         }
 
-        return nodes;
+        return output;
     }
 }
 
-function parameterToFlags(keyword: string | null | undefined) {
+function parseStmt(node: PNode): Nodes.Stmt {
+    switch (node.tag) {
+        case PTag.DeclClass: {
+            // keyword
+            const name = parseIdentifier(node.data[1]);
+            const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
+            // generic
+            // attributes
+            const body = node.data[5][1].elements.map(parseStmt);
+
+            return new Nodes.Class(name, body, new Set(superTypes));
+        }
+
+        case PTag.DeclFunction: {
+            // keyword
+            const name = parseIdentifier(node.data[1][1]);
+            // compileTime
+            const parameters = node.data[3].elements.map(parseVariable);
+            const returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
+            // generic
+            // attributes
+            const body = (node.data[7].length === 2) ?
+                node.data[7][1].elements.map(parseStmt) :
+                [new Nodes.StmtReturn(parseExpr(node.data[7][4]))];
+
+            return new Nodes.Function(name, parameters, returnType, body);
+        }
+
+        case PTag.DeclTrait: {
+            // keyword
+            const name = parseIdentifier(node.data[1]);
+            const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
+            // generic
+            // attributes
+            const body = node.data[5][1].elements.map(parseStmt);
+
+            return new Nodes.Trait(name, body, new Set(superTypes));
+        }
+
+        case PTag.DeclVariable: {
+            return parseVariable(node);
+        }
+
+        case PTag.StmtIf: {
+            // TODO: Finish implementing if
+            // keyword
+            const condition = parseExpr(node.data[1][2]);
+            const body      = node.data[2].elements.map(parseStmt);
+            // branches
+            const elseBranch = node.data[4] === null ?
+                [] :
+                node.data[4][1].elements.map(parseStmt);
+
+            const firstBranch = new Nodes.StmtIfBranch(condition, body);
+            
+            return new Nodes.StmtIf([firstBranch], elseBranch);
+        }
+
+        case PTag.StmtWhile: {
+            // keyword
+            // compileTime
+            const condition = parseExpr(node.data[2][3]);
+            const body      = node.data[3].elements.map(parseStmt);
+
+            return new Nodes.StmtWhile(condition, body);
+        }
+
+        case PTag.StmtAssign: {
+            // Target Operator Value
+            const value     = parseExpr(node.data[2]);
+
+            switch (node.data[0].tag) {
+                case PTag.ExprIdentifier: return new Nodes.ExprSetLocal(parseIdentifier(node.data[0].data[0]), value);
+                default: throw new Error("Unreachable");
+            }
+        }
+
+        case PTag.ExprCall:
+            return parseExpr(node) as any;
+    }
+
+    throw new Error(`parseStmt: No case for '${PTag[node.tag]}'`)
+}
+
+function parseExpr(node: PNode): Nodes.Expr {
+    switch (node.tag) {
+        case PTag.LiteralIntegerDec: {
+            return new Nodes.ExprConstant({} as any, "");
+        }
+
+        case PTag.ExprBinary: {
+            switch (node.data.length) {
+                case 5: {
+                    return new Nodes.ExprCallStatic(new Nodes.ExprRefName("+"), []);
+                }
+
+                case 3: {
+                    return new Nodes.ExprCallStatic(new Nodes.ExprRefName("+"), []);
+                }
+
+                default: throw new Error('Unreachable')
+            }
+        }
+
+        case PTag.ExprConstruct: {
+            const target    = parseType(node.data[0]);
+            // compileTime
+            const args      = node.data[2].elements.map(parseExpr);
+
+            return new Nodes.ExprConstruct(target, args);
+        }
+
+        case PTag.ExprIdentifier: {
+            const name = parseIdentifier(node.data[0]);
+
+            switch (name) {
+                case "true":  return builtin.true;
+                case "false": return builtin.false;
+                default:      return new Nodes.ExprGetLocal(name);
+            }
+        }
+
+        case PTag.ExprCall: {
+            switch (node.data[0].tag) {
+                case PTag.ExprIdentifier: {
+                    const target    = new Nodes.ExprRefName(parseIdentifier(node.data[0].data[0]));
+                    // compileTime
+                    const args      = node.data[2].elements.map(parseExpr);
+
+                    return new Nodes.ExprCallStatic(target, args);
+                }
+                default: throw new Error("Unreachable");
+            }
+        }
+    }
+
+    throw new Error(`parseExpr: No case for '${PTag[node.tag]}'`)
+}
+
+function parseType(node: PNode): Nodes.Type {
+    switch (node.tag) {
+        case PTag.ExprIdentifier: {
+            const name = parseIdentifier(node.data[0]);
+            return new Nodes.TypeRefName(name);
+        }
+    }
+    
+    throw new Error(`parseType: No case for '${PTag[node.tag]}'`)
+}
+
+function convertVariableKeyword(keyword: string | undefined) {
     switch (keyword) {
-        case undefined: return VariableFlags.None;
-        case null:  return VariableFlags.None;
-        case "val": return VariableFlags.None;
-        case "own": return VariableFlags.Owns;
-        case "mut": return VariableFlags.Mutates;
-        default: throw new Error(`Unknown parameter keyword ${keyword}`)
+        case "mut":     return Nodes.Flags.Local | Nodes.Flags.Mutates;
+        case "val":     return Nodes.Flags.Local;
+        case "own":     return Nodes.Flags.Local | Nodes.Flags.Owns;
+        case undefined: return Nodes.Flags.Local;
+        default: throw new Error("Unreachable");
     }
 }
 
-const Main = new Parser<RNode>("Main");
-const Expr = new Parser<UExpr>("Expr");
-const Type = new Parser<RType>("TypeExpr");
+function parseVariable(node: PNode): Nodes.Variable {
+    const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
+    const name  = parseIdentifier(node.data[1]);
+    // compileTime
+    const type  = node.data[3] === null ? InferType : parseType(node.data[3][3]);
+    // attributes
+    const value = node.data[5] === null ? null  : parseExpr(node.data[5][3]);
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-Main.register(PTag.DeclClass, (node, parser) => {
-    const name       = node[1]!.value;
-    const superTypes = node[2]!.map((node) => Type.parse(node![3]!));
-    const body       = node[5] !== null ? node[5]![1]!.elements.map((node: any) => parser.parse(node)) : [];
+    return new Nodes.Variable(name, type, value, flags, UnresolvedId);
+}
 
-    return new RNodes.DeclClass(name, superTypes, body);
-});
-
-Main.register(PTag.DeclFunction, (node, parser) => {
-    const name        = node[1]![1]!.value;
-    const compileTime = node[2] !== null;
-    const parameters  = node[3]!.elements.map((node) => parser.parse(node!));
-    const returnType  = Type.parse(node[4]?.[3]);
-    const body        = node[7] !== null ? node[7][1]!.elements.map((node) => parser.parse(node!)) : [];
-
-    return new RNodes.DeclFunction(
-        name,
-        returnType!, // TODO: Support return type inference
-        parameters as Array<RNodes.DeclVariable>,
-        compileTime,
-        body
-    );
-});
-
-Main.register(PTag.DeclTrait, (node, parser) => {
-    const name       = node[1]!.value;
-    const superTypes = node[2]!.map((node: any) => Type.parse(node[3]));
-    const body       = node[5] !== null ? node[5]![1]!.elements.map((node: any) => parser.parse(node)) : [];
-
-    return new RNodes.DeclTrait(
-        name,
-        superTypes,
-        body
-    );
-});
-
-Main.register(PTag.DeclParameter, (node) => {
-    // The backend of the compiler doesn't distinguish between parameters and variables.
-    const flags       = parameterToFlags(node[0]?.[0]?.value) | VariableFlags.Local;
-    const name        = node[1]!.value;
-    const compileTime = node[2] !== null;
-    const type        = Type.parse(node[3]?.[3]);
-    const value       = Expr.parse(node[4]?.[3]);
-
-    return new RNodes.DeclVariable(
-        name,
-        type!,
-        flags,
-        compileTime,
-        value as any,
-    );
-});
-
-Main.register(PTag.DeclVariable, (node) => {
-    const flags       = parameterToFlags(node[0]?.[0]?.value) | VariableFlags.Local;
-    const name        = node[1]!.value;
-    const compileTime = node[2] !== null;
-    const type        = Type.parse(node[3]?.[3]);
-    const value       = Expr.parse(node[4]?.[3]);
-
-    return new RNodes.DeclVariable(
-        name,
-        type!,
-        flags,
-        compileTime,
-        value as any
-    );
-});
-
-Main.register(PTag.ExprMacroCall, (node) => {
-    const target     = Expr.parse(node[0]!);
-    const argument   = Expr.parse(node[2]![1]!);
-
-    return new RNodes.UUExprCall(target, [argument], true);
-});
-
-Main.register(PTag.ExprCall, (node) => {
-    const target      = Expr.parse(node[0]!);
-    const compileTime = node[1] !== null;
-    const args        = node[2]!.elements.map((node) => Expr.parse(node!));
-
-    return new RNodes.UUExprCall(target, args, compileTime);
-});
-
-Main.register(PTag.StmtAssign, (node) => {
-    const target     = Expr.parse(node[0]!);
-    // TODO: Include operator
-    const source     = Expr.parse(node[2]!);
-
-    return new RNodes.UUExprAssign(target, source);
-});
-
-Main.register(PTag.StmtIf, (node) => {
-    // StmtIf -> SiKeyword SiCondition SiBody SiElif:* SiElse:? {%p.StmtIf%}
-    const condition = Expr.parse(node[1]![2]!);
-    const body      = node[2]!.elements.map((node) => Main.parse(node!));
-    const elseBody  = node[4]?.[1]?.elements.map((node) => Main.parse(node!)) ?? [];
-
-    return new RNodes.StmtIf([
-        new RStmtIfCase(condition as any, body) as any,
-    ], elseBody);
-});
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-Expr.register(PTag.ExprBinary, (node, parser) => {
-    // ExprBinary -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
-    // ExprBinary -> ExprUnary NL OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
-    // ExprBinary -> ExprUnary __ OperatorSpaced NL ExprBinary    {%p.ExprBinary%}
-    // ExprBinary -> Atom Operator Atom                           {%p.ExprBinary%}
-
-    switch (node.length) {
-        case 5: {
-            const left = parser.parse(node[0]!);
-            // TODO: Include operator
-            const right = parser.parse(node[4]!);
-
-            return new RNodes.UUExprCall(new RNodes.UUExprAtom("lessThan"), [left, right]);
-        }
-
-        case 3: {
-            const left = parser.parse(node[0]!);
-            // TODO: Include operator
-            const right = parser.parse(node[2]!);
-
-            return new RNodes.UUExprCall(new RNodes.UUExprAtom("lessThan"), [left, right]);
-        }
-
-        default: {
-            throw new Error("Expr.register - Unexpected number of nodes passed in as argument");
-        }
-    }
-});
-
-Expr.register(PTag.ExprCall, Main.builders[PTag.ExprCall] as any);
-
-Expr.register(PTag.ExprIdentifier, (node) => {
-    const name = node[0]!.value;
-
-    return new RNodes.UUExprAtom(name) as any;
-});
-
-Expr.register(PTag.LiteralString, (node) => {
-    const value = node[0]!.value.slice(1, -1);
-
-    return new RNodes.ExprConstant(
-        builtin.types.str,
-        value,
-    ) as any;
-});
-
-Expr.register(PTag.LiteralIntegerDec, (node) => {
-    const value = node[0]!.value.replace(/_/g, '');
-
-    return new RNodes.ExprConstant(
-        builtin.types.s32,
-        value,
-    ) as any;
-});
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-Type.register(PTag.ExprIdentifier, (node) => {
-    const name = node[0]!.value;
-
-    return new RNodes.TypeAtom(name, null);
-});
+function parseIdentifier(node: PNode) {
+    return node.value;
+}

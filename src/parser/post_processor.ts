@@ -20,6 +20,7 @@ export enum PTag {
     DeclVariable,
     ExprBinary,
     ExprCall,
+    ExprConstruct,
     ExprIdentifier,
     ExprMacroCall,
     ExprUnaryPostfix,
@@ -38,9 +39,9 @@ export enum PTag {
 }
 
 export type PNode =
-    & (PNode | null)[]
+    & PNode[]
     & {value: string}
-    & List<(PNode | null), (PNode | null)>
+    & List<PNode, PNode>
     & {tag: PTag, data: PNode}
     ;
 
@@ -62,6 +63,7 @@ export const DeclTrait          = tag(PTag.DeclTrait);
 export const DeclVariable       = tag(PTag.DeclVariable);
 export const ExprBinary         = tag(PTag.ExprBinary);
 export const ExprCall           = tag(PTag.ExprCall);
+export const ExprConstruct      = tag(PTag.ExprConstruct);
 export const ExprIdentifier     = tag(PTag.ExprIdentifier);
 export const ExprMacroCall      = tag(PTag.ExprMacroCall);
 export const ExprUnaryPostfix   = tag(PTag.ExprUnaryPostfix);
@@ -97,16 +99,16 @@ export function RejectOperators(node: any, location: any, reject: any) {
 
 // Converts the matched AST of a STAR or PLUS macro call into a List
 interface List<Element, Separator> {
-    begin: Node;
-    begin_ws: Node;
+    begin: PNode;
+    begin_ws: PNode;
     elements: Element[];
     separators: Separator[];
     all: (Element | Separator)[];
-    end_ws: Node | null;
-    end: Node;
+    end_ws: PNode | null;
+    end: PNode;
 }
 
-export function ListProcessor(node: any[]): List<Node, Node> {
+export function ListProcessor(node: any[]): List<PNode, PNode> {
     if (node[2] === null) {
         return {
             begin: node[0],

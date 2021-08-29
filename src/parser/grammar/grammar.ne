@@ -111,7 +111,7 @@
     # After the function name but before the body in DeclFunction
 
 ## Decl/Parameter ##################################################################################
-    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpValue:? {%p.DeclParameter%}
+    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpLifetime:? DpValue:? {%p.DeclParameter%}
 
     # Examples:
     #   name
@@ -134,6 +134,7 @@
     DpType          -> _ ":" _ Type
     DpAttribute     -> __ Attribute
     DpValue         -> _ "=" _ Expr
+    DpLifetime      -> __ %lifetime
 
     # Context
     # Function declaration parameter's list (DeclFunction)
@@ -269,7 +270,7 @@
     Atom            -> ExprCall
 
 ## Expr/Construct ##################################################################################
-    ExprConstruct   -> EnTarget CompileTime:? EnArguments
+    ExprConstruct   -> EnTarget CompileTime:? EnArguments {%p.ExprConstruct%}
 
     # En - n for "new"
 
@@ -368,6 +369,7 @@
     SaTarget        -> ExprIndexDot
     SaTarget        -> ExprIndexBracket
     SaOperator      -> __ OperatorSpaced __
+    SaOperator      -> __ "=" __
     SaValue         -> Expr
 
     # Contexts

@@ -1,25 +1,4 @@
-class Int {
-
-}
-
-class Str {
-
-}
-
-class Bool {
-
-}
-
-fn lessThan(x: Int, y: Int) -> Bool {
-
-}
-
-fn main(a: A, mut b: B) -> Base {
-    mut v: Int = 123
-
-    if (v > 42) {
-        v += 32
-    } else {
-        v += 64
-    }
+fn test()
+    generic<T>
+{
 }

@@ -10,6 +10,9 @@
         "sourceMap": true,
         "strict": true,
         "target": "ES6",
+        "lib": [
+            "ES6"
+        ],
         "types": [
             "node"
         ]
