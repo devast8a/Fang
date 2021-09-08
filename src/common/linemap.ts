@@ -12,7 +12,7 @@ export class LineMap {
 
         let match: RegExpMatchArray | null = null;
 
-        while ((match = regex.exec(content)) != null) {
+        while ((match = regex.exec(content)) !== null) {
             entries.push({
                 start: offset,
                 endContent: regex.lastIndex - match[0].length,

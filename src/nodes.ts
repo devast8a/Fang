@@ -1,34 +1,37 @@
 export enum Tag {
-    TypeRefName,
     Class,
+    Function,
+    Trait,
+    Variable,
     ExprCallField,
     ExprCallStatic,
     ExprConstant,
     ExprConstruct,
     ExprGetField,
     ExprGetLocal,
+    ExprMacroCall,
     ExprRefName,
     ExprSetField,
     ExprSetLocal,
-    Function,
+    ExprVariable,
     FunctionSignature,
     Generic,
     GenericApply,
     GenericParameter,
+    StmtDelete,
     StmtIf,
     StmtIfBranch,
     StmtReturn,
     StmtWhile,
     TypeInfer,
-    Variable,
-    Trait
+    TypeRefName,
 }
 
 export type Node =
-    | Expr          // Expression (see below)
-    | Type          // Type (see below)
-    | Stmt          // Statement (see below)
-    | StmtIfBranch  // Branches of an if statement
+    | Expr              // Expression (see below)
+    | Type              // Type (see below)
+    | Stmt              // Statement (see below)
+    | StmtIfBranch      // Branches of an if statement
     ;
 
 export type Stmt =
@@ -38,23 +41,26 @@ export type Stmt =
     | Variable          // val name: Type = Expr
     | ExprSetField      // object.field = expression
     | ExprSetLocal      // local = expression
+    | StmtDelete        // delete! variable
     | StmtReturn        // return expression
     | StmtIf            // if (condition) { ... } else if (condition) { ... } else { ... }
     | StmtWhile         // while (condition) { ... }
+    | ExprMacroCall     // macro! argument
     | ExprCallField     // object.field(arguments...)
     | ExprCallStatic    // target(arguments...)
     ;
 
 export type Expr =
-    | ExprCallField         // object.field(arguments...)
-    | ExprCallStatic        // target(arguments...)
-    | ExprConstant          // Any constant value
-    | ExprConstruct         // T{}
-    | ExprGetField          // Expr.field           [as r-value]
-    | ExprGetLocal          // local                [as r-value]
-    | ExprRefName           // Reference a symbol by name (Resolve to expr)
-    | ExprSetField          // Expr.field = expression
-    | ExprSetLocal          // local = expression
+    | ExprCallField     // object.field(arguments...)
+    | ExprCallStatic    // target(arguments...)
+    | ExprConstant      // Any constant value
+    | ExprConstruct     // T{}
+    | ExprGetField      // Expr.field           [as r-value]
+    | ExprGetLocal      // local                [as r-value]
+    | ExprMacroCall     // macro! argument
+    | ExprRefName       // Reference a symbol by name (Resolve to expr)
+    | ExprSetField      // Expr.field = expression
+    | ExprSetLocal      // local = expression
     ;
 
 export type Type =
@@ -71,6 +77,7 @@ export type Type =
 
 export class Class {
     public readonly tag = Tag.Class;
+    public static readonly tag = Tag.Class;
 
     public constructor(
         public name: string,
@@ -81,6 +88,7 @@ export class Class {
 
 export class Trait {
     public readonly tag = Tag.Trait;
+    public static readonly tag = Tag.Trait;
 
     public constructor(
         public name: string,
@@ -91,6 +99,7 @@ export class Trait {
 
 export class Function {
     public readonly tag = Tag.Function;
+    public static readonly tag = Tag.Function;
 
     public variables = new Array<Variable>();
 
@@ -99,11 +108,18 @@ export class Function {
         public parameters: Array<Variable>,
         public returnType: Type,
         public body: Array<Stmt>,
+        public flags: FunctionFlags,
     ) {}
+}
+
+export enum FunctionFlags {
+    None        = 0,
+    Abstract    = 1 << 1,
 }
 
 export class TypeRefName {
     public readonly tag = Tag.TypeRefName;
+    public static readonly tag = Tag.TypeRefName;
 
     public constructor(
         public name: string
@@ -112,10 +128,12 @@ export class TypeRefName {
 
 export class TypeInfer {
     public readonly tag = Tag.TypeInfer;
+    public static readonly tag = Tag.TypeInfer;
 }
 
 export class Generic<T> {
     public readonly tag = Tag.Generic;
+    public static readonly tag = Tag.Generic;
 
     public constructor(
         public target: T,
@@ -125,6 +143,7 @@ export class Generic<T> {
 
 export class GenericApply<T> {
     public readonly tag = Tag.GenericApply;
+    public static readonly tag = Tag.GenericApply;
 
     public constructor(
         public generic: Generic<T>,
@@ -134,6 +153,7 @@ export class GenericApply<T> {
 
 export class GenericParameter<T> {
     public readonly tag = Tag.GenericParameter;
+    public static readonly tag = Tag.GenericParameter;
 
     public constructor(
         public generic: Generic<T>,
@@ -143,6 +163,7 @@ export class GenericParameter<T> {
 
 export class FunctionSignature {
     public readonly tag = Tag.FunctionSignature;
+    public static readonly tag = Tag.FunctionSignature;
 
     public constructor(
         public parameters: Array<Type>,
@@ -152,17 +173,18 @@ export class FunctionSignature {
 
 export class Variable {
     public readonly tag = Tag.Variable;
+    public static readonly tag = Tag.Variable;
 
     public constructor(
         public name: string,
         public type: Type,
         public value: Expr | null,
-        public flags: Flags,
+        public flags: VariableFlags,
         public id: number,
     ) {}
 }
 
-export enum Flags {
+export enum VariableFlags {
     None    = 0,
     Local   = 1 << 0,
     Mutates = 1 << 1,
@@ -171,6 +193,7 @@ export enum Flags {
 
 export class ExprCallField {
     public readonly tag = Tag.ExprCallField;
+    public static readonly tag = Tag.ExprCallField;
 
     public constructor(
         public object: Expr,
@@ -181,6 +204,7 @@ export class ExprCallField {
 
 export class ExprCallStatic {
     public readonly tag = Tag.ExprCallStatic;
+    public static readonly tag = Tag.ExprCallStatic;
 
     public constructor(
         public target: Function | ExprRefName,
@@ -190,6 +214,7 @@ export class ExprCallStatic {
 
 export class ExprConstruct {
     public readonly tag = Tag.ExprConstruct;
+    public static readonly tag = Tag.ExprConstruct;
 
     public constructor(
         public target: Type,
@@ -199,6 +224,7 @@ export class ExprConstruct {
 
 export class ExprConstant {
     public readonly tag = Tag.ExprConstant;
+    public static readonly tag = Tag.ExprConstant;
 
     public constructor(
         public type: Type,
@@ -208,6 +234,7 @@ export class ExprConstant {
 
 export class ExprGetField {
     public readonly tag = Tag.ExprGetField;
+    public static readonly tag = Tag.ExprGetField;
 
     public constructor(
         public object: Expr,
@@ -217,14 +244,26 @@ export class ExprGetField {
 
 export class ExprGetLocal {
     public readonly tag = Tag.ExprGetLocal;
+    public static readonly tag = Tag.ExprGetLocal;
     
     public constructor(
         public local: RefVar,
     ) {}
 }
 
+export class ExprMacroCall {
+    public readonly tag = Tag.ExprMacroCall;
+    public static readonly tag = Tag.ExprMacroCall;
+
+    public constructor(
+        public target: string,
+        public args: Expr[],
+    ) {}
+}
+
 export class ExprRefName {
     public readonly tag = Tag.ExprRefName;
+    public static readonly tag = Tag.ExprRefName;
 
     public constructor(
         public name: string,
@@ -233,6 +272,7 @@ export class ExprRefName {
 
 export class ExprSetField {
     public readonly tag = Tag.ExprSetField;
+    public static readonly tag = Tag.ExprSetField;
 
     public constructor(
         public object: Expr,
@@ -243,6 +283,7 @@ export class ExprSetField {
 
 export class ExprSetLocal {
     public readonly tag = Tag.ExprSetLocal;
+    public static readonly tag = Tag.ExprSetLocal;
 
     public constructor(
         public local: RefVar,
@@ -250,16 +291,18 @@ export class ExprSetLocal {
     ) {}
 }
 
-export class StmtReturn {
-    public readonly tag = Tag.StmtReturn;
+export class StmtDelete {
+    public readonly tag = Tag.StmtDelete;
+    public static readonly tag = Tag.StmtDelete;
 
     public constructor(
-        public expression: Expr | null,
+        public variable: RefVar,
     ) {}
 }
 
 export class StmtIf {
     public readonly tag = Tag.StmtIf;
+    public static readonly tag = Tag.StmtIf;
 
     public constructor(
         public branches: Array<StmtIfBranch>,
@@ -269,6 +312,7 @@ export class StmtIf {
 
 export class StmtIfBranch {
     public readonly tag = Tag.StmtIfBranch;
+    public static readonly tag = Tag.StmtIfBranch;
 
     public constructor(
         public condition: Expr,
@@ -276,8 +320,18 @@ export class StmtIfBranch {
     ) {}
 }
 
+export class StmtReturn {
+    public readonly tag = Tag.StmtReturn;
+    public static readonly tag = Tag.StmtReturn;
+
+    public constructor(
+        public expression: Expr | null,
+    ) {}
+}
+
 export class StmtWhile {
     public readonly tag = Tag.StmtWhile;
+    public static readonly tag = Tag.StmtWhile;
 
     public constructor(
         public condition: Expr,
@@ -330,6 +384,7 @@ export namespace Expr {
             case Tag.ExprConstruct:  return expr.target;
             case Tag.ExprGetField:   throw new Error('Not implemented'); // TODO: Broken
             case Tag.ExprGetLocal:   return context.variables[expr.local as number].type;
+            case Tag.ExprMacroCall:  throw new Error('Not implemented');
             case Tag.ExprRefName:    throw new Error('Not implemented'); // TODO: Poison system
             case Tag.ExprSetField:   return getReturnType(expr.value, context);
             case Tag.ExprSetLocal:   return getReturnType(expr.value, context);

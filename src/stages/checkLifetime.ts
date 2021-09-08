@@ -1,4 +1,4 @@
-import { Class, ExprGetLocal, Flags, Function, Node, Tag } from '../nodes';
+import { Class, ExprGetLocal, VariableFlags, Function, Node, Tag } from '../nodes';
 
 export enum Status {
     Dead,
@@ -110,7 +110,7 @@ export function analyzeNode(node: Node, state: State) {
                         // TODO: Support nested function calls
                         const local = argument.local as number;
 
-                        if ((parameter.flags & Flags.Mutates) > 0) {
+                        if ((parameter.flags & VariableFlags.Mutates) > 0) {
                             // Mutates
                             if (reads.has(local) || writes.has(local)) {
                                 throw new Error('Lifetime rejection');
@@ -208,6 +208,11 @@ export function analyzeNode(node: Node, state: State) {
                 state.lifetime[id].add((node.value.args[0] as ExprGetLocal).local as number);
             }
 
+            return;
+        }
+
+        case Tag.StmtDelete: {
+            state.variables[node.variable as number] = Status.Dead;
             return;
         }
 

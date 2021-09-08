@@ -88,8 +88,16 @@ function declareNode(node: Node, scope: Scope, state: State) {
             return;
         }
 
+        case Tag.ExprMacroCall: {
+            return;
+        }
+
         case Tag.ExprSetLocal: {
             declareNode(node.value, scope, state);
+            return;
+        }
+
+        case Tag.StmtDelete: {
             return;
         }
 
@@ -209,6 +217,17 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
             // TODO: Error handling
             node.local = (scope.lookup(node.local as string) as Variable).id;
             resolveNode(node.value, state);
+            return node as T;
+        }
+
+        case Tag.StmtDelete: {
+            const target = scope.lookup(node.variable as string);
+
+            if (target === null) {
+                throw new Error(node.variable as string);
+            }
+
+            node.variable = (scope.lookup(node.variable as string) as Variable).id;
             return node as T;
         }
 

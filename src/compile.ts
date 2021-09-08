@@ -5,31 +5,40 @@ import { ParseStage } from './stages/ParseStage';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetimeNodes } from './stages/checkLifetime';
-import { checkTypeNodes } from './stages/checkType';
+import { checkType } from './stages/checkType';
 import { nameResolution } from './stages/nameResolution';
+import { transformInferType } from './stages/transformInferType';
+import { TargetC } from './stages/targetC';
+import { transformRemoveNesting } from './stages/transformRemoveNesting';
+import { TransformExecuteMacroStage } from './stages/transfromExecuteMacro';
+
+export interface Stage {
+    name: string;
+    execute(compiler: Compiler, nodes: Node[], source: Source): Node[];
+}
 
 export class Compiler {
-    private parse = new ParseStage();
-    private astGeneration = new AstGenerationStage();
+    private stages: Stage[] = [
+        new ParseStage(),
+        new AstGenerationStage(),
+        new TransformExecuteMacroStage(),
+    ];
 
     public async parseFile(source: string | Source): Promise<Node[]>
     {
         if (!(source instanceof Source)) {
             source = new Source(source, await Fs.promises.readFile(source, "utf8"));
         }
-
-        //const directory = Path.dirname(source.path);
-
+        
         console.group(`Parsing ${source.path}`);
         console.time(`${source.path} Total`);
 
-        console.time(`${source.path} Parsing`);
-        const parseNodes = this.parse.execute(this, source);
-        console.timeEnd(`${source.path} Parsing`);
-
-        console.time(`${source.path} Ast Generation`);
-        const nodes = this.astGeneration.execute(this, parseNodes as any, source);
-        console.timeEnd(`${source.path} Ast Generation`);
+        let nodes = new Array<Node>();
+        for (const stage of this.stages) {
+            console.time(`${source.path} ${stage.name}`);
+            nodes = stage.execute(this, nodes, source);
+            console.timeEnd(`${source.path} ${stage.name}`);
+        }
 
         console.timeEnd(`${source.path} Total`);
         console.groupEnd();
@@ -47,16 +56,28 @@ export class Compiler {
         nameResolution(nodes, scope);
         console.timeEnd(`Name Resolution`);
 
+        console.time(`Transform>Infer Types`);
+        transformInferType.array(nodes, null);
+        console.timeEnd(`Transform>Infer Types`);
+
         console.time(`Check>Types`);
-        checkTypeNodes(nodes, undefined as any);
+        checkType.array(nodes, null);
         console.timeEnd(`Check>Types`);
 
         console.time(`Check>Lifetime`);
         checkLifetimeNodes(nodes);
         console.timeEnd(`Check>Lifetime`);
 
+        console.time(`Transform>Remove Nesting`);
+        transformRemoveNesting(nodes);
+        console.timeEnd(`Transform>Removing Nesting`);
+
+        const target = new TargetC();
+
+        target.emitProgram(nodes);
+
         console.timeEnd("Total");
-        return "";
+        return target.toString();
     }
 
     public static async compile(path: string) {

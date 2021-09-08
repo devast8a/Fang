@@ -1,4 +1,6 @@
-fn test()
-    generic<T>
-{
+class Foo {}
+
+fn test() {
+    val foo = Foo{}
+    delete! foo
 }

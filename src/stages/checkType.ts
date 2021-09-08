@@ -1,21 +1,28 @@
-import { Expr, Node, Tag, Type, Function } from '../nodes';
+import { Visitor } from '../ast/visitor';
+import { Expr, Tag, Type } from '../nodes';
 
-export function checkTypeNode(node: Node, context: Function) {
+export const checkType = new Visitor((node) => {
+    const context = checkType.functionStack[checkType.functionStack.length - 1];
+
     switch (node.tag) {
-        case Tag.Trait:
-        case Tag.Class:
-            console.warn(`checkTypeNode>${Tag[node.tag]} not implemented.`);
-            return;
+        case Tag.Variable: {
+            if (node.value === null) {
+                return node;
+            }
 
-        case Tag.Function: {
-            checkTypeNodes(node.body, node);
-            return;
+            const valueType = Expr.getReturnType(node.value, context);
+
+            if (!Type.canAssignTo(valueType, node.type)) {
+                throw new Error("Can't assign type");
+            }
+
+            return node;
         }
 
         case Tag.ExprCallStatic: {
             if (node.target.tag !== Tag.Function) {
                 console.warn(`Unresolved ${node.target.name}`);
-                return;
+                return node;
             }
 
             for (let i = 0; i < node.args.length; i++) {
@@ -25,20 +32,23 @@ export function checkTypeNode(node: Node, context: Function) {
                 const argType = Expr.getReturnType(arg, context);
 
                 if (!Type.canAssignTo(argType, param.type)) {
-                    console.log(argType, param.type);
-                    throw new Error('');
+                    console.log(arg, argType, param.type)
+                    throw new Error("Can't assign type");
                 }
             }
+            return node;
+        }
 
-            return;
+        case Tag.ExprSetLocal: {
+            const local = context.variables[node.local as number];
+            const valueType = Expr.getReturnType(node.value, context);
+
+            if (!Type.canAssignTo(valueType, local.type)) {
+                throw new Error("Can't assign type");
+            }
+            return node;
         }
     }
 
-    throw new Error(`checkTypeNode: No case for node '${Tag[node.tag]}'`);
-}
-
-export function checkTypeNodes(nodes: Node[], context: Function) {
-    for (const node of nodes) {
-        checkTypeNode(node, context);
-    }
-}
+    return node;
+});

@@ -285,7 +285,7 @@ const grammar: Grammar = {
     {"name": "ExprCall", "symbols": ["EcTarget", "ExprCall$ebnf$1", "EcArguments"], "postprocess": p.ExprCall},
     {"name": "EcTarget", "symbols": ["Atom"]},
     {"name": "EcArguments$macrocall$2", "symbols": [{"literal":"("}]},
-    {"name": "EcArguments$macrocall$3", "symbols": ["_"]},
+    {"name": "EcArguments$macrocall$3", "symbols": ["N_"]},
     {"name": "EcArguments$macrocall$4", "symbols": ["EcArgument"]},
     {"name": "EcArguments$macrocall$5", "symbols": ["COMMA"]},
     {"name": "EcArguments$macrocall$6", "symbols": [{"literal":")"}]},
@@ -559,7 +559,7 @@ const grammar: Grammar = {
     {"name": "NL$ebnf$2", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)], "postprocess": id},
     {"name": "NL$ebnf$2", "symbols": [], "postprocess": () => null},
     {"name": "NL", "symbols": ["NL$ebnf$1", "NL$ebnf$2"]},
-    {"name": "COMMA", "symbols": ["_", (lexer.has("comma") ? {type: "comma"} : comma), "_"]},
+    {"name": "COMMA", "symbols": ["_", (lexer.has("comma") ? {type: "comma"} : comma), "N_"]},
     {"name": "COMMA", "symbols": ["NL"]},
     {"name": "StmtSep", "symbols": ["NL"]},
     {"name": "StmtSep", "symbols": ["_", {"literal":";"}, "_"]}

@@ -261,7 +261,7 @@
 
     # Required
     EcTarget        -> Atom
-    EcArguments     -> STAR["(", _, EcArgument, COMMA, ")"]
+    EcArguments     -> STAR["(", N_, EcArgument, COMMA, ")"]
     EcArgument      -> Expr
     EcArgument      -> Identifier _ ":" _ Expr
 
@@ -504,7 +504,7 @@
     NL              -> (%ws:? %comment:? %newline):+ %ws:?
 
 ## Helpers #########################################################################################
-    COMMA           -> _ %comma _
+    COMMA           -> _ %comma N_
     COMMA           -> NL
 
     StmtSep         -> NL

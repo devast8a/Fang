@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { builtin } from '../Builtin';
 import { Source } from '../common/source';
-import { Compiler } from '../compile';
+import { Compiler, Stage } from '../compile';
 import * as Nodes from '../nodes';
 import { Node } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
@@ -9,8 +9,12 @@ import { PNode, PTag } from '../parser/post_processor';
 const InferType = new Nodes.TypeInfer();
 const UnresolvedId = -1;
 
-export class AstGenerationStage {
-    public execute(compiler: Compiler, nodes: PNode, source: Source): Node[] {
+export class AstGenerationStage implements Stage {
+    public name = "Ast Generation";
+
+    public execute(compiler: Compiler, nodes: any, source: Source): Node[] {
+        // TODO: node is PNode, violating the interface
+
         const output = [];
 
         for (const node of nodes) {
@@ -46,7 +50,7 @@ function parseStmt(node: PNode): Nodes.Stmt {
                 node.data[7][1].elements.map(parseStmt) :
                 [new Nodes.StmtReturn(parseExpr(node.data[7][4]))];
 
-            return new Nodes.Function(name, parameters, returnType, body);
+            return new Nodes.Function(name, parameters, returnType, body, Nodes.FunctionFlags.None);
         }
 
         case PTag.DeclTrait: {
@@ -97,6 +101,14 @@ function parseStmt(node: PNode): Nodes.Stmt {
                 default: throw new Error("Unreachable");
             }
         }
+
+        case PTag.ExprMacroCall: {
+            const target = parseIdentifier(node.data[0]);
+            const expr   = parseExpr(node.data[2][1]);
+
+            return new Nodes.ExprMacroCall(target, [expr]);
+        }
+
 
         case PTag.ExprCall:
             return parseExpr(node) as any;
@@ -173,10 +185,10 @@ function parseType(node: PNode): Nodes.Type {
 
 function convertVariableKeyword(keyword: string | undefined) {
     switch (keyword) {
-        case "mut":     return Nodes.Flags.Local | Nodes.Flags.Mutates;
-        case "val":     return Nodes.Flags.Local;
-        case "own":     return Nodes.Flags.Local | Nodes.Flags.Owns;
-        case undefined: return Nodes.Flags.Local;
+        case "mut":     return Nodes.VariableFlags.Local | Nodes.VariableFlags.Mutates;
+        case "val":     return Nodes.VariableFlags.Local;
+        case "own":     return Nodes.VariableFlags.Local | Nodes.VariableFlags.Owns;
+        case undefined: return Nodes.VariableFlags.Local;
         default: throw new Error("Unreachable");
     }
 }
