@@ -328,7 +328,7 @@
     Atom            -> ExprIndexBracket
 
 ## Expr/IndexDot ###################################################################################
-    ExprIndexDot    -> EdTarget EdOperator EdName
+    ExprIndexDot    -> EdTarget EdOperator EdName {%p.ExprIndexDot%}
 
     # Examples:
     #   foo.bar.baz

@@ -342,7 +342,7 @@ const grammar: Grammar = {
     {"name": "EbIndex$macrocall$1", "symbols": ["EbIndex$macrocall$2", "EbIndex$macrocall$3", "EbIndex$macrocall$1$subexpression$1", "EbIndex$macrocall$6"], "postprocess": p.ListProcessor},
     {"name": "EbIndex", "symbols": ["EbIndex$macrocall$1"]},
     {"name": "Atom", "symbols": ["ExprIndexBracket"]},
-    {"name": "ExprIndexDot", "symbols": ["EdTarget", "EdOperator", "EdName"]},
+    {"name": "ExprIndexDot", "symbols": ["EdTarget", "EdOperator", "EdName"], "postprocess": p.ExprIndexDot},
     {"name": "EdTarget", "symbols": ["Atom"]},
     {"name": "EdOperator", "symbols": [{"literal":"."}]},
     {"name": "EdOperator", "symbols": [{"literal":"."}, "NL"]},

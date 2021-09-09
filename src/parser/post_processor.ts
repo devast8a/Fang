@@ -22,6 +22,7 @@ export enum PTag {
     ExprCall,
     ExprConstruct,
     ExprIdentifier,
+    ExprIndexDot,
     ExprMacroCall,
     ExprUnaryPostfix,
     ExprUnaryPrefix,
@@ -65,6 +66,7 @@ export const ExprBinary         = tag(PTag.ExprBinary);
 export const ExprCall           = tag(PTag.ExprCall);
 export const ExprConstruct      = tag(PTag.ExprConstruct);
 export const ExprIdentifier     = tag(PTag.ExprIdentifier);
+export const ExprIndexDot       = tag(PTag.ExprIndexDot);
 export const ExprMacroCall      = tag(PTag.ExprMacroCall);
 export const ExprUnaryPostfix   = tag(PTag.ExprUnaryPostfix);
 export const ExprUnaryPrefix    = tag(PTag.ExprUnaryPrefix);
