@@ -1,4 +1,5 @@
-import { Class, ExprGetLocal, VariableFlags, Function, Node, Tag } from '../nodes';
+import { Flags } from '../common/flags';
+import { Class, ExprGetLocal, VariableFlags, Function, Node, Tag, RefVar, Expr } from '../nodes';
 
 export enum Status {
     Dead,
@@ -7,168 +8,242 @@ export enum Status {
     DynamicReference,
 }
 
+export class VariableState {
+    public constructor(
+        public status: Status,
+        public referTo = new Set<Path>(),
+        public referBy = new Set<Path>(),
+    ) {}
+}
+
+type Path = number | string;
 export class State {
     public constructor(
-        public variables: Array<Status>,
-        public lifetime: Array<Set<number>>,
+        public parent: State | null,
+        public variables: Map<Path, VariableState>,
     ) {}
 
-    public format(fn: Function) {
-        const variables = this.variables.
-            map((status, id) => `${fn.variables[id].name}: ${Status[status]}`).
-            join(", ");
-
-        const lifetime = this.lifetime.
-            map((state) => Array.from(state).map(id => fn.variables[id].name).join(", ")).
-            map((state, id) => `${fn.variables[id].name}: {${state}}`).
-            join(", ");
-
-        return `${fn.name}: ${variables} | ${lifetime}`;
-    }
-
     public copy() {
-        return new State(
-            this.variables.slice(),
-            this.lifetime.map(set => new Set(set)),
-        );
+        return new State(this, new Map());
     }
 
-    public merge(other: State) {
-        for (let i = 0; i < this.variables.length; i++) {
-            if (this.variables[i] !== other.variables[i]) {
-                this.variables[i] = Status.Dynamic;
+    private lookup(path: Path): VariableState | null {
+        // Lookup in this
+        const state = this.variables.get(path);
+        if (state !== undefined) {
+            return state;
+        }
+
+        // Lookup in parent
+        let current = this.parent;
+        while (current !== null) {
+            const state = current.variables.get(path);
+
+            if (state !== undefined) {
+                // Copy state from ancestor - since we might modify it
+                const copy = new VariableState(
+                    state.status,
+                    new Set(state.referTo),
+                    new Set(state.referBy),
+                );
+
+                this.variables.set(path, copy);
+                return copy;
             }
 
-            for (const ref of other.lifetime[i]) {
-                this.lifetime[i].add(ref);
-            }
+            current = current.parent;
+        }
+
+        // Lookup failed
+        return null
+    }
+
+    public set(path: Path) {
+        // TODO: Check if a deletion needs to happen
+        const state = new VariableState(Status.Alive);
+        this.variables.set(path, state);
+    }
+
+    public read(path: Path) {
+        const state = this.lookup(path);
+
+        if (state === null || state.status !== Status.Alive) {
+            // TODO: Handle more appropriately
+            throw new Error(`Lifetime error`);
         }
     }
 
-    public static fromFunction(fn: Function) {
-        const len = fn.variables.length;
+    public write(path: Path) {
+        throw new Error('Method not implemented.');
+    }
 
-        return new State(
-            new Array(len).fill(Status.Dead),
-            new Array(len).fill(0).map(() => new Set()),
-        );
+    public delete(path: Path) {
+        const state = this.lookup(path);
+
+        if (state === null) {
+            throw new Error(`Lifetime error`);
+        }
+            
+        if (state.status !== Status.Alive) {
+            throw new Error(`Lifetime error`);
+        }
+
+        state.status = Status.Dead;
+    }
+
+    public move(path: Path) {
+        const state = this.lookup(path);
+
+        if (state === null) {
+            throw new Error(`Lifetime error`);
+        }
+            
+        if (state.status !== Status.Alive) {
+            throw new Error(`Lifetime error`);
+        }
+
+        state.status = Status.Dead;
+    }
+
+    public merge(other: State) {
+        // TODO: Need to lookup in ancestors
+        for (const [path, o] of other.variables) {
+            const t = this.lookup(path);
+
+            const ts = t !== null ? t.status : Status.Dead;
+            const os = o.status;
+
+            if (ts !== os) {
+                this.variables.set(path, new VariableState(Status.Dynamic));
+            }
+        }
+    }
+}
+
+export class SimultaneousAccess {
+    private reads  = new Set<Path>();
+    private writes = new Set<Path>();
+    
+    public read(path: Path) {
+        if (this.writes.has(path)) {
+            throw new Error(`Lifetime rejection`);
+        }
+
+        this.reads.add(path);
+    }
+
+    public write(path: Path) {
+        if (this.reads.has(path) || this.writes.has(path)) {
+            throw new Error(`Lifetime rejection`);
+        }
+
+        // TODO: Support references
+
+        this.writes.add(path);
     }
 }
 
 export function checkLifetimeNodes(nodes: Node[]) {
+    const state = new State(null, new Map());
+
     for (const node of nodes) {
-        analyzeNode(node, new State([], []));
+        analyzeNode(node, state);
     }
 }
 
+function exprToPath(expr: Expr): Path {
+    switch (expr.tag) {
+        case Tag.ExprGetLocal: return expr.local;
+        case Tag.ExprSetLocal: return expr.local;
+        case Tag.ExprGetField: return `${exprToPath(expr.object)}.${expr.field}`;
+        default: throw new Error(`exprToPath > ${Tag[expr.tag]} not expected`);
+    }
+}
+
+function format(state: State, fn: Function) {
+    const output = [];
+    const variables = state.variables;
+
+    for (const [path, s] of variables) {
+        const status = Status[s.status];
+
+        let name = path;
+
+        if (typeof(path) === 'number') {
+            name = fn.variables[path].name;
+        }
+
+        output.push(`${name}: ${status}`);
+    }
+
+    return output.join(', ');
+}
+
+const warned = new Set();
+let currentFn: Function = {} as any;
 export function analyzeNode(node: Node, state: State) {
     switch (node.tag) {
-        case Tag.Class: {
-            // TODO[devast8a]: Implement lifetime analysis for class
+        case Tag.Class:
+        case Tag.Trait:
+        case Tag.ExprConstruct:
+        {
+            // TODO[devast8a]: Implement lifetime analysis for these tags
+            const warning = `checkLifetime>analyzeNode>${Tag[node.tag]}: Not implemented yet`;
+            if (warned.has(warning)) return;
+            warned.add(warning);
+            console.warn(warning);
             return;
         }
 
         case Tag.Function: {
-            const fnState = State.fromFunction(node);
-            analyzeNodes(node.body, fnState);
-            return;
-        }
-
-        case Tag.Trait: {
-            // TODO[devast8a]: Implement lifetime analysis for trait
+            const fstate = state.copy();
+            currentFn = node;
+            analyzeNodes(node.body, fstate);
+            console.log(node.name + ": " + format(fstate, node));
             return;
         }
 
         case Tag.Variable: {
             if (node.value !== null) {
                 analyzeNode(node.value, state);
-                state.variables[node.id] = Status.Alive;
-
-                // TODO[devast8a]: Check variable type instead of checking node type dynamically
-                if (node.value.tag === Tag.ExprConstruct && (node.value.target as Class).name === "Ref") {
-                    state.lifetime[node.id].add((node.value.args[0] as ExprGetLocal).local as number);
-                }
+                state.set(node.id);
             }
 
             return;
         }
 
         case Tag.ExprCallStatic: {
-            // TODO[devast8a]: Implement analysis for calling
-            // Assume for now that functions are at most one method call deep (except for move/copy)
             analyzeNodes(node.args, state);
 
+            // TODO: Properly resolve function calling
             if (node.target.tag === Tag.Function) {
-                const writes = new Set<number>();
-                const reads  = new Set<number>();
+                const access = new SimultaneousAccess();
+                const args   = node.args;
+                const params = node.target.parameters;
 
-                for (let i = 0; i < node.target.parameters.length; i++) {
-                    const parameter = node.target.parameters[i];
-                    const argument  = node.args[i];
+                for (let i = 0; i < params.length; i++) {
+                    const arg   = args[i];
+                    const param = params[i];
 
-                    if (argument.tag === Tag.ExprGetLocal) {
-                        // TODO: Support nested function calls
-                        const local = argument.local as number;
+                    // TODO: Handle nested calls properly
+                    // For now assume it's a move
+                    if (arg.tag === Tag.ExprCallStatic) {
+                        const path = exprToPath(arg.args[0]);
+                        state.move(path);
+                        continue;
+                    }
 
-                        if ((parameter.flags & VariableFlags.Mutates) > 0) {
-                            // Mutates
-                            if (reads.has(local) || writes.has(local)) {
-                                throw new Error('Lifetime rejection');
-                            }
-
-                            // References
-                            for (const other of state.lifetime[local]) {
-                                if (reads.has(other) || writes.has(other)) {
-                                    throw new Error('Lifetime rejection');
-                                }
-
-                                writes.add(other);
-                            }
-
-                            writes.add(local);
-                        } else {
-                            // Loans
-                            if (writes.has(local)) {
-                                throw new Error('Lifetime rejection');
-                            }
-
-                            // References
-                            for (const other of state.lifetime[local]) {
-                                if (writes.has(other)) {
-                                    throw new Error('Lifetime rejection');
-                                }
-
-                                reads.add(other);
-                            }
-
-                            reads.add(local);
-                        }
+                    const path = exprToPath(arg);
+                    if (Flags.has(param.flags, VariableFlags.Mutates)) {
+                        access.write(path);
+                    } else {
+                        access.read(path);
                     }
                 }
+            } else {
+                console.warn(`Skipped ${node.target.name}`)
             }
 
-            if (node.target.tag === Tag.ExprRefName && node.target.name === "move") {
-                const local = (node.args[0] as ExprGetLocal).local as number;
-
-                state.variables[local] = Status.Dead;
-                state.lifetime[local].clear();
-                
-                // Kill any references
-                for (let ref = 0; ref < state.lifetime.length; ref++) {
-                    if (state.lifetime[ref].has(local)) {
-                        if (state.lifetime[ref].size === 1) {
-                            // The reference can only refers to this value
-                            // Kill the reference too
-                            state.lifetime[ref].delete(local);
-                            state.variables[ref] = Status.Dead;
-                        } else {
-                            // The reference may refer to this value
-                            state.lifetime[ref].delete(local);
-                            state.variables[ref] = Status.DynamicReference;
-                        }
-                    }
-                }
-            }
             return;
         }
 
@@ -177,42 +252,26 @@ export function analyzeNode(node: Node, state: State) {
             return;
         }
 
-        case Tag.ExprConstruct: {
-            // TODO[devast8a]: Implement analysis for construction
+        case Tag.ExprGetLocal: {
+            state.read(node.local);
             return;
         }
 
-        case Tag.ExprGetLocal: {
-            if (state.variables[node.local as number] !== Status.Alive) {
-                throw new Error("Rejected by lifetime checker");
-            }
+        case Tag.ExprSetField: {
+            analyzeNode(node.value, state);
+            analyzeNode(node.object, state);
+            state.set(exprToPath(node));
             return;
         }
 
         case Tag.ExprSetLocal: {
             analyzeNode(node.value, state);
-
-            const id = node.local as number;
-
-            switch (state.variables[id]) {
-                case Status.Alive: console.log("KILL EXISTING"); break;
-                case Status.Dynamic: console.log("MAY KILL EXISTING"); break;
-                case Status.Dead: break;
-            }
-
-            state.variables[id] = Status.Alive;
-
-            // If the variable is a reference, we will keep track of the variable it references
-            // TODO[devast8a]: Check variable type instead of checking node type dynamically
-            if (node.value.tag === Tag.ExprConstruct && (node.value.target as Class).name === "Ref") {
-                state.lifetime[id].add((node.value.args[0] as ExprGetLocal).local as number);
-            }
-
+            state.set(node.local);
             return;
         }
 
         case Tag.StmtDelete: {
-            state.variables[node.variable as number] = Status.Dead;
+            state.delete(node.variable);
             return;
         }
 
