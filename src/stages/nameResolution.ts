@@ -92,6 +92,12 @@ function declareNode(node: Node, scope: Scope, state: State) {
             return;
         }
 
+        case Tag.ExprSetField: {
+            declareNode(node.object, scope, state);
+            declareNode(node.value, scope, state);
+            return;
+        }
+
         case Tag.ExprSetLocal: {
             declareNode(node.value, scope, state);
             return;
@@ -210,6 +216,13 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         case Tag.ExprGetLocal: {
             // TODO: Error handling
             node.local = (scope.lookup(node.local as string) as Variable).id;
+            return node as T;
+        }
+
+        case Tag.ExprSetField: {
+            node.object = resolveNode(node.object, state);
+            node.value  = resolveNode(node.value, state);
+
             return node as T;
         }
 

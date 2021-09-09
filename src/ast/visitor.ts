@@ -56,6 +56,12 @@ export class Visitor<State = null> {
                 return this.visitor(n, state) as T;
             }
 
+            case Tag.ExprSetField: {
+                n.object  = this.node(n.object, state);
+                n.value   = this.node(n.value, state);
+                return this.visitor(n, state) as T;
+            }
+
             case Tag.ExprSetLocal: {
                 n.value = this.node(n.value, state);
                 return this.visitor(n, state) as T;

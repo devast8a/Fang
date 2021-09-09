@@ -98,6 +98,7 @@ function parseStmt(node: PNode): Nodes.Stmt {
 
             switch (node.data[0].tag) {
                 case PTag.ExprIdentifier: return new Nodes.ExprSetLocal(parseIdentifier(node.data[0].data[0]), value);
+                case PTag.ExprIndexDot:   return new Nodes.ExprSetField(parseExpr(node.data[0].data[0]), parseIdentifier(node.data[0].data[2]), value);
                 default: throw new Error("Unreachable");
             }
         }
