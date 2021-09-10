@@ -23,8 +23,23 @@ export class State {
         public variables: Map<Path, VariableState>,
     ) {}
 
-    public copy() {
+    public copyState() {
         return new State(this, new Map());
+    }
+
+    public mergeState(other: State) {
+        // TODO: Need to lookup in ancestors
+        // TODO: Support references
+        for (const [path, o] of other.variables) {
+            const t = this.lookup(path);
+
+            const ts = t !== null ? t.status : Status.Dead;
+            const os = o.status;
+
+            if (ts !== os) {
+                this.variables.set(path, new VariableState(Status.Dynamic));
+            }
+        }
     }
 
     private lookup(path: Path): VariableState | null {
@@ -104,20 +119,6 @@ export class State {
 
         state.status = Status.Dead;
     }
-
-    public merge(other: State) {
-        // TODO: Need to lookup in ancestors
-        for (const [path, o] of other.variables) {
-            const t = this.lookup(path);
-
-            const ts = t !== null ? t.status : Status.Dead;
-            const os = o.status;
-
-            if (ts !== os) {
-                this.variables.set(path, new VariableState(Status.Dynamic));
-            }
-        }
-    }
 }
 
 export class SimultaneousAccess {
@@ -196,7 +197,7 @@ export function analyzeNode(node: Node, state: State) {
         }
 
         case Tag.Function: {
-            const fstate = state.copy();
+            const fstate = state.copyState();
             currentFn = node;
             analyzeNodes(node.body, fstate);
             console.log(node.name + ": " + format(fstate, node));
@@ -278,7 +279,7 @@ export function analyzeNode(node: Node, state: State) {
         case Tag.StmtIf: {
             // NOTE: We could optimize away a merge by computing the else branch first and replacing final with state
             //  We currently opt not to do this, so that problems will occur in program order
-            const final = state.copy();
+            const final = state.copyState();
 
             // First branch
             analyzeNode(node.branches[0].condition, final)
@@ -287,33 +288,33 @@ export function analyzeNode(node: Node, state: State) {
             // Remaining branches
             for (let i = 1; i < node.branches.length; i++) {
                 const branch = node.branches[i];
-                const branchState = state.copy();
+                const branchState = state.copyState();
 
                 analyzeNode(branch.condition, branchState);
                 analyzeNodes(branch.body, branchState);
-                final.merge(branchState);
+                final.mergeState(branchState);
             }
 
             // Else branch
             analyzeNodes(node.elseBranch, state);
-            state.merge(final);
+            state.mergeState(final);
             return;
         }
 
         case Tag.StmtWhile: {
             // Loop taken one time
-            const takenOnce = state.copy();
+            const takenOnce = state.copyState();
             analyzeNode(node.condition, takenOnce);
             analyzeNodes(node.body, takenOnce);
 
             // Loop taken multiple times
-            const takenMultiple = takenOnce.copy();
+            const takenMultiple = takenOnce.copyState();
             analyzeNode(node.condition, takenMultiple);
             analyzeNodes(node.body, takenMultiple);
 
             // Loop not taken
-            state.merge(takenOnce);
-            state.merge(takenMultiple);
+            state.mergeState(takenOnce);
+            state.mergeState(takenMultiple);
             return;
         }
     }
