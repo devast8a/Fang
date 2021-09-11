@@ -4,7 +4,7 @@ import { Node } from './nodes';
 import { ParseStage } from './stages/ParseStage';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
-import { checkLifetimeNodes } from './stages/checkLifetime';
+import { checkLifetime } from './stages/checkLifetime';
 import { checkType } from './stages/checkType';
 import { nameResolution } from './stages/nameResolution';
 import { transformInferType } from './stages/transformInferType';
@@ -65,7 +65,7 @@ export class Compiler {
         console.timeEnd(`Check>Types`);
 
         console.time(`Check>Lifetime`);
-        checkLifetimeNodes(nodes);
+        checkLifetime(nodes);
         console.timeEnd(`Check>Lifetime`);
 
         console.time(`Transform>Remove Nesting`);

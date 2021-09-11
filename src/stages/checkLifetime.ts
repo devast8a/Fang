@@ -27,7 +27,7 @@ import { VariableFlags, Function, Node, Tag, Expr } from '../nodes';
 
 /** Language Semantics *********************************************************/
 
-export function checkLifetimeNodes(nodes: Node[]) {
+export function checkLifetime(nodes: Node[]) {
     const state = new ProgramState(null, new Map());
 
     for (const node of nodes) {
@@ -35,7 +35,7 @@ export function checkLifetimeNodes(nodes: Node[]) {
     }
 }
 
-export function analyzeNode(node: Node, state: ProgramState) {
+function analyzeNode(node: Node, state: ProgramState) {
     switch (node.tag) {
         case Tag.Class:
         case Tag.Trait:
@@ -200,7 +200,7 @@ function analyzeNodes(nodes: Node[], state: ProgramState) {
 
 /** Lifetime Implementation ****************************************************/
 
-export enum Status {
+enum Status {
     Dead,               /** The variable definitely has NO value at a given point (ie. It is not valid to use or reference) */
     Alive,              /** The variable definitely has A value at a given point (ie. It is valid to use and reference) */
     Dynamic,            /** The variable may or may not have some value at a given point (ie. It depends on runtime information) */
