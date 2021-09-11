@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Node } from './nodes';
+import { Node, Tag } from './nodes';
 import { ParseStage } from './stages/ParseStage';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
@@ -11,6 +11,8 @@ import { transformInferType } from './stages/transformInferType';
 import { TargetC } from './stages/targetC';
 import { transformRemoveNesting } from './stages/transformRemoveNesting';
 import { TransformExecuteMacroStage } from './stages/transfromExecuteMacro';
+import { transformInstantiate } from './stages/transformInstantiate';
+import { markAbstractFunctions } from './stages/markAbstractFunctions';
 
 export interface Stage {
     name: string;
@@ -61,16 +63,24 @@ export class Compiler {
         console.timeEnd(`Transform>Infer Types`);
 
         console.time(`Check>Types`);
-        checkType.array(nodes, null);
+        //checkType.array(nodes, null);
         console.timeEnd(`Check>Types`);
 
         console.time(`Check>Lifetime`);
         checkLifetime(nodes);
         console.timeEnd(`Check>Lifetime`);
 
+        console.time(`Transform > Mark Abstract Functions`);
+        markAbstractFunctions.array(nodes, null);
+        console.timeEnd(`Transform > Mark Abstract Functions`);
+
         console.time(`Transform>Remove Nesting`);
         transformRemoveNesting(nodes);
-        console.timeEnd(`Transform>Removing Nesting`);
+        console.timeEnd(`Transform>Remove Nesting`);
+
+        console.time(`Transform > Instantiate`);
+        transformInstantiate.array(nodes, null);
+        console.timeEnd(`Transform > Instantiate`);
 
         const target = new TargetC();
 

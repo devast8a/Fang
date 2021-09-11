@@ -28,6 +28,11 @@ export class Visitor<State = null> {
                 return result;
             }
 
+            case Tag.Trait: {
+                n.members   = this.array(n.members, state);
+                return this.visitor(n, state) as T;
+            }
+
             case Tag.Variable: {
                 if (n.value) { n.value = this.node(n.value, state); }
                 return this.visitor(n, state) as T;
