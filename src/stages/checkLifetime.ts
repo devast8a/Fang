@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { VariableFlags, Function, Node, Tag, Expr } from '../nodes';
+import { VariableFlags, Function, Node, Tag } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -412,7 +412,7 @@ class ProgramState {
 
 /** Utilities ******************************************************************/
 
-function exprToPath(expr: Expr): Path {
+function exprToPath(expr: Node): Path {
     switch (expr.tag) {
         case Tag.ExprGetLocal: return expr.local;
         case Tag.ExprSetLocal: return expr.local;

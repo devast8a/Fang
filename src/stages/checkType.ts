@@ -1,5 +1,5 @@
 import { Visitor } from '../ast/visitor';
-import { Expr, Tag, Type } from '../nodes';
+import { Node, Tag, Type } from '../nodes';
 
 export const checkType = new Visitor((node) => {
     const context = checkType.functionStack[checkType.functionStack.length - 1];
@@ -10,7 +10,7 @@ export const checkType = new Visitor((node) => {
                 return node;
             }
 
-            const valueType = Expr.getReturnType(node.value, context);
+            const valueType = Node.getReturnType(node.value, context);
 
             if (!Type.canAssignTo(valueType, node.type)) {
                 throw new Error("Can't assign type");
@@ -29,7 +29,7 @@ export const checkType = new Visitor((node) => {
                 const arg = node.args[i];
                 const param = node.target.parameters[i];
                 
-                const argType = Expr.getReturnType(arg, context);
+                const argType = Node.getReturnType(arg, context);
 
                 if (!Type.canAssignTo(argType, param.type)) {
                     console.log(arg, argType, param.type)
@@ -41,7 +41,7 @@ export const checkType = new Visitor((node) => {
 
         case Tag.ExprSetLocal: {
             const local = context.variables[node.local as number];
-            const valueType = Expr.getReturnType(node.value, context);
+            const valueType = Node.getReturnType(node.value, context);
 
             if (!Type.canAssignTo(valueType, local.type)) {
                 throw new Error("Can't assign type");

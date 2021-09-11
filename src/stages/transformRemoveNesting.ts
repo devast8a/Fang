@@ -1,4 +1,4 @@
-import { Expr, Node, Stmt, Tag, Function, Variable, Type, VariableFlags, ExprGetLocal, ExprSetLocal } from '../nodes';
+import { Node, Tag, Function, Variable, VariableFlags, ExprGetLocal } from '../nodes';
 
 export function transformRemoveNesting(nodes: Node[]) {
     for (const node of nodes) {
@@ -9,7 +9,7 @@ export function transformRemoveNesting(nodes: Node[]) {
 
             case Tag.Function: {
 
-                const output = new Array<Stmt>();
+                const output = new Array<Node>();
                 for (const stmt of node.body) {
                     transform(node, output, stmt);
                     output.push(stmt);
@@ -24,8 +24,6 @@ export function transformRemoveNesting(nodes: Node[]) {
     }
 }
 
-function transform(fn: Function, output: Node[], node: Expr): Expr
-function transform(fn: Function, output: Node[], node: Stmt): Stmt
 function transform(fn: Function, output: Node[], node: Node): Node {
     switch (node.tag) {
         case Tag.Variable: {
@@ -69,13 +67,13 @@ function transform(fn: Function, output: Node[], node: Node): Node {
     throw new Error(`transformRemoveNesting > transform > ${Tag[node.tag]}: Not implemented`);
 }
 
-function useTemporaryVariable(fn: Function, output: Node[], value: Expr): Expr {
+function useTemporaryVariable(fn: Function, output: Node[], value: Node): Node {
     const id = fn.variables.length;
 
     const variable = new Variable(
         // TODO: Variable naming
         `_temp${fn.variables.length}`,
-        Expr.getReturnType(value, fn),
+        Node.getReturnType(value, fn),
         value,
         // TODO: Might need to apply more flags
         VariableFlags.Local,

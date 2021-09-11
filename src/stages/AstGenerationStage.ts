@@ -25,7 +25,7 @@ export class AstGenerationStage implements Stage {
     }
 }
 
-function parseStmt(node: PNode): Nodes.Stmt {
+function parseStmt(node: PNode): Node {
     switch (node.tag) {
         case PTag.DeclClass: {
             // keyword
@@ -118,7 +118,7 @@ function parseStmt(node: PNode): Nodes.Stmt {
     throw new Error(`parseStmt: No case for '${PTag[node.tag]}'`)
 }
 
-function parseExpr(node: PNode): Nodes.Expr {
+function parseExpr(node: PNode): Node {
     switch (node.tag) {
         case PTag.LiteralIntegerDec: {
             return new Nodes.ExprConstant({} as any, "");
