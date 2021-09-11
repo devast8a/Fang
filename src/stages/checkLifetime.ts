@@ -1,11 +1,11 @@
 import { Flags } from '../common/flags';
-import { Class, ExprGetLocal, VariableFlags, Function, Node, Tag, RefVar, Expr } from '../nodes';
+import { VariableFlags, Function, Node, Tag, Expr } from '../nodes';
 
 export enum Status {
-    Dead,
-    Alive,
-    Dynamic,
-    DynamicReference,
+    Dead,               /// The variable definitely has NO value at a given point
+    Alive,              /// The variable definitely has SOME value at a given point
+    Dynamic,            /// The variable may or may not have some value at a given point. (It depends on runtime information)
+    DynamicReference,   /// TODO: Remove
 }
 
 export class VariableState {
@@ -17,31 +17,157 @@ export class VariableState {
 }
 
 type Path = number | string;
+
+export class GroupedAccess {
+    public reads  = new Set<Path>();
+    public writes = new Set<Path>();
+}
+
+// TODO: Support references
 export class State {
     public constructor(
         public parent: State | null,
         public variables: Map<Path, VariableState>,
     ) {}
 
+    /// Copy this state
     public copyState() {
         return new State(this, new Map());
     }
 
+    /// Merge `other` into this state.
     public mergeState(other: State) {
         // TODO: Need to lookup in ancestors
         // TODO: Support references
         for (const [path, o] of other.variables) {
-            const t = this.lookup(path);
+            const t = this.lookupOrCreate(path);
 
-            const ts = t !== null ? t.status : Status.Dead;
-            const os = o.status;
+            if (t.status !== o.status) {
+                t.status = Status.Dynamic
+            }
 
-            if (ts !== os) {
-                this.variables.set(path, new VariableState(Status.Dynamic));
+            // Merge references together
+            for (const ref of o.referTo) {
+                if (!t.referTo.has(ref)) {
+                    this.ref(path, ref);
+                }
             }
         }
     }
 
+    /// Create a reference between a source variable and a destination variable.
+    public ref(src: Path, dst: Path) {
+        const srcState = this.lookupOrCreate(src);
+        const dstState = this.lookupOrCreate(dst);
+
+        srcState.referTo.add(dst);
+        dstState.referBy.add(src);
+    }
+
+    /// Read a variable. Variable must be alive. No invalidation.
+    public read(path: Path, group?: GroupedAccess) {
+        const state = this.lookup(path);
+
+        if (state === null || state.status !== Status.Alive) {
+            throw new Error(`Lifetime error`);
+        }
+
+        // No other access in the group should write to the variable
+        if (group !== undefined) {
+            if (group.writes.has(path)) {
+                throw new Error(`Lifetime error`);
+            }
+
+            for (const ref of state.referBy) {
+                if (group.writes.has(ref)) {
+                    throw new Error(`Lifetime error`);
+                }
+
+                group.reads.add(ref);
+            }
+
+            group.reads.add(path);
+        }
+    }
+
+    /// Used for non-assignment mutation. Variable must be alive.
+    public write(path: Path, group?: GroupedAccess) {
+        const state = this.lookup(path);
+
+        if (state === null || state.status !== Status.Alive) {
+            throw new Error(`Lifetime error`);
+        }
+
+        // No other access in the group should read from or write to the variable
+        if (group !== undefined) {
+            if (group.reads.has(path) || group.writes.has(path)) {
+                throw new Error(`Lifetime error`);
+            }
+
+            for (const ref of state.referBy) {
+                if (group.reads.has(ref) || group.writes.has(ref)) {
+                    throw new Error(`Lifetime error`);
+                }
+
+                group.writes.add(ref);
+            }
+
+            group.writes.add(path);
+        }
+    }
+
+    /// Used for assignment. Variable must be alive or dead. Destroys existing values.
+    public assign(path: Path) {
+        // TODO: Check if a deletion needs to happen
+        const state = this.lookupOrCreate(path);
+
+        this.killRefBy(path, state);
+
+        state.status = Status.Alive;
+        this.variables.set(path, state);
+    }
+
+    /// Destroy a value in a variable. Variable must be alive.
+    public delete(path: Path) {
+        const state = this.lookup(path);
+
+        if (state === null || state.status !== Status.Alive) {
+            throw new Error(`Lifetime error`);
+        } else {
+            this.killRefBy(path, state);
+            state.status = Status.Dead;
+        }
+    }
+
+    /// Move a value from a variable. Variable must be alive.
+    public move(path: Path) {
+        const state = this.lookup(path);
+
+        if (state === null || state.status !== Status.Alive) {
+            throw new Error(`Lifetime error`);
+        } else {
+            this.killRefBy(path, state);
+            state.status = Status.Dead;
+        }
+    }
+
+    private killRefBy(path: Path, state: VariableState) {
+        for (const ref of state.referBy) {
+            const refState = this.lookup(ref);
+
+            if (refState === null) throw new Error(`Internal Error: Reference state should exist, but doesn't`);
+
+            refState.referTo.delete(path);
+
+            if (refState.referTo.size === 0) {
+                refState.status = Status.Dead;
+            } else {
+                refState.status = Status.DynamicReference;
+            }
+        }
+    }
+
+    /// Return the state linked with a variable. Returns null if no state has been linked.
     private lookup(path: Path): VariableState | null {
         // Lookup in this
         const state = this.variables.get(path);
@@ -73,74 +199,16 @@ export class State {
         return null
     }
 
-    public set(path: Path) {
-        // TODO: Check if a deletion needs to happen
-        const state = new VariableState(Status.Alive);
-        this.variables.set(path, state);
-    }
-
-    public read(path: Path) {
-        const state = this.lookup(path);
-
-        if (state === null || state.status !== Status.Alive) {
-            // TODO: Handle more appropriately
-            throw new Error(`Lifetime error`);
-        }
-    }
-
-    public write(path: Path) {
-        throw new Error('Method not implemented.');
-    }
-
-    public delete(path: Path) {
-        const state = this.lookup(path);
+    /// Return the state linked to a variable. If no state has been linked, create new state and linked it.
+    private lookupOrCreate(path: Path): VariableState {
+        let state = this.lookup(path);
 
         if (state === null) {
-            throw new Error(`Lifetime error`);
-        }
-            
-        if (state.status !== Status.Alive) {
-            throw new Error(`Lifetime error`);
+            state = new VariableState(Status.Dead);
+            this.variables.set(path, state);
         }
 
-        state.status = Status.Dead;
-    }
-
-    public move(path: Path) {
-        const state = this.lookup(path);
-
-        if (state === null) {
-            throw new Error(`Lifetime error`);
-        }
-            
-        if (state.status !== Status.Alive) {
-            throw new Error(`Lifetime error`);
-        }
-
-        state.status = Status.Dead;
-    }
-}
-
-export class SimultaneousAccess {
-    private reads  = new Set<Path>();
-    private writes = new Set<Path>();
-    
-    public read(path: Path) {
-        if (this.writes.has(path)) {
-            throw new Error(`Lifetime rejection`);
-        }
-
-        this.reads.add(path);
-    }
-
-    public write(path: Path) {
-        if (this.reads.has(path) || this.writes.has(path)) {
-            throw new Error(`Lifetime rejection`);
-        }
-
-        // TODO: Support references
-
-        this.writes.add(path);
+        return state;
     }
 }
 
@@ -161,27 +229,34 @@ function exprToPath(expr: Expr): Path {
     }
 }
 
+function pathToName(path: Path, fn: Function) {
+    if (typeof(path) === 'number') {
+        return fn.variables[path].name;
+    }
+
+    return path;
+}
+
 function format(state: State, fn: Function) {
     const output = [];
     const variables = state.variables;
 
-    for (const [path, s] of variables) {
-        const status = Status[s.status];
+    for (const [path, variable] of variables) {
+        const name   = pathToName(path, fn);
+        const status = Status[variable.status];
+        const refs   = Array.from(variable.referTo.values()).map((path) => pathToName(path, fn)).join(", ");
 
-        let name = path;
-
-        if (typeof(path) === 'number') {
-            name = fn.variables[path].name;
+        if (refs.length > 0) {
+            output.push(`${name}: ${status} => {${refs}}`);
+        } else {
+            output.push(`${name}: ${status}`);
         }
-
-        output.push(`${name}: ${status}`);
     }
 
     return output.join(', ');
 }
 
 const warned = new Set();
-let currentFn: Function = {} as any;
 export function analyzeNode(node: Node, state: State) {
     switch (node.tag) {
         case Tag.Class:
@@ -198,7 +273,6 @@ export function analyzeNode(node: Node, state: State) {
 
         case Tag.Function: {
             const fstate = state.copyState();
-            currentFn = node;
             analyzeNodes(node.body, fstate);
             console.log(node.name + ": " + format(fstate, node));
             return;
@@ -207,7 +281,17 @@ export function analyzeNode(node: Node, state: State) {
         case Tag.Variable: {
             if (node.value !== null) {
                 analyzeNode(node.value, state);
-                state.set(node.id);
+                state.assign(node.id);
+
+                // TODO: Handle references in a better way
+                if (
+                    node.value.tag === Tag.ExprConstruct &&
+                    node.value.target.tag === Tag.Class &&
+                    node.value.target.name === "Ref" &&
+                    node.value.args[0].tag === Tag.ExprGetLocal
+                ) {
+                    state.ref(node.id, node.value.args[0].local);
+                }
             }
 
             return;
@@ -218,7 +302,7 @@ export function analyzeNode(node: Node, state: State) {
 
             // TODO: Properly resolve function calling
             if (node.target.tag === Tag.Function) {
-                const access = new SimultaneousAccess();
+                const group  = new GroupedAccess();
                 const args   = node.args;
                 const params = node.target.parameters;
 
@@ -236,9 +320,9 @@ export function analyzeNode(node: Node, state: State) {
 
                     const path = exprToPath(arg);
                     if (Flags.has(param.flags, VariableFlags.Mutates)) {
-                        access.write(path);
+                        state.write(path, group);
                     } else {
-                        access.read(path);
+                        state.read(path, group);
                     }
                 }
             } else {
@@ -261,13 +345,25 @@ export function analyzeNode(node: Node, state: State) {
         case Tag.ExprSetField: {
             analyzeNode(node.value, state);
             analyzeNode(node.object, state);
-            state.set(exprToPath(node));
+            state.assign(exprToPath(node));
             return;
         }
 
         case Tag.ExprSetLocal: {
             analyzeNode(node.value, state);
-            state.set(node.local);
+
+            state.assign(node.local);
+
+            // TODO: Handle references in a better way
+            if (
+                node.value.tag === Tag.ExprConstruct &&
+                node.value.target.tag === Tag.Class &&
+                node.value.target.name === "Ref" &&
+                node.value.args[0].tag === Tag.ExprGetLocal
+            ) {
+                state.ref(node.local, node.value.args[0].local);
+            }
+
             return;
         }
 
