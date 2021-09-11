@@ -1,8 +1,9 @@
 import { Visitor } from '../ast/visitor';
-import { Node, Tag, Type } from '../nodes';
+import { Node, Tag, Type, Function } from '../nodes';
 
-export const checkType = new Visitor((node) => {
-    const context = checkType.functionStack[checkType.functionStack.length - 1];
+export const checkType = new Visitor((node, container) => {
+    // TODO: Verify
+    const context = container as Function;
 
     switch (node.tag) {
         case Tag.Variable: {

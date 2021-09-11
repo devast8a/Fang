@@ -1,8 +1,8 @@
 import { Visitor } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { FunctionFlags, Tag, Function, Type, Expr, Variable } from '../nodes';
+import { FunctionFlags, Tag, Function, Type, Variable, Node } from '../nodes';
 
-export const transformInstantiate = new Visitor((node, state) => {
+export const transformInstantiate = new Visitor((node, container) => {
     switch (node.tag) {
         case Tag.ExprCallStatic: {
             // No need to do instantiation here
@@ -10,9 +10,7 @@ export const transformInstantiate = new Visitor((node, state) => {
                 return node;
             }
 
-            // Hack to get the current environment
-            const fn   = transformInstantiate.functionStack[transformInstantiate.functionStack.length - 1];
-            const type = Expr.getReturnType(node.args[0], fn);
+            const type = Node.getReturnType(node.args[0], container as Function);
 
             // Otherwise we need to instantiate
             instantiate(node.target, type);

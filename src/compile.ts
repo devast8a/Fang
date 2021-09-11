@@ -59,7 +59,7 @@ export class Compiler {
         console.timeEnd(`Name Resolution`);
 
         console.time(`Transform>Infer Types`);
-        transformInferType.array(nodes, null);
+        transformInferType.array(nodes, nodes[0], null);
         console.timeEnd(`Transform>Infer Types`);
 
         console.time(`Check>Types`);
@@ -71,7 +71,7 @@ export class Compiler {
         console.timeEnd(`Check>Lifetime`);
 
         console.time(`Transform > Mark Abstract Functions`);
-        markAbstractFunctions.array(nodes, null);
+        markAbstractFunctions.array(nodes, nodes[0], null);
         console.timeEnd(`Transform > Mark Abstract Functions`);
 
         console.time(`Transform>Remove Nesting`);
@@ -79,7 +79,7 @@ export class Compiler {
         console.timeEnd(`Transform>Remove Nesting`);
 
         console.time(`Transform > Instantiate`);
-        transformInstantiate.array(nodes, null);
+        transformInstantiate.array(nodes, nodes[0], null);
         console.timeEnd(`Transform > Instantiate`);
 
         const target = new TargetC();

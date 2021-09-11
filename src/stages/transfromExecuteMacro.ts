@@ -7,7 +7,8 @@ export class TransformExecuteMacroStage implements Stage {
     public name = "Execute Macro (Stage 0)";
 
     public execute(compiler: Compiler, nodes: Node[], source: Source): Node[] {
-        return transformExecuteMacro.array(nodes, new State());
+        // TODO: Properly set container
+        return transformExecuteMacro.array(nodes, nodes[0], new State());
     }
 }
 
@@ -17,7 +18,7 @@ class State {
     ]);
 }
 
-const transformExecuteMacro = new Visitor<State>((node, state) => {
+const transformExecuteMacro = new Visitor<State>((node, container, state) => {
     switch (node.tag) {
         case Tag.ExprMacroCall: {
             const macro = state.macros.get(node.target);
