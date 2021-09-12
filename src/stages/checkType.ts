@@ -2,7 +2,7 @@ import { Visitor } from '../ast/visitor';
 import { Node, Tag, Type, Function } from '../nodes';
 
 export const checkType = new Visitor({
-    visitor: (node, container) => {
+    after: (node, container) => {
         // TODO: Verify
         const context = container as Function;
 

@@ -19,7 +19,7 @@ class State {
 }
 
 const transformExecuteMacro = new Visitor<State>({
-    visitor: (node, container, state) => {
+    after: (node, container, state) => {
         switch (node.tag) {
             case Tag.ExprMacroCall: {
                 const macro = state.macros.get(node.target);

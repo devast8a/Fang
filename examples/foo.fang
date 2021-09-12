@@ -1,6 +1,13 @@
 class Foo {}
+class Bar {}
 
-fn test() {
+fn overload(foo: Foo) {}
+fn overload(bar: Bar) {}
+
+fn main() {
     val foo = Foo{}
-    delete! foo
+    val bar = Bar{}
+
+    overload(foo)
+    overload(bar)
 }

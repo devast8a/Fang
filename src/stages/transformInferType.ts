@@ -3,7 +3,7 @@ import { builtin } from '../Builtin';
 import { Node, Tag } from '../nodes';
 
 export const transformInferType = new Visitor({
-    visitor: (node) => {
+    after: (node) => {
         switch (node.tag) {
             case Tag.Variable: {
                 if (node.type.tag === Tag.TypeInfer && node.value !== null) {

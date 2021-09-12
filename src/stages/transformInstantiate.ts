@@ -9,19 +9,14 @@ interface Context {
 }
 
 export const transformInstantiate = new Visitor<Context>({
-    filter: (node) => {
-        if (node.tag !== Tag.Function) {
-            return true;
+    before: (node) => {
+        if (node.tag === Tag.Function && Flags.has(node.flags, FunctionFlags.Abstract)) {
+            return {continue: false};
         }
-
-        if (Flags.has(node.flags, FunctionFlags.Abstract)) {
-            return false;
-        }
-
-        return true;
+        return {continue: true};
     },
 
-    visitor: (node, container, context) => {
+    after: (node, container, context) => {
         switch (node.tag) {
             case Tag.ExprCallStatic: {
                 if (node.target.tag !== Tag.Function || !Flags.has(node.target.flags, FunctionFlags.Abstract)) {

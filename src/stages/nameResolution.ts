@@ -26,9 +26,6 @@ function declareNode(node: Node, scope: Scope, state: State) {
         case Tag.Class: {
             scope.declare(node.name, node);
 
-            // TODO: Support members
-            declareNodes(Array.from(node.superTypes), scope, state);
-
             return;
         }
 
