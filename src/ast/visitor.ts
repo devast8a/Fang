@@ -4,13 +4,26 @@ import * as Nodes from '../nodes';
 
 type Container = Node;
 
+export interface VisitorConfig<State> {
+    visitor: (node: Node, container: Container, state: State) => Node;
+    filter?: (node: Node, container: Container, state: State) => boolean;
+}
+
 export class Visitor<State = null> {
-    public constructor(
-        private visitor: (node: Node, container: Container, state: State) => Node
-    ) {}
+    private readonly visitor: (node: Node, container: Container, state: State) => Node;
+    private readonly filter?: (node: Node, container: Container, state: State) => boolean;
+
+    public constructor(config: VisitorConfig<State>) {
+        this.visitor = config.visitor;
+        this.filter  = config.filter;
+    }
 
     public node<T extends Node>(node: T, container: Container, state: State): T {
         let n = node as Node;
+
+        if (this.filter !== undefined && !this.filter(node, container, state)) {
+            return n as T;
+        }
 
         switch (n.tag) {
             case Tag.Class: {
@@ -25,7 +38,11 @@ export class Visitor<State = null> {
                 const parameters = this.array(n.parameters, n, state);
                 const body       = this.array(n.body, n, state);
                 if (parameters !== n.parameters || body !== n.body) {
+                    // HACK: Variables are not passed in as a parameter
+                    const variables = n.variables;
+
                     n = new Nodes.Function(n.name, parameters, n.returnType, body, n.flags);
+                    n.variables = variables;
                 }
                 break;
             }

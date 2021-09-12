@@ -46,9 +46,14 @@ function analyzeNode(node: Node, state: ProgramState) {
         }
 
         case Tag.Function: {
-            const fstate = state.copyState();
-            analyzeNodes(node.body, fstate);
-            console.log(node.name + ": " + format(fstate, node));
+            const fnState = state.copyState();
+
+            for (const parameter of node.parameters) {
+                fnState.assign(parameter.id);
+            }
+
+            analyzeNodes(node.body, fnState);
+            console.log(node.name + ": " + format(fnState, node));
             return;
         }
 

@@ -25,6 +25,7 @@ export enum Tag {
     StmtWhile,
     TypeInfer,
     TypeRefName,
+    Module
 }
 
 export type Node =
@@ -61,6 +62,15 @@ export type Type =
     | TypeRefName               // Reference a symbol by name (Resolve to type)
     | TypeInfer                 // Infer this type. Not valid everywhere.
     ;
+
+export class Module {
+    public readonly tag = Tag.Module;
+    public static readonly tag = Tag.Module;
+
+    public constructor(
+        public members: Node[],
+    ) {}
+}
 
 export class Class {
     public readonly tag = Tag.Class;

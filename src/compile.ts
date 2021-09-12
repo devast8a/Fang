@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Node, Tag } from './nodes';
+import { Module, Node, Tag } from './nodes';
 import { ParseStage } from './stages/ParseStage';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
@@ -50,8 +50,10 @@ export class Compiler {
 
     public async compile(source: string | Source): Promise<string>
     {
+        const module = new Module([]);
+
         console.time("Total");
-        const nodes = await this.parseFile(source);
+        let nodes = await this.parseFile(source);
 
         console.time(`Name Resolution`);
         const scope = builtin.scope.newChildScope();
@@ -79,7 +81,12 @@ export class Compiler {
         console.timeEnd(`Transform>Remove Nesting`);
 
         console.time(`Transform > Instantiate`);
-        transformInstantiate.array(nodes, nodes[0], null);
+        const extra = new Array<Node>();
+        nodes = transformInstantiate.array(nodes, nodes[0], {
+            topLevel: extra,
+            module: module,
+        });
+        nodes = nodes.concat(extra);
         console.timeEnd(`Transform > Instantiate`);
 
         const target = new TargetC();

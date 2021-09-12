@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Node, Tag, Type, Variable, Function, VariableFlags, ExprCallStatic } from '../nodes';
+import { Node, Tag, Type, Variable, Function, VariableFlags, ExprCallStatic, FunctionFlags } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -27,6 +27,12 @@ export class TargetC {
                 return;
 
             case Tag.Function: {
+                // Don't emit abstract functions as they should never participate in code execution anyway. They should
+                // always be instantiated in `transformInstantiate` into a concrete function.
+                if (Flags.has(node.flags, FunctionFlags.Abstract)) {
+                    return;
+                }
+
                 // C doesn't support nested functions, `transformUnnest` guarantees no nested functions.
                 //  So we can keep track of the current function with a single variable.
                 this.context = node;

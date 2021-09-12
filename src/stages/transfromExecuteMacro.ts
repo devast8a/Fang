@@ -18,20 +18,22 @@ class State {
     ]);
 }
 
-const transformExecuteMacro = new Visitor<State>((node, container, state) => {
-    switch (node.tag) {
-        case Tag.ExprMacroCall: {
-            const macro = state.macros.get(node.target);
+const transformExecuteMacro = new Visitor<State>({
+    visitor: (node, container, state) => {
+        switch (node.tag) {
+            case Tag.ExprMacroCall: {
+                const macro = state.macros.get(node.target);
 
-            // Forward macro onto later stages (post name resolution etc...)
-            if (macro === undefined) {
-                return node;
+                // Forward macro onto later stages (post name resolution etc...)
+                if (macro === undefined) {
+                    return node;
+                }
+
+                // Otherwise execute the macro
+                return macro(node.args);
             }
-
-            // Otherwise execute the macro
-            return macro(node.args);
         }
-    }
 
-    return node;
+        return node;
+    }
 });
