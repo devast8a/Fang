@@ -1,7 +1,7 @@
-import { Node } from '../nodes';
+import { Node, SymbolSet } from '../nodes';
 
 export class Scope {
-    private map = new Map<string, Node>();
+    private map = new Map<string, SymbolSet>();
     private parent: Scope | null;
 
     public constructor(parent: Scope | null = null) {
@@ -9,10 +9,17 @@ export class Scope {
     }
 
     public declare(name: string, node: Node) {
-        this.map.set(name, node);
+        let set = this.map.get(name);
+
+        if (set === undefined) {
+            set = new SymbolSet();
+            this.map.set(name, set);
+        }
+
+        set.nodes.push(node);
     }
 
-    public lookup(name: string): Node | null {
+    public lookup(name: string): SymbolSet | null {
         const symbol = this.map.get(name);
 
         if (symbol !== undefined) {

@@ -25,7 +25,8 @@ export enum Tag {
     StmtWhile,
     TypeInfer,
     TypeRefName,
-    Module
+    Module,
+    SymbolSet
 }
 
 export type Node =
@@ -33,6 +34,7 @@ export type Node =
     | Function          // fn name(parameters...) -> returnType { body... }
     | Trait             // trait name { members... }
     | Variable          // val name: Type = Expr
+    | SymbolSet
     | ExprCallField     // object.field(arguments...)
     | ExprCallStatic    // target(arguments...)
     | ExprConstant      // Any constant value
@@ -55,10 +57,6 @@ export type Type =
     | Class                     // class name { members... }
     | Function                  // fn name(parameters...) -> returnType { body... }
     | Trait                     // trait name { members... }
-    | FunctionSignature         // fn name(parameters...) -> returnType
-    | Generic<Type>             // Definition of a generic type
-    | GenericApply<Type>        // Instantiate a generic type
-    | GenericParameter<Type>    // Parameter of a generic type
     | TypeRefName               // Reference a symbol by name (Resolve to type)
     | TypeInfer                 // Infer this type. Not valid everywhere.
     ;
@@ -70,6 +68,13 @@ export class Module {
     public constructor(
         public members: Node[],
     ) {}
+}
+
+export class SymbolSet {
+    public readonly tag = Tag.SymbolSet;
+    public static readonly tag = Tag.SymbolSet;
+
+    public readonly nodes = new Array<Node>();
 }
 
 export class Class {
@@ -128,46 +133,6 @@ export class TypeInfer {
     public static readonly tag = Tag.TypeInfer;
 }
 
-export class Generic<T> {
-    public readonly tag = Tag.Generic;
-    public static readonly tag = Tag.Generic;
-
-    public constructor(
-        public target: T,
-        public parameters: Array<GenericParameter<T>>,
-    ) {}
-}
-
-export class GenericApply<T> {
-    public readonly tag = Tag.GenericApply;
-    public static readonly tag = Tag.GenericApply;
-
-    public constructor(
-        public generic: Generic<T>,
-        public args: Array<Type>
-    ) {}
-}
-
-export class GenericParameter<T> {
-    public readonly tag = Tag.GenericParameter;
-    public static readonly tag = Tag.GenericParameter;
-
-    public constructor(
-        public generic: Generic<T>,
-        public index: number,
-    ) {}
-}
-
-export class FunctionSignature {
-    public readonly tag = Tag.FunctionSignature;
-    public static readonly tag = Tag.FunctionSignature;
-
-    public constructor(
-        public parameters: Array<Type>,
-        public returnType: Type,
-    ) {}
-}
-
 export class Variable {
     public readonly tag = Tag.Variable;
     public static readonly tag = Tag.Variable;
@@ -204,7 +169,7 @@ export class ExprCallStatic {
     public static readonly tag = Tag.ExprCallStatic;
 
     public constructor(
-        public target: Function | ExprRefName,
+        public target: SymbolSet | Function | ExprRefName,
         public args: Array<Node>,
     ) {}
 }

@@ -23,7 +23,7 @@ export const checkType = new Visitor({
 
             case Tag.ExprCallStatic: {
                 if (node.target.tag !== Tag.Function) {
-                    console.warn(`Unresolved ${node.target.name}`);
+                    console.warn(`Unresolved ${node.target}`);
                     return node;
                 }
 

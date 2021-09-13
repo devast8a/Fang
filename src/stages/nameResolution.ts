@@ -1,4 +1,6 @@
-import { Node, Tag, Function, Variable, TypeRefName, Type } from '../nodes';
+import { NodeType } from '../ast/visitor';
+import { Node, Tag, Function, TypeRefName, Type, SymbolSet } from '../nodes';
+import * as Nodes from '../nodes';
 import { Scope } from './Scope';
 
 class State {
@@ -145,6 +147,22 @@ function resolveNodes<T extends Node>(nodes: T[], state: State): T[] {
     return nodes.map(node => resolveNode(node, state));
 }
 
+function convert<T extends NodeType>(set: SymbolSet | null, type: T): InstanceType<T> {
+    if (set === null) {
+        throw new Error();
+    }
+
+    if (set.nodes.length === 0) {
+        throw new Error();
+    }
+
+    if (set.nodes[0].tag !== type.tag) {
+        throw new Error();
+    }
+
+    return set.nodes[0] as InstanceType<T>;
+}
+
 function resolveNode<T extends Node>(_node: T, state: State): T {
     const node  = _node as Node;
 
@@ -186,11 +204,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         case Tag.ExprCallStatic: {
             // TODO: Implement error handling
             if (node.target.tag === Tag.ExprRefName) {
-                const target = scope.lookup(node.target.name);
-
-                if (target !== null && target.tag === Tag.Function) {
-                    node.target = target;
-                }
+                node.target = scope.lookup(node.target.name)!;
             }
 
             resolveNodes(node.args, state);
@@ -200,7 +214,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.ExprConstruct: {
             // TODO: Error handling
-            node.target = scope.lookup((node.target as TypeRefName).name) as Type;
+            node.target = scope.lookup((node.target as TypeRefName).name)?.nodes[0] as Type;
             
             resolveNodes(node.args, state);
             return node as T;
@@ -212,7 +226,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.ExprGetLocal: {
             // TODO: Error handling
-            node.local = (scope.lookup(node.local as string) as Variable).id;
+            node.local = convert(scope.lookup(node.local as string), Nodes.Variable).id;
             return node as T;
         }
 
@@ -225,19 +239,13 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.ExprSetLocal: {
             // TODO: Error handling
-            node.local = (scope.lookup(node.local as string) as Variable).id;
+            node.local = convert(scope.lookup(node.local as string), Nodes.Variable).id;
             resolveNode(node.value, state);
             return node as T;
         }
 
         case Tag.StmtDelete: {
-            const target = scope.lookup(node.variable as string);
-
-            if (target === null) {
-                throw new Error(node.variable as string);
-            }
-
-            node.variable = (scope.lookup(node.variable as string) as Variable).id;
+            node.variable = convert(scope.lookup(node.variable as string), Nodes.Variable).id;
             return node as T;
         }
 
@@ -265,7 +273,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.TypeRefName: {
             // TODO: Handle errors
-            return scope.lookup(node.name) as T;
+            return scope.lookup(node.name)?.nodes[0] as T;
         }
     }
 

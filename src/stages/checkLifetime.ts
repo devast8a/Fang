@@ -105,7 +105,7 @@ function analyzeNode(node: Node, state: ProgramState) {
                     }
                 }
             } else {
-                console.warn(`Skipped ${node.target.name}`)
+                console.warn(`Skipped ${node.target}`)
             }
 
             return;

@@ -14,6 +14,7 @@ import { TransformExecuteMacroStage } from './stages/transfromExecuteMacro';
 import { transformInstantiate } from './stages/transformInstantiate';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { nameMangle } from './stages/nameMangle';
+import { resolveOverload } from './stages/resolveOverload';
 
 export interface Stage {
     name: string;
@@ -64,6 +65,9 @@ export class Compiler {
         console.time(`Transform>Infer Types`);
         transformInferType.array(nodes, nodes[0], null);
         console.timeEnd(`Transform>Infer Types`);
+
+        // Maybe this should go here?
+        resolveOverload.array(nodes, nodes[0], null);
 
         console.time(`Check>Types`);
         //checkType.array(nodes, null);
