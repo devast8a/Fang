@@ -13,6 +13,7 @@ import { transformRemoveNesting } from './stages/transformRemoveNesting';
 import { TransformExecuteMacroStage } from './stages/transfromExecuteMacro';
 import { transformInstantiate } from './stages/transformInstantiate';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
+import { nameMangle } from './stages/nameMangle';
 
 export interface Stage {
     name: string;
@@ -71,6 +72,8 @@ export class Compiler {
         console.time(`Check>Lifetime`);
         checkLifetime(nodes);
         console.timeEnd(`Check>Lifetime`);
+
+        nameMangle.array(nodes, nodes[0], null);
 
         console.time(`Transform > Mark Abstract Functions`);
         markAbstractFunctions.array(nodes, nodes[0], null);
