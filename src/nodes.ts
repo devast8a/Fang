@@ -89,7 +89,7 @@ export class Class {
 
     public constructor(
         public name: string,
-        public members: Array<Node>,
+        public members: Map<string, Node>,
         public superTypes: Set<Type>,
     ) {}
 }

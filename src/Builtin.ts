@@ -1,23 +1,27 @@
 import { Class, ExprConstant } from './nodes';
 import { Scope } from './stages/Scope';
 
-const empty = new Class("empty", [], new Set());
+function type(name: string) {
+    return new Class(name, new Map(), new Set());
+}
 
-const bool  = new Class("bool", [], new Set());
+const empty = type("empty");
+
+const bool  = type("bool");
 const true_  = new ExprConstant(bool, true);
 const false_ = new ExprConstant(bool, false);
 
-const s8    = new Class("s8", [], new Set());
-const s16   = new Class("s16", [], new Set());
-const s32   = new Class("s32", [], new Set());
-const s64   = new Class("s64", [], new Set());
+const s8    = type("s8");
+const s16   = type("s16");
+const s32   = type("s32");
+const s64   = type("s64");
 
-const u8    = new Class("u8", [], new Set());
-const u16   = new Class("u16", [], new Set());
-const u32   = new Class("u32", [], new Set());
-const u64   = new Class("u64", [], new Set());
+const u8    = type("u8");
+const u16   = type("u16");
+const u32   = type("u32");
+const u64   = type("u64");
 
-const str   = new Class("str", [], new Set());
+const str   = type("str");
 
 // Scope
 const scope = new Scope();

@@ -42,7 +42,7 @@ export class Visitor<State = null> {
 
         switch (node.tag) {
             case Tag.Class: {
-                const members = this.array(node.members, node, state);
+                const members = this.map(node.members, node, state);
                 if (members !== node.members) {
                     replace = new Nodes.Class(node.name, members, new Set(node.superTypes));
                 }
@@ -218,6 +218,22 @@ export class Visitor<State = null> {
             }
         }
         return nodes;
+    }
+
+    public map(nodes: Map<string, Node>, container: Container, state: State): Map<string, Node> {
+        const entries = Array.from(nodes.entries());
+
+        const input   = entries.map(x => x[1]);
+        const output  = this.array(input, container, state);
+
+        if (input === output) {
+            return nodes;
+        } else {
+            for (let i = 0; i < entries.length; i++) {
+                entries[i][1] = output[i];
+            }
+            return new Map(entries);
+        }
     }
 }
 

@@ -35,7 +35,12 @@ function parseStmt(node: PNode): Node {
             // attributes
             const body = node.data[5][1].elements.map(parseStmt);
 
-            return new Nodes.Class(name, body, new Set(superTypes));
+            const members = new Map(body.map(member => [
+                (member as Nodes.Function).name,
+                member
+            ]));
+
+            return new Nodes.Class(name, members, new Set(superTypes));
         }
 
         case PTag.DeclFunction: {
