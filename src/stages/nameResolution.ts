@@ -27,6 +27,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
     switch (node.tag) {
         case Tag.Class: {
             scope.declare(node.name, node);
+            declareNodes(Array.from(node.superTypes), scope, state);
 
             return;
         }
