@@ -152,21 +152,23 @@ function parseExpr(node: PNode): Node {
             switch (name) {
                 case "true":  return builtin.true;
                 case "false": return builtin.false;
-                default:      return new Nodes.ExprGetLocal(name);
+                default:      return new Nodes.ExprRefName(name);
             }
         }
 
-        case PTag.ExprCall: {
-            switch (node.data[0].tag) {
-                case PTag.ExprIdentifier: {
-                    const target    = new Nodes.ExprRefName(parseIdentifier(node.data[0].data[0]));
-                    // compileTime
-                    const args      = node.data[2].elements.map(parseExpr);
+        case PTag.ExprIndexDot: {
+            const target = parseExpr(node.data[0]);
+            const name   = parseIdentifier(node.data[2]);
 
-                    return new Nodes.ExprCallStatic(target, args);
-                }
-                default: throw new Error("Unreachable");
-            }
+            return new Nodes.ExprGetField(target, name);
+        }
+
+        case PTag.ExprCall: {
+            const target = parseExpr(node.data[0]);
+            // compileTime
+            const args   = node.data[2].elements.map(parseExpr);
+
+            return new Nodes.ExprCall(target, args);
         }
     }
 

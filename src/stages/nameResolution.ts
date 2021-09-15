@@ -70,6 +70,12 @@ function declareNode(node: Node, scope: Scope, state: State) {
             return;
         }
 
+        case Tag.ExprCall: {
+            declareNode(node.target, scope, state);
+            declareNodes(node.args, scope, state);
+            return;
+        }
+
         case Tag.ExprCallStatic: {
             declareNodes(node.args, scope, state);
             return;
@@ -84,11 +90,21 @@ function declareNode(node: Node, scope: Scope, state: State) {
             return;
         }
 
+        case Tag.ExprGetField: {
+            declareNode(node.object, scope, state);
+            return;
+        }
+
         case Tag.ExprGetLocal: {
             return;
         }
 
         case Tag.ExprMacroCall: {
+            return;
+        }
+
+        case Tag.ExprRefName: {
+            // References never declare anything
             return;
         }
 
@@ -136,7 +152,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.TypeRefName: {
-            // TODO: Not sure???
+            // References never declare anything
             return;
         }
     }
@@ -202,6 +218,13 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
             return node as T;
         }
 
+        case Tag.ExprCall: {
+            node.target = resolveNode(node.target, state);
+            node.args   = resolveNodes(node.args, state);
+
+            return node as T;
+        }
+
         case Tag.ExprCallStatic: {
             // TODO: Implement error handling
             if (node.target.tag === Tag.ExprRefName) {
@@ -225,10 +248,20 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
             return node as T;
         }
 
+        case Tag.ExprGetField: {
+            node.object = resolveNode(node.object, state);
+            return node as T;
+        }
+
         case Tag.ExprGetLocal: {
             // TODO: Error handling
+            console.log(scope.lookup(node.local as string));
             node.local = convert(scope.lookup(node.local as string), Nodes.Variable).id;
             return node as T;
+        }
+
+        case Tag.ExprRefName: {
+            return new Nodes.ExprRefNode(scope.lookup(node.name)!) as T;
         }
 
         case Tag.ExprSetField: {

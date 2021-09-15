@@ -3,6 +3,16 @@ export enum Tag {
     Function,
     Trait,
     Variable,
+    Module,
+
+    SymbolSet,
+    Generic,
+    GenericApply,
+    GenericParameter,
+    TypeInfer,
+    TypeRefName,
+
+    ExprCall,
     ExprCallField,
     ExprCallStatic,
     ExprConstant,
@@ -11,22 +21,16 @@ export enum Tag {
     ExprGetLocal,
     ExprMacroCall,
     ExprRefName,
+    ExprRefNode,
     ExprSetField,
     ExprSetLocal,
     ExprVariable,
     FunctionSignature,
-    Generic,
-    GenericApply,
-    GenericParameter,
     StmtDelete,
     StmtIf,
     StmtIfBranch,
     StmtReturn,
     StmtWhile,
-    TypeInfer,
-    TypeRefName,
-    Module,
-    SymbolSet
 }
 
 export type Node =
@@ -35,6 +39,7 @@ export type Node =
     | Trait             // trait name { members... }
     | Variable          // val name: Type = Expr
     | SymbolSet
+    | ExprCall          // <target>(arguments...)           [unresolved]
     | ExprCallField     // object.field(arguments...)
     | ExprCallStatic    // target(arguments...)
     | ExprConstant      // Any constant value
@@ -42,7 +47,8 @@ export type Node =
     | ExprGetField      // Expr.field           [as r-value]
     | ExprGetLocal      // local                [as r-value]
     | ExprMacroCall     // macro! argument
-    | ExprRefName       // Reference a symbol by name (Resolve to expr)
+    | ExprRefName       // Reference a symbol by name (Resolved to ExprRefNode)
+    | ExprRefNode       // Reference a symbol
     | ExprSetField      // Expr.field = expression
     | ExprSetLocal      // local = expression
     | StmtDelete        // delete! variable
@@ -153,6 +159,16 @@ export enum VariableFlags {
     Owns    = 1 << 2,
 }
 
+export class ExprCall {
+    public readonly tag = Tag.ExprCall;
+    public static readonly tag = Tag.ExprCall;
+
+    public constructor(
+        public target: Node,
+        public args: Array<Node>,
+    ) {}
+}
+
 export class ExprCallField {
     public readonly tag = Tag.ExprCallField;
     public static readonly tag = Tag.ExprCallField;
@@ -229,6 +245,15 @@ export class ExprRefName {
 
     public constructor(
         public name: string,
+    ) {}
+}
+
+export class ExprRefNode {
+    public readonly tag = Tag.ExprRefNode;
+    public static readonly tag = Tag.ExprRefNode;
+
+    public constructor(
+        public node: Node,
     ) {}
 }
 

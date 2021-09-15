@@ -15,6 +15,7 @@ import { transformInstantiate } from './stages/transformInstantiate';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { nameMangle } from './stages/nameMangle';
 import { resolveOverload } from './stages/resolveOverload';
+import { resolveNodes } from './stages/nodeResolution';
 
 export interface Stage {
     name: string;
@@ -41,6 +42,7 @@ export class Compiler {
     private compileStages: Stage[] = [
         {name: "Symbol Resolution",   execute: (compiler, nodes, source) => {nameResolution(nodes, builtin.scope.newChildScope()); return nodes; }},
         {name: "Type Inference",      execute: (compiler, nodes, source) => transformInferType.array(nodes, nodes[0], null)},
+        {name: "Node Resolution",     execute: (compiler, nodes, source) => resolveNodes.array(nodes, nodes[0], null)},
         {name: "Overload Resolution", execute: (compiler, nodes, source) => resolveOverload.array(nodes, nodes[0], null)},
         {name: "Type Check",          execute: (compiler, nodes, source) => checkType.array(nodes, nodes[0], null)},
         {name: "Lifetime Check",      execute: (compiler, nodes, source) => {checkLifetime(nodes); return nodes;}},

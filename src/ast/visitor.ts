@@ -80,6 +80,14 @@ export class Visitor<State = null> {
                 break;
             }
 
+            case Tag.ExprCall: {
+                const args = this.array(node.args, container, state);
+                if (args !== node.args) {
+                    replace = new Nodes.ExprCall(node.target, args);
+                }
+                break;
+            }
+
             case Tag.ExprCallStatic: {
                 const args = this.array(node.args, container, state);
                 if (args !== node.args) {

@@ -1,13 +1,12 @@
-class Foo {}
-class Bar {}
+class Foo {
+    fn foo() {}
+}
 
-fn overload(foo: Foo) {}
-fn overload(bar: Bar) {}
+fn bar() {}
 
 fn main() {
-    val foo = Foo{}
-    val bar = Bar{}
-
-    overload(foo)
-    overload(bar)
+    # val foo = Foo{}
+    # foo.foo()
+    
+    bar()
 }
