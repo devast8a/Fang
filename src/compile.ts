@@ -21,11 +21,33 @@ export interface Stage {
     execute(compiler: Compiler, nodes: Node[], source: Source): Node[];
 }
 
+function instantiate(nodes: Node[]) {
+    const module = new Module([]);
+    const extra = new Array<Node>();
+    nodes = transformInstantiate.array(nodes, nodes[0], {
+        topLevel: extra,
+        module: module,
+    });
+    return nodes.concat(extra);
+}
+
 export class Compiler {
-    private stages: Stage[] = [
+    private parseStages: Stage[] = [
         new ParseStage(),
         new AstGenerationStage(),
         new TransformExecuteMacroStage(),
+    ];
+
+    private compileStages: Stage[] = [
+        {name: "Symbol Resolution",   execute: (compiler, nodes, source) => {nameResolution(nodes, builtin.scope.newChildScope()); return nodes; }},
+        {name: "Type Inference",      execute: (compiler, nodes, source) => transformInferType.array(nodes, nodes[0], null)},
+        {name: "Overload Resolution", execute: (compiler, nodes, source) => resolveOverload.array(nodes, nodes[0], null)},
+        {name: "Type Check",          execute: (compiler, nodes, source) => checkType.array(nodes, nodes[0], null)},
+        {name: "Lifetime Check",      execute: (compiler, nodes, source) => {checkLifetime(nodes); return nodes;}},
+        {name: "Symbol Mangling",     execute: (compiler, nodes, source) => nameMangle.array(nodes, nodes[0], null)},
+        {name: "Mark Abstract",       execute: (compiler, nodes, source) => markAbstractFunctions.array(nodes, nodes[0], null)},
+        {name: "Remove Nesting",      execute: (compiler, nodes, source) => {transformRemoveNesting(nodes); return nodes;}},
+        {name: "Instantiation",       execute: (compiler, nodes, source) => instantiate(nodes)},
     ];
 
     public async parseFile(source: string | Source): Promise<Node[]>
@@ -38,7 +60,7 @@ export class Compiler {
         console.time(`${source.path} Total`);
 
         let nodes = new Array<Node>();
-        for (const stage of this.stages) {
+        for (const stage of this.parseStages) {
             console.time(`${source.path} ${stage.name}`);
             nodes = stage.execute(this, nodes, source);
             console.timeEnd(`${source.path} ${stage.name}`);
@@ -52,56 +74,25 @@ export class Compiler {
 
     public async compile(source: string | Source): Promise<string>
     {
-        const module = new Module([]);
-
+        console.group(`Compiling`);
         console.time("Total");
+
         let nodes = await this.parseFile(source);
 
-        console.time(`Name Resolution`);
-        const scope = builtin.scope.newChildScope();
-        nameResolution(nodes, scope);
-        console.timeEnd(`Name Resolution`);
-
-        console.time(`Transform>Infer Types`);
-        transformInferType.array(nodes, nodes[0], null);
-        console.timeEnd(`Transform>Infer Types`);
-
-        // Maybe this should go here?
-        resolveOverload.array(nodes, nodes[0], null);
-
-        console.time(`Check>Types`);
-        //checkType.array(nodes, null);
-        console.timeEnd(`Check>Types`);
-
-        console.time(`Check>Lifetime`);
-        checkLifetime(nodes);
-        console.timeEnd(`Check>Lifetime`);
-
-        nameMangle.array(nodes, nodes[0], null);
-
-        console.time(`Transform > Mark Abstract Functions`);
-        markAbstractFunctions.array(nodes, nodes[0], null);
-        console.timeEnd(`Transform > Mark Abstract Functions`);
-
-        console.time(`Transform>Remove Nesting`);
-        transformRemoveNesting(nodes);
-        console.timeEnd(`Transform>Remove Nesting`);
-
-        console.time(`Transform > Instantiate`);
-        const extra = new Array<Node>();
-        nodes = transformInstantiate.array(nodes, nodes[0], {
-            topLevel: extra,
-            module: module,
-        });
-        nodes = nodes.concat(extra);
-        console.timeEnd(`Transform > Instantiate`);
+        for (const stage of this.compileStages) {
+            console.time(stage.name);
+            nodes = stage.execute(this, nodes, undefined as any);
+            console.timeEnd(stage.name);
+        }
 
         const target = new TargetC();
-
         target.emitProgram(nodes);
+        const program = target.toString();
 
         console.timeEnd("Total");
-        return target.toString();
+        console.groupEnd();
+
+        return program;
     }
 
     public static async compile(path: string) {
