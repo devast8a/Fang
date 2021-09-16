@@ -1,6 +1,6 @@
 import { Visitor } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { FunctionFlags, Tag, Function, Variable, Node, Module, ExprCallStatic } from '../nodes';
+import { FunctionFlags, Tag, Function, Variable, Node, Module, ExprCallStatic, UnresolvedId } from '../nodes';
 
 interface Context {
     // Top level nodes
@@ -75,18 +75,31 @@ function instantiate(fn: Function, args: Node[], container: Function, context: C
 
     // Instantiate a new copy of the function
     const variables = fn.variables.map(variable => new Variable(
+        UnresolvedId,
+        variable.id,
+
         variable.name,
         type,
         variable.value,
         variable.flags,
-        variable.id,
     ));
+
     const returnType = fn.returnType;
     const parameters = variables.slice(0, fn.parameters.length);
 
     const flags = Flags.unset(fn.flags, FunctionFlags.Abstract);
 
-    const output = new Function(id, parameters, returnType, [], flags);
+    const output = new Function(
+        UnresolvedId,
+        UnresolvedId,
+
+        id,
+        parameters,
+        returnType,
+        [],
+        flags
+    );
+
     output.variables = variables;
     output.body = transformInstantiate.array(fn.body, output, context);
 

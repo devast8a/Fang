@@ -44,7 +44,7 @@ export class Visitor<State = null> {
             case Tag.Class: {
                 const members = this.map(node.members, node, state);
                 if (members !== node.members) {
-                    replace = new Nodes.Class(node.name, members, new Set(node.superTypes));
+                    replace = new Nodes.Class(node.parent, node.id, node.name, members, new Set(node.superTypes));
                 }
                 break;
             }
@@ -56,7 +56,7 @@ export class Visitor<State = null> {
                     // HACK: Variables are not passed in as a parameter
                     // TODO: Check parameters are really an array of variables.
                     const variables = node.variables;
-                    replace = new Nodes.Function(node.name, parameters as Nodes.Variable[], node.returnType, body, node.flags);
+                    replace = new Nodes.Function(node.parent, node.id, node.name, parameters as Nodes.Variable[], node.returnType, body, node.flags);
                     replace.variables = variables;
                 }
                 break;
@@ -65,7 +65,7 @@ export class Visitor<State = null> {
             case Tag.Trait: {
                 const members = this.array(node.members, node, state);
                 if (members !== node.members) {
-                    replace = new Nodes.Trait(node.name, members, new Set(node.superTypes));
+                    replace = new Nodes.Trait(node.parent, node.id, node.name, members, new Set(node.superTypes));
                 }
                 break;
             }
@@ -74,7 +74,7 @@ export class Visitor<State = null> {
                 if (node.value !== null) {
                     const value = this.node(node.value, container, state);
                     if (value !== node.value) {
-                        replace = new Nodes.Variable(node.name, node.type, value, node.flags, node.id);
+                        replace = new Nodes.Variable(node.parent, node.id, node.name, node.type, value, node.flags);
                     }
                 }
                 break;

@@ -1,8 +1,8 @@
-import { Class, ExprConstant } from './nodes';
+import { Class, ExprConstant, UnresolvedId } from './nodes';
 import { Scope } from './stages/Scope';
 
 function type(name: string) {
-    return new Class(name, new Map(), new Set());
+    return new Class(UnresolvedId, UnresolvedId, name, new Map(), new Set());
 }
 
 const empty = type("empty");

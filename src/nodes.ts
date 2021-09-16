@@ -89,6 +89,9 @@ export class Class {
     public static readonly tag = Tag.Class;
 
     public constructor(
+        public parent: number,
+        public id: number,
+
         public name: string,
         public members: Map<string, Node>,
         public superTypes: Set<Type>,
@@ -100,6 +103,9 @@ export class Trait {
     public static readonly tag = Tag.Trait;
 
     public constructor(
+        public parent: number,
+        public id: number,
+
         public name: string,
         public members: Array<Node>,
         public superTypes: Set<Type>,
@@ -113,6 +119,9 @@ export class Function {
     public variables = new Array<Variable>();
 
     public constructor(
+        public parent: number,
+        public id: number,
+
         public name: string,
         public parameters: Array<Variable>,
         public returnType: Type,
@@ -145,11 +154,13 @@ export class Variable {
     public static readonly tag = Tag.Variable;
 
     public constructor(
+        public parent: number,
+        public id: number,
+
         public name: string,
         public type: Type,
         public value: Node | null,
         public flags: VariableFlags,
-        public id: number,
     ) {}
 }
 
@@ -394,3 +405,5 @@ export namespace Node {
         throw new Error(`Unhandled case ${Tag[(expr as any).tag]}`);
     }
 }
+
+export const UnresolvedId = -1;

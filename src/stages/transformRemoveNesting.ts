@@ -1,4 +1,4 @@
-import { Node, Tag, Function, Variable, VariableFlags, ExprGetLocal } from '../nodes';
+import { Node, Tag, Function, Variable, VariableFlags, ExprGetLocal, UnresolvedId } from '../nodes';
 
 export function transformRemoveNesting(nodes: Node[]) {
     for (const node of nodes) {
@@ -76,13 +76,17 @@ function useTemporaryVariable(fn: Function, output: Node[], value: Node): Node {
     const id = fn.variables.length;
 
     const variable = new Variable(
+        UnresolvedId,
+        id,
+
         // TODO: Variable naming
         `_temp${fn.variables.length}`,
+
         Node.getReturnType(value, fn),
         value,
+
         // TODO: Might need to apply more flags
         VariableFlags.Local,
-        id,
     );
     fn.variables.push(variable);
     output.push(variable);

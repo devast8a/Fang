@@ -3,11 +3,10 @@ import { builtin } from '../Builtin';
 import { Source } from '../common/source';
 import { Compiler, Stage } from '../compile';
 import * as Nodes from '../nodes';
-import { Node } from '../nodes';
+import { Node, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
-const UnresolvedId = -1;
 
 export class AstGenerationStage implements Stage<Source> {
     public name = "Ast Generation";
@@ -40,7 +39,7 @@ function parseStmt(node: PNode): Node {
                 member
             ]));
 
-            return new Nodes.Class(name, members, new Set(superTypes));
+            return new Nodes.Class(UnresolvedId, UnresolvedId, name, members, new Set(superTypes));
         }
 
         case PTag.DeclFunction: {
@@ -55,7 +54,7 @@ function parseStmt(node: PNode): Node {
                 node.data[7][1].elements.map(parseStmt) :
                 [new Nodes.StmtReturn(parseExpr(node.data[7][4]))];
 
-            return new Nodes.Function(name, parameters, returnType, body, Nodes.FunctionFlags.None);
+            return new Nodes.Function(UnresolvedId, UnresolvedId, name, parameters, returnType, body, Nodes.FunctionFlags.None);
         }
 
         case PTag.DeclTrait: {
@@ -66,7 +65,7 @@ function parseStmt(node: PNode): Node {
             // attributes
             const body = node.data[5][1].elements.map(parseStmt);
 
-            return new Nodes.Trait(name, body, new Set(superTypes));
+            return new Nodes.Trait(UnresolvedId, UnresolvedId, name, body, new Set(superTypes));
         }
 
         case PTag.DeclVariable: {
@@ -209,7 +208,7 @@ function parseVariable(node: PNode): Nodes.Variable {
     // attributes
     const value = node.data[5] === null ? null  : parseExpr(node.data[5][3]);
 
-    return new Nodes.Variable(name, type, value, flags, UnresolvedId);
+    return new Nodes.Variable(UnresolvedId, UnresolvedId, name, type, value, flags);
 }
 
 function parseIdentifier(node: PNode) {
