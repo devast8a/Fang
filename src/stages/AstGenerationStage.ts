@@ -9,7 +9,7 @@ import { PNode, PTag } from '../parser/post_processor';
 const InferType = new Nodes.TypeInfer();
 const UnresolvedId = -1;
 
-export class AstGenerationStage implements Stage {
+export class AstGenerationStage implements Stage<Source> {
     public name = "Ast Generation";
 
     public execute(compiler: Compiler, nodes: any, source: Source): Node[] {

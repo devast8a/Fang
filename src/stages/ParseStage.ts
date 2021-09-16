@@ -4,7 +4,7 @@ import { Compiler, Stage } from '../compile';
 import { Node } from '../nodes';
 import Grammar from '../parser/grammar';
 
-export class ParseStage implements Stage {
+export class ParseStage implements Stage<Source> {
     public name = "Parse";
 
     public execute(compiler: Compiler, nodes: Node[], source: Source) {

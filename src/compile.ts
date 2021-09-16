@@ -17,13 +17,12 @@ import { nameMangle } from './stages/nameMangle';
 import { resolveOverload } from './stages/resolveOverload';
 import { resolveNodes } from './stages/nodeResolution';
 
-export interface Stage {
+export interface Stage<T> {
     name: string;
-    execute(compiler: Compiler, nodes: Node[], source: Source): Node[];
+    execute(compiler: Compiler, nodes: Node[], source: T): Node[];
 }
 
-function instantiate(nodes: Node[]) {
-    const module = new Module([]);
+function instantiate(nodes: Node[], module: Module) {
     const extra = new Array<Node>();
     nodes = transformInstantiate.array(nodes, nodes[0], {
         topLevel: extra,
@@ -33,23 +32,23 @@ function instantiate(nodes: Node[]) {
 }
 
 export class Compiler {
-    private parseStages: Stage[] = [
+    private parseStages: Stage<Source>[] = [
         new ParseStage(),
         new AstGenerationStage(),
         new TransformExecuteMacroStage(),
     ];
 
-    private compileStages: Stage[] = [
-        {name: "Symbol Resolution",   execute: (compiler, nodes, source) => {nameResolution(nodes, builtin.scope.newChildScope()); return nodes; }},
-        {name: "Type Inference",      execute: (compiler, nodes, source) => transformInferType.array(nodes, nodes[0], null)},
-        {name: "Node Resolution",     execute: (compiler, nodes, source) => resolveNodes.array(nodes, nodes[0], null)},
-        {name: "Overload Resolution", execute: (compiler, nodes, source) => resolveOverload.array(nodes, nodes[0], null)},
-        {name: "Type Check",          execute: (compiler, nodes, source) => checkType.array(nodes, nodes[0], null)},
-        {name: "Lifetime Check",      execute: (compiler, nodes, source) => {checkLifetime(nodes); return nodes;}},
-        {name: "Symbol Mangling",     execute: (compiler, nodes, source) => nameMangle.array(nodes, nodes[0], null)},
-        {name: "Mark Abstract",       execute: (compiler, nodes, source) => markAbstractFunctions.array(nodes, nodes[0], null)},
-        {name: "Remove Nesting",      execute: (compiler, nodes, source) => {transformRemoveNesting(nodes); return nodes;}},
-        {name: "Instantiation",       execute: (compiler, nodes, source) => instantiate(nodes)},
+    private compileStages: Stage<Module>[] = [
+        {name: "Symbol Resolution",   execute: (compiler, nodes, module) => {nameResolution(nodes, builtin.scope.newChildScope()); return nodes; }},
+        {name: "Type Inference",      execute: (compiler, nodes, module) => transformInferType.array(nodes, nodes[0], null)},
+        {name: "Node Resolution",     execute: (compiler, nodes, module) => resolveNodes.array(nodes, nodes[0], null)},
+        {name: "Overload Resolution", execute: (compiler, nodes, module) => resolveOverload.array(nodes, nodes[0], null)},
+        {name: "Type Check",          execute: (compiler, nodes, module) => checkType.array(nodes, nodes[0], null)},
+        {name: "Lifetime Check",      execute: (compiler, nodes, module) => {checkLifetime(nodes); return nodes;}},
+        {name: "Symbol Mangling",     execute: (compiler, nodes, module) => nameMangle.array(nodes, nodes[0], null)},
+        {name: "Mark Abstract",       execute: (compiler, nodes, module) => markAbstractFunctions.array(nodes, nodes[0], null)},
+        {name: "Remove Nesting",      execute: (compiler, nodes, module) => {transformRemoveNesting(nodes); return nodes;}},
+        {name: "Instantiation",       execute: (compiler, nodes, module) => instantiate(nodes, module)},
     ];
 
     public async parseFile(source: string | Source): Promise<Node[]>
@@ -81,9 +80,11 @@ export class Compiler {
 
         let nodes = await this.parseFile(source);
 
+        const module = new Module([], []);
+
         for (const stage of this.compileStages) {
             console.time(stage.name);
-            nodes = stage.execute(this, nodes, undefined as any);
+            nodes = stage.execute(this, nodes, module);
             console.timeEnd(stage.name);
         }
 

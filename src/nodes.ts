@@ -73,6 +73,7 @@ export class Module {
 
     public constructor(
         public members: Node[],
+        public all: Node[],
     ) {}
 }
 

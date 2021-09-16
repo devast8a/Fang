@@ -3,7 +3,7 @@ import { convert, Visitor } from '../ast/visitor';
 import { Compiler, Stage } from '../compile';
 import { ExprGetLocal, Node, StmtDelete, Tag } from '../nodes';
 
-export class TransformExecuteMacroStage implements Stage {
+export class TransformExecuteMacroStage implements Stage<Source> {
     public name = "Execute Macro (Stage 0)";
 
     public execute(compiler: Compiler, nodes: Node[], source: Source): Node[] {
