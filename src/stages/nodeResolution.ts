@@ -1,5 +1,5 @@
 import { Visitor } from '../ast/visitor';
-import { Tag } from '../nodes';
+import { Node, Tag, Type } from '../nodes';
 import * as Nodes from '../nodes';
 
 export const resolveNodes = new Visitor({
@@ -25,6 +25,26 @@ export const resolveNodes = new Visitor({
                     default:
                         throw new Error(`resolveNodes > ExprCall > ${Tag[target.tag]} not supported`);
                 }
+                break;
+            }
+
+            case Tag.ExprGetField: {
+                let object = node.object;
+
+                switch (object.tag) {
+                    case Tag.ExprRefNode:
+                        if (object.node.tag !== Tag.SymbolSet) { throw new Error('Not implemented yet'); }
+                        object = new Nodes.ExprGetLocal((object.node.nodes[0] as Nodes.Variable).id);
+                        break;
+
+                    default:
+                        throw new Error(`resolveNodes > ExprGetField > ${Tag[object.tag]} not supported`);
+                }
+
+                // TODO: Sort out types
+                const type  = Node.getReturnType(object, container as any);
+                const field = Type.getMember(type, node.field as any);
+                return new Nodes.ExprGetField(object, field as any);
             }
         }
 

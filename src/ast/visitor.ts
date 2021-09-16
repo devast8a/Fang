@@ -81,9 +81,10 @@ export class Visitor<State = null> {
             }
 
             case Tag.ExprCall: {
-                const args = this.array(node.args, container, state);
-                if (args !== node.args) {
-                    replace = new Nodes.ExprCall(node.target, args);
+                const target = this.node(node.target, container, state);
+                const args   = this.array(node.args, container, state);
+                if (target !== node.target || args !== node.args) {
+                    replace = new Nodes.ExprCall(target, args);
                 }
                 break;
             }
@@ -92,6 +93,15 @@ export class Visitor<State = null> {
                 const args = this.array(node.args, container, state);
                 if (args !== node.args) {
                     replace = new Nodes.ExprCallStatic(node.target, args);
+                }
+                break;
+            }
+
+            case Tag.ExprCallField: {
+                const object = this.node(node.object, container, state);
+                const args   = this.array(node.args, container, state);
+                if (object !== node.object || args !== node.args) {
+                    replace = new Nodes.ExprCallField(node.object, node.field, args);
                 }
                 break;
             }
@@ -108,12 +118,28 @@ export class Visitor<State = null> {
                 break;
             }
 
+            case Tag.ExprGetField: {
+                const object = this.node(node.object, container, state);
+                if (object !== node.object) {
+                    replace = new Nodes.ExprGetField(object, node.field);
+                }
+                break;
+            }
+
             case Tag.ExprGetLocal: {
                 break;
             }
 
             case Tag.ExprMacroCall: {
                 // TODO: Implement ExprMacroCall correctly
+                break;
+            }
+
+            case Tag.ExprRefName: {
+                break;
+            }
+
+            case Tag.ExprRefNode: {
                 break;
             }
 

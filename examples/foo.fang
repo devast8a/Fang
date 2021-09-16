@@ -5,8 +5,7 @@ class Foo {
 fn bar() {}
 
 fn main() {
-    # val foo = Foo{}
-    # foo.foo()
-    
+    val foo = Foo{}
+    foo.foo()
     bar()
 }

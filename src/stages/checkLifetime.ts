@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { VariableFlags, Function, Node, Tag } from '../nodes';
+import { VariableFlags, Function, Node, Tag, Variable } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -76,38 +76,24 @@ function analyzeNode(node: Node, state: ProgramState) {
             return;
         }
 
-        case Tag.ExprCallStatic: {
-            analyzeNodes(node.args, state);
-
-            // TODO: Properly resolve function calling
-            if (node.target.tag === Tag.Function) {
-                const group  = new GroupedAccess();
-                const args   = node.args;
-                const params = node.target.parameters;
-
-                for (let i = 0; i < params.length; i++) {
-                    const arg   = args[i];
-                    const param = params[i];
-
-                    // TODO: Handle nested calls properly
-                    // For now assume it's a move
-                    if (arg.tag === Tag.ExprCallStatic) {
-                        const path = exprToPath(arg.args[0]);
-                        state.move(path);
-                        continue;
-                    }
-
-                    const path = exprToPath(arg);
-                    if (Flags.has(param.flags, VariableFlags.Mutates)) {
-                        state.write(path, group);
-                    } else {
-                        state.read(path, group);
-                    }
-                }
-            } else {
-                console.warn(`Skipped ${node.target}`)
+        case Tag.ExprCallField: {
+            // Properly resolve the function
+            if (node.field.tag !== Tag.Function) {
+                throw new Error(`[INTERNAL ERROR] ExprCallField: Expected field to be resolved to function by this stage`);
             }
 
+            analyzeNodes(node.args, state);
+            handleArgs(new GroupedAccess(), node.field.parameters, node.args, state);
+            return;
+        }
+
+        case Tag.ExprCallStatic: {
+            if (node.target.tag !== Tag.Function) {
+                throw new Error(`[INTERNAL ERROR] ExprCallStatic: Expected field to be resolved to function by this stage`);
+            }
+
+            analyzeNodes(node.args, state);
+            handleArgs(new GroupedAccess(), node.target.parameters, node.args, state);
             return;
         }
 
@@ -200,6 +186,28 @@ function analyzeNode(node: Node, state: ProgramState) {
 function analyzeNodes(nodes: Node[], state: ProgramState) {
     for (const node of nodes) {
         analyzeNode(node, state);
+    }
+}
+
+function handleArgs(group: GroupedAccess, params: Variable[], args: Node[], state: ProgramState) {
+    for (let i = 0; i < params.length; i++) {
+        const arg   = args[i];
+        const param = params[i];
+
+        // TODO: Handle nested calls properly
+        // For now assume it's a move
+        if (arg.tag === Tag.ExprCallStatic) {
+            const path = exprToPath(arg.args[0]);
+            state.move(path);
+            continue;
+        }
+
+        const path = exprToPath(arg);
+        if (Flags.has(param.flags, VariableFlags.Mutates)) {
+            state.write(path, group);
+        } else {
+            state.read(path, group);
+        }
     }
 }
 

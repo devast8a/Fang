@@ -57,9 +57,16 @@ export class TargetC {
                 return;
             }
 
+            case Tag.ExprCallField: {
+                this.emit         (node.field.name, "(");
+                this.emitArguments(node.field.parameters, node.args);
+                this.emit         (")");
+                return;
+            }
+
             case Tag.ExprCallStatic: {
                 this.emit         ((node.target as Function).name, "(");
-                this.emitArguments(node);
+                this.emitArguments((node.target as Function).parameters, node.args);
                 this.emit         (")");
                 return;
             }
@@ -109,10 +116,7 @@ export class TargetC {
         }
     }
 
-    public emitArguments(call: ExprCallStatic) {
-        const args = call.args;
-        const target = call.target as Function;
-
+    public emitArguments(params: Variable[], args: Node[]) {
         for (let index = 0; index < args.length; index++) {
             if (index > 0) {
                 this.emit(", ");
@@ -133,7 +137,7 @@ export class TargetC {
                     // TODO: argumentIsPtr is wrong for locals, needs a parameter flag
                     // TODO: Switch to pointers for large objects
                     const argumentIsPtr  = Flags.has(local.flags, VariableFlags.Mutates)
-                    const parameterIsPtr = Flags.has(target.parameters[index].flags, VariableFlags.Mutates);
+                    const parameterIsPtr = Flags.has(params[index].flags, VariableFlags.Mutates);
 
                     // Match pointer-ness of the parameter and the argument
                     if (parameterIsPtr) {
@@ -154,7 +158,7 @@ export class TargetC {
                 }
 
                 default: {
-                    throw new Error(`targetC>emitArguments>${Tag[arg.tag]}: Not implemented.`);
+                    throw new Error(`targetC > emitArguments > ${Tag[arg.tag]}: Not implemented.`);
                 }
             }
         }

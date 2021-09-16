@@ -360,6 +360,18 @@ export namespace Type {
 
         throw new Error(`isSubType: Has no handler for node '${Tag[parent.tag]}'`);
     }
+
+    export function getMember(type: Type, member: string) {
+        switch (type.tag) {
+            case Tag.Class:       return type.members.get(member);
+            case Tag.Function:    return undefined;
+            case Tag.Trait:       throw new Error('Not implemented yet');
+            case Tag.TypeRefName: throw new Error('Not implemented yet');
+            case Tag.TypeInfer:   throw new Error('Not implemented yet');
+        }
+
+        throw new Error(`Unhandled case ${Tag[(type as any).tag]}`);
+    }
 }
 
 export namespace Node {
@@ -369,14 +381,15 @@ export namespace Node {
             case Tag.ExprCallStatic: return (expr.target.tag === Tag.Function ? expr.target.returnType : null as any);
             case Tag.ExprConstant:   return expr.type;
             case Tag.ExprConstruct:  return expr.target;
-            case Tag.ExprGetField:   throw new Error('Not implemented'); // TODO: Broken
+            case Tag.ExprGetField:   throw new Error('Not implemented yet');
             case Tag.ExprGetLocal:   return context.variables[expr.local as number].type;
-            case Tag.ExprMacroCall:  throw new Error('Not implemented');
-            case Tag.ExprRefName:    throw new Error('Not implemented'); // TODO: Poison system
+            case Tag.ExprMacroCall:  throw new Error('Not implemented yet');
+            case Tag.ExprRefName:    throw new Error('Not implemented yet');
+            case Tag.ExprRefNode:    throw new Error('Not implemented yet');
             case Tag.ExprSetField:   return getReturnType(expr.value, context);
             case Tag.ExprSetLocal:   return getReturnType(expr.value, context);
         }
 
-        throw new Error(`Unhandled case ${Tag[expr.tag]}`);
+        throw new Error(`Unhandled case ${Tag[(expr as any).tag]}`);
     }
 }

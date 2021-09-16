@@ -37,6 +37,11 @@ function transform(fn: Function, output: Node[], node: Node): Node {
             return node;
         }
 
+        case Tag.ExprCallField: {
+            // TODO: Removing nesting as with ExprCallStatic
+            return node;
+        }
+
         case Tag.ExprCallStatic: {
             for (let index = 0; index < node.args.length; index++) {
                 const arg = node.args[index];
