@@ -34,11 +34,12 @@ export enum Tag {
 }
 
 export type Node =
+    | Module
     | Class             // class name { members... }
     | Function          // fn name(parameters...) -> returnType { body... }
+    | SymbolSet
     | Trait             // trait name { members... }
     | Variable          // val name: Type = Expr
-    | SymbolSet
     | ExprCall          // <target>(arguments...)           [unresolved]
     | ExprCallField     // object.field(arguments...)
     | ExprCallStatic    // target(arguments...)
@@ -72,8 +73,7 @@ export class Module {
     public static readonly tag = Tag.Module;
 
     public constructor(
-        public members: Node[],
-        public all: Node[],
+        public nodes: Node[],
     ) {}
 }
 
@@ -149,6 +149,7 @@ export class TypeInfer {
     public static readonly tag = Tag.TypeInfer;
 }
 
+// TODO: Decide if we split into local/field/global? -or- if we use VariableFlags to indicate this
 export class Variable {
     public readonly tag = Tag.Variable;
     public static readonly tag = Tag.Variable;

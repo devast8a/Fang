@@ -86,7 +86,10 @@ export class Compiler {
 
     public async compile(source: string | Source): Promise<string>
     {
-        const module = new Module([], []);
+        const module = new Module([]);
+
+        // TODO: Replace with a mod reference???
+        module.nodes.push(module);
 
         console.group(`Compiling`);
         console.time("Total");
@@ -105,6 +108,8 @@ export class Compiler {
 
         console.timeEnd("Total");
         console.groupEnd();
+
+        console.log(module);
 
         return program;
     }

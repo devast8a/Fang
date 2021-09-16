@@ -1,11 +1,20 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { builtin } from '../Builtin';
+import { Source } from '../common/source';
 import { Compiler, ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
 import { Node, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
+const Placeholder = {} as Node;
+
+interface Context {
+    compiler: Compiler;
+    module: Nodes.Module;
+    parent: number;
+    source: Source;
+}
 
 export class AstGenerationStage implements ParseStage {
     public name = "Ast Generation";
@@ -16,70 +25,106 @@ export class AstGenerationStage implements ParseStage {
         const output = [];
 
         for (const node of nodes) {
-            output.push(parseStmt(node!));
+            output.push(parseStmt(node, {
+                compiler: compiler,
+                module: context.module,
+                parent: 0,
+                source: context.source,
+            }));
         }
 
         return output;
     }
 }
 
-function parseStmt(node: PNode): Node {
+function parseStmtArray(node: PNode, context: Context) {
+    return node.elements.map(node => parseStmt(node, context));
+}
+
+function parseStmt(node: PNode, context: Context): Node {
+    const module = context.module;
+
     switch (node.tag) {
         case PTag.DeclClass: {
+            const parent = context.parent;
+            const id = module.nodes.length;
+            module.nodes.push(Placeholder);
+            context.parent = id;
+
             // keyword
             const name = parseIdentifier(node.data[1]);
             const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
             // generic
             // attributes
-            const body = node.data[5][1].elements.map(parseStmt);
+            const body = parseStmtArray(node.data[5][1], context);
 
+            // Generate member mapping
             const members = new Map(body.map(member => [
                 (member as Nodes.Function).name,
                 member
             ]));
 
-            return new Nodes.Class(UnresolvedId, UnresolvedId, name, members, new Set(superTypes));
+            context.parent = parent;
+            const result = new Nodes.Class(parent, id, name, members, new Set(superTypes));
+            module.nodes[id] = result;
+            return result;
         }
 
         case PTag.DeclFunction: {
+            const parent = context.parent;
+            const id = module.nodes.length;
+            module.nodes.push(Placeholder);
+            context.parent = id;
+
             // keyword
             const name = parseIdentifier(node.data[1][1]);
             // compileTime
-            const parameters = node.data[3].elements.map(parseVariable);
+            const parameters = node.data[3].elements.map(variable => parseVariable(variable, context));
             const returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
             // generic
             // attributes
             const body = (node.data[7].length === 2) ?
-                node.data[7][1].elements.map(parseStmt) :
+                parseStmtArray(node.data[7][1], context) :
                 [new Nodes.StmtReturn(parseExpr(node.data[7][4]))];
 
-            return new Nodes.Function(UnresolvedId, UnresolvedId, name, parameters, returnType, body, Nodes.FunctionFlags.None);
+            context.parent = parent;
+            const result = new Nodes.Function(parent, id, name, parameters, returnType, body, Nodes.FunctionFlags.None);
+            module.nodes[id] = result;
+            return result;
         }
 
         case PTag.DeclTrait: {
+            const parent = context.parent;
+            const id = module.nodes.length;
+            module.nodes.push(Placeholder);
+            context.parent = id;
+
             // keyword
             const name = parseIdentifier(node.data[1]);
             const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
             // generic
             // attributes
-            const body = node.data[5][1].elements.map(parseStmt);
+            const body = parseStmtArray(node.data[5][1], context);
 
-            return new Nodes.Trait(UnresolvedId, UnresolvedId, name, body, new Set(superTypes));
+            context.parent = parent;
+            const result = new Nodes.Trait(parent, id, name, body, new Set(superTypes));
+            module.nodes[id] = result;
+            return result;
         }
 
         case PTag.DeclVariable: {
-            return parseVariable(node);
+            return parseVariable(node, context);
         }
 
         case PTag.StmtIf: {
             // TODO: Finish implementing if
             // keyword
             const condition = parseExpr(node.data[1][2]);
-            const body      = node.data[2].elements.map(parseStmt);
+            const body      = parseStmtArray(node.data[2], context);
             // branches
             const elseBranch = node.data[4] === null ?
                 [] :
-                node.data[4][1].elements.map(parseStmt);
+                parseStmtArray(node.data[4][1], context);
 
             const firstBranch = new Nodes.StmtIfBranch(condition, body);
             
@@ -90,7 +135,7 @@ function parseStmt(node: PNode): Node {
             // keyword
             // compileTime
             const condition = parseExpr(node.data[2][3]);
-            const body      = node.data[3].elements.map(parseStmt);
+            const body      = parseStmtArray(node.data[3], context);
 
             return new Nodes.StmtWhile(condition, body);
         }
@@ -199,7 +244,7 @@ function convertVariableKeyword(keyword: string | undefined) {
     }
 }
 
-function parseVariable(node: PNode): Nodes.Variable {
+function parseVariable(node: PNode, context: Context): Nodes.Variable {
     const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
     const name  = parseIdentifier(node.data[1]);
     // compileTime
@@ -207,7 +252,8 @@ function parseVariable(node: PNode): Nodes.Variable {
     // attributes
     const value = node.data[5] === null ? null  : parseExpr(node.data[5][3]);
 
-    return new Nodes.Variable(UnresolvedId, UnresolvedId, name, type, value, flags);
+    // TODO: Set variable id here - rather than in name resolution
+    return new Nodes.Variable(context.parent, UnresolvedId, name, type, value, flags);
 }
 
 function parseIdentifier(node: PNode) {

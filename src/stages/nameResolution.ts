@@ -57,6 +57,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
             // TODO: Support global variables
             const currentFunction = state.functions[state.functions.length - 1];
 
+            // TODO: Move this into AstGenerationStage
             // Register variable into function
             node.id = currentFunction.variables.length;
             currentFunction.variables.push(node);
