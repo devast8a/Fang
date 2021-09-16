@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Node, Tag, Type, Variable, Function, VariableFlags, ExprCallStatic, FunctionFlags } from '../nodes';
+import { Node, Tag, Type, Variable, Function, VariableFlags, FunctionFlags } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();

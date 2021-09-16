@@ -1,17 +1,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { builtin } from '../Builtin';
-import { Source } from '../common/source';
-import { Compiler, Stage } from '../compile';
+import { Compiler, ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
 import { Node, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
 
-export class AstGenerationStage implements Stage<Source> {
+export class AstGenerationStage implements ParseStage {
     public name = "Ast Generation";
 
-    public execute(compiler: Compiler, nodes: any, source: Source): Node[] {
+    public execute(compiler: Compiler, nodes: any, context: ParseContext): Node[] {
         // TODO: node is PNode, violating the interface
 
         const output = [];

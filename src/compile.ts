@@ -1,7 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Module, Node, Tag } from './nodes';
-import { ParseStage } from './stages/ParseStage';
+import { Module, Node } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -16,11 +15,23 @@ import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { nameMangle } from './stages/nameMangle';
 import { resolveOverload } from './stages/resolveOverload';
 import { resolveNodes } from './stages/nodeResolution';
+import { ParserStage } from './stages/ParseStage';
 
-export interface Stage<T> {
-    name: string;
-    execute(compiler: Compiler, nodes: Node[], source: T): Node[];
+export interface ParseContext {
+    source: Source;
+    module: Module;
 }
+
+export interface ParseStage {
+    name: string;
+    execute(compiler: Compiler, nodes: Node[], context: ParseContext): Node[];
+}
+
+export interface CompileStage {
+    name: string;
+    execute(compiler: Compiler, nodes: Node[], module: Module): Node[];
+}
+
 
 function instantiate(nodes: Node[], module: Module) {
     const extra = new Array<Node>();
@@ -32,13 +43,13 @@ function instantiate(nodes: Node[], module: Module) {
 }
 
 export class Compiler {
-    private parseStages: Stage<Source>[] = [
-        new ParseStage(),
+    private parseStages: ParseStage[] = [
+        new ParserStage(),
         new AstGenerationStage(),
         new TransformExecuteMacroStage(),
     ];
 
-    private compileStages: Stage<Module>[] = [
+    private compileStages: CompileStage[] = [
         {name: "Symbol Resolution",   execute: (compiler, nodes, module) => {nameResolution(nodes, builtin.scope.newChildScope()); return nodes; }},
         {name: "Type Inference",      execute: (compiler, nodes, module) => transformInferType.array(nodes, nodes[0], null)},
         {name: "Node Resolution",     execute: (compiler, nodes, module) => resolveNodes.array(nodes, nodes[0], null)},
@@ -51,7 +62,7 @@ export class Compiler {
         {name: "Instantiation",       execute: (compiler, nodes, module) => instantiate(nodes, module)},
     ];
 
-    public async parseFile(source: string | Source): Promise<Node[]>
+    public async parseFile(source: string | Source, module: Module): Promise<Node[]>
     {
         if (!(source instanceof Source)) {
             source = new Source(source, await Fs.promises.readFile(source, "utf8"));
@@ -63,7 +74,7 @@ export class Compiler {
         let nodes = new Array<Node>();
         for (const stage of this.parseStages) {
             console.time(`${source.path} ${stage.name}`);
-            nodes = stage.execute(this, nodes, source);
+            nodes = stage.execute(this, nodes, {source, module});
             console.timeEnd(`${source.path} ${stage.name}`);
         }
 
@@ -75,12 +86,12 @@ export class Compiler {
 
     public async compile(source: string | Source): Promise<string>
     {
+        const module = new Module([], []);
+
         console.group(`Compiling`);
         console.time("Total");
 
-        let nodes = await this.parseFile(source);
-
-        const module = new Module([], []);
+        let nodes = await this.parseFile(source, module);
 
         for (const stage of this.compileStages) {
             console.time(stage.name);

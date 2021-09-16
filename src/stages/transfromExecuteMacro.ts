@@ -1,12 +1,11 @@
-import { Source } from '..';
 import { convert, Visitor } from '../ast/visitor';
-import { Compiler, Stage } from '../compile';
+import { Compiler, ParseContext, ParseStage } from '../compile';
 import { ExprGetLocal, Node, StmtDelete, Tag } from '../nodes';
 
-export class TransformExecuteMacroStage implements Stage<Source> {
+export class TransformExecuteMacroStage implements ParseStage {
     public name = "Execute Macro (Stage 0)";
 
-    public execute(compiler: Compiler, nodes: Node[], source: Source): Node[] {
+    public execute(compiler: Compiler, nodes: Node[], context: ParseContext): Node[] {
         // TODO: Properly set container
         return transformExecuteMacro.array(nodes, nodes[0], new State());
     }

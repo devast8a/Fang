@@ -1,19 +1,18 @@
 import { Parser } from 'nearley';
-import { Source } from '../common/source';
-import { Compiler, Stage } from '../compile';
+import { Compiler, ParseContext, ParseStage } from '../compile';
 import { Node } from '../nodes';
 import Grammar from '../parser/grammar';
 
-export class ParseStage implements Stage<Source> {
+export class ParserStage implements ParseStage {
     public name = "Parse";
 
-    public execute(compiler: Compiler, nodes: Node[], source: Source) {
+    public execute(compiler: Compiler, nodes: Node[], context: ParseContext) {
         if (nodes.length > 0) {
             throw new Error("ParseStage must have an empty array of nodes passed to it");
         }
 
         const parser = new Parser(Grammar);
-        parser.feed(source.content);
+        parser.feed(context.source.content);
 
         if (parser.results.length > 1) {
             parser.results.forEach((result, index) => {
