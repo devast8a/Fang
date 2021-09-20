@@ -1,25 +1,25 @@
-import { Node, SymbolSet, UnresolvedId } from '../nodes';
+import { Decl, DeclSymbol, UnresolvedId } from '../nodes';
 
 export class Scope {
-    private map = new Map<string, SymbolSet>();
+    private map = new Map<string, DeclSymbol>();
     private parent: Scope | null;
 
     public constructor(parent: Scope | null = null) {
         this.parent = parent;
     }
 
-    public declare(name: string, node: Node) {
+    public declare(name: string, decl: Decl) {
         let set = this.map.get(name);
 
         if (set === undefined) {
-            set = new SymbolSet(UnresolvedId);
+            set = new DeclSymbol(UnresolvedId);
             this.map.set(name, set);
         }
 
-        set.nodes.push(node);
+        set.nodes.push(decl.id);
     }
 
-    public lookup(name: string): SymbolSet | null {
+    public lookup(name: string): DeclSymbol | null {
         const symbol = this.map.get(name);
 
         if (symbol !== undefined) {

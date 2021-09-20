@@ -1,8 +1,8 @@
 export enum Tag {
-    SymbolSet,
-    DeclStruct,
     DeclFunction,
     DeclModule,
+    DeclStruct,
+    DeclSymbol,
     DeclTrait,
     DeclVariable,
     ExprCall,
@@ -17,6 +17,8 @@ export enum Tag {
     ExprIf,
     ExprIfBranch,
     ExprMacroCall,
+    ExprRefName,
+    ExprRefStatic,
     ExprReturn,
     ExprSetField,
     ExprSetLocal,
@@ -25,21 +27,18 @@ export enum Tag {
     TypeInfer,
     TypeRefName,
     TypeRefStatic,
-    ExprRefStatic,
-    ExprRefName
 }
 
 export type Node =
     | Expr
     | Decl
     | Type
-    | SymbolSet // TODO: Find a category for SymbolSet
     ;
 
 export type Decl =
-    | DeclModule
-    | DeclStruct        // class name { members... }
     | DeclFunction      // fn name(parameters...) -> returnType { body... }
+    | DeclStruct        // class name { members... }
+    | DeclSymbol        // Any symbol
     | DeclTrait         // trait name { members... }
     | DeclVariable      // val name: Type = Expr
     ;
@@ -76,54 +75,6 @@ type Global = string | number;
 type Field  = string | number;
 type Local  = string | number;
 
-export class DeclModule {
-    public readonly tag = Tag.DeclModule;
-    public static readonly tag = Tag.DeclModule;
-
-    public constructor(
-        public nodes: Node[],
-    ) {}
-}
-
-export class SymbolSet {
-    public readonly tag = Tag.SymbolSet;
-    public static readonly tag = Tag.SymbolSet;
-
-    public readonly nodes = new Array<Node>();
-
-    public constructor(
-        public id: number,
-    ) {}
-}
-
-export class DeclStruct {
-    public readonly tag = Tag.DeclStruct;
-    public static readonly tag = Tag.DeclStruct;
-
-    public constructor(
-        public parent: number,
-        public id: number,
-
-        public name: string,
-        public members: Map<string, Node>,
-        public superTypes: Set<Type>,
-    ) {}
-}
-
-export class DeclTrait {
-    public readonly tag = Tag.DeclTrait;
-    public static readonly tag = Tag.DeclTrait;
-
-    public constructor(
-        public parent: number,
-        public id: number,
-
-        public name: string,
-        public members: Array<Node>,
-        public superTypes: Set<Type>,
-    ) {}
-}
-
 export class DeclFunction {
     public readonly tag = Tag.DeclFunction;
     public static readonly tag = Tag.DeclFunction;
@@ -137,7 +88,7 @@ export class DeclFunction {
         public name: string,
         public parameters: Array<DeclVariable>,
         public returnType: Type,
-        public body: Array<Node>,
+        public body: Array<Expr>,
         public flags: FunctionFlags,
     ) {}
 }
@@ -145,6 +96,55 @@ export class DeclFunction {
 export enum FunctionFlags {
     None        = 0,
     Abstract    = 1 << 1,
+}
+
+
+export class DeclModule {
+    public readonly tag = Tag.DeclModule;
+    public static readonly tag = Tag.DeclModule;
+
+    public constructor(
+        public nodes: Decl[],
+    ) {}
+}
+
+export class DeclStruct {
+    public readonly tag = Tag.DeclStruct;
+    public static readonly tag = Tag.DeclStruct;
+
+    public constructor(
+        public parent: number,
+        public id: number,
+
+        public name: string,
+        public members: Map<string, Global>,
+        public superTypes: Set<Type>,
+    ) {}
+}
+
+export class DeclSymbol {
+    public readonly tag = Tag.DeclSymbol;
+    public static readonly tag = Tag.DeclSymbol;
+
+    public readonly nodes = new Array<Global>();
+
+    public constructor(
+        public id: number,
+    ) {}
+}
+
+export class DeclTrait {
+    public readonly tag = Tag.DeclTrait;
+    public static readonly tag = Tag.DeclTrait;
+
+    public constructor(
+        public parent: number,
+        public id: number,
+
+        public name: string,
+        public members: Map<string, Global>,
+        public superTypes: Set<Type>,
+    ) {}
 }
 
 // TODO: Decide if we split into local/field/global? -or- if we use VariableFlags to indicate this
@@ -158,7 +158,7 @@ export class DeclVariable {
 
         public name: string,
         public type: Type,
-        public value: Node | null,
+        public value: Expr | null,
         public flags: VariableFlags,
     ) {}
 }
@@ -462,5 +462,9 @@ export class Context<Parent = Decl> {
         }
 
         return this.module.nodes[global];
+    }
+
+    public resolveMany(globals: Global[]) {
+        return globals.map(global => this.resolve(global));
     }
 }

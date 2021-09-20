@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Context, DeclModule, Node } from './nodes';
+import { Context, DeclModule, DeclStruct, Node } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -67,10 +67,9 @@ export class Compiler {
     public async compile(source: string | Source): Promise<string>
     {
         const module = new DeclModule([]);
-        const context = new Context(module, module);
 
-        // TODO: Replace with a mod reference???
-        module.nodes.push(module);
+        const root    = new DeclStruct(0, 0, ".root", new Map(), new Set());
+        const context = new Context(root, module);
 
         console.group(`Compiling`);
         console.time("Total");

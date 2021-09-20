@@ -3,11 +3,11 @@ import { builtin } from '../Builtin';
 import { Source } from '../common/source';
 import { Compiler, ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Expr, Node, UnresolvedId } from '../nodes';
+import { Decl, Expr, Node, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
-const Placeholder = {} as Node;
+const Placeholder = {} as Decl;
 
 interface Context {
     compiler: Compiler;
@@ -65,7 +65,7 @@ function parseStmt(node: PNode, context: Context): Node {
             ]));
 
             context.parent = parent;
-            const result = new Nodes.DeclStruct(parent, id, name, members, new Set(superTypes));
+            const result = new Nodes.DeclStruct(parent, id, name, members as any, new Set(superTypes));
             module.nodes[id] = result;
             return result;
         }
@@ -88,7 +88,7 @@ function parseStmt(node: PNode, context: Context): Node {
                 [new Nodes.ExprReturn(parseExpr(node.data[7][4]))];
 
             context.parent = parent;
-            const result = new Nodes.DeclFunction(parent, id, name, parameters, returnType, body, Nodes.FunctionFlags.None);
+            const result = new Nodes.DeclFunction(parent, id, name, parameters, returnType, body as any, Nodes.FunctionFlags.None);
             module.nodes[id] = result;
             return result;
         }
@@ -107,7 +107,7 @@ function parseStmt(node: PNode, context: Context): Node {
             const body = parseStmtArray(node.data[5][1], context);
 
             context.parent = parent;
-            const result = new Nodes.DeclTrait(parent, id, name, body, new Set(superTypes));
+            const result = new Nodes.DeclTrait(parent, id, name, body as any, new Set(superTypes));
             module.nodes[id] = result;
             return result;
         }

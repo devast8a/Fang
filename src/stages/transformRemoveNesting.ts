@@ -9,7 +9,7 @@ export function transformRemoveNesting(context: Context, nodes: Node[]) {
 
             case Tag.DeclFunction: {
 
-                const output = new Array<Node>();
+                const output = new Array<Expr>();
                 for (const stmt of node.body) {
                     transform(context.next(node), output, stmt);
                     output.push(stmt);
@@ -24,14 +24,14 @@ export function transformRemoveNesting(context: Context, nodes: Node[]) {
     }
 }
 
-function transform(context: Context<DeclFunction>, output: Node[], node: Node): Node {
+function transform(context: Context<DeclFunction>, output: Expr[], node: Node): Expr {
     switch (node.tag) {
-        case Tag.DeclVariable: {
-            if (node.value !== null) {
-                node.value = transform(context, output, node.value);
-            }
-            return node;
-        }
+        // case Tag.DeclVariable: {
+        //     if (node.value !== null) {
+        //         node.value = transform(context, output, node.value);
+        //     }
+        //     return node;
+        // }
 
         case Tag.ExprConstruct: {
             return node;

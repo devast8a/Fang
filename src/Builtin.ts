@@ -28,8 +28,8 @@ const scope = new Scope();
 scope.declare(empty.name, empty);
 
 scope.declare(bool.name, bool);
-scope.declare("true", true_);
-scope.declare("false", false_);
+// scope.declare("true", true_);
+// scope.declare("false", false_);
 
 scope.declare(s8.name , s8);
 scope.declare(s16.name, s16);

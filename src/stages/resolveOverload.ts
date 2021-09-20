@@ -7,11 +7,12 @@ export const resolveOverload = new Visitor({
             case Tag.ExprCallStatic: {
                 const target = context.resolve(node.target);
 
-                if (target.tag !== Tag.SymbolSet) {
+                if (target.tag !== Tag.DeclSymbol) {
                     break;
                 }
 
-                let candidates = target.nodes as DeclFunction[];
+                // Resolve and check?
+                let candidates = context.resolveMany(target.nodes) as DeclFunction[];
                 candidates = candidates.filter(candidate =>
                     isCandidateOverload(context, node.args, candidate),
                 );

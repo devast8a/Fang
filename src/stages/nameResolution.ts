@@ -1,5 +1,5 @@
 import { NodeType } from '../ast/visitor';
-import { Node, Tag, DeclFunction, TypeRefName, Type, SymbolSet } from '../nodes';
+import { Node, Tag, DeclFunction, TypeRefName, Type, DeclSymbol, Context } from '../nodes';
 import * as Nodes from '../nodes';
 import { Scope } from './Scope';
 
@@ -25,10 +25,6 @@ function declareNode(node: Node, scope: Scope, state: State) {
     state.scopeMap.set(node, scope);
 
     switch (node.tag) {
-        case Tag.DeclModule: {
-            return;
-        }
-
         case Tag.DeclStruct: {
             scope.declare(node.name, node);
             declareNodes(Array.from(node.superTypes), scope, state);
@@ -169,24 +165,22 @@ function resolveNodes<T extends Node>(nodes: T[], state: State): T[] {
     return nodes.map(node => resolveNode(node, state));
 }
 
-function convert<T extends NodeType>(set: SymbolSet | null, type: T): InstanceType<T> {
-    if (set === null) {
+function convert<T extends NodeType>(context: Context, set: DeclSymbol | null, type: T): InstanceType<T> {
+    if (set === null || set.nodes.length === 0) {
+        throw new Error();
+    }
+    const node = context.resolve(set.nodes[0]);
+
+    if (node.tag !== type.tag) {
         throw new Error();
     }
 
-    if (set.nodes.length === 0) {
-        throw new Error();
-    }
-
-    if (set.nodes[0].tag !== type.tag) {
-        throw new Error();
-    }
-
-    return set.nodes[0] as InstanceType<T>;
+    return node as InstanceType<T>;
 }
 
 function resolveNode<T extends Node>(_node: T, state: State): T {
     const node  = _node as Node;
+    const context = {} as Context;
 
     const scope = state.scopeMap.get(node);
 
@@ -195,10 +189,6 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
     }
 
     switch (node.tag) {
-        case Tag.DeclModule: {
-            return node as T;
-        }
-
         case Tag.DeclStruct: {
             // TODO: Implement
             node.superTypes = new Set(resolveNodes(Array.from(node.superTypes), state));
@@ -236,7 +226,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.ExprConstruct: {
             // TODO: Error handling
-            node.target = scope.lookup((node.target as TypeRefName).name)?.nodes[0] as Type;
+            node.target = new Nodes.TypeRefStatic(scope.lookup((node.target as TypeRefName).name)!.nodes[0]);
             
             resolveNodes(node.args, state);
             return node as T;
@@ -254,7 +244,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         case Tag.ExprGetLocal: {
             // TODO: Error handling
             console.log(scope.lookup(node.local as string));
-            node.local = convert(scope.lookup(node.local as string), Nodes.DeclVariable).id;
+            node.local = convert(context, scope.lookup(node.local as string), Nodes.DeclVariable).id;
             return node as T;
         }
 
@@ -272,13 +262,13 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.ExprSetLocal: {
             // TODO: Error handling
-            node.local = convert(scope.lookup(node.local as string), Nodes.DeclVariable).id;
+            node.local = convert(context, scope.lookup(node.local as string), Nodes.DeclVariable).id;
             resolveNode(node.value, state);
             return node as T;
         }
 
         case Tag.ExprDestroyLocal: {
-            node.local = convert(scope.lookup(node.local as string), Nodes.DeclVariable).id;
+            node.local = convert(context, scope.lookup(node.local as string), Nodes.DeclVariable).id;
             return node as T;
         }
 
@@ -306,7 +296,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.TypeRefName: {
             // TODO: Handle errors
-            return scope.lookup(node.name)?.nodes[0] as T;
+            return new Nodes.TypeRefStatic(scope.lookup(node.name)!.nodes[0]) as T;
         }
     }
 
