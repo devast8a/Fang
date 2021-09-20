@@ -6,13 +6,8 @@ import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
 import { checkType } from './stages/checkType';
 import { nameResolution } from './stages/nameResolution';
-import { transformInferType } from './stages/transformInferType';
 import { TargetC } from './stages/targetC';
 import { transformRemoveNesting } from './stages/transformRemoveNesting';
-import { TransformExecuteMacroStage } from './stages/transfromExecuteMacro';
-import { transformInstantiate } from './stages/transformInstantiate';
-import { markAbstractFunctions } from './stages/markAbstractFunctions';
-import { nameMangle } from './stages/nameMangle';
 import { resolveOverload } from './stages/resolveOverload';
 import { resolveNodes } from './stages/nodeResolution';
 import { ParserStage } from './stages/ParseStage';
@@ -36,20 +31,15 @@ export class Compiler {
     private parseStages: ParseStage[] = [
         new ParserStage(),
         new AstGenerationStage(),
-        new TransformExecuteMacroStage(),
     ];
 
     private compileStages: CompileStage[] = [
         {name: "Symbol Resolution",   execute: (compiler, context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope()); return context.module.nodes; }},
-        {name: "Type Inference",      execute: (compiler, context) => transformInferType.array(context.module.nodes, context, null)},
-        {name: "Node Resolution",     execute: (compiler, context) => resolveNodes.array(context.module.nodes, context, null)},
-        {name: "Overload Resolution", execute: (compiler, context) => resolveOverload.array(context.module.nodes, context, null)},
-        {name: "Type Check",          execute: (compiler, context) => checkType.array(context.module.nodes, context, null)},
+        {name: "Node Resolution",     execute: (compiler, context) => resolveNodes.array(context.module.nodes as any, context, null)},
+        {name: "Overload Resolution", execute: (compiler, context) => resolveOverload.array(context.module.nodes as any, context, null)},
+        {name: "Type Check",          execute: (compiler, context) => checkType.array(context.module.nodes as any, context, null)},
         {name: "Lifetime Check",      execute: (compiler, context) => {checkLifetime(context.module.nodes); return context.module.nodes;}},
-        {name: "Symbol Mangling",     execute: (compiler, context) => nameMangle.array(context.module.nodes, context, null)},
-        {name: "Mark Abstract",       execute: (compiler, context) => markAbstractFunctions.array(context.module.nodes, context, null)},
         {name: "Remove Nesting",      execute: (compiler, context) => {transformRemoveNesting(context, context.module.nodes); return context.module.nodes;}},
-        {name: "Instantiation",       execute: (compiler, context) => transformInstantiate.array(context.module.nodes, context, null)},
     ];
 
     public async parseFile(source: string | Source, module: DeclModule): Promise<Node[]>

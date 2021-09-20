@@ -9,10 +9,6 @@ export const resolveNodes = new Visitor({
                 const target = node.target;
 
                 switch (target.tag) {
-                    case Tag.DeclFunction:  // Already fully resolved
-                    case Tag.SymbolSet: // Resolved during Overload Resolution
-                        break;
-
                     // case Tag.ExprRefNode:
                     //      if (target.node.tag !== Tag.SymbolSet) { throw new Error('Not implemented yet'); }
                     //      return new Nodes.ExprCallStatic(target.node, node.args);

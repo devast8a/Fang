@@ -3,7 +3,7 @@ import { builtin } from '../Builtin';
 import { Source } from '../common/source';
 import { Compiler, ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Node, UnresolvedId } from '../nodes';
+import { Expr, Node, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
@@ -126,9 +126,10 @@ function parseStmt(node: PNode, context: Context): Node {
                 [] :
                 parseStmtArray(node.data[4][1], context);
 
-            const firstBranch = new Nodes.ExprIfBranch(condition, body);
+            // TODO: Resolve
+            const firstBranch = new Nodes.ExprIfBranch(condition, body as any);
             
-            return new Nodes.ExprIf([firstBranch], elseBranch);
+            return new Nodes.ExprIf([firstBranch], elseBranch as any);
         }
 
         case PTag.StmtWhile: {
@@ -137,7 +138,7 @@ function parseStmt(node: PNode, context: Context): Node {
             const condition = parseExpr(node.data[2][3]);
             const body      = parseStmtArray(node.data[3], context);
 
-            return new Nodes.ExprWhile(condition, body);
+            return new Nodes.ExprWhile(condition, body as any);
         }
 
         case PTag.StmtAssign: {
@@ -166,7 +167,7 @@ function parseStmt(node: PNode, context: Context): Node {
     throw new Error(`parseStmt: No case for '${PTag[node.tag]}'`)
 }
 
-function parseExpr(node: PNode): Node {
+function parseExpr(node: PNode): Expr {
     switch (node.tag) {
         case PTag.LiteralIntegerDec: {
             return new Nodes.ExprConstant({} as any, "");

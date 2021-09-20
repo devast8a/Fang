@@ -175,8 +175,8 @@ export class ExprCall {
     public static readonly tag = Tag.ExprCall;
 
     public constructor(
-        public target: Node,
-        public args: Array<Node>,
+        public target: Expr,
+        public args: Array<Expr>,
     ) {}
 }
 
@@ -185,9 +185,9 @@ export class ExprCallField {
     public static readonly tag = Tag.ExprCallField;
 
     public constructor(
-        public object: Node,
+        public object: Expr,
         public field: Field,
-        public args: Array<Node>,
+        public args: Array<Expr>,
     ) {}
 }
 
@@ -197,7 +197,7 @@ export class ExprCallStatic {
 
     public constructor(
         public target: Global,
-        public args: Array<Node>,
+        public args: Array<Expr>,
     ) {}
 }
 
@@ -207,7 +207,7 @@ export class ExprConstruct {
 
     public constructor(
         public target: Type,
-        public args: Array<Node>,
+        public args: Array<Expr>,
     ) {}
 }
 
@@ -226,7 +226,7 @@ export class ExprGetField {
     public static readonly tag = Tag.ExprGetField;
 
     public constructor(
-        public object: Node,
+        public object: Expr,
         public field: Field,
     ) {}
 }
@@ -246,7 +246,7 @@ export class ExprMacroCall {
 
     public constructor(
         public target: string,
-        public args: Node[],
+        public args: Expr[],
     ) {}
 }
 
@@ -255,9 +255,9 @@ export class ExprSetField {
     public static readonly tag = Tag.ExprSetField;
 
     public constructor(
-        public object: Node,
+        public object: Expr,
         public field: Field,
-        public value: Node,
+        public value: Expr,
     ) {}
 }
 
@@ -267,7 +267,7 @@ export class ExprSetLocal {
 
     public constructor(
         public local: Local,
-        public value: Node,
+        public value: Expr,
     ) {}
 }
 
@@ -276,7 +276,7 @@ export class ExprDestroyField {
     public static readonly tag = Tag.ExprDestroyField;
 
     public constructor(
-        public object: Node,
+        public object: Expr,
         public field: Field,
     ) {}
 }
@@ -296,7 +296,7 @@ export class ExprIf {
 
     public constructor(
         public branches: Array<ExprIfBranch>,
-        public elseBranch: Array<Node>,
+        public elseBranch: Array<Expr>,
     ) {}
 }
 
@@ -305,8 +305,8 @@ export class ExprIfBranch {
     public static readonly tag = Tag.ExprIfBranch;
 
     public constructor(
-        public condition: Node,
-        public body: Array<Node>,
+        public condition: Expr,
+        public body: Array<Expr>,
     ) {}
 }
 
@@ -333,7 +333,7 @@ export class ExprReturn {
     public static readonly tag = Tag.ExprReturn;
 
     public constructor(
-        public expression: Node | null,
+        public expression: Expr | null,
     ) {}
 }
 
@@ -342,8 +342,8 @@ export class ExprWhile {
     public static readonly tag = Tag.ExprWhile;
 
     public constructor(
-        public condition: Node,
-        public body: Array<Node>
+        public condition: Expr,
+        public body: Array<Expr>
     ) {}
 }
 

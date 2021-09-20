@@ -1,4 +1,4 @@
-import { Node, Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, UnresolvedId, Context } from '../nodes';
+import { Node, Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, UnresolvedId, Context, Expr } from '../nodes';
 
 export function transformRemoveNesting(context: Context, nodes: Node[]) {
     for (const node of nodes) {
@@ -72,7 +72,7 @@ function transform(context: Context<DeclFunction>, output: Node[], node: Node): 
     throw new Error(`transformRemoveNesting > transform > ${Tag[node.tag]}: Not implemented`);
 }
 
-function useTemporaryVariable(context: Context<DeclFunction>, output: Node[], value: Node): Node {
+function useTemporaryVariable(context: Context<DeclFunction>, output: Node[], value: Expr): Expr {
     const fn = context.parent;
     const id = fn.variables.length;
 
