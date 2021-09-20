@@ -1,20 +1,19 @@
 import { Visitor } from '../ast/visitor';
-import { builtin } from '../Builtin';
-import { Node, Tag } from '../nodes';
+import { Tag } from '../nodes';
 
 export const transformInferType = new Visitor({
     after: (node) => {
         switch (node.tag) {
-            case Tag.Variable: {
-                if (node.type.tag === Tag.TypeInfer && node.value !== null) {
-                    node.type = Node.getReturnType(node.value, null as any)
-                }
+            case Tag.DeclVariable: {
+                // if (node.type.tag === Tag.TypeInfer && node.value !== null) {
+                //     node.type = Node.getReturnType(node.value, null as any)
+                // }
 
                 return node;
             }
 
-            case Tag.Function: {
-                node.returnType = node.returnType.tag === Tag.TypeInfer ? builtin.empty : node.returnType;
+            case Tag.DeclFunction: {
+                // node.returnType = node.returnType.tag === Tag.TypeInfer ? builtin.empty : node.returnType;
                 return node;
             }
 

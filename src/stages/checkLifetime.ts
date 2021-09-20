@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { VariableFlags, Function, Node, Tag, Variable } from '../nodes';
+import { VariableFlags, DeclFunction, Node, Tag, DeclVariable } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -37,15 +37,15 @@ export function checkLifetime(nodes: Node[]) {
 
 function analyzeNode(node: Node, state: ProgramState) {
     switch (node.tag) {
-        case Tag.Class:
-        case Tag.Trait:
+        case Tag.DeclStruct:
+        case Tag.DeclTrait:
         case Tag.ExprConstruct:
         {
             console.warn(`checkLifetime>analyzeNode>${Tag[node.tag]}: Not implemented yet`);
             return;
         }
 
-        case Tag.Function: {
+        case Tag.DeclFunction: {
             const fnState = state.copyState();
 
             for (const parameter of node.parameters) {
@@ -57,45 +57,45 @@ function analyzeNode(node: Node, state: ProgramState) {
             return;
         }
 
-        case Tag.Variable: {
-            if (node.value !== null) {
-                analyzeNode(node.value, state);
-                state.assign(node.id);
+        // case Tag.DeclVariable: {
+        //     if (node.value !== null) {
+        //         analyzeNode(node.value, state);
+        //         state.assign(node.id);
 
-                // TODO: Handle references in a better way
-                if (
-                    node.value.tag === Tag.ExprConstruct &&
-                    node.value.target.tag === Tag.Class &&
-                    node.value.target.name === "Ref" &&
-                    node.value.args[0].tag === Tag.ExprGetLocal
-                ) {
-                    state.ref(node.id, node.value.args[0].local);
-                }
-            }
+        //         // TODO: Handle references in a better way
+        //         if (
+        //             node.value.tag === Tag.ExprConstruct &&
+        //             node.value.target.tag === Tag.DeclStruct &&
+        //             node.value.target.name === "Ref" &&
+        //             node.value.args[0].tag === Tag.ExprGetLocal
+        //         ) {
+        //             state.ref(node.id, node.value.args[0].local);
+        //         }
+        //     }
 
-            return;
-        }
+        //     return;
+        // }
 
-        case Tag.ExprCallField: {
-            // Properly resolve the function
-            if (node.field.tag !== Tag.Function) {
-                throw new Error(`[INTERNAL ERROR] ExprCallField: Expected field to be resolved to function by this stage`);
-            }
+        // case Tag.ExprCallField: {
+        //     // Properly resolve the function
+        //     if (node.field.tag !== Tag.DeclFunction) {
+        //         throw new Error(`[INTERNAL ERROR] ExprCallField: Expected field to be resolved to function by this stage`);
+        //     }
 
-            analyzeNodes(node.args, state);
-            handleArgs(new GroupedAccess(), node.field.parameters, node.args, state);
-            return;
-        }
+        //     analyzeNodes(node.args, state);
+        //     handleArgs(new GroupedAccess(), node.field.parameters, node.args, state);
+        //     return;
+        // }
 
-        case Tag.ExprCallStatic: {
-            if (node.target.tag !== Tag.Function) {
-                throw new Error(`[INTERNAL ERROR] ExprCallStatic: Expected field to be resolved to function by this stage`);
-            }
+        // case Tag.ExprCallStatic: {
+        //     if (node.target.tag !== Tag.DeclFunction) {
+        //         throw new Error(`[INTERNAL ERROR] ExprCallStatic: Expected field to be resolved to function by this stage`);
+        //     }
 
-            analyzeNodes(node.args, state);
-            handleArgs(new GroupedAccess(), node.target.parameters, node.args, state);
-            return;
-        }
+        //     analyzeNodes(node.args, state);
+        //     handleArgs(new GroupedAccess(), node.target.parameters, node.args, state);
+        //     return;
+        // }
 
         case Tag.ExprConstant: {
             // No analysis required
@@ -114,30 +114,30 @@ function analyzeNode(node: Node, state: ProgramState) {
             return;
         }
 
-        case Tag.ExprSetLocal: {
-            analyzeNode(node.value, state);
+        // case Tag.ExprSetLocal: {
+        //     analyzeNode(node.value, state);
 
-            state.assign(node.local);
+        //     state.assign(node.local);
 
-            // TODO: Handle references in a better way
-            if (
-                node.value.tag === Tag.ExprConstruct &&
-                node.value.target.tag === Tag.Class &&
-                node.value.target.name === "Ref" &&
-                node.value.args[0].tag === Tag.ExprGetLocal
-            ) {
-                state.ref(node.local, node.value.args[0].local);
-            }
+        //     // TODO: Handle references in a better way
+        //     if (
+        //         node.value.tag === Tag.ExprConstruct &&
+        //         node.value.target.tag === Tag.DeclStruct &&
+        //         node.value.target.name === "Ref" &&
+        //         node.value.args[0].tag === Tag.ExprGetLocal
+        //     ) {
+        //         state.ref(node.local, node.value.args[0].local);
+        //     }
 
+        //     return;
+        // }
+
+        case Tag.ExprDestroyLocal: {
+            state.delete(node.local);
             return;
         }
 
-        case Tag.StmtDelete: {
-            state.delete(node.variable);
-            return;
-        }
-
-        case Tag.StmtIf: {
+        case Tag.ExprIf: {
             // NOTE: We could optimize away a merge by computing the else branch first and replacing final with state
             //  We currently opt not to do this, so that problems will be reported in program order
             const branches = state.copyState();
@@ -162,7 +162,7 @@ function analyzeNode(node: Node, state: ProgramState) {
             return;
         }
 
-        case Tag.StmtWhile: {
+        case Tag.ExprWhile: {
             // Loop taken one time
             const takenOnce = state.copyState();
             analyzeNode(node.condition, takenOnce);
@@ -189,7 +189,7 @@ function analyzeNodes(nodes: Node[], state: ProgramState) {
     }
 }
 
-function handleArgs(group: GroupedAccess, params: Variable[], args: Node[], state: ProgramState) {
+function handleArgs(group: GroupedAccess, params: DeclVariable[], args: Node[], state: ProgramState) {
     for (let i = 0; i < params.length; i++) {
         const arg   = args[i];
         const param = params[i];
@@ -434,7 +434,7 @@ function exprToPath(expr: Node): Path {
     }
 }
 
-function pathToName(path: Path, fn: Function) {
+function pathToName(path: Path, fn: DeclFunction) {
     if (typeof(path) === 'number') {
         return fn.variables[path].name;
     }
@@ -442,7 +442,7 @@ function pathToName(path: Path, fn: Function) {
     return path;
 }
 
-function format(state: ProgramState, fn: Function) {
+function format(state: ProgramState, fn: DeclFunction) {
     const output = [];
     const variables = state.variables;
 

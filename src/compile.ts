@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Module, Node } from './nodes';
+import { Context, DeclModule, Node } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -19,7 +19,7 @@ import { ParserStage } from './stages/ParseStage';
 
 export interface ParseContext {
     source: Source;
-    module: Module;
+    module: DeclModule;
 }
 
 export interface ParseStage {
@@ -29,17 +29,7 @@ export interface ParseStage {
 
 export interface CompileStage {
     name: string;
-    execute(compiler: Compiler, nodes: Node[], module: Module): Node[];
-}
-
-
-function instantiate(nodes: Node[], module: Module) {
-    const extra = new Array<Node>();
-    nodes = transformInstantiate.array(nodes, nodes[0], {
-        topLevel: extra,
-        module: module,
-    });
-    return nodes.concat(extra);
+    execute(compiler: Compiler, context: Context): Node[];
 }
 
 export class Compiler {
@@ -50,19 +40,19 @@ export class Compiler {
     ];
 
     private compileStages: CompileStage[] = [
-        {name: "Symbol Resolution",   execute: (compiler, nodes, module) => {nameResolution(nodes, builtin.scope.newChildScope()); return nodes; }},
-        {name: "Type Inference",      execute: (compiler, nodes, module) => transformInferType.array(nodes, nodes[0], null)},
-        {name: "Node Resolution",     execute: (compiler, nodes, module) => resolveNodes.array(nodes, nodes[0], null)},
-        {name: "Overload Resolution", execute: (compiler, nodes, module) => resolveOverload.array(nodes, nodes[0], null)},
-        {name: "Type Check",          execute: (compiler, nodes, module) => checkType.array(nodes, nodes[0], null)},
-        {name: "Lifetime Check",      execute: (compiler, nodes, module) => {checkLifetime(nodes); return nodes;}},
-        {name: "Symbol Mangling",     execute: (compiler, nodes, module) => nameMangle.array(nodes, nodes[0], null)},
-        {name: "Mark Abstract",       execute: (compiler, nodes, module) => markAbstractFunctions.array(nodes, nodes[0], null)},
-        {name: "Remove Nesting",      execute: (compiler, nodes, module) => {transformRemoveNesting(nodes); return nodes;}},
-        {name: "Instantiation",       execute: (compiler, nodes, module) => instantiate(nodes, module)},
+        {name: "Symbol Resolution",   execute: (compiler, context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope()); return context.module.nodes; }},
+        {name: "Type Inference",      execute: (compiler, context) => transformInferType.array(context.module.nodes, context, null)},
+        {name: "Node Resolution",     execute: (compiler, context) => resolveNodes.array(context.module.nodes, context, null)},
+        {name: "Overload Resolution", execute: (compiler, context) => resolveOverload.array(context.module.nodes, context, null)},
+        {name: "Type Check",          execute: (compiler, context) => checkType.array(context.module.nodes, context, null)},
+        {name: "Lifetime Check",      execute: (compiler, context) => {checkLifetime(context.module.nodes); return context.module.nodes;}},
+        {name: "Symbol Mangling",     execute: (compiler, context) => nameMangle.array(context.module.nodes, context, null)},
+        {name: "Mark Abstract",       execute: (compiler, context) => markAbstractFunctions.array(context.module.nodes, context, null)},
+        {name: "Remove Nesting",      execute: (compiler, context) => {transformRemoveNesting(context, context.module.nodes); return context.module.nodes;}},
+        {name: "Instantiation",       execute: (compiler, context) => transformInstantiate.array(context.module.nodes, context, null)},
     ];
 
-    public async parseFile(source: string | Source, module: Module): Promise<Node[]>
+    public async parseFile(source: string | Source, module: DeclModule): Promise<Node[]>
     {
         if (!(source instanceof Source)) {
             source = new Source(source, await Fs.promises.readFile(source, "utf8"));
@@ -86,7 +76,8 @@ export class Compiler {
 
     public async compile(source: string | Source): Promise<string>
     {
-        const module = new Module([]);
+        const module = new DeclModule([]);
+        const context = new Context(module, module);
 
         // TODO: Replace with a mod reference???
         module.nodes.push(module);
@@ -98,7 +89,7 @@ export class Compiler {
 
         for (const stage of this.compileStages) {
             console.time(stage.name);
-            nodes = stage.execute(this, nodes, module);
+            nodes = stage.execute(this, context);
             console.timeEnd(stage.name);
         }
 

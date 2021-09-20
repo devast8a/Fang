@@ -1,22 +1,24 @@
 import { Visitor } from '../ast/visitor';
-import { Tag, Function, Node, Type } from '../nodes';
+import { Tag, DeclFunction, Node, Type, Context } from '../nodes';
 
 export const resolveOverload = new Visitor({
-    after: (node, container) => {
+    after: (node, context) => {
         switch (node.tag) {
             case Tag.ExprCallStatic: {
-                if (node.target.tag !== Tag.SymbolSet) {
+                const target = context.resolve(node.target);
+
+                if (target.tag !== Tag.SymbolSet) {
                     break;
                 }
 
-                let candidates = node.target.nodes as Function[];
+                let candidates = target.nodes as DeclFunction[];
                 candidates = candidates.filter(candidate =>
-                    isCandidateOverload(node.args, candidate, container as Function)
+                    isCandidateOverload(context, node.args, candidate),
                 );
 
                 switch (candidates.length) {
                     case 0:  throw new Error('No overload matches!')
-                    case 1:  node.target = candidates[0]; break;
+                    case 1:  node.target = candidates[0].id; break;
                     default: throw new Error('Ambiguous overload matches!');
                 }
             }
@@ -26,7 +28,7 @@ export const resolveOverload = new Visitor({
     }
 });
 
-function isCandidateOverload(args: Node[], candidate: Function, context: Function) {
+function isCandidateOverload(context: Context, args: Node[], candidate: DeclFunction) {
     const params = candidate.parameters;
     
     // TODO[dev]: Support variadic functions
@@ -35,7 +37,7 @@ function isCandidateOverload(args: Node[], candidate: Function, context: Functio
     }
 
     for (let i = 0; i < args.length; i++) {
-        const arg   = Node.getReturnType(args[i], context);
+        const arg   = Node.getReturnType(context, args[i]);
         const param = params[i].type;
 
         if (!Type.canAssignTo(arg, param)) {

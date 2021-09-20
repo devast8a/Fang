@@ -1,35 +1,26 @@
 import { Visitor } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { FunctionFlags, Tag, Function, Variable, Node, Module, ExprCallStatic, UnresolvedId } from '../nodes';
+import { FunctionFlags, Tag, DeclFunction, DeclVariable, Node, ExprCallStatic, UnresolvedId, Context, Type } from '../nodes';
 
-interface Context {
-    // Top level nodes
-    topLevel: Node[];
-    module: Module,
-}
-
-export const transformInstantiate = new Visitor<Context>({
+export const transformInstantiate = new Visitor({
     before: (node) => {
-        if (node.tag === Tag.Function && Flags.has(node.flags, FunctionFlags.Abstract)) {
+        if (node.tag === Tag.DeclFunction && Flags.has(node.flags, FunctionFlags.Abstract)) {
             return {continue: false};
         }
         return {continue: true};
     },
 
-    after: (node, container, context) => {
+    after: (node, context) => {
         switch (node.tag) {
             case Tag.ExprCallStatic: {
-                if (node.target.tag !== Tag.Function || !Flags.has(node.target.flags, FunctionFlags.Abstract)) {
-                    return node;
-                }
+                // if (node.target.tag !== Tag.DeclFunction || !Flags.has(node.target.flags, FunctionFlags.Abstract)) {
+                //     return node;
+                // }
 
                 // Otherwise we need to instantiate
-                const fn = instantiate(node.target, node.args, container as Function, context);
-
-                return new ExprCallStatic(
-                    fn,
-                    node.args,
-                );
+                const target = context.module.nodes[node.target as number] as DeclFunction;
+                const fn = instantiate(context.next(target), node.args);
+                return new ExprCallStatic(fn.id, node.args);
             }
         }
 
@@ -41,15 +32,16 @@ function nodeToPath(node: Node) {
     // TODO[dev]: Switch to numeric id for all nodes
     // TODO[dev]: Path should contain entire path
     switch (node.tag) {
-        case Tag.Class:     return node.name;
-        case Tag.Trait:     return node.name;
-        case Tag.Function:  return node.name;
+        case Tag.DeclStruct:     return node.name;
+        case Tag.DeclTrait:     return node.name;
+        case Tag.DeclFunction:  return node.name;
         default: throw new Error(`nodeToPath > ${Tag[node.tag]} unsupported`);
     }
 }
 
 // Create a unique identifier
-function generateId(fn: Function, args: Node[], container: Function) {
+function generateId(context: Context<DeclFunction>, args: Node[]) {
+    const fn = context.parent;
     const id = [nodeToPath(fn)];
 
     const params = fn.parameters;
@@ -57,24 +49,25 @@ function generateId(fn: Function, args: Node[], container: Function) {
         const arg   = args[index];
         const param = params[index];
 
-        if (param.type.tag !== Tag.Trait) {
+        if (Type.is(context, param.type, Tag.DeclTrait)) {
             continue;
         }
 
-        const type = Node.getReturnType(arg, container);
+        const type = Node.getReturnType(context, arg);
         id.push(nodeToPath(type));
     }
 
     return id.join("$");
 }
 
-function instantiate(fn: Function, args: Node[], container: Function, context: Context) {
-    const id = generateId(fn, args, container)
-
-    const type = Node.getReturnType(args[0], container);
+function instantiate(context: Context<DeclFunction>, args: Node[]) {
+    const id = generateId(context, args)
+    
+    const fn   = context.parent;
+    const type = Node.getReturnType(context, args[0]);
 
     // Instantiate a new copy of the function
-    const variables = fn.variables.map(variable => new Variable(
+    const variables = fn.variables.map(variable => new DeclVariable(
         UnresolvedId,
         variable.id,
 
@@ -89,7 +82,8 @@ function instantiate(fn: Function, args: Node[], container: Function, context: C
 
     const flags = Flags.unset(fn.flags, FunctionFlags.Abstract);
 
-    const output = new Function(
+    // Set id correctly
+    const output = new DeclFunction(
         UnresolvedId,
         UnresolvedId,
 
@@ -101,9 +95,9 @@ function instantiate(fn: Function, args: Node[], container: Function, context: C
     );
 
     output.variables = variables;
-    output.body = transformInstantiate.array(fn.body, output, context);
+    output.body = transformInstantiate.array(fn.body, context.next(output), null);
 
-    context.topLevel.push(output);
+    context.module.nodes.push(output);
 
     return output;
 }

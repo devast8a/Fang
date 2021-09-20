@@ -1,11 +1,11 @@
 import { NodeType } from '../ast/visitor';
-import { Node, Tag, Function, TypeRefName, Type, SymbolSet } from '../nodes';
+import { Node, Tag, DeclFunction, TypeRefName, Type, SymbolSet } from '../nodes';
 import * as Nodes from '../nodes';
 import { Scope } from './Scope';
 
 class State {
     scopeMap = new Map<Node, Scope>();
-    functions = new Array<Function>();
+    functions = new Array<DeclFunction>();
 }
 
 export function nameResolution(nodes: Node[], scope: Scope) {
@@ -25,14 +25,18 @@ function declareNode(node: Node, scope: Scope, state: State) {
     state.scopeMap.set(node, scope);
 
     switch (node.tag) {
-        case Tag.Class: {
+        case Tag.DeclModule: {
+            return;
+        }
+
+        case Tag.DeclStruct: {
             scope.declare(node.name, node);
             declareNodes(Array.from(node.superTypes), scope, state);
 
             return;
         }
 
-        case Tag.Function: {
+        case Tag.DeclFunction: {
             state.functions.push(node);
 
             scope.declare(node.name, node);
@@ -46,14 +50,14 @@ function declareNode(node: Node, scope: Scope, state: State) {
             return;
         }
 
-        case Tag.Trait: {
+        case Tag.DeclTrait: {
             scope.declare(node.name, node);
 
             // TODO: Support members
             return;
         }
 
-        case Tag.Variable: {
+        case Tag.DeclVariable: {
             // TODO: Support global variables
             const currentFunction = state.functions[state.functions.length - 1];
 
@@ -120,11 +124,11 @@ function declareNode(node: Node, scope: Scope, state: State) {
             return;
         }
 
-        case Tag.StmtDelete: {
+        case Tag.ExprDestroyLocal: {
             return;
         }
 
-        case Tag.StmtIf: {
+        case Tag.ExprIf: {
             declareNodes(node.branches, scope, state);
 
             const inner = scope.newChildScope();
@@ -132,7 +136,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
             return;
         }
 
-        case Tag.StmtIfBranch: {
+        case Tag.ExprIfBranch: {
             const inner = scope.newChildScope();
 
             declareNode(node.condition, inner, state);
@@ -140,7 +144,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
             return;
         }
 
-        case Tag.StmtWhile: {
+        case Tag.ExprWhile: {
             const inner = scope.newChildScope();
 
             declareNode(node.condition, inner, state);
@@ -191,26 +195,30 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
     }
 
     switch (node.tag) {
-        case Tag.Class: {
+        case Tag.DeclModule: {
+            return node as T;
+        }
+
+        case Tag.DeclStruct: {
             // TODO: Implement
             node.superTypes = new Set(resolveNodes(Array.from(node.superTypes), state));
 
             return node as T;
         }
 
-        case Tag.Function: {
+        case Tag.DeclFunction: {
             node.parameters = resolveNodes(node.parameters, state);
             node.returnType = resolveNode(node.returnType, state);
             node.body       = resolveNodes(node.body, state);
             return node as T;
         }
 
-        case Tag.Trait: {
+        case Tag.DeclTrait: {
             // TODO: Implement
             return node as T;
         }
 
-        case Tag.Variable: {
+        case Tag.DeclVariable: {
             if (node.value !== null) {
                 node.value = resolveNode(node.value, state);
             }
@@ -222,17 +230,6 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         case Tag.ExprCall: {
             node.target = resolveNode(node.target, state);
             node.args   = resolveNodes(node.args, state);
-
-            return node as T;
-        }
-
-        case Tag.ExprCallStatic: {
-            // TODO: Implement error handling
-            if (node.target.tag === Tag.ExprRefName) {
-                node.target = scope.lookup(node.target.name)!;
-            }
-
-            resolveNodes(node.args, state);
 
             return node as T;
         }
@@ -257,12 +254,13 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         case Tag.ExprGetLocal: {
             // TODO: Error handling
             console.log(scope.lookup(node.local as string));
-            node.local = convert(scope.lookup(node.local as string), Nodes.Variable).id;
+            node.local = convert(scope.lookup(node.local as string), Nodes.DeclVariable).id;
             return node as T;
         }
 
         case Tag.ExprRefName: {
-            return new Nodes.ExprRefNode(scope.lookup(node.name)!) as T;
+            const id = scope.lookup(node.name)!.id;
+            return new Nodes.ExprRefStatic(id) as T;
         }
 
         case Tag.ExprSetField: {
@@ -274,29 +272,29 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.ExprSetLocal: {
             // TODO: Error handling
-            node.local = convert(scope.lookup(node.local as string), Nodes.Variable).id;
+            node.local = convert(scope.lookup(node.local as string), Nodes.DeclVariable).id;
             resolveNode(node.value, state);
             return node as T;
         }
 
-        case Tag.StmtDelete: {
-            node.variable = convert(scope.lookup(node.variable as string), Nodes.Variable).id;
+        case Tag.ExprDestroyLocal: {
+            node.local = convert(scope.lookup(node.local as string), Nodes.DeclVariable).id;
             return node as T;
         }
 
-        case Tag.StmtIf: {
+        case Tag.ExprIf: {
             node.branches   = resolveNodes(node.branches, state);
             node.elseBranch = resolveNodes(node.elseBranch, state);
             return node as T;
         }
 
-        case Tag.StmtIfBranch: {
+        case Tag.ExprIfBranch: {
             node.condition = resolveNode(node.condition, state);
             node.body      = resolveNodes(node.body, state);
             return node as T;
         }
 
-        case Tag.StmtWhile: {
+        case Tag.ExprWhile: {
             resolveNode(node.condition, state);
             resolveNodes(node.body, state);
             return node as T;

@@ -1,4 +1,4 @@
-import { Node, SymbolSet } from '../nodes';
+import { Node, SymbolSet, UnresolvedId } from '../nodes';
 
 export class Scope {
     private map = new Map<string, SymbolSet>();
@@ -12,7 +12,7 @@ export class Scope {
         let set = this.map.get(name);
 
         if (set === undefined) {
-            set = new SymbolSet();
+            set = new SymbolSet(UnresolvedId);
             this.map.set(name, set);
         }
 

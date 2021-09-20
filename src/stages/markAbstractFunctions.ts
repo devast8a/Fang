@@ -1,12 +1,12 @@
 import { Visitor } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { FunctionFlags, Tag } from '../nodes';
+import { FunctionFlags, Tag, Type } from '../nodes';
 
 export const markAbstractFunctions = new Visitor({
-    after: (node) => {
+    after: (node, context) => {
         switch (node.tag) {
-            case Tag.Function: {
-                if (node.parameters.some(parameter => parameter.type.tag === Tag.Trait)) {
+            case Tag.DeclFunction: {
+                if (node.parameters.some(parameter => Type.resolve(context, parameter.type).tag === Tag.DeclTrait)) {
                     node.flags = Flags.set(node.flags, FunctionFlags.Abstract);
                 }
             }

@@ -1,15 +1,15 @@
-import { Class, ExprConstant, UnresolvedId } from './nodes';
+import { DeclStruct, ExprConstant, TypeRefStatic, UnresolvedId } from './nodes';
 import { Scope } from './stages/Scope';
 
 function type(name: string) {
-    return new Class(UnresolvedId, UnresolvedId, name, new Map(), new Set());
+    return new DeclStruct(UnresolvedId, UnresolvedId, name, new Map(), new Set());
 }
 
 const empty = type("empty");
 
 const bool  = type("bool");
-const true_  = new ExprConstant(bool, true);
-const false_ = new ExprConstant(bool, false);
+const true_  = new ExprConstant(new TypeRefStatic(bool.id), true);
+const false_ = new ExprConstant(new TypeRefStatic(bool.id), false);
 
 const s8    = type("s8");
 const s16   = type("s16");

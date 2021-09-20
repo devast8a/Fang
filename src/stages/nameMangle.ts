@@ -4,7 +4,7 @@ import { Tag } from '../nodes';
 export const nameMangle = new Visitor({
     after: (node) => {
         switch (node.tag) {
-            case Tag.Function: {
+            case Tag.DeclFunction: {
                 const parameters = node.parameters.map(x => x.name).join('_');
 
                 if (parameters.length > 0) {

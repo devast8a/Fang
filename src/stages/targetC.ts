@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Node, Tag, Type, Variable, Function, VariableFlags, FunctionFlags } from '../nodes';
+import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -9,7 +9,7 @@ export class TargetC {
 
     private indent = [''];
     private indentCurrent = '';
-    private context!: Function;
+    private context!: DeclFunction;
 
     public emitProgram(nodes: Node[]) {
         // TODO: Forward declare
@@ -21,12 +21,12 @@ export class TargetC {
 
     public emitNode(node: Node) {
         switch (node.tag) {
-            case Tag.Class:
-            case Tag.Trait:
+            case Tag.DeclStruct:
+            case Tag.DeclTrait:
                 console.warn(`targetC>emitNode>${Tag[node.tag]} not implemented`)
                 return;
 
-            case Tag.Function: {
+            case Tag.DeclFunction: {
                 // Don't emit abstract functions as they should never participate in code execution anyway. They should
                 // always be instantiated in `transformInstantiate` into a concrete function.
                 if (Flags.has(node.flags, FunctionFlags.Abstract)) {
@@ -46,7 +46,7 @@ export class TargetC {
                 return;
             }
 
-            case Tag.Variable: {
+            case Tag.DeclVariable: {
                 this.emitTypeName(node.type);
                 this.emit        (" ", node.name);
 
@@ -58,16 +58,16 @@ export class TargetC {
             }
 
             case Tag.ExprCallField: {
-                this.emit         (node.field.name, "(");
-                this.emitArguments(node.field.parameters, node.args);
-                this.emit         (")");
+                // this.emit         (node.field.name, "(");
+                // this.emitArguments(node.field.parameters, node.args);
+                // this.emit         (")");
                 return;
             }
 
             case Tag.ExprCallStatic: {
-                this.emit         ((node.target as Function).name, "(");
-                this.emitArguments((node.target as Function).parameters, node.args);
-                this.emit         (")");
+                // this.emit         ((node.target as DeclFunction).name, "(");
+                // this.emitArguments((node.target as DeclFunction).parameters, node.args);
+                // this.emit         (")");
                 return;
             }
 
@@ -88,12 +88,12 @@ export class TargetC {
                 return;
             }
 
-            case Tag.StmtDelete: {
+            case Tag.ExprDestroyLocal: {
                 this.emit("DELETE");
                 return;
             }
 
-            case Tag.StmtIf: {
+            case Tag.ExprIf: {
                 this.emit    ("if (");
                 this.emitNode(node.branches[0].condition);
                 this.emit    (")");
@@ -107,16 +107,18 @@ export class TargetC {
     }
 
     public emitTypeName(type: Type) {
-        switch (type.tag) {
-            case Tag.Class:     this.emit(type.name); return;
-            case Tag.Function:  this.emit(type.name); return;
-            case Tag.Trait:     this.emit(type.name); return;
-            case Tag.TypeInfer: this.emit("INFER");   return;
-            default:            throw new Error(`targetC>emitTypeName>${Tag[type.tag]}: Not implemented.`);
-        }
+        // switch (type.tag) {
+        //     case Tag.DeclStruct:    this.emit(type.name); return;
+        //     case Tag.DeclFunction:  this.emit(type.name); return;
+        //     case Tag.DeclTrait:     this.emit(type.name); return;
+        //     case Tag.TypeInfer:     this.emit("INFER");   return;
+        //     default:            throw new Error(`targetC>emitTypeName>${Tag[type.tag]}: Not implemented.`);
+        // }
+
+        return "";
     }
 
-    public emitArguments(params: Variable[], args: Node[]) {
+    public emitArguments(params: DeclVariable[], args: Node[]) {
         for (let index = 0; index < args.length; index++) {
             if (index > 0) {
                 this.emit(", ");
@@ -164,7 +166,7 @@ export class TargetC {
         }
     }
 
-    public emitParameters(parameters: Variable[]) {
+    public emitParameters(parameters: DeclVariable[]) {
         for (let index = 0; index < parameters.length; index++) {
             if (index > 0) {
                 this.emit(", ");

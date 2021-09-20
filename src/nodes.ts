@@ -1,76 +1,84 @@
 export enum Tag {
-    Class,
-    Function,
-    Trait,
-    Variable,
-    Module,
-
     SymbolSet,
-    Generic,
-    GenericApply,
-    GenericParameter,
-    TypeInfer,
-    TypeRefName,
-
+    DeclStruct,
+    DeclFunction,
+    DeclModule,
+    DeclTrait,
+    DeclVariable,
     ExprCall,
     ExprCallField,
     ExprCallStatic,
     ExprConstant,
     ExprConstruct,
+    ExprDestroyField,
+    ExprDestroyLocal,
     ExprGetField,
     ExprGetLocal,
+    ExprIf,
+    ExprIfBranch,
     ExprMacroCall,
-    ExprRefName,
-    ExprRefNode,
+    ExprReturn,
     ExprSetField,
     ExprSetLocal,
     ExprVariable,
-    FunctionSignature,
-    StmtDelete,
-    StmtIf,
-    StmtIfBranch,
-    StmtReturn,
-    StmtWhile,
+    ExprWhile,
+    TypeInfer,
+    TypeRefName,
+    TypeRefStatic,
+    ExprRefStatic,
+    ExprRefName
 }
 
 export type Node =
-    | Module
-    | Class             // class name { members... }
-    | Function          // fn name(parameters...) -> returnType { body... }
-    | SymbolSet
-    | Trait             // trait name { members... }
-    | Variable          // val name: Type = Expr
-    | ExprCall          // <target>(arguments...)           [unresolved]
+    | Expr
+    | Decl
+    | Type
+    | SymbolSet // TODO: Find a category for SymbolSet
+    ;
+
+export type Decl =
+    | DeclModule
+    | DeclStruct        // class name { members... }
+    | DeclFunction      // fn name(parameters...) -> returnType { body... }
+    | DeclTrait         // trait name { members... }
+    | DeclVariable      // val name: Type = Expr
+    ;
+
+export type Expr =
+    | ExprCall          // <target>(arguments...)           [resolves to ExprCallField, ExprCallStatic]
     | ExprCallField     // object.field(arguments...)
     | ExprCallStatic    // target(arguments...)
     | ExprConstant      // Any constant value
     | ExprConstruct     // T{}
-    | ExprGetField      // Expr.field           [as r-value]
-    | ExprGetLocal      // local                [as r-value]
+    | ExprGetField      // expression.field                 [as r-value]
+    | ExprGetLocal      // local                            [as r-value]
     | ExprMacroCall     // macro! argument
-    | ExprRefName       // Reference a symbol by name (Resolved to ExprRefNode)
-    | ExprRefNode       // Reference a symbol
+    | ExprRefName       //                                  [resolves to ExprRefStatic]
+    | ExprRefStatic     //
     | ExprSetField      // Expr.field = expression
     | ExprSetLocal      // local = expression
-    | StmtDelete        // delete! variable
-    | StmtIf            // if (condition) { ... } else if (condition) { ... } else { ... }
-    | StmtIfBranch      // Branches of an if statement
-    | StmtReturn        // return expression
-    | StmtWhile         // while (condition) { ... }
-    | Type              // TODO: Merge type into node
+    | ExprDestroyField  // delete! expression.field
+    | ExprDestroyLocal  // delete! variable
+    | ExprIf            // if (condition) { ... } else if (condition) { ... } else { ... }
+    | ExprIfBranch      // Branches of an if statement
+    | ExprReturn        // return expression
+    | ExprWhile         // while (condition) { ... }
     ;
 
 export type Type =
-    | Class                     // class name { members... }
-    | Function                  // fn name(parameters...) -> returnType { body... }
-    | Trait                     // trait name { members... }
-    | TypeRefName               // Reference a symbol by name (Resolve to type)
-    | TypeInfer                 // Infer this type. Not valid everywhere.
+    | TypeInfer         // Infer this type. Not valid everywhere.
+    | TypeRefName       //
+    | TypeRefStatic     //
     ;
 
-export class Module {
-    public readonly tag = Tag.Module;
-    public static readonly tag = Tag.Module;
+// References
+type Global = string | number;
+type Field  = string | number;
+type Local  = string | number;
+
+export class DeclModule {
+    public readonly tag = Tag.DeclModule;
+    public static readonly tag = Tag.DeclModule;
 
     public constructor(
         public nodes: Node[],
@@ -82,11 +90,15 @@ export class SymbolSet {
     public static readonly tag = Tag.SymbolSet;
 
     public readonly nodes = new Array<Node>();
+
+    public constructor(
+        public id: number,
+    ) {}
 }
 
-export class Class {
-    public readonly tag = Tag.Class;
-    public static readonly tag = Tag.Class;
+export class DeclStruct {
+    public readonly tag = Tag.DeclStruct;
+    public static readonly tag = Tag.DeclStruct;
 
     public constructor(
         public parent: number,
@@ -98,9 +110,9 @@ export class Class {
     ) {}
 }
 
-export class Trait {
-    public readonly tag = Tag.Trait;
-    public static readonly tag = Tag.Trait;
+export class DeclTrait {
+    public readonly tag = Tag.DeclTrait;
+    public static readonly tag = Tag.DeclTrait;
 
     public constructor(
         public parent: number,
@@ -112,18 +124,18 @@ export class Trait {
     ) {}
 }
 
-export class Function {
-    public readonly tag = Tag.Function;
-    public static readonly tag = Tag.Function;
+export class DeclFunction {
+    public readonly tag = Tag.DeclFunction;
+    public static readonly tag = Tag.DeclFunction;
 
-    public variables = new Array<Variable>();
+    public variables = new Array<DeclVariable>();
 
     public constructor(
         public parent: number,
         public id: number,
 
         public name: string,
-        public parameters: Array<Variable>,
+        public parameters: Array<DeclVariable>,
         public returnType: Type,
         public body: Array<Node>,
         public flags: FunctionFlags,
@@ -135,24 +147,10 @@ export enum FunctionFlags {
     Abstract    = 1 << 1,
 }
 
-export class TypeRefName {
-    public readonly tag = Tag.TypeRefName;
-    public static readonly tag = Tag.TypeRefName;
-
-    public constructor(
-        public name: string
-    ) {}
-}
-
-export class TypeInfer {
-    public readonly tag = Tag.TypeInfer;
-    public static readonly tag = Tag.TypeInfer;
-}
-
 // TODO: Decide if we split into local/field/global? -or- if we use VariableFlags to indicate this
-export class Variable {
-    public readonly tag = Tag.Variable;
-    public static readonly tag = Tag.Variable;
+export class DeclVariable {
+    public readonly tag = Tag.DeclVariable;
+    public static readonly tag = Tag.DeclVariable;
 
     public constructor(
         public parent: number,
@@ -188,7 +186,7 @@ export class ExprCallField {
 
     public constructor(
         public object: Node,
-        public field: Function,
+        public field: Field,
         public args: Array<Node>,
     ) {}
 }
@@ -198,7 +196,7 @@ export class ExprCallStatic {
     public static readonly tag = Tag.ExprCallStatic;
 
     public constructor(
-        public target: SymbolSet | Function | ExprRefName,
+        public target: Global,
         public args: Array<Node>,
     ) {}
 }
@@ -229,7 +227,7 @@ export class ExprGetField {
 
     public constructor(
         public object: Node,
-        public field: RefVar,
+        public field: Field,
     ) {}
 }
 
@@ -238,7 +236,7 @@ export class ExprGetLocal {
     public static readonly tag = Tag.ExprGetLocal;
     
     public constructor(
-        public local: RefVar,
+        public local: Local,
     ) {}
 }
 
@@ -252,31 +250,13 @@ export class ExprMacroCall {
     ) {}
 }
 
-export class ExprRefName {
-    public readonly tag = Tag.ExprRefName;
-    public static readonly tag = Tag.ExprRefName;
-
-    public constructor(
-        public name: string,
-    ) {}
-}
-
-export class ExprRefNode {
-    public readonly tag = Tag.ExprRefNode;
-    public static readonly tag = Tag.ExprRefNode;
-
-    public constructor(
-        public node: Node,
-    ) {}
-}
-
 export class ExprSetField {
     public readonly tag = Tag.ExprSetField;
     public static readonly tag = Tag.ExprSetField;
 
     public constructor(
         public object: Node,
-        public field: RefVar,
+        public field: Field,
         public value: Node,
     ) {}
 }
@@ -286,33 +266,43 @@ export class ExprSetLocal {
     public static readonly tag = Tag.ExprSetLocal;
 
     public constructor(
-        public local: RefVar,
+        public local: Local,
         public value: Node,
     ) {}
 }
 
-export class StmtDelete {
-    public readonly tag = Tag.StmtDelete;
-    public static readonly tag = Tag.StmtDelete;
+export class ExprDestroyField {
+    public readonly tag = Tag.ExprDestroyField;
+    public static readonly tag = Tag.ExprDestroyField;
 
     public constructor(
-        public variable: RefVar,
+        public object: Node,
+        public field: Field,
     ) {}
 }
 
-export class StmtIf {
-    public readonly tag = Tag.StmtIf;
-    public static readonly tag = Tag.StmtIf;
+export class ExprDestroyLocal {
+    public readonly tag = Tag.ExprDestroyLocal;
+    public static readonly tag = Tag.ExprDestroyLocal;
 
     public constructor(
-        public branches: Array<StmtIfBranch>,
+        public local: Local,
+    ) {}
+}
+
+export class ExprIf {
+    public readonly tag = Tag.ExprIf;
+    public static readonly tag = Tag.ExprIf;
+
+    public constructor(
+        public branches: Array<ExprIfBranch>,
         public elseBranch: Array<Node>,
     ) {}
 }
 
-export class StmtIfBranch {
-    public readonly tag = Tag.StmtIfBranch;
-    public static readonly tag = Tag.StmtIfBranch;
+export class ExprIfBranch {
+    public readonly tag = Tag.ExprIfBranch;
+    public static readonly tag = Tag.ExprIfBranch;
 
     public constructor(
         public condition: Node,
@@ -320,18 +310,36 @@ export class StmtIfBranch {
     ) {}
 }
 
-export class StmtReturn {
-    public readonly tag = Tag.StmtReturn;
-    public static readonly tag = Tag.StmtReturn;
+export class ExprRefStatic {
+    public readonly tag = Tag.ExprRefStatic;
+    public static readonly tag = Tag.ExprRefStatic;
+
+    public constructor(
+        public id: Global,
+    ) {}
+}
+
+export class ExprRefName {
+    public readonly tag = Tag.ExprRefName;
+    public static readonly tag = Tag.ExprRefName;
+
+    public constructor(
+        public name: string,
+    ) {}
+}
+
+export class ExprReturn {
+    public readonly tag = Tag.ExprReturn;
+    public static readonly tag = Tag.ExprReturn;
 
     public constructor(
         public expression: Node | null,
     ) {}
 }
 
-export class StmtWhile {
-    public readonly tag = Tag.StmtWhile;
-    public static readonly tag = Tag.StmtWhile;
+export class ExprWhile {
+    public readonly tag = Tag.ExprWhile;
+    public static readonly tag = Tag.ExprWhile;
 
     public constructor(
         public condition: Node,
@@ -339,72 +347,120 @@ export class StmtWhile {
     ) {}
 }
 
-export type RefVar = number | string;
+export class TypeInfer {
+    public readonly tag = Tag.TypeInfer;
+    public static readonly tag = Tag.TypeInfer;
+}
+
+export class TypeRefStatic {
+    public readonly tag = Tag.TypeRefStatic;
+    public static readonly tag = Tag.TypeRefStatic;
+
+    public constructor(
+        public type: Global,
+    ) {}
+}
+
+export class TypeRefName {
+    public readonly tag = Tag.TypeRefName;
+    public static readonly tag = Tag.TypeRefName;
+
+    public constructor(
+        public name: string,
+    ) {}
+}
 
 export namespace Type {
     export function canAssignTo(child: Type, parent: Type) {
         return Type.isSubType(child, parent);
     }
 
-    export function isSubType(child: Type, parent: Type) {
-        if (child === parent) {
-            return true;
-        }
+    export function isSubType(child: Type, parent: Type): boolean {
+        // if (child === parent) {
+        //     return true;
+        // }
 
-        switch (parent.tag) {
-            case Tag.Class:    return false;
-            case Tag.Function: return false;
+        // switch (parent.tag) {
+        //     case Tag.DeclStruct:    return false;
+        //     case Tag.DeclFunction: return false;
 
-            case Tag.Trait: {
-                switch (child.tag) {
-                    case Tag.Class:
-                    case Tag.Trait:
-                        return child.superTypes.has(parent);
+        //     case Tag.DeclTrait: {
+        //         switch (child.tag) {
+        //             case Tag.DeclStruct:
+        //             case Tag.DeclTrait:
+        //                 return child.superTypes.has(parent);
 
-                    default:
-                        return false;
-                }
-            }
+        //             default:
+        //                 return false;
+        //         }
+        //     }
 
-            case Tag.TypeRefName: {
-                console.log(child, parent);
-            }
-        }
+        //     case Tag.TypeRefName: {
+        //         console.log(child, parent);
+        //     }
+        // }
 
         throw new Error(`isSubType: Has no handler for node '${Tag[parent.tag]}'`);
     }
 
-    export function getMember(type: Type, member: string) {
-        switch (type.tag) {
-            case Tag.Class:       return type.members.get(member);
-            case Tag.Function:    return undefined;
-            case Tag.Trait:       throw new Error('Not implemented yet');
-            case Tag.TypeRefName: throw new Error('Not implemented yet');
-            case Tag.TypeInfer:   throw new Error('Not implemented yet');
-        }
+    export function getMember(type: Type, member: string): Decl {
+        // switch (type.tag) {
+        //     case Tag.DeclStruct:       return type.members.get(member);
+        //     case Tag.DeclFunction:    return undefined;
+        //     case Tag.DeclTrait:       throw new Error('Not implemented yet');
+        //     case Tag.TypeRefName: throw new Error('Not implemented yet');
+        //     case Tag.TypeInfer:   throw new Error('Not implemented yet');
+        // }
 
         throw new Error(`Unhandled case ${Tag[(type as any).tag]}`);
+    }
+
+    export function resolve(context: Context, type: Type): Decl {
+        throw new Error("Not implemented yet");
+    }
+    
+    export function is(context: Context, type: Type, tag: Tag): boolean {
+        throw new Error("Not implemented yet");
     }
 }
 
 export namespace Node {
-    export function getReturnType(expr: Node, context: Function): Type {
-        switch (expr.tag) {
-            case Tag.ExprCallField:  return expr.field.returnType;
-            case Tag.ExprCallStatic: return (expr.target.tag === Tag.Function ? expr.target.returnType : null as any);
-            case Tag.ExprConstant:   return expr.type;
-            case Tag.ExprConstruct:  return expr.target;
-            case Tag.ExprGetField:   throw new Error('Not implemented yet');
-            case Tag.ExprGetLocal:   return context.variables[expr.local as number].type;
-            case Tag.ExprMacroCall:  throw new Error('Not implemented yet');
-            case Tag.ExprRefName:    throw new Error('Not implemented yet');
-            case Tag.ExprRefNode:    throw new Error('Not implemented yet');
-            case Tag.ExprSetField:   return getReturnType(expr.value, context);
-            case Tag.ExprSetLocal:   return getReturnType(expr.value, context);
-        }
+    export function getReturnType(context: Context, expr: Node): Type {
+        // switch (expr.tag) {
+        //     case Tag.ExprCallField:  return expr.field.returnType;
+        //     case Tag.ExprCallStatic: return (expr.target.tag === Tag.DeclFunction ? expr.target.returnType : null as any);
+        //     case Tag.ExprConstant:   return expr.type;
+        //     case Tag.ExprConstruct:  return expr.target;
+        //     case Tag.ExprGetField:   throw new Error('Not implemented yet');
+        //     case Tag.ExprGetLocal:   return context.variables[expr.local as number].type;
+        //     case Tag.ExprMacroCall:  throw new Error('Not implemented yet');
+        //     case Tag.ExprRefName:    throw new Error('Not implemented yet');
+        //     case Tag.ExprRefNode:    throw new Error('Not implemented yet');
+        //     case Tag.ExprSetField:   return getReturnType(expr.value, context);
+        //     case Tag.ExprSetLocal:   return getReturnType(expr.value, context);
+        // }
 
         throw new Error(`Unhandled case ${Tag[(expr as any).tag]}`);
     }
 }
 
 export const UnresolvedId = -1;
+
+export class Context<Parent = Decl> {
+    public constructor(
+        public parent: Parent,
+        public module: DeclModule,
+    ) {}
+
+    public next<T extends Decl>(parent: T) {
+        return new Context(parent, this.module);
+    }
+
+    public resolve(global: Global) {
+        if (typeof(global) !== 'number') {
+            throw new Error();
+        }
+
+        return this.module.nodes[global];
+    }
+}

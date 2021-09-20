@@ -1,19 +1,17 @@
 import { Constructor } from '../common/constructor';
-import { Node, Tag } from '../nodes';
+import { Context, Node, Tag } from '../nodes';
 import * as Nodes from '../nodes';
 
-type Container = Node;
-
 export interface VisitorConfig<State> {
-    after?:  (node: Node, container: Container, state: State) => Node;
-    before?: (node: Node, container: Container, state: State) => {node?: Node, state?: State, continue?: boolean};
-    update?: (node: Node, previous: Node, container: Container, state: State) => Node;
+    after?:  (node: Node, context: Context, state: State) => Node;
+    before?: (node: Node, context: Context, state: State) => {node?: Node, state?: State, continue?: boolean};
+    update?: (node: Node, previous: Node, context: Context, state: State) => Node;
 }
 
 export class Visitor<State = null> {
-    private readonly after?:  (node: Node, container: Container, state: State) => Node;
-    private readonly before?: (node: Node, container: Container, state: State) => {node?: Node, state?: State, continue?: boolean};
-    private readonly update?: (node: Node, previous: Node, container: Container, state: State) => Node;
+    private readonly after?:  (node: Node, context: Context, state: State) => Node;
+    private readonly before?: (node: Node, context: Context, state: State) => {node?: Node, state?: State, continue?: boolean};
+    private readonly update?: (node: Node, previous: Node, context: Context, state: State) => Node;
 
     public constructor(config: VisitorConfig<State>) {
         this.after  = config.after;
@@ -21,11 +19,11 @@ export class Visitor<State = null> {
         this.update = config.update;
     }
 
-    public node(node: Node, container: Container, state: State): Node {
+    public node(node: Node, context: Context, state: State): Node {
         let replace: Node | undefined = undefined;
 
         if (this.before !== undefined) {
-            const result = this.before(node, container, state);
+            const result = this.before(node, context, state);
 
             if (result.node !== undefined) {
                 node = result.node;
@@ -41,48 +39,56 @@ export class Visitor<State = null> {
         }
 
         switch (node.tag) {
-            case Tag.Class: {
-                const members = this.map(node.members, node, state);
-                if (members !== node.members) {
-                    replace = new Nodes.Class(node.parent, node.id, node.name, members, new Set(node.superTypes));
-                }
-                break;
-            }
-
-            case Tag.Function: {
-                const parameters = this.array(node.parameters, node, state);
-                const body       = this.array(node.body, node, state);
+            // TODO: Revisit Decl visitors
+            case Tag.DeclFunction: {
+                const ctx     = context.next(node);
+                const parameters = this.array(node.parameters, ctx, state);
+                const body       = this.array(node.body, ctx, state);
                 if (parameters !== node.parameters || body !== node.body) {
                     // HACK: Variables are not passed in as a parameter
                     // TODO: Check parameters are really an array of variables.
                     const variables = node.variables;
-                    replace = new Nodes.Function(node.parent, node.id, node.name, parameters as Nodes.Variable[], node.returnType, body, node.flags);
+                    replace = new Nodes.DeclFunction(node.parent, node.id, node.name, parameters as Nodes.DeclVariable[], node.returnType, body, node.flags);
                     replace.variables = variables;
                 }
                 break;
             }
 
-            case Tag.Trait: {
-                const members = this.array(node.members, node, state);
+            case Tag.DeclModule: {
+                break;
+            }
+
+            case Tag.DeclStruct: {
+                const ctx     = context.next(node);
+                const members = this.map(node.members, ctx, state);
                 if (members !== node.members) {
-                    replace = new Nodes.Trait(node.parent, node.id, node.name, members, new Set(node.superTypes));
+                    replace = new Nodes.DeclStruct(node.parent, node.id, node.name, members, new Set(node.superTypes));
                 }
                 break;
             }
 
-            case Tag.Variable: {
+            case Tag.DeclTrait: {
+                const ctx     = context.next(node);
+                const members = this.array(node.members, ctx, state);
+                if (members !== node.members) {
+                    replace = new Nodes.DeclTrait(node.parent, node.id, node.name, members, new Set(node.superTypes));
+                }
+                break;
+            }
+
+            case Tag.DeclVariable: {
                 if (node.value !== null) {
-                    const value = this.node(node.value, container, state);
+                    const value = this.node(node.value, context, state);
                     if (value !== node.value) {
-                        replace = new Nodes.Variable(node.parent, node.id, node.name, node.type, value, node.flags);
+                        replace = new Nodes.DeclVariable(node.parent, node.id, node.name, node.type, value, node.flags);
                     }
                 }
                 break;
             }
 
             case Tag.ExprCall: {
-                const target = this.node(node.target, container, state);
-                const args   = this.array(node.args, container, state);
+                const target = this.node(node.target, context, state);
+                const args   = this.array(node.args, context, state);
                 if (target !== node.target || args !== node.args) {
                     replace = new Nodes.ExprCall(target, args);
                 }
@@ -90,7 +96,7 @@ export class Visitor<State = null> {
             }
 
             case Tag.ExprCallStatic: {
-                const args = this.array(node.args, container, state);
+                const args = this.array(node.args, context, state);
                 if (args !== node.args) {
                     replace = new Nodes.ExprCallStatic(node.target, args);
                 }
@@ -98,8 +104,8 @@ export class Visitor<State = null> {
             }
 
             case Tag.ExprCallField: {
-                const object = this.node(node.object, container, state);
-                const args   = this.array(node.args, container, state);
+                const object = this.node(node.object, context, state);
+                const args   = this.array(node.args, context, state);
                 if (object !== node.object || args !== node.args) {
                     replace = new Nodes.ExprCallField(node.object, node.field, args);
                 }
@@ -111,7 +117,7 @@ export class Visitor<State = null> {
             }
 
             case Tag.ExprConstruct: {
-                const args = this.array(node.args, container, state);
+                const args = this.array(node.args, context, state);
                 if (args !== node.args) {
                     replace = new Nodes.ExprConstruct(node.target, args);
                 }
@@ -119,7 +125,7 @@ export class Visitor<State = null> {
             }
 
             case Tag.ExprGetField: {
-                const object = this.node(node.object, container, state);
+                const object = this.node(node.object, context, state);
                 if (object !== node.object) {
                     replace = new Nodes.ExprGetField(object, node.field);
                 }
@@ -139,13 +145,13 @@ export class Visitor<State = null> {
                 break;
             }
 
-            case Tag.ExprRefNode: {
+            case Tag.ExprRefStatic: {
                 break;
             }
 
             case Tag.ExprSetField: {
-                const object = this.node(node.object, container, state);
-                const value  = this.node(node.value, container, state);
+                const object = this.node(node.object, context, state);
+                const value  = this.node(node.value, context, state);
                 if (object !== node.object || value !== node.value) {
                     replace = new Nodes.ExprSetField(object, node.field, value);
                 }
@@ -153,50 +159,50 @@ export class Visitor<State = null> {
             }
 
             case Tag.ExprSetLocal: {
-                const value = this.node(node.value, container, state);
+                const value = this.node(node.value, context, state);
                 if (value !== node.value) {
                     replace = new Nodes.ExprSetLocal(node.local, value);
                 }
                 break;
             }
 
-            case Tag.StmtDelete: {
+            case Tag.ExprDestroyLocal: {
                 break;
             }
 
-            case Tag.StmtIf: {
-                const branches   = this.array(node.branches, container, state);
-                const elseBranch = this.array(node.elseBranch, container, state);
+            case Tag.ExprIf: {
+                const branches   = this.array(node.branches, context, state);
+                const elseBranch = this.array(node.elseBranch, context, state);
                 if (branches !== node.branches || elseBranch !== node.elseBranch) {
                     // TODO: Check branches are really an array of StmtIfBranch
-                    replace = new Nodes.StmtIf(branches as Nodes.StmtIfBranch[], elseBranch);
+                    replace = new Nodes.ExprIf(branches as Nodes.ExprIfBranch[], elseBranch);
                 }
                 break;
             }
 
-            case Tag.StmtIfBranch: {
-                const condition = this.node(node.condition, container, state);
-                const body      = this.array(node.body, container, state);
+            case Tag.ExprIfBranch: {
+                const condition = this.node(node.condition, context, state);
+                const body      = this.array(node.body, context, state);
                 if (condition !== node.condition || body !== node.body) {
-                    replace = new Nodes.StmtIfBranch(condition, body);
+                    replace = new Nodes.ExprIfBranch(condition, body);
                 }
                 break;
             }
 
-            case Tag.StmtWhile: {
-                const condition = this.node(node.condition, container, state);
-                const body      = this.array(node.body, container, state);
+            case Tag.ExprWhile: {
+                const condition = this.node(node.condition, context, state);
+                const body      = this.array(node.body, context, state);
                 if (condition !== node.condition || body !== node.body) {
-                    replace = new Nodes.StmtWhile(condition, body);
+                    replace = new Nodes.ExprWhile(condition, body);
                 }
                 break;
             }
 
-            case Tag.StmtReturn: {
+            case Tag.ExprReturn: {
                 if (node.expression !== null) {
-                    const expression = this.node(node.expression, container, state);
+                    const expression = this.node(node.expression, context, state);
                     if (expression !== node.expression) {
-                        replace = new Nodes.StmtReturn(expression);
+                        replace = new Nodes.ExprReturn(expression);
                     }
                 }
                 break;
@@ -209,24 +215,24 @@ export class Visitor<State = null> {
 
         if (replace !== undefined) {
             if (this.update !== undefined) {
-                node = this.update(replace, node, container, state);
+                node = this.update(replace, node, context, state);
             } else {
                 node = replace;
             }
         }
 
         if (this.after !== undefined) {
-            node = this.after(node, container, state);
+            node = this.after(node, context, state);
         }
 
         return node;
     }
 
-    public array(nodes: Node[], container: Container, state: State): Node[] {
+    public array(nodes: Node[], context: Context, state: State): Node[] {
         const length = nodes.length;
         for (let index = 0; index < length; index++) {
             const input  = nodes[index];
-            const output = this.node(input, container, state);
+            const output = this.node(input, context, state);
 
             // Handle the case where one of the functions returned a new object.
             if (input !== output) {
@@ -236,7 +242,7 @@ export class Visitor<State = null> {
                 index++;
 
                 while (index < length) {
-                    copy[index] = this.node(nodes[index], container, state);
+                    copy[index] = this.node(nodes[index], context, state);
                     index++;
                 }
 
@@ -246,11 +252,12 @@ export class Visitor<State = null> {
         return nodes;
     }
 
-    public map(nodes: Map<string, Node>, container: Container, state: State): Map<string, Node> {
+    // TODO: This can probably be removed
+    public map(nodes: Map<string, Node>, context: Context, state: State): Map<string, Node> {
         const entries = Array.from(nodes.entries());
 
         const input   = entries.map(x => x[1]);
-        const output  = this.array(input, container, state);
+        const output  = this.array(input, context, state);
 
         if (input === output) {
             return nodes;

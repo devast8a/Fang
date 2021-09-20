@@ -11,7 +11,7 @@ const Placeholder = {} as Node;
 
 interface Context {
     compiler: Compiler;
-    module: Nodes.Module;
+    module: Nodes.DeclModule;
     parent: number;
     source: Source;
 }
@@ -60,12 +60,12 @@ function parseStmt(node: PNode, context: Context): Node {
 
             // Generate member mapping
             const members = new Map(body.map(member => [
-                (member as Nodes.Function).name,
+                (member as Nodes.DeclFunction).name,
                 member
             ]));
 
             context.parent = parent;
-            const result = new Nodes.Class(parent, id, name, members, new Set(superTypes));
+            const result = new Nodes.DeclStruct(parent, id, name, members, new Set(superTypes));
             module.nodes[id] = result;
             return result;
         }
@@ -85,10 +85,10 @@ function parseStmt(node: PNode, context: Context): Node {
             // attributes
             const body = (node.data[7].length === 2) ?
                 parseStmtArray(node.data[7][1], context) :
-                [new Nodes.StmtReturn(parseExpr(node.data[7][4]))];
+                [new Nodes.ExprReturn(parseExpr(node.data[7][4]))];
 
             context.parent = parent;
-            const result = new Nodes.Function(parent, id, name, parameters, returnType, body, Nodes.FunctionFlags.None);
+            const result = new Nodes.DeclFunction(parent, id, name, parameters, returnType, body, Nodes.FunctionFlags.None);
             module.nodes[id] = result;
             return result;
         }
@@ -107,7 +107,7 @@ function parseStmt(node: PNode, context: Context): Node {
             const body = parseStmtArray(node.data[5][1], context);
 
             context.parent = parent;
-            const result = new Nodes.Trait(parent, id, name, body, new Set(superTypes));
+            const result = new Nodes.DeclTrait(parent, id, name, body, new Set(superTypes));
             module.nodes[id] = result;
             return result;
         }
@@ -126,9 +126,9 @@ function parseStmt(node: PNode, context: Context): Node {
                 [] :
                 parseStmtArray(node.data[4][1], context);
 
-            const firstBranch = new Nodes.StmtIfBranch(condition, body);
+            const firstBranch = new Nodes.ExprIfBranch(condition, body);
             
-            return new Nodes.StmtIf([firstBranch], elseBranch);
+            return new Nodes.ExprIf([firstBranch], elseBranch);
         }
 
         case PTag.StmtWhile: {
@@ -137,7 +137,7 @@ function parseStmt(node: PNode, context: Context): Node {
             const condition = parseExpr(node.data[2][3]);
             const body      = parseStmtArray(node.data[3], context);
 
-            return new Nodes.StmtWhile(condition, body);
+            return new Nodes.ExprWhile(condition, body);
         }
 
         case PTag.StmtAssign: {
@@ -175,11 +175,11 @@ function parseExpr(node: PNode): Node {
         case PTag.ExprBinary: {
             switch (node.data.length) {
                 case 5: {
-                    return new Nodes.ExprCallStatic(new Nodes.ExprRefName("+"), []);
+                    return new Nodes.ExprCall(new Nodes.ExprRefName("+"), []);
                 }
 
                 case 3: {
-                    return new Nodes.ExprCallStatic(new Nodes.ExprRefName("+"), []);
+                    return new Nodes.ExprCall(new Nodes.ExprRefName("+"), []);
                 }
 
                 default: throw new Error('Unreachable')
@@ -244,7 +244,7 @@ function convertVariableKeyword(keyword: string | undefined) {
     }
 }
 
-function parseVariable(node: PNode, context: Context): Nodes.Variable {
+function parseVariable(node: PNode, context: Context): Nodes.DeclVariable {
     const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
     const name  = parseIdentifier(node.data[1]);
     // compileTime
@@ -253,7 +253,7 @@ function parseVariable(node: PNode, context: Context): Nodes.Variable {
     const value = node.data[5] === null ? null  : parseExpr(node.data[5][3]);
 
     // TODO: Set variable id here - rather than in name resolution
-    return new Nodes.Variable(context.parent, UnresolvedId, name, type, value, flags);
+    return new Nodes.DeclVariable(context.parent, UnresolvedId, name, type, value, flags);
 }
 
 function parseIdentifier(node: PNode) {

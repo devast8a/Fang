@@ -1,17 +1,17 @@
-import { Node, Tag, Function, Variable, VariableFlags, ExprGetLocal, UnresolvedId } from '../nodes';
+import { Node, Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, UnresolvedId, Context } from '../nodes';
 
-export function transformRemoveNesting(nodes: Node[]) {
+export function transformRemoveNesting(context: Context, nodes: Node[]) {
     for (const node of nodes) {
         switch (node.tag) {
-            case Tag.Class:
-            case Tag.Trait:
+            case Tag.DeclStruct:
+            case Tag.DeclTrait:
                 continue;
 
-            case Tag.Function: {
+            case Tag.DeclFunction: {
 
                 const output = new Array<Node>();
                 for (const stmt of node.body) {
-                    transform(node, output, stmt);
+                    transform(context.next(node), output, stmt);
                     output.push(stmt);
                 }
                 node.body = output;
@@ -24,11 +24,11 @@ export function transformRemoveNesting(nodes: Node[]) {
     }
 }
 
-function transform(fn: Function, output: Node[], node: Node): Node {
+function transform(context: Context<DeclFunction>, output: Node[], node: Node): Node {
     switch (node.tag) {
-        case Tag.Variable: {
+        case Tag.DeclVariable: {
             if (node.value !== null) {
-                node.value = transform(fn, output, node.value);
+                node.value = transform(context, output, node.value);
             }
             return node;
         }
@@ -48,8 +48,8 @@ function transform(fn: Function, output: Node[], node: Node): Node {
 
                 switch (arg.tag) {
                     case Tag.ExprCallStatic: {
-                        transform(fn, output, arg);
-                        node.args[index] = useTemporaryVariable(fn, output, arg);
+                        transform(context, output, arg);
+                        node.args[index] = useTemporaryVariable(context, output, arg);
                         break;
                     }
 
@@ -64,7 +64,7 @@ function transform(fn: Function, output: Node[], node: Node): Node {
             return node;
         }
 
-        case Tag.StmtDelete: {
+        case Tag.ExprDestroyLocal: {
             return node;
         }
     }
@@ -72,17 +72,18 @@ function transform(fn: Function, output: Node[], node: Node): Node {
     throw new Error(`transformRemoveNesting > transform > ${Tag[node.tag]}: Not implemented`);
 }
 
-function useTemporaryVariable(fn: Function, output: Node[], value: Node): Node {
+function useTemporaryVariable(context: Context<DeclFunction>, output: Node[], value: Node): Node {
+    const fn = context.parent;
     const id = fn.variables.length;
 
-    const variable = new Variable(
+    const variable = new DeclVariable(
         UnresolvedId,
         id,
 
         // TODO: Variable naming
         `_temp${fn.variables.length}`,
 
-        Node.getReturnType(value, fn),
+        Node.getReturnType(context, value),
         value,
 
         // TODO: Might need to apply more flags
