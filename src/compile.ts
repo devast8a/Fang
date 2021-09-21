@@ -95,7 +95,7 @@ export class Compiler {
             console.timeEnd(stage.name);
         }
 
-        console.log(JSON.stringify(module, undefined, 4));
+        serializeModule(module);
 
         const target = new TargetC();
         target.emitProgram(context);
@@ -116,4 +116,16 @@ export class Compiler {
 
         return compiler.compile(source);
     }
+}
+
+function serializeModule(module: DeclModule) {
+    function convert(key: string, value: any) {
+        if (value !== undefined && value.constructor === Map) {
+            return Array.from(value);
+        }
+
+        return value;
+    }
+
+    console.log(JSON.stringify(module, convert, 4));
 }

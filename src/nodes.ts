@@ -106,7 +106,6 @@ export enum FunctionFlags {
     Abstract    = 1 << 1,
 }
 
-
 export class DeclModule {
     public readonly tag = Tag.DeclModule;
     public static readonly tag = Tag.DeclModule;

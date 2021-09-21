@@ -15,13 +15,15 @@ export class TargetC {
         // TODO: Forward declare
 
         for (const node of context.module.nodes) {
+            // Skip root node
+            if (node.id === 0) { continue; }
+
             this.emitNode(context, node);
         }
     }
 
     public emitNode(context: Context, node: Node) {
         switch (node.tag) {
-            case Tag.DeclStruct:
             case Tag.DeclTrait:
                 console.warn(`targetC>emitNode>${Tag[node.tag]} not implemented`)
                 return;
@@ -43,6 +45,18 @@ export class TargetC {
                 this.emitParameters(context, node.parameters);
                 this.emit          (")");
                 this.emitBody      (context, node.body);
+                return;
+            }
+
+            case Tag.DeclStruct: {
+                // TODO: Cleanup resolution of members
+                const members = context.resolveMany(Array.from(node.members.values()));
+
+                this.emitSeparator();
+                this.emit         ("typedef struct ");
+                this.emitBody     (context, members);
+                this.emit         (" ", node.name, ";");
+
                 return;
             }
 

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Context, Decl, Expr, Node, UnresolvedId } from '../nodes';
+import { Context, Decl, Expr, Node, Tag, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
@@ -31,6 +31,35 @@ function parse(context: Context, node: PNode): Expr {
     const module = context.module;
 
     switch (node.tag) {
+        case PTag.DeclClass: {
+            // Setup id
+            const id = module.nodes.length;
+            module.nodes.push(Placeholder);
+            const ctx = context.nextId(id);
+
+            // keyword
+            const name = parseIdentifier(node.data[1]);
+            const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
+            // generic
+            // attributes
+            const body = parseList(ctx, node.data[5][1]);
+
+            // Generate member mapping
+            const members = new Map();
+
+            for (const member of body) {
+                if (member.tag === Tag.ExprDeclaration) {
+                    const decl = context.resolve(member.id);
+
+                    members.set(decl.name, decl.id);
+                }
+            }
+
+            const struct = new Nodes.DeclStruct(context.parent.id, id, name, members, new Set(superTypes));
+            module.nodes[id] = struct;
+            return new Nodes.ExprDeclaration(id);
+        }
+
         case PTag.DeclFunction: {
             // Setup id
             const id = module.nodes.length;
