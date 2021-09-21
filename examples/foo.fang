@@ -1,11 +1,11 @@
-# class Foo {
-#     fn foo() {}
-# }
+class Foo {
+    fn foo() {}
+}
 
-fn bar() {}
+fn bar(foo: Foo) {}
 
-# fn main() {
-#     val foo = Foo{}
-#     foo.foo()
-#     bar()
-# }
+fn main() {
+    val foo = Foo{}
+    # foo.foo()
+    bar()
+}

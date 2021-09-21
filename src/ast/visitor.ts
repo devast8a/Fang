@@ -77,6 +77,10 @@ export class Visitor<State = null> {
                 break;
             }
 
+            case Tag.ExprDeclaration: {
+                break;
+            }
+
             case Tag.ExprGetField: {
                 const object = this.node(node.object, context, state);
                 if (object !== node.object) {

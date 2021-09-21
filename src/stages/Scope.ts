@@ -1,4 +1,4 @@
-import { Decl, DeclSymbol, UnresolvedId } from '../nodes';
+import { Context, Decl, DeclSymbol } from '../nodes';
 
 export class Scope {
     private map = new Map<string, DeclSymbol>();
@@ -8,11 +8,12 @@ export class Scope {
         this.parent = parent;
     }
 
-    public declare(name: string, decl: Decl) {
+    public declare(context: Context, name: string, decl: Decl) {
         let set = this.map.get(name);
 
         if (set === undefined) {
-            set = new DeclSymbol(UnresolvedId, UnresolvedId, name);
+            set = new DeclSymbol(context.parentId, context.module.nodes.length, name);
+            context.module.nodes.push(set);
             this.map.set(name, set);
         }
 

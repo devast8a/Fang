@@ -37,6 +37,7 @@ export type Node =
     | Expr
     | Decl
     | Type
+    | DeclModule
     ;
 
 export type Decl =

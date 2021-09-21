@@ -6,10 +6,14 @@ import { Scope } from './Scope';
 class State {
     scopeMap = new Map<Node, Scope>();
     functions = new Array<DeclFunction>();
+
+    public constructor(
+        public context: Context,
+    ) {}
 }
 
-export function nameResolution(nodes: Node[], scope: Scope) {
-    const state = new State();
+export function nameResolution(nodes: Node[], scope: Scope, context: Context) {
+    const state = new State(context);
 
     declareNodes(nodes, scope, state);
     resolveNodes(nodes, state);
@@ -25,8 +29,12 @@ function declareNode(node: Node, scope: Scope, state: State) {
     state.scopeMap.set(node, scope);
 
     switch (node.tag) {
+        case Tag.DeclSymbol: {
+            return;
+        }
+
         case Tag.DeclStruct: {
-            scope.declare(node.name, node);
+            scope.declare(state.context, node.name, node);
             declareNodes(Array.from(node.superTypes), scope, state);
 
             return;
@@ -35,7 +43,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
         case Tag.DeclFunction: {
             state.functions.push(node);
 
-            scope.declare(node.name, node);
+            scope.declare(state.context, node.name, node);
 
             const inner = scope.newChildScope();
             declareNodes(node.parameters, inner, state);
@@ -47,7 +55,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.DeclTrait: {
-            scope.declare(node.name, node);
+            scope.declare(state.context, node.name, node);
 
             // TODO: Support members
             return;
@@ -55,6 +63,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
 
         case Tag.DeclVariable: {
             // TODO: Support global variables
+            // TODO: This can be replaced with a field (we flatten decls in ast generation)
             const currentFunction = state.functions[state.functions.length - 1];
 
             // TODO: Move this into AstGenerationStage
@@ -66,7 +75,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
             if (node.value !== null) { declareNode(node.value, scope, state); }
 
             // Declare variable name
-            scope.declare(node.name, node);
+            scope.declare(state.context, node.name, node);
 
             return;
         }
@@ -88,6 +97,20 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.ExprConstant: {
+            return;
+        }
+
+        case Tag.ExprDeclaration: {
+            // TODO: Support other declaration types
+            // We don't know if we have a local (and should lookup the declaration in parent.variables) or
+            //  if we have something else (and should lookup the declaration in module.nodes)
+            const parent = state.functions[state.functions.length - 1];
+            const variable = parent.variables[node.id];
+
+            scope.declare(state.context, variable.name, variable);
+            if (variable.value !== null) {
+                declareNode(variable.value, scope, state);
+            }
             return;
         }
 
@@ -189,6 +212,10 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
     }
 
     switch (node.tag) {
+        case Tag.DeclSymbol: {
+            return node as T;
+        }
+
         case Tag.DeclStruct: {
             // TODO: Implement
             node.superTypes = new Set(resolveNodes(Array.from(node.superTypes), state));
@@ -197,9 +224,13 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         }
 
         case Tag.DeclFunction: {
+            state.functions.push(node);
+
             node.parameters = resolveNodes(node.parameters, state);
             node.returnType = resolveNode(node.returnType, state);
             node.body       = resolveNodes(node.body, state);
+
+            state.functions.pop();
             return node as T;
         }
 
@@ -236,6 +267,20 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
             return node as T;
         }
 
+        case Tag.ExprDeclaration: {
+            // TODO: Support other declaration types
+            // We don't know if we have a local (and should lookup the declaration in parent.variables) or
+            //  if we have something else (and should lookup the declaration in module.nodes)
+            const parent = state.functions[state.functions.length - 1];
+            const variable = parent.variables[node.id];
+
+            if (variable.value !== null) {
+                variable.value = resolveNode(variable.value, state);
+            }
+
+            return node as T;
+        }
+
         case Tag.ExprGetField: {
             node.object = resolveNode(node.object, state);
             return node as T;
@@ -249,7 +294,9 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         }
 
         case Tag.ExprRefName: {
-            const id = scope.lookup(node.name)!.id;
+            const r = scope.lookup(node.name)!;
+            const id = r.id;
+            console.log(r);
             return new Nodes.ExprRefStatic(id) as T;
         }
 

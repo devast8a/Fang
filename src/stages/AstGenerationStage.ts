@@ -4,7 +4,7 @@ import * as Nodes from '../nodes';
 import { Context, Decl, Expr, Node, Tag, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
-const InferType = new Nodes.TypeInfer();
+const InferType   = new Nodes.TypeInfer();
 const Placeholder = {} as Decl;
 
 export class AstGenerationStage implements ParseStage {
@@ -61,38 +61,32 @@ function parse(context: Context, node: PNode): Expr {
         }
 
         case PTag.DeclFunction: {
-            // Setup id
-            const id = module.nodes.length;
-            module.nodes.push(Placeholder);
-            const ctx = context.nextId(id);
+            // Create function
+            const fn = new Nodes.DeclFunction(context.parentId, module.nodes.length, "", [], InferType, [], Nodes.FunctionFlags.None);
+            module.nodes.push(fn);
+
+            const ctx = context.next(fn);
 
             // keyword
-            const name = parseIdentifier(node.data[1][1]);
+            fn.name = parseIdentifier(node.data[1][1]);
             // compileTime
-            const parameters = node.data[3].elements.map(variable => parseVariable(variable, ctx));
-            const returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
+            fn.parameters = node.data[3].elements.map(variable => parseVariable(variable, ctx));
+            fn.returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
             // generic
             // attributes
-            const body = (node.data[7].length === 2) ?
+            fn.body = (node.data[7].length === 2) ?
                 parseList(ctx, node.data[7][1]) :
                 [new Nodes.ExprReturn(parse(ctx, node.data[7][4]))];
 
-            const fn = new Nodes.DeclFunction(
-                context.parent.id,
-                id,
-                name,
-                parameters,
-                returnType,
-                body,
-                Nodes.FunctionFlags.None
-            );
-
-            module.nodes[id] = fn;
-            return new Nodes.ExprDeclaration(id);
+            return new Nodes.ExprDeclaration(fn.id);
         }
 
         case PTag.DeclVariable: {
-            const variable = parseVariable(node, context)
+            // TODO: Support globals / fields / etc...
+            // Currently context.parent isn't setup correctly, so we don't know what type our parent is.
+            //  This matters because locals are stored with the function (ie. DeclFunction.locals) and fields/globals
+            //  are stored with module (ie. DeclModule.nodes). This may change in the future.
+            const variable = parseVariable(node, context);
             return new Nodes.ExprDeclaration(variable.id);
         }
 
@@ -223,8 +217,19 @@ function parseVariable(node: PNode, context: Context): Nodes.DeclVariable {
     // attributes
     const value = node.data[5] === null ? null  : parse(context, node.data[5][3]);
 
-    // TODO: Set variable id here - rather than in name resolution
-    return new Nodes.DeclVariable(context.parent.id, UnresolvedId, name, type, value, flags);
+    const variable = new Nodes.DeclVariable(context.parent.id, UnresolvedId, name, type, value, flags);
+
+    switch (context.parent.tag) {
+        case Tag.DeclFunction: {
+            variable.id = context.parent.variables.length;
+            context.parent.variables.push(variable);
+            break;
+        }
+
+        default: throw new Error('Not supported');
+    }
+
+    return variable;
 }
 
 function parseIdentifier(node: PNode) {

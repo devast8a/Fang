@@ -47,9 +47,9 @@ export class Compiler {
     ];
 
     private compileStages: CompileStage[] = [
-        {name: "Symbol Resolution",   execute: (context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope()); }},
-        {name: "Symbol Resolution 2", execute: wrap(resolveNodes, null)},
+        {name: "Symbol Resolution",   execute: (context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope(), context); }},
         {name: "Type Inference",      execute: inferType},
+        {name: "Symbol Resolution 2", execute: wrap(resolveNodes, null)},
         {name: "Overload Resolution", execute: wrap(resolveOverload, null)},
         {name: "Type Check",          execute: wrap(checkType, null)},
         {name: "Lifetime Check",      execute: checkLifetime},
@@ -90,12 +90,14 @@ export class Compiler {
         await this.parseFile(source, context);
 
         for (const stage of this.compileStages) {
+            serialize((context.module.nodes[4] as any).body)
+
             console.time(stage.name);
             stage.execute(context);
             console.timeEnd(stage.name);
         }
 
-        serializeModule(module);
+        serialize(module);
 
         const target = new TargetC();
         target.emitProgram(context);
@@ -118,14 +120,18 @@ export class Compiler {
     }
 }
 
-function serializeModule(module: DeclModule) {
+function serialize(node: Node) {
     function convert(key: string, value: any) {
-        if (value !== undefined && value.constructor === Map) {
+        if (typeof(value) === 'object' && value !== null && value.constructor === Map) {
             return Array.from(value);
+        }
+
+        if (key === "tag" && typeof(value) === 'number') {
+            return Tag[value];
         }
 
         return value;
     }
 
-    console.log(JSON.stringify(module, convert, 4));
+    console.log(JSON.stringify(node, convert, 4));
 }

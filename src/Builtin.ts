@@ -7,7 +7,7 @@ function type(name: string) {
     const struct = new DeclStruct(UnresolvedId, UnresolvedId, name, new Map(), new Set());
     const ref    = new TypeRefDecl(struct);
     // TODO: declare should take a Type too.
-    scope.declare(name, ref as any);
+    // scope.declare(name, ref as any);
     return ref;
 }
 
