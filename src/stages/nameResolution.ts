@@ -1,5 +1,5 @@
 import { NodeType } from '../ast/visitor';
-import { Node, Tag, DeclFunction, TypeRefName, Type, DeclSymbol, Context } from '../nodes';
+import { Node, Tag, DeclFunction, TypeRefName, DeclSymbol, Context } from '../nodes';
 import * as Nodes from '../nodes';
 import { Scope } from './Scope';
 

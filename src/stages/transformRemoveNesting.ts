@@ -1,7 +1,7 @@
 import { Node, Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, UnresolvedId, Context, Expr } from '../nodes';
 
-export function transformRemoveNesting(context: Context, nodes: Node[]) {
-    for (const node of nodes) {
+export function transformRemoveNesting(context: Context) {
+    for (const node of context.module.nodes) {
         switch (node.tag) {
             case Tag.DeclStruct:
             case Tag.DeclTrait:

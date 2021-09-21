@@ -26,26 +26,17 @@ export interface ParseStage {
 
 export interface CompileStage {
     name: string;
-    execute(context: Context): Node[];
+    execute(context: Context): void;
 }
 
-export class VisitorWrapper<T> implements CompileStage {
-    public constructor(
-        public readonly name: string,
-        public readonly visitor: Visitor<T>,
-        public readonly state: T,
-    ) {}
-
-    public execute(context: Context): Node[] {
+function wrap<T>(visitor: Visitor<T>, state: T) {
+    return (context: Context) => {
         for (const node of context.module.nodes) {
             if (node.tag === Tag.DeclFunction) {
                 // TODO: Create new copy of function
-                node.body = this.visitor.array(node.body, context.next(node), this.state);
+                node.body = visitor.array(node.body, context.next(node), state);
             }
         }
-
-        // TODO: Remove when we change the stage system
-        return context.module.nodes;
     }
 }
 
@@ -56,13 +47,13 @@ export class Compiler {
     ];
 
     private compileStages: CompileStage[] = [
-        {name: "Symbol Resolution",   execute: (context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope()); return context.module.nodes; }},
-        new VisitorWrapper("Symbol Resolution II", resolveNodes, null),
+        {name: "Symbol Resolution",   execute: (context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope()); }},
+        {name: "Symbol Resolution 2", execute: wrap(resolveNodes, null)},
         {name: "Type Inference",      execute: inferType},
-        new VisitorWrapper("Overload Resolution", resolveOverload, null),
-        new VisitorWrapper("Type Check", checkType, null),
-        {name: "Lifetime Check",      execute: (context) => {checkLifetime(context.module.nodes); return context.module.nodes;}},
-        {name: "Remove Nesting",      execute: (context) => {transformRemoveNesting(context, context.module.nodes); return context.module.nodes;}},
+        {name: "Overload Resolution", execute: wrap(resolveOverload, null)},
+        {name: "Type Check",          execute: wrap(checkType, null)},
+        {name: "Lifetime Check",      execute: checkLifetime},
+        {name: "Remove Nesting",      execute: transformRemoveNesting},
     ];
 
     public async parseFile(source: string | Source, context: Context): Promise<Node[]>
@@ -96,22 +87,22 @@ export class Compiler {
         console.group(`Compiling`);
         console.time("Total");
 
-        let nodes = await this.parseFile(source, context);
+        await this.parseFile(source, context);
 
         for (const stage of this.compileStages) {
             console.time(stage.name);
-            nodes = stage.execute(context);
+            stage.execute(context);
             console.timeEnd(stage.name);
         }
 
+        console.log(JSON.stringify(module, undefined, 4));
+
         const target = new TargetC();
-        target.emitProgram(context, nodes);
+        target.emitProgram(context);
         const program = target.toString();
 
         console.timeEnd("Total");
         console.groupEnd();
-
-        console.log(JSON.stringify(module, undefined, 4));
 
         return program;
     }

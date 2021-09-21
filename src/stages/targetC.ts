@@ -11,10 +11,10 @@ export class TargetC {
     private indentCurrent = '';
     private context!: DeclFunction;
 
-    public emitProgram(context: Context, nodes: Node[]) {
+    public emitProgram(context: Context) {
         // TODO: Forward declare
 
-        for (const node of nodes) {
+        for (const node of context.module.nodes) {
             this.emitNode(context, node);
         }
     }

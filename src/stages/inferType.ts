@@ -5,11 +5,8 @@ export function inferType(context: Context) {
     for (const node of context.module.nodes) {
         switch (node.tag) {
             case Tag.DeclFunction: {
-                node.returnType = builtin.empty;
+                node.returnType = (node.returnType.tag === Tag.TypeInfer ? builtin.empty : node.returnType);
             }
         }
     }
-
-    // HACK: Remove when we fix stages
-    return context.module.nodes;
 }

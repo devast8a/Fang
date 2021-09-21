@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { VariableFlags, DeclFunction, Node, Tag, DeclVariable } from '../nodes';
+import { VariableFlags, DeclFunction, Node, Tag, DeclVariable, Context } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -27,10 +27,10 @@ import { VariableFlags, DeclFunction, Node, Tag, DeclVariable } from '../nodes';
 
 /** Language Semantics *********************************************************/
 
-export function checkLifetime(nodes: Node[]) {
+export function checkLifetime(context: Context) {
     const state = new ProgramState(null, new Map());
 
-    for (const node of nodes) {
+    for (const node of context.module.nodes) {
         analyzeNode(node, state);
     }
 }
