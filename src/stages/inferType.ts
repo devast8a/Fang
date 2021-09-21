@@ -1,8 +1,7 @@
 import { builtin } from '../Builtin';
-import { Compiler } from '../compile';
 import { Context, Tag } from '../nodes';
 
-export function inferType(compiler: Compiler, context: Context) {
+export function inferType(context: Context) {
     for (const node of context.module.nodes) {
         switch (node.tag) {
             case Tag.DeclFunction: {

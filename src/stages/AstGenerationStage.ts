@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { builtin } from '../Builtin';
-import { Compiler, ParseContext, ParseStage } from '../compile';
+import { ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
 import { Context, Decl, Expr, Node, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
@@ -11,7 +10,7 @@ const Placeholder = {} as Decl;
 export class AstGenerationStage implements ParseStage {
     public name = "Ast Generation";
 
-    public execute(compiler: Compiler, nodes: any, {context}: ParseContext): Node[] {
+    public execute(nodes: any, {context}: ParseContext): Node[] {
         // TODO: node is PNode, violating the interface
 
         const output = [];

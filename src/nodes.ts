@@ -1,3 +1,5 @@
+import { Compiler } from './compile';
+
 export enum Tag {
     DeclFunction,
     DeclModule,
@@ -475,16 +477,21 @@ export const UnresolvedId = -1;
 
 export class Context<T extends Decl = Decl> {
     public constructor(
+        public readonly compiler: Compiler,
         public readonly parentId: number,
         public readonly module: DeclModule,
     ) {}
 
+    public get parent(): T {
+        return this.module.nodes[this.parentId] as T;
+    }
+
     public nextId<T extends Decl = Decl>(parent: number) {
-        return new Context<T>(parent, this.module);
+        return new Context<T>(this.compiler, parent, this.module);
     }
 
     public next<T extends Decl>(parent: T) {
-        return new Context<T>(parent.id, this.module);
+        return new Context<T>(this.compiler, parent.id, this.module);
     }
 
     public resolve(global: Global) {
@@ -497,9 +504,5 @@ export class Context<T extends Decl = Decl> {
 
     public resolveMany(globals: Global[]) {
         return globals.map(global => this.resolve(global));
-    }
-
-    public get parent(): T {
-        return this.module.nodes[this.parentId] as T;
     }
 }
