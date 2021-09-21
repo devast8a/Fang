@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { VariableFlags, DeclFunction, Node, Tag, DeclVariable, Context } from '../nodes';
+import { VariableFlags, DeclFunction, Node, Tag, DeclVariable, Context, DeclSymbol } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -41,7 +41,6 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
         case Tag.DeclStruct:
         case Tag.DeclTrait:
         case Tag.ExprConstruct:
-        case Tag.ExprDeclaration:
         case Tag.DeclSymbol:
         {
             console.warn(`checkLifetime>analyzeNode>${Tag[node.tag]}: Not implemented yet`);
@@ -55,29 +54,30 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
                 fnState.assign(parameter.id);
             }
 
-            analyzeNodes(context, node.body, fnState);
+            analyzeNodes(context.next(node), node.body, fnState);
             console.log(node.name + ": " + format(fnState, node));
             return;
         }
 
-        // case Tag.DeclVariable: {
-        //     if (node.value !== null) {
-        //         analyzeNode(node.value, state);
-        //         state.assign(node.id);
+        case Tag.DeclVariable: {
+            if (node.value !== null) {
+                analyzeNode(context, node.value, state);
+                state.assign(node.id);
 
-        //         // TODO: Handle references in a better way
-        //         if (
-        //             node.value.tag === Tag.ExprConstruct &&
-        //             node.value.target.tag === Tag.DeclStruct &&
-        //             node.value.target.name === "Ref" &&
-        //             node.value.args[0].tag === Tag.ExprGetLocal
-        //         ) {
-        //             state.ref(node.id, node.value.args[0].local);
-        //         }
-        //     }
+                // TODO: Handle references in a better way
+                // TODO: Fix support for references
+                // if (
+                //     node.value.tag === Tag.ExprConstruct &&
+                //     node.value.target.tag === Tag.DeclStruct &&
+                //     node.value.target.name === "Ref" &&
+                //     node.value.args[0].tag === Tag.ExprGetLocal
+                // ) {
+                //     state.ref(node.id, node.value.args[0].local);
+                // }
+            }
 
-        //     return;
-        // }
+            return;
+        }
 
         // case Tag.ExprCallField: {
         //     // Properly resolve the function
@@ -98,7 +98,7 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
             }
 
             analyzeNodes(context, node.args, state);
-            handleArgs(new GroupedAccess(), target.parameters, node.args, state);
+            handleArgs(context, new GroupedAccess(), target.parameters, node.args, state);
             return;
         }
 
@@ -107,15 +107,24 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
             return;
         }
 
+        case Tag.ExprDeclaration: {
+            // TODO: Handle declarations properly after we fix the local/global symbol index problem
+            const variable = Node.as(context.parent, DeclFunction).variables[node.id];
+            analyzeNode(context, variable, state);
+            return;
+        }
+
         case Tag.ExprGetLocal: {
-            state.read(node.local);
+            // TODO: Handle declarations properly after we fix the local/global symbol index problem
+            const id = Node.resolve(context, node.local, DeclSymbol).nodes[0];
+            state.read(id);
             return;
         }
 
         case Tag.ExprSetField: {
             analyzeNode(context, node.value, state);
             analyzeNode(context, node.object, state);
-            state.assign(exprToPath(node));
+            state.assign(exprToPath(context, node));
             return;
         }
 
@@ -194,7 +203,7 @@ function analyzeNodes(context: Context, nodes: Node[], state: ProgramState) {
     }
 }
 
-function handleArgs(group: GroupedAccess, params: DeclVariable[], args: Node[], state: ProgramState) {
+function handleArgs(context: Context, group: GroupedAccess, params: DeclVariable[], args: Node[], state: ProgramState) {
     for (let i = 0; i < params.length; i++) {
         const arg   = args[i];
         const param = params[i];
@@ -202,12 +211,12 @@ function handleArgs(group: GroupedAccess, params: DeclVariable[], args: Node[], 
         // TODO: Handle nested calls properly
         // For now assume it's a move
         if (arg.tag === Tag.ExprCallStatic) {
-            const path = exprToPath(arg.args[0]);
+            const path = exprToPath(context, arg.args[0]);
             state.move(path);
             continue;
         }
 
-        const path = exprToPath(arg);
+        const path = exprToPath(context, arg);
         if (Flags.has(param.flags, VariableFlags.Mutates)) {
             state.write(path, group);
         } else {
@@ -430,11 +439,12 @@ class ProgramState {
 
 /** Utilities ******************************************************************/
 
-function exprToPath(expr: Node): Path {
+function exprToPath(context: Context, expr: Node): Path {
     switch (expr.tag) {
-        case Tag.ExprGetLocal: return expr.local;
-        case Tag.ExprSetLocal: return expr.local;
-        case Tag.ExprGetField: return `${exprToPath(expr.object)}.${expr.field}`;
+        // TODO: Handle GetLocal/SetLocal properly after we fix the local/global symbol index problem
+        case Tag.ExprGetLocal: return Node.resolve(context, expr.local, DeclSymbol).nodes[0];
+        case Tag.ExprSetLocal: return Node.resolve(context, expr.local, DeclSymbol).nodes[0];
+        case Tag.ExprGetField: return `${exprToPath(context, expr.object)}.${expr.field}`;
         default: throw new Error(`exprToPath > ${Tag[expr.tag]} not expected`);
     }
 }

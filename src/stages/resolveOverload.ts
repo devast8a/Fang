@@ -1,5 +1,5 @@
 import { Visitor } from '../ast/visitor';
-import { Tag, DeclFunction, Node, Type, Context } from '../nodes';
+import { Tag, DeclFunction, Expr, Type, Context } from '../nodes';
 
 export const resolveOverload = new Visitor({
     after: (node, context) => {
@@ -29,7 +29,7 @@ export const resolveOverload = new Visitor({
     }
 });
 
-function isCandidateOverload(context: Context, args: Node[], candidate: DeclFunction) {
+function isCandidateOverload(context: Context, args: Expr[], candidate: DeclFunction) {
     const params = candidate.parameters;
     
     // TODO[dev]: Support variadic functions
@@ -38,10 +38,10 @@ function isCandidateOverload(context: Context, args: Node[], candidate: DeclFunc
     }
 
     for (let i = 0; i < args.length; i++) {
-        const arg   = Node.getReturnType(context, args[i]);
+        const arg   = Expr.getReturnType(context, args[i]);
         const param = params[i].type;
 
-        if (!Type.canAssignTo(arg, param)) {
+        if (!Type.canAssignTo(context, arg, param)) {
             return false;
         }
     }

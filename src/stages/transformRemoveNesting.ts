@@ -88,7 +88,7 @@ function useTemporaryVariable(context: Context<DeclFunction>, output: Node[], va
         // TODO: Variable naming
         `_temp${fn.variables.length}`,
 
-        Node.getReturnType(context, value),
+        Expr.getReturnType(context, value),
         value,
 
         // TODO: Might need to apply more flags

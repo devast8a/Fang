@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context } from '../nodes';
+import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context, Decl } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -128,9 +128,11 @@ export class TargetC {
         throw new Error(`targetC>emitNode>${Tag[node.tag]}: Not implemented.`);
     }
 
-    public emitTypeName(context: Context, type: Type) {
+    public emitTypeName(context: Context, type: Type | Decl) {
         switch (type.tag) {
+            case Tag.DeclStruct:    this.emit(type.name); return;
             case Tag.TypeRefDecl:   this.emit(type.declaration.name); return;
+            case Tag.TypeRefStatic: this.emitTypeName(context, context.resolve(type.type)); return;
             case Tag.TypeInfer:     this.emit("INFER"); return;
             default:                throw new Error(`targetC>emitTypeName>${Tag[type.tag]}: Not implemented.`);
         }
@@ -154,7 +156,8 @@ export class TargetC {
                 }
 
                 case Tag.ExprGetLocal: {
-                    const local = this.context.variables[arg.local as number];
+                    // TODO: Handle properly after we fix the local/global symbol index problem
+                    const local = this.context.variables[0];
 
                     // TODO: argumentIsPtr is wrong for locals, needs a parameter flag
                     // TODO: Switch to pointers for large objects

@@ -1,5 +1,5 @@
 import { Visitor } from '../ast/visitor';
-import { Node, Tag, Type } from '../nodes';
+import { Expr, Tag, Type } from '../nodes';
 import * as Nodes from '../nodes';
 
 export const resolveNodes = new Visitor({
@@ -9,8 +9,9 @@ export const resolveNodes = new Visitor({
                 const target = node.target;
 
                 switch (target.tag) {
-                    case Tag.ExprRefStatic:
-                         return new Nodes.ExprCallStatic(target.id, node.args);
+                    case Tag.ExprGetLocal:
+                        // TODO: Fix references - ExprRefStatic assumes everything refers to a local that this fixes
+                        return new Nodes.ExprCallStatic(target.local, node.args);
 
                     case Tag.ExprGetField:
                         // Or we could translate this into a flat call?
@@ -42,9 +43,13 @@ export const resolveNodes = new Visitor({
                 }
 
                 // TODO: Sort out types
-                const type  = Node.getReturnType(context, object);
+                const type  = Expr.getReturnType(context, object);
                 const field = Type.getMember(type, node.field as any);
                 return new Nodes.ExprGetField(object, field as any);
+            }
+
+            case Tag.ExprRefStatic: {
+                return new Nodes.ExprGetLocal(node.id);
             }
         }
 

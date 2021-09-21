@@ -1,3 +1,5 @@
+import { NodeType } from './ast/visitor';
+import { Constructor } from './common/constructor';
 import { Compiler } from './compile';
 
 export enum Tag {
@@ -400,36 +402,22 @@ export class TypeRefName {
 }
 
 export namespace Type {
-    export function canAssignTo(child: Type, parent: Type) {
-        return Type.isSubType(child, parent);
+    export function canAssignTo(context: Context, child: Type | Decl, parent: Type | Decl) {
+        return Type.isSubType(context, child, parent);
     }
 
-    export function isSubType(child: Type, parent: Type): boolean {
-        // if (child === parent) {
-        //     return true;
-        // }
+    export function isSubType(context: Context, child: Type | Decl, parent: Type | Decl): boolean {
+        switch (parent.tag) {
+            case Tag.DeclStruct:    break;
+            case Tag.TypeRefStatic: return isSubType(context, child, context.resolve(parent.type));
+            default: throw new Error(`isSubType: Has no handler for parent node '${Tag[parent.tag]}'`);
+        }
 
-        // switch (parent.tag) {
-        //     case Tag.DeclStruct:    return false;
-        //     case Tag.DeclFunction: return false;
-
-        //     case Tag.DeclTrait: {
-        //         switch (child.tag) {
-        //             case Tag.DeclStruct:
-        //             case Tag.DeclTrait:
-        //                 return child.superTypes.has(parent);
-
-        //             default:
-        //                 return false;
-        //         }
-        //     }
-
-        //     case Tag.TypeRefName: {
-        //         console.log(child, parent);
-        //     }
-        // }
-
-        throw new Error(`isSubType: Has no handler for node '${Tag[parent.tag]}'`);
+        switch (child.tag) {
+            case Tag.DeclStruct: return child === parent;
+            case Tag.TypeRefStatic: return isSubType(context, context.resolve(child.type), parent);
+            default: throw new Error(`isSubType: Has no handler for child node '${Tag[child.tag]}'`);
+        }
     }
 
     export function getMember(type: Type, member: string): Decl {
@@ -453,23 +441,52 @@ export namespace Type {
     }
 }
 
-export namespace Node {
+export namespace Expr {
     export function getReturnType(context: Context, expr: Node): Type {
-        // switch (expr.tag) {
-        //     case Tag.ExprCallField:  return expr.field.returnType;
-        //     case Tag.ExprCallStatic: return (expr.target.tag === Tag.DeclFunction ? expr.target.returnType : null as any);
-        //     case Tag.ExprConstant:   return expr.type;
-        //     case Tag.ExprConstruct:  return expr.target;
-        //     case Tag.ExprGetField:   throw new Error('Not implemented yet');
-        //     case Tag.ExprGetLocal:   return context.variables[expr.local as number].type;
-        //     case Tag.ExprMacroCall:  throw new Error('Not implemented yet');
-        //     case Tag.ExprRefName:    throw new Error('Not implemented yet');
-        //     case Tag.ExprRefNode:    throw new Error('Not implemented yet');
-        //     case Tag.ExprSetField:   return getReturnType(expr.value, context);
-        //     case Tag.ExprSetLocal:   return getReturnType(expr.value, context);
-        // }
+        switch (expr.tag) {
+            case Tag.ExprGetLocal: {
+                // TODO: Handle declarations properly after we fix the local/global symbol index problem
+                const symbol   = Node.resolve(context, expr.local, DeclSymbol);
+                const variable = Node.as(context.parent, DeclFunction).variables[symbol.nodes[0] as number];
+                return variable.type;
+            }
+
+            case Tag.ExprConstruct: {
+                return expr.target;
+            }
+        }
 
         throw new Error(`Unhandled case ${Tag[(expr as any).tag]}`);
+    }
+}
+
+export namespace Node {
+    export function as<T extends NodeType>(node: Node, type: T): InstanceType<T> {
+        if (node.tag === type.tag) {
+            return node as any;
+        } else {
+            throw new Error(`Expected a '${Tag[type.tag]}' - but got a '${Tag[node.tag]}'`);
+        }
+    }
+
+    export function resolve<T extends NodeType>(context: Context, id: Global): Decl
+    export function resolve<T extends NodeType>(context: Context, id: Global, type: T): InstanceType<T>
+    export function resolve<T extends NodeType>(context: Context, id: Global, type?: T): any {
+        if (typeof(id) !== 'number') {
+            throw new Error('Expecting id to be a number');
+        }
+
+        if (id >= context.module.nodes.length) {
+            throw new Error('id is out of bounds');
+        }
+
+        const node = context.module.nodes[id];
+
+        if (type === undefined || node.tag === type.tag) {
+            return node as any;
+        } else {
+            throw new Error(`Expected a '${Tag[type.tag]}' - but got a '${Tag[node.tag]}'`);
+        }
     }
 }
 
