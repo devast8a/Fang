@@ -12,6 +12,7 @@ import { resolveOverload } from './stages/resolveOverload';
 import { resolveNodes } from './stages/nodeResolution';
 import { ParserStage } from './stages/ParseStage';
 import { Visitor } from './ast/visitor';
+import { inferType } from './stages/inferType';
 
 export interface ParseContext {
     source: Source;
@@ -35,7 +36,7 @@ export class VisitorWrapper<T> implements CompileStage {
         public readonly state: T,
     ) {}
 
-    public execute(compiler: Compiler, context: Context<Decl>): Node[] {
+    public execute(compiler: Compiler, context: Context): Node[] {
         for (const node of context.module.nodes) {
             if (node.tag === Tag.DeclFunction) {
                 // TODO: Create new copy of function
@@ -57,6 +58,7 @@ export class Compiler {
     private compileStages: CompileStage[] = [
         {name: "Symbol Resolution",   execute: (compiler, context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope()); return context.module.nodes; }},
         new VisitorWrapper("Symbol Resolution II", resolveNodes, null),
+        {name: "Type Inference",      execute: inferType},
         new VisitorWrapper("Overload Resolution", resolveOverload, null),
         new VisitorWrapper("Type Check", checkType, null),
         {name: "Lifetime Check",      execute: (compiler, context) => {checkLifetime(context.module.nodes); return context.module.nodes;}},
@@ -103,7 +105,7 @@ export class Compiler {
         }
 
         const target = new TargetC();
-        target.emitProgram(nodes);
+        target.emitProgram(context, nodes);
         const program = target.toString();
 
         console.timeEnd("Total");

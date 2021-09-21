@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags } from '../nodes';
+import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -11,15 +11,15 @@ export class TargetC {
     private indentCurrent = '';
     private context!: DeclFunction;
 
-    public emitProgram(nodes: Node[]) {
+    public emitProgram(context: Context, nodes: Node[]) {
         // TODO: Forward declare
 
         for (const node of nodes) {
-            this.emitNode(node);
+            this.emitNode(context, node);
         }
     }
 
-    public emitNode(node: Node) {
+    public emitNode(context: Context, node: Node) {
         switch (node.tag) {
             case Tag.DeclStruct:
             case Tag.DeclTrait:
@@ -38,21 +38,21 @@ export class TargetC {
                 this.context = node;
 
                 this.emitSeparator ();
-                this.emitTypeName  (node.returnType);
+                this.emitTypeName  (context, node.returnType);
                 this.emit          (" ", node.name, "(");
-                this.emitParameters(node.parameters);
+                this.emitParameters(context, node.parameters);
                 this.emit          (")");
-                this.emitBody      (node.body);
+                this.emitBody      (context, node.body);
                 return;
             }
 
             case Tag.DeclVariable: {
-                this.emitTypeName(node.type);
+                this.emitTypeName(context, node.type);
                 this.emit        (" ", node.name);
 
                 if (node.value !== null) {
                     this.emit    (" = ");
-                    this.emitNode(node.value);
+                    this.emitNode(context, node.value);
                 }
                 return;
             }
@@ -84,7 +84,7 @@ export class TargetC {
 
             case Tag.ExprSetLocal: {
                 this.emit    (this.context.variables[node.local as number].name, " = ");
-                this.emitNode(node.value);
+                this.emitNode(context, node.value);
                 return;
             }
 
@@ -95,9 +95,9 @@ export class TargetC {
 
             case Tag.ExprIf: {
                 this.emit    ("if (");
-                this.emitNode(node.branches[0].condition);
+                this.emitNode(context, node.branches[0].condition);
                 this.emit    (")");
-                this.emitBody(node.branches[0].body);
+                this.emitBody(context, node.branches[0].body);
                 // TODO: Support else if / else
                 return;
             }
@@ -106,14 +106,12 @@ export class TargetC {
         throw new Error(`targetC>emitNode>${Tag[node.tag]}: Not implemented.`);
     }
 
-    public emitTypeName(type: Type) {
-        // switch (type.tag) {
-        //     case Tag.DeclStruct:    this.emit(type.name); return;
-        //     case Tag.DeclFunction:  this.emit(type.name); return;
-        //     case Tag.DeclTrait:     this.emit(type.name); return;
-        //     case Tag.TypeInfer:     this.emit("INFER");   return;
-        //     default:            throw new Error(`targetC>emitTypeName>${Tag[type.tag]}: Not implemented.`);
-        // }
+    public emitTypeName(context: Context, type: Type) {
+        switch (type.tag) {
+            case Tag.TypeRefDecl:   this.emit(type.declaration.name); return;
+            case Tag.TypeInfer:     this.emit("INFER"); return;
+            default:                throw new Error(`targetC>emitTypeName>${Tag[type.tag]}: Not implemented.`);
+        }
 
         return "";
     }
@@ -166,7 +164,7 @@ export class TargetC {
         }
     }
 
-    public emitParameters(parameters: DeclVariable[]) {
+    public emitParameters(context: Context, parameters: DeclVariable[]) {
         for (let index = 0; index < parameters.length; index++) {
             if (index > 0) {
                 this.emit(", ");
@@ -174,7 +172,7 @@ export class TargetC {
 
             const parameter = parameters[index];
 
-            this.emitTypeName(parameter.type);
+            this.emitTypeName(context, parameter.type);
 
             // Turn mutable parameters into pointers so we can modify their values
             const parameterIsPtr = Flags.has(parameter.flags, VariableFlags.Mutates);
@@ -190,12 +188,12 @@ export class TargetC {
         }
     }
 
-    public emitBody(nodes: Node[]) {
+    public emitBody(context: Context, nodes: Node[]) {
         this.pushIndent();
         this.emit("{");
         for (const child of nodes) {
             this.emitNewline();
-            this.emitNode   (child);
+            this.emitNode   (context, child);
             this.emit       (";");
         }
         this.popIndent();

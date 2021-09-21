@@ -26,6 +26,7 @@ export enum Tag {
     ExprVariable,
     ExprWhile,
     TypeInfer,
+    TypeRefDecl,
     TypeRefName,
     TypeRefStatic,
 }
@@ -68,6 +69,7 @@ export type Expr =
 
 export type Type =
     | TypeInfer         // Infer this type. Not valid everywhere.
+    | TypeRefDecl       //
     | TypeRefName       //
     | TypeRefStatic     //
     ;
@@ -133,7 +135,10 @@ export class DeclSymbol {
     public readonly nodes = new Array<Global>();
 
     public constructor(
+        public parent: number,
         public id: number,
+
+        public name: string,
     ) {}
 }
 
@@ -363,6 +368,15 @@ export class ExprWhile {
 export class TypeInfer {
     public readonly tag = Tag.TypeInfer;
     public static readonly tag = Tag.TypeInfer;
+}
+
+export class TypeRefDecl {
+    public readonly tag = Tag.TypeRefDecl;
+    public static readonly tag = Tag.TypeRefDecl;
+
+    public constructor(
+        public declaration: Decl,
+    ) {}
 }
 
 export class TypeRefStatic {

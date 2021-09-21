@@ -1,15 +1,21 @@
-import { DeclStruct, ExprConstant, TypeRefStatic, UnresolvedId } from './nodes';
+import { DeclStruct, TypeRefDecl, UnresolvedId } from './nodes';
 import { Scope } from './stages/Scope';
 
+const scope = new Scope();
+
 function type(name: string) {
-    return new DeclStruct(UnresolvedId, UnresolvedId, name, new Map(), new Set());
+    const struct = new DeclStruct(UnresolvedId, UnresolvedId, name, new Map(), new Set());
+    const ref    = new TypeRefDecl(struct);
+    // TODO: declare should take a Type too.
+    scope.declare(name, ref as any);
+    return ref;
 }
 
 const empty = type("empty");
 
 const bool  = type("bool");
-const true_  = new ExprConstant(new TypeRefStatic(bool.id), true);
-const false_ = new ExprConstant(new TypeRefStatic(bool.id), false);
+// const true_  = new ExprConstant(bool, true);
+// const false_ = new ExprConstant(bool, false);
 
 const s8    = type("s8");
 const s16   = type("s16");
@@ -23,30 +29,12 @@ const u64   = type("u64");
 
 const str   = type("str");
 
-// Scope
-const scope = new Scope();
-scope.declare(empty.name, empty);
-
-scope.declare(bool.name, bool);
-// scope.declare("true", true_);
-// scope.declare("false", false_);
-
-scope.declare(s8.name , s8);
-scope.declare(s16.name, s16);
-scope.declare(s32.name, s32);
-scope.declare(s64.name, s64);
-
-scope.declare(u8.name , u8);
-scope.declare(u16.name, u16);
-scope.declare(u32.name, u32);
-scope.declare(u64.name, u64);
-
 export const builtin = {
     empty,
 
     bool,
-    true: true_,
-    false: false_,
+    // true: true_,
+    // false: false_,
 
     s8,
     s16,

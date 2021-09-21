@@ -134,8 +134,8 @@ function parse(context: Context, node: PNode): Expr {
             const name = parseIdentifier(node.data[0]);
 
             switch (name) {
-                case "true":  return builtin.true;
-                case "false": return builtin.false;
+                // case "true":  return builtin.true;
+                // case "false": return builtin.false;
                 default:      return new Nodes.ExprRefName(name);
             }
         }

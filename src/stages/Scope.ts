@@ -12,7 +12,7 @@ export class Scope {
         let set = this.map.get(name);
 
         if (set === undefined) {
-            set = new DeclSymbol(UnresolvedId);
+            set = new DeclSymbol(UnresolvedId, UnresolvedId, name);
             this.map.set(name, set);
         }
 
