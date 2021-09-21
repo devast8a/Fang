@@ -459,14 +459,18 @@ export namespace Node {
 
 export const UnresolvedId = -1;
 
-export class Context<Parent = Decl> {
+export class Context<T extends Decl = Decl> {
     public constructor(
-        public parent: Parent,
-        public module: DeclModule,
+        public readonly parentId: number,
+        public readonly module: DeclModule,
     ) {}
 
+    public nextId<T extends Decl = Decl>(parent: number) {
+        return new Context<T>(parent, this.module);
+    }
+
     public next<T extends Decl>(parent: T) {
-        return new Context(parent, this.module);
+        return new Context<T>(parent.id, this.module);
     }
 
     public resolve(global: Global) {
@@ -479,5 +483,9 @@ export class Context<Parent = Decl> {
 
     public resolveMany(globals: Global[]) {
         return globals.map(global => this.resolve(global));
+    }
+
+    public get parent(): T {
+        return this.module.nodes[this.parentId] as T;
     }
 }

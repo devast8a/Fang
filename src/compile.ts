@@ -14,7 +14,7 @@ import { ParserStage } from './stages/ParseStage';
 
 export interface ParseContext {
     source: Source;
-    module: DeclModule;
+    context: Context;
 }
 
 export interface ParseStage {
@@ -42,7 +42,7 @@ export class Compiler {
         {name: "Remove Nesting",      execute: (compiler, context) => {transformRemoveNesting(context, context.module.nodes); return context.module.nodes;}},
     ];
 
-    public async parseFile(source: string | Source, module: DeclModule): Promise<Node[]>
+    public async parseFile(source: string | Source, context: Context): Promise<Node[]>
     {
         if (!(source instanceof Source)) {
             source = new Source(source, await Fs.promises.readFile(source, "utf8"));
@@ -54,7 +54,7 @@ export class Compiler {
         let nodes = new Array<Node>();
         for (const stage of this.parseStages) {
             console.time(`${source.path} ${stage.name}`);
-            nodes = stage.execute(this, nodes, {source, module});
+            nodes = stage.execute(this, nodes, {source, context});
             console.timeEnd(`${source.path} ${stage.name}`);
         }
 
@@ -69,12 +69,12 @@ export class Compiler {
         const module = new DeclModule([]);
 
         const root    = new DeclStruct(0, 0, ".root", new Map(), new Set());
-        const context = new Context(root, module);
+        const context = new Context(root.id, module);
 
         console.group(`Compiling`);
         console.time("Total");
 
-        let nodes = await this.parseFile(source, module);
+        let nodes = await this.parseFile(source, context);
 
         for (const stage of this.compileStages) {
             console.time(stage.name);

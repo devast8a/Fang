@@ -1,36 +1,23 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { builtin } from '../Builtin';
-import { Source } from '../common/source';
 import { Compiler, ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Decl, Expr, Node, UnresolvedId } from '../nodes';
+import { Context, Decl, Expr, Node, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
 const Placeholder = {} as Decl;
 
-interface Context {
-    compiler: Compiler;
-    module: Nodes.DeclModule;
-    parent: number;
-    source: Source;
-}
-
 export class AstGenerationStage implements ParseStage {
     public name = "Ast Generation";
 
-    public execute(compiler: Compiler, nodes: any, context: ParseContext): Node[] {
+    public execute(compiler: Compiler, nodes: any, {context}: ParseContext): Node[] {
         // TODO: node is PNode, violating the interface
 
         const output = [];
 
         for (const node of nodes) {
-            output.push(parse({
-                compiler: compiler,
-                module: context.module,
-                parent: 0,
-                source: context.source,
-            }, node));
+            output.push(parse(context, node));
         }
 
         return output;
@@ -45,71 +32,35 @@ function parse(context: Context, node: PNode): Expr {
     const module = context.module;
 
     switch (node.tag) {
-        case PTag.DeclClass: {
-            const parent = context.parent;
-            const id = module.nodes.length;
-            module.nodes.push(Placeholder);
-            context.parent = id;
-
-            // keyword
-            const name = parseIdentifier(node.data[1]);
-            const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
-            // generic
-            // attributes
-            const body = parseList(context, node.data[5][1]);
-
-            // Generate member mapping
-            // const members = new Map(body.map(member => [
-            //     (member as Nodes.DeclFunction).name,
-            //     member
-            // ]));
-
-            context.parent = parent;
-            const result = new Nodes.DeclStruct(parent, id, name, new Map(), new Set(superTypes));
-            module.nodes[id] = result;
-            return new Nodes.ExprDeclaration(result.id);
-        }
-
         case PTag.DeclFunction: {
-            const parent = context.parent;
+            // Setup id
             const id = module.nodes.length;
             module.nodes.push(Placeholder);
-            context.parent = id;
+            const ctx = context.nextId(id);
 
             // keyword
             const name = parseIdentifier(node.data[1][1]);
             // compileTime
-            const parameters = node.data[3].elements.map(variable => parseVariable(variable, context));
+            const parameters = node.data[3].elements.map(variable => parseVariable(variable, ctx));
             const returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
             // generic
             // attributes
             const body = (node.data[7].length === 2) ?
-                parseList(context, node.data[7][1]) :
-                [new Nodes.ExprReturn(parse(context, node.data[7][4]))];
+                parseList(ctx, node.data[7][1]) :
+                [new Nodes.ExprReturn(parse(ctx, node.data[7][4]))];
 
-            context.parent = parent;
-            const result = new Nodes.DeclFunction(parent, id, name, parameters, returnType, body as any, Nodes.FunctionFlags.None);
-            module.nodes[id] = result;
-            return new Nodes.ExprDeclaration(result.id);
-        }
+            const fn = new Nodes.DeclFunction(
+                context.parent.id,
+                id,
+                name,
+                parameters,
+                returnType,
+                body,
+                Nodes.FunctionFlags.None
+            );
 
-        case PTag.DeclTrait: {
-            const parent = context.parent;
-            const id = module.nodes.length;
-            module.nodes.push(Placeholder);
-            context.parent = id;
-
-            // keyword
-            const name = parseIdentifier(node.data[1]);
-            const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
-            // generic
-            // attributes
-            const body = parseList(context, node.data[5][1]);
-
-            context.parent = parent;
-            const result = new Nodes.DeclTrait(parent, id, name, body as any, new Set(superTypes));
-            module.nodes[id] = result;
-            return new Nodes.ExprDeclaration(result.id);
+            module.nodes[id] = fn;
+            return new Nodes.ExprDeclaration(id);
         }
 
         case PTag.DeclVariable: {
@@ -245,7 +196,7 @@ function parseVariable(node: PNode, context: Context): Nodes.DeclVariable {
     const value = node.data[5] === null ? null  : parse(context, node.data[5][3]);
 
     // TODO: Set variable id here - rather than in name resolution
-    return new Nodes.DeclVariable(context.parent, UnresolvedId, name, type, value, flags);
+    return new Nodes.DeclVariable(context.parent.id, UnresolvedId, name, type, value, flags);
 }
 
 function parseIdentifier(node: PNode) {
