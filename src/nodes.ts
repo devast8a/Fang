@@ -10,6 +10,7 @@ export enum Tag {
     ExprCallStatic,
     ExprConstant,
     ExprConstruct,
+    ExprDeclaration,
     ExprDestroyField,
     ExprDestroyLocal,
     ExprGetField,
@@ -49,6 +50,7 @@ export type Expr =
     | ExprCallStatic    // target(arguments...)
     | ExprConstant      // Any constant value
     | ExprConstruct     // T{}
+    | ExprDeclaration   //
     | ExprGetField      // expression.field                 [as r-value]
     | ExprGetLocal      // local                            [as r-value]
     | ExprMacroCall     // macro! argument
@@ -71,6 +73,8 @@ export type Type =
     ;
 
 // References
+//  Remove concept of global/field/local?
+//  All references are two indexes. Parent / Field?
 type Global = string | number;
 type Field  = string | number;
 type Local  = string | number;
@@ -218,6 +222,15 @@ export class ExprConstant {
     public constructor(
         public type: Type,
         public value: any,
+    ) {}
+}
+
+export class ExprDeclaration {
+    public readonly tag = Tag.ExprDeclaration;
+    public static readonly tag = Tag.ExprDeclaration;
+
+    public constructor(
+        public id: number,
     ) {}
 }
 
