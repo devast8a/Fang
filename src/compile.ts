@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Context, DeclModule, DeclStruct, Node } from './nodes';
+import { Context, Decl, DeclModule, DeclStruct, Node, Tag } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -11,6 +11,7 @@ import { transformRemoveNesting } from './stages/transformRemoveNesting';
 import { resolveOverload } from './stages/resolveOverload';
 import { resolveNodes } from './stages/nodeResolution';
 import { ParserStage } from './stages/ParseStage';
+import { Visitor } from './ast/visitor';
 
 export interface ParseContext {
     source: Source;
@@ -27,6 +28,26 @@ export interface CompileStage {
     execute(compiler: Compiler, context: Context): Node[];
 }
 
+export class VisitorWrapper<T> implements CompileStage {
+    public constructor(
+        public readonly name: string,
+        public readonly visitor: Visitor<T>,
+        public readonly state: T,
+    ) {}
+
+    public execute(compiler: Compiler, context: Context<Decl>): Node[] {
+        for (const node of context.module.nodes) {
+            if (node.tag === Tag.DeclFunction) {
+                // TODO: Create new copy of function
+                node.body = this.visitor.array(node.body, context.next(node), this.state);
+            }
+        }
+
+        // TODO: Remove when we change the stage system
+        return context.module.nodes;
+    }
+}
+
 export class Compiler {
     private parseStages: ParseStage[] = [
         new ParserStage(),
@@ -35,9 +56,9 @@ export class Compiler {
 
     private compileStages: CompileStage[] = [
         {name: "Symbol Resolution",   execute: (compiler, context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope()); return context.module.nodes; }},
-        {name: "Node Resolution",     execute: (compiler, context) => resolveNodes.array(context.module.nodes as any, context, null)},
-        {name: "Overload Resolution", execute: (compiler, context) => resolveOverload.array(context.module.nodes as any, context, null)},
-        {name: "Type Check",          execute: (compiler, context) => checkType.array(context.module.nodes as any, context, null)},
+        new VisitorWrapper("Symbol Resolution II", resolveNodes, null),
+        new VisitorWrapper("Overload Resolution", resolveOverload, null),
+        new VisitorWrapper("Type Check", checkType, null),
         {name: "Lifetime Check",      execute: (compiler, context) => {checkLifetime(context.module.nodes); return context.module.nodes;}},
         {name: "Remove Nesting",      execute: (compiler, context) => {transformRemoveNesting(context, context.module.nodes); return context.module.nodes;}},
     ];
@@ -66,9 +87,8 @@ export class Compiler {
 
     public async compile(source: string | Source): Promise<string>
     {
-        const module = new DeclModule([]);
-
         const root    = new DeclStruct(0, 0, ".root", new Map(), new Set());
+        const module  = new DeclModule([root]);
         const context = new Context(root.id, module);
 
         console.group(`Compiling`);
