@@ -25,7 +25,7 @@ export class AstGenerationStage implements ParseStage {
         const output = [];
 
         for (const node of nodes) {
-            output.push(parseExpr({
+            output.push(parse({
                 compiler: compiler,
                 module: context.module,
                 parent: 0,
@@ -37,11 +37,11 @@ export class AstGenerationStage implements ParseStage {
     }
 }
 
-function parseStmtArray(node: PNode, context: Context) {
-    return node.elements.map(node => parseExpr(context, node));
+function parseList(context: Context, node: PNode) {
+    return node.elements.map(node => parse(context, node));
 }
 
-function parseExpr(context: Context, node: PNode): Expr {
+function parse(context: Context, node: PNode): Expr {
     const module = context.module;
 
     switch (node.tag) {
@@ -56,7 +56,7 @@ function parseExpr(context: Context, node: PNode): Expr {
             const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
             // generic
             // attributes
-            const body = parseStmtArray(node.data[5][1], context);
+            const body = parseList(context, node.data[5][1]);
 
             // Generate member mapping
             // const members = new Map(body.map(member => [
@@ -84,8 +84,8 @@ function parseExpr(context: Context, node: PNode): Expr {
             // generic
             // attributes
             const body = (node.data[7].length === 2) ?
-                parseStmtArray(node.data[7][1], context) :
-                [new Nodes.ExprReturn(parseExpr(context, node.data[7][4]))];
+                parseList(context, node.data[7][1]) :
+                [new Nodes.ExprReturn(parse(context, node.data[7][4]))];
 
             context.parent = parent;
             const result = new Nodes.DeclFunction(parent, id, name, parameters, returnType, body as any, Nodes.FunctionFlags.None);
@@ -104,7 +104,7 @@ function parseExpr(context: Context, node: PNode): Expr {
             const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
             // generic
             // attributes
-            const body = parseStmtArray(node.data[5][1], context);
+            const body = parseList(context, node.data[5][1]);
 
             context.parent = parent;
             const result = new Nodes.DeclTrait(parent, id, name, body as any, new Set(superTypes));
@@ -120,12 +120,12 @@ function parseExpr(context: Context, node: PNode): Expr {
         case PTag.StmtIf: {
             // TODO: Finish implementing if
             // keyword
-            const condition = parseExpr(context, node.data[1][2]);
-            const body      = parseStmtArray(node.data[2], context);
+            const condition = parse(context, node.data[1][2]);
+            const body      = parseList(context, node.data[2]);
             // branches
             const elseBranch = node.data[4] === null ?
                 [] :
-                parseStmtArray(node.data[4][1], context);
+                parseList(context, node.data[4][1]);
 
             // TODO: Resolve
             const firstBranch = new Nodes.ExprIfBranch(condition, body as any);
@@ -136,19 +136,19 @@ function parseExpr(context: Context, node: PNode): Expr {
         case PTag.StmtWhile: {
             // keyword
             // compileTime
-            const condition = parseExpr(context, node.data[2][3]);
-            const body      = parseStmtArray(node.data[3], context);
+            const condition = parse(context, node.data[2][3]);
+            const body      = parseList(context, node.data[3]);
 
             return new Nodes.ExprWhile(condition, body as any);
         }
 
         case PTag.StmtAssign: {
             // Target Operator Value
-            const value     = parseExpr(context, node.data[2]);
+            const value     = parse(context, node.data[2]);
 
             switch (node.data[0].tag) {
                 case PTag.ExprIdentifier: return new Nodes.ExprSetLocal(parseIdentifier(node.data[0].data[0]), value);
-                case PTag.ExprIndexDot:   return new Nodes.ExprSetField(parseExpr(context, node.data[0].data[0]), parseIdentifier(node.data[0].data[2]), value);
+                case PTag.ExprIndexDot:   return new Nodes.ExprSetField(parse(context, node.data[0].data[0]), parseIdentifier(node.data[0].data[2]), value);
                 default: throw new Error("Unreachable");
             }
         }
@@ -174,7 +174,7 @@ function parseExpr(context: Context, node: PNode): Expr {
         case PTag.ExprConstruct: {
             const target    = parseType(node.data[0]);
             // compileTime
-            const args      = node.data[2].elements.map((expr) => parseExpr(context, expr));
+            const args      = node.data[2].elements.map((expr) => parse(context, expr));
 
             return new Nodes.ExprConstruct(target, args);
         }
@@ -190,23 +190,23 @@ function parseExpr(context: Context, node: PNode): Expr {
         }
 
         case PTag.ExprIndexDot: {
-            const target = parseExpr(context, node.data[0]);
+            const target = parse(context, node.data[0]);
             const name   = parseIdentifier(node.data[2]);
 
             return new Nodes.ExprGetField(target, name);
         }
 
         case PTag.ExprCall: {
-            const target = parseExpr(context, node.data[0]);
+            const target = parse(context, node.data[0]);
             // compileTime
-            const args   = node.data[2].elements.map((expr) => parseExpr(context, expr));
+            const args   = node.data[2].elements.map((expr) => parse(context, expr));
 
             return new Nodes.ExprCall(target, args);
         }
 
         case PTag.ExprMacroCall: {
             const target = parseIdentifier(node.data[0]);
-            const expr   = parseExpr(context, node.data[2][1]);
+            const expr   = parse(context, node.data[2][1]);
 
             return new Nodes.ExprMacroCall(target, [expr]);
         }
@@ -242,7 +242,7 @@ function parseVariable(node: PNode, context: Context): Nodes.DeclVariable {
     // compileTime
     const type  = node.data[3] === null ? InferType : parseType(node.data[3][3]);
     // attributes
-    const value = node.data[5] === null ? null  : parseExpr(context, node.data[5][3]);
+    const value = node.data[5] === null ? null  : parse(context, node.data[5][3]);
 
     // TODO: Set variable id here - rather than in name resolution
     return new Nodes.DeclVariable(context.parent, UnresolvedId, name, type, value, flags);
