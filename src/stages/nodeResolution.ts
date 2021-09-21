@@ -9,9 +9,8 @@ export const resolveNodes = new Visitor({
                 const target = node.target;
 
                 switch (target.tag) {
-                    // case Tag.ExprRefNode:
-                    //      if (target.node.tag !== Tag.SymbolSet) { throw new Error('Not implemented yet'); }
-                    //      return new Nodes.ExprCallStatic(target.node, node.args);
+                    case Tag.ExprRefStatic:
+                         return new Nodes.ExprCallStatic(target.id, node.args);
 
                     case Tag.ExprGetField:
                         // Or we could translate this into a flat call?

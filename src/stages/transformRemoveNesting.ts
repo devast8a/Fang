@@ -5,6 +5,7 @@ export function transformRemoveNesting(context: Context) {
         switch (node.tag) {
             case Tag.DeclStruct:
             case Tag.DeclTrait:
+            case Tag.DeclSymbol:
                 continue;
 
             case Tag.DeclFunction: {
@@ -32,6 +33,10 @@ function transform(context: Context<DeclFunction>, output: Expr[], node: Node): 
         //     }
         //     return node;
         // }
+
+        case Tag.ExprDeclaration: {
+            return node;
+        }
 
         case Tag.ExprConstruct: {
             return node;

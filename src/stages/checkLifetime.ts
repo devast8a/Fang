@@ -30,16 +30,19 @@ import { VariableFlags, DeclFunction, Node, Tag, DeclVariable, Context } from '.
 export function checkLifetime(context: Context) {
     const state = new ProgramState(null, new Map());
 
+    // TODO: Only trigger on decl function
     for (const node of context.module.nodes) {
-        analyzeNode(node, state);
+        analyzeNode(context, node, state);
     }
 }
 
-function analyzeNode(node: Node, state: ProgramState) {
+function analyzeNode(context: Context, node: Node, state: ProgramState) {
     switch (node.tag) {
         case Tag.DeclStruct:
         case Tag.DeclTrait:
         case Tag.ExprConstruct:
+        case Tag.ExprDeclaration:
+        case Tag.DeclSymbol:
         {
             console.warn(`checkLifetime>analyzeNode>${Tag[node.tag]}: Not implemented yet`);
             return;
@@ -52,7 +55,7 @@ function analyzeNode(node: Node, state: ProgramState) {
                 fnState.assign(parameter.id);
             }
 
-            analyzeNodes(node.body, fnState);
+            analyzeNodes(context, node.body, fnState);
             console.log(node.name + ": " + format(fnState, node));
             return;
         }
@@ -87,15 +90,17 @@ function analyzeNode(node: Node, state: ProgramState) {
         //     return;
         // }
 
-        // case Tag.ExprCallStatic: {
-        //     if (node.target.tag !== Tag.DeclFunction) {
-        //         throw new Error(`[INTERNAL ERROR] ExprCallStatic: Expected field to be resolved to function by this stage`);
-        //     }
+        case Tag.ExprCallStatic: {
+            const target = context.resolve(node.target);
 
-        //     analyzeNodes(node.args, state);
-        //     handleArgs(new GroupedAccess(), node.target.parameters, node.args, state);
-        //     return;
-        // }
+            if (target.tag !== Tag.DeclFunction) {
+                throw new Error(`[INTERNAL ERROR] ExprCallStatic: Expected field to be resolved to function by this stage`);
+            }
+
+            analyzeNodes(context, node.args, state);
+            handleArgs(new GroupedAccess(), target.parameters, node.args, state);
+            return;
+        }
 
         case Tag.ExprConstant: {
             // No analysis required
@@ -108,8 +113,8 @@ function analyzeNode(node: Node, state: ProgramState) {
         }
 
         case Tag.ExprSetField: {
-            analyzeNode(node.value, state);
-            analyzeNode(node.object, state);
+            analyzeNode(context, node.value, state);
+            analyzeNode(context, node.object, state);
             state.assign(exprToPath(node));
             return;
         }
@@ -143,21 +148,21 @@ function analyzeNode(node: Node, state: ProgramState) {
             const branches = state.copyState();
 
             // First branch
-            analyzeNode(node.branches[0].condition, branches)
-            analyzeNodes(node.branches[0].body, branches);
+            analyzeNode(context, node.branches[0].condition, branches)
+            analyzeNodes(context, node.branches[0].body, branches);
 
             // Remaining branches
             for (let i = 1; i < node.branches.length; i++) {
                 const branch = node.branches[i];
                 const branchState = state.copyState();
 
-                analyzeNode(branch.condition, branchState);
-                analyzeNodes(branch.body, branchState);
+                analyzeNode(context, branch.condition, branchState);
+                analyzeNodes(context, branch.body, branchState);
                 branches.mergeState(branchState);
             }
 
             // Else branch
-            analyzeNodes(node.elseBranch, state);
+            analyzeNodes(context, node.elseBranch, state);
             state.mergeState(branches);
             return;
         }
@@ -165,13 +170,13 @@ function analyzeNode(node: Node, state: ProgramState) {
         case Tag.ExprWhile: {
             // Loop taken one time
             const takenOnce = state.copyState();
-            analyzeNode(node.condition, takenOnce);
-            analyzeNodes(node.body, takenOnce);
+            analyzeNode(context, node.condition, takenOnce);
+            analyzeNodes(context, node.body, takenOnce);
 
             // Loop taken multiple times
             const takenMultiple = takenOnce.copyState();
-            analyzeNode(node.condition, takenMultiple);
-            analyzeNodes(node.body, takenMultiple);
+            analyzeNode(context, node.condition, takenMultiple);
+            analyzeNodes(context, node.body, takenMultiple);
 
             // Loop not taken
             state.mergeState(takenOnce);
@@ -183,9 +188,9 @@ function analyzeNode(node: Node, state: ProgramState) {
     throw new Error(`lifetimeCheck: No case for node '${Tag[node.tag]}'`);
 }
 
-function analyzeNodes(nodes: Node[], state: ProgramState) {
+function analyzeNodes(context: Context, nodes: Node[], state: ProgramState) {
     for (const node of nodes) {
-        analyzeNode(node, state);
+        analyzeNode(context, node, state);
     }
 }
 

@@ -2,7 +2,7 @@ class Foo {
     fn foo() {}
 }
 
-fn bar(foo: Foo) {}
+fn bar() {}
 
 fn main() {
     val foo = Foo{}

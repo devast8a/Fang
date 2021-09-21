@@ -25,6 +25,7 @@ export class TargetC {
     public emitNode(context: Context, node: Node) {
         switch (node.tag) {
             case Tag.DeclTrait:
+            case Tag.DeclSymbol:
                 console.warn(`targetC>emitNode>${Tag[node.tag]} not implemented`)
                 return;
 
@@ -60,6 +61,11 @@ export class TargetC {
                 return;
             }
 
+            case Tag.ExprDeclaration: {
+                this.emit("XXXX");
+                return;
+            }
+
             case Tag.DeclVariable: {
                 this.emitTypeName(context, node.type);
                 this.emit        (" ", node.name);
@@ -79,9 +85,11 @@ export class TargetC {
             }
 
             case Tag.ExprCallStatic: {
-                // this.emit         ((node.target as DeclFunction).name, "(");
-                // this.emitArguments((node.target as DeclFunction).parameters, node.args);
-                // this.emit         (")");
+                const target = context.resolve(node.target) as DeclFunction;
+
+                this.emit         (target.name, "(");
+                this.emitArguments(target.parameters, node.args);
+                this.emit         (")");
                 return;
             }
 
