@@ -40,12 +40,14 @@ export class TargetC {
                 //  So we can keep track of the current function with a single variable.
                 this.context = node;
 
+                const ctx = context.next(node);
+
                 this.emitSeparator ();
-                this.emitTypeName  (context, node.returnType);
+                this.emitTypeName  (ctx, node.returnType);
                 this.emit          (" ", node.name, "(");
-                this.emitParameters(context, node.parameters);
+                this.emitParameters(ctx, node.parameters);
                 this.emit          (")");
-                this.emitBody      (context, node.body);
+                this.emitBody      (ctx, node.body);
                 return;
             }
 
@@ -58,11 +60,6 @@ export class TargetC {
                 this.emitBody     (context, members);
                 this.emit         (" ", node.name, ";");
 
-                return;
-            }
-
-            case Tag.ExprDeclaration: {
-                this.emit("XXXX");
                 return;
             }
 
@@ -96,6 +93,13 @@ export class TargetC {
             case Tag.ExprConstant: {
                 // TODO: Encode strings correctly
                 this.emit(node.value);
+                return;
+            }
+
+            case Tag.ExprDeclaration: {
+                // TODO: Handle declarations properly after we fix the local/global symbol index problem
+                const variable = this.context.variables[node.id];
+                this.emitNode(context, variable);
                 return;
             }
 
