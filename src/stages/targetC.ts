@@ -53,7 +53,7 @@ export class TargetC {
 
             case Tag.DeclStruct: {
                 // TODO: Cleanup resolution of members
-                const members = context.resolveMany(Array.from(node.members.values()));
+                const members = Array.from(node.members.values()).map(global => context.resolveGlobal(global));
 
                 this.emitSeparator();
                 this.emit         ("typedef struct ");
@@ -82,7 +82,7 @@ export class TargetC {
             }
 
             case Tag.ExprCallStatic: {
-                const target = context.resolve(node.target) as DeclFunction;
+                const target = context.resolveGlobal(node.target) as DeclFunction;
 
                 this.emit         (target.name, "(");
                 this.emitArguments(target.parameters, node.args);
@@ -136,7 +136,7 @@ export class TargetC {
         switch (type.tag) {
             case Tag.DeclStruct:    this.emit(type.name); return;
             case Tag.TypeRefDecl:   this.emit(type.declaration.name); return;
-            case Tag.TypeRefStatic: this.emitTypeName(context, context.resolve2(type)); return;
+            case Tag.TypeRefStatic: this.emitTypeName(context, context.resolve(type)); return;
             case Tag.TypeInfer:     this.emit("INFER"); return;
             default:                throw new Error(`targetC>emitTypeName>${Tag[type.tag]}: Not implemented.`);
         }

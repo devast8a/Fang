@@ -416,13 +416,13 @@ export namespace Type {
     export function isSubType(context: Context, child: Type | Decl, parent: Type | Decl): boolean {
         switch (parent.tag) {
             case Tag.DeclStruct:    break;
-            case Tag.TypeRefStatic: return isSubType(context, child, context.resolve2(parent));
+            case Tag.TypeRefStatic: return isSubType(context, child, context.resolve(parent));
             default: throw new Error(`isSubType: Has no handler for parent node '${Tag[parent.tag]}'`);
         }
 
         switch (child.tag) {
             case Tag.DeclStruct: return child === parent;
-            case Tag.TypeRefStatic: return isSubType(context, context.resolve2(child), parent);
+            case Tag.TypeRefStatic: return isSubType(context, context.resolve(child), parent);
             default: throw new Error(`isSubType: Has no handler for child node '${Tag[child.tag]}'`);
         }
     }
@@ -517,26 +517,29 @@ export class Context<T extends Decl = Decl> {
         return new Context<T>(this.compiler, parent.id, this.module);
     }
 
-    public resolve(global: Global) {
-        if (typeof(global) !== 'number') {
+    public resolveGlobal<T extends Constructor<Decl> & {tag: Tag}>(ref: Global, type?: T): InstanceType<T> {
+        if (typeof(ref) !== 'number') {
             throw new Error();
         }
 
-        return this.module.nodes[global];
+        const decl = this.module.nodes[ref as number];
+
+        if (type !== undefined && type.tag !== decl.tag) {
+            throw new Error();
+        }
+
+        return decl as any;
     }
 
-    public resolveMany(globals: Global[]) {
-        return globals.map(global => this.resolve(global));
-    }
-
-    public resolve2(ref: ExprRefStatic | TypeRefStatic): Decl {
+    public resolve<T extends Constructor<Decl> & {tag: Tag}>(ref: ExprRefStatic | TypeRefStatic, type?: T): InstanceType<T> {
         const declaration = this.module.nodes[ref.declaration as number];
         const member = ref.member as number;
 
+        // TODO: Verify type
         switch (declaration.tag) {
             case Tag.DeclStruct:    throw new Error("No id?");
-            case Tag.DeclModule:    return declaration.nodes[member];
-            case Tag.DeclFunction:  return declaration.variables[member];
+            case Tag.DeclModule:    return declaration.nodes[member] as any;
+            case Tag.DeclFunction:  return declaration.variables[member] as any;
             default: throw new Error(`Not implemented for ${Tag[declaration.tag]}`);
         }
     }

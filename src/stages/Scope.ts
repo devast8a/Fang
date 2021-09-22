@@ -1,26 +1,24 @@
-import { Context, Decl, DeclSymbol } from '../nodes';
+// Equivalent to the context.resolve2
+export class Ref {
+    public constructor(
+        public parent: number,
+        public id: number,
+    ) {}
+}
 
 export class Scope {
-    private map = new Map<string, DeclSymbol>();
+    private map = new Map<string, Ref>();
     private parent: Scope | null;
 
     public constructor(parent: Scope | null = null) {
         this.parent = parent;
     }
 
-    public declare(context: Context, name: string, decl: Decl) {
-        let set = this.map.get(name);
-
-        if (set === undefined) {
-            set = new DeclSymbol(context.parentId, context.module.nodes.length, name);
-            context.module.nodes.push(set);
-            this.map.set(name, set);
-        }
-
-        set.nodes.push(decl.id);
+    public declare(name: string, parent: number, id: number) {
+        this.map.set(name, new Ref(parent, id));
     }
 
-    public lookup(name: string): DeclSymbol | null {
+    public lookup(name: string): Ref | null {
         const symbol = this.map.get(name);
 
         if (symbol !== undefined) {

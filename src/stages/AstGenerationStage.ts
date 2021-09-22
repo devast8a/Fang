@@ -49,7 +49,7 @@ function parse(context: Context, node: PNode): Expr {
 
             for (const member of body) {
                 if (member.tag === Tag.ExprDeclaration) {
-                    const decl = context.resolve(member.id);
+                    const decl = context.resolveGlobal(member.id);
 
                     members.set(decl.name, decl.id);
                 }

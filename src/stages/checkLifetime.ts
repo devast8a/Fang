@@ -66,7 +66,7 @@ function analyzeNode(context: Context, expr: Expr, state: ProgramState) {
         // }
 
         case Tag.ExprCallStatic: {
-            const target = context.resolve(expr.target);
+            const target = context.resolveGlobal(expr.target);
 
             if (target.tag !== Tag.DeclFunction) {
                 throw new Error(`[INTERNAL ERROR] ExprCallStatic: Expected field to be resolved to function by this stage`);

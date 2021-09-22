@@ -29,11 +29,11 @@ export const resolveNodes = new Visitor({
 
                 switch (object.tag) {
                     case Tag.ExprRefStatic: {
-                        const ref = context.resolve2(object);
+                        const ref = context.resolve(object);
                         if (ref.tag !== Tag.DeclSymbol) { throw new Error('Not implemented yet'); }
 
                         // TODO: Check that this is actually a local
-                        const id = context.resolve(ref.nodes[0]).id;
+                        const id = context.resolveGlobal(ref.nodes[0]).id;
                         object = new Nodes.ExprGetLocal(id);
                         break;
                     }

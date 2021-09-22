@@ -6,6 +6,7 @@ import { Scope } from './Scope';
 class State {
     scopeMap = new Map<Node, Scope>();
     functions = new Array<DeclFunction>();
+    functionId = new Array<number>();
 
     public constructor(
         public context: Context,
@@ -25,6 +26,8 @@ function declareNodes(nodes: Node[], scope: Scope, state: State) {
     }
 }
 
+const ROOT = 0;
+
 function declareNode(node: Node, scope: Scope, state: State) {
     state.scopeMap.set(node, scope);
 
@@ -38,7 +41,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.DeclStruct: {
-            scope.declare(state.context, node.name, node);
+            scope.declare(node.name, ROOT, node.id);
             declareNodes(Array.from(node.superTypes), scope, state);
 
             return;
@@ -46,8 +49,9 @@ function declareNode(node: Node, scope: Scope, state: State) {
 
         case Tag.DeclFunction: {
             state.functions.push(node);
+            state.functionId.push(node.id);
 
-            scope.declare(state.context, node.name, node);
+            scope.declare(node.name, ROOT, node.id);
 
             const inner = scope.newChildScope();
             declareNodes(node.parameters, inner, state);
@@ -55,11 +59,12 @@ function declareNode(node: Node, scope: Scope, state: State) {
             declareNodes(node.body, inner, state);
 
             state.functions.pop();
+            state.functionId.pop();
             return;
         }
 
         case Tag.DeclTrait: {
-            scope.declare(state.context, node.name, node);
+            scope.declare(node.name, ROOT, node.id);
 
             // TODO: Support members
             return;
@@ -79,7 +84,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
             if (node.value !== null) { declareNode(node.value, scope, state); }
 
             // Declare variable name
-            scope.declare(state.context, node.name, node);
+            scope.declare(node.name, currentFunction.id, node.id);
 
             return;
         }
@@ -111,7 +116,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
             const parent = state.functions[state.functions.length - 1];
             const variable = parent.variables[node.id];
 
-            scope.declare(state.context, variable.name, variable);
+            scope.declare(variable.name, parent.id, node.id);
             if (variable.value !== null) {
                 declareNode(variable.value, scope, state);
             }
@@ -196,7 +201,7 @@ function convert<T extends NodeType>(context: Context, set: DeclSymbol | null, t
     if (set === null || set.nodes.length === 0) {
         throw new Error();
     }
-    const node = context.resolve(set.nodes[0]);
+    const node = context.resolveGlobal(set.nodes[0]);
 
     if (node.tag !== type.tag) {
         throw new Error();
@@ -265,7 +270,8 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.ExprConstruct: {
             // TODO: Error handling
-            node.target = new Nodes.TypeRefStatic(0, scope.lookup((node.target as TypeRefName).name)!.nodes[0]);
+            const ref = scope.lookup((node.target as TypeRefName).name)!;
+            node.target = new Nodes.TypeRefStatic(ref.parent, ref.id);
             
             resolveNodes(node.args, state);
             return node as T;
@@ -303,12 +309,8 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         }
 
         case Tag.ExprRefName: {
-            const r = scope.lookup(node.name)!;
-            const id = r.id;
-            console.log(r);
-            
-            // Hopefully this fixes it
-            return new Nodes.ExprRefStatic(-1, id) as T;
+            const ref = scope.lookup(node.name)!;
+            return new Nodes.ExprRefStatic(ref.parent, ref.id) as T;
         }
 
         case Tag.ExprSetField: {
@@ -319,15 +321,11 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         }
 
         case Tag.ExprSetLocal: {
-            // TODO: Error handling
-            node.local = convert(context, scope.lookup(node.local as string), Nodes.DeclVariable).id;
-            resolveNode(node.value, state);
-            return node as T;
+            throw new Error("Not supported");
         }
 
         case Tag.ExprDestroyLocal: {
-            node.local = convert(context, scope.lookup(node.local as string), Nodes.DeclVariable).id;
-            return node as T;
+            throw new Error("Not supported");
         }
 
         case Tag.ExprIf: {
@@ -354,7 +352,8 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.TypeRefName: {
             // TODO: Handle errors
-            return new Nodes.TypeRefStatic(0, scope.lookup(node.name)!.nodes[0]) as T;
+            const ref = scope.lookup(node.name)!;
+            return new Nodes.TypeRefStatic(ref.parent, ref.id) as T;
         }
     }
 

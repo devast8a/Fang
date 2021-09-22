@@ -5,14 +5,14 @@ export const resolveOverload = new Visitor({
     after: (node, context) => {
         switch (node.tag) {
             case Tag.ExprCallStatic: {
-                const target = context.resolve(node.target);
+                const target = context.resolveGlobal(node.target);
 
                 if (target.tag !== Tag.DeclSymbol) {
                     break;
                 }
 
                 // Resolve and check?
-                let candidates = context.resolveMany(target.nodes) as DeclFunction[];
+                let candidates = target.nodes.map(node => context.resolveGlobal(node, DeclFunction));
                 candidates = candidates.filter(candidate =>
                     isCandidateOverload(context, node.args, candidate),
                 );
