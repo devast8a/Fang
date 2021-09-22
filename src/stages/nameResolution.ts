@@ -29,6 +29,10 @@ function declareNode(node: Node, scope: Scope, state: State) {
     state.scopeMap.set(node, scope);
 
     switch (node.tag) {
+        case Tag.DeclModule: {
+            return;
+        }
+
         case Tag.DeclSymbol: {
             return;
         }
@@ -212,6 +216,10 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
     }
 
     switch (node.tag) {
+        case Tag.DeclModule: {
+            return node as T;
+        }
+
         case Tag.DeclSymbol: {
             return node as T;
         }
@@ -257,7 +265,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.ExprConstruct: {
             // TODO: Error handling
-            node.target = new Nodes.TypeRefStatic(scope.lookup((node.target as TypeRefName).name)!.nodes[0]);
+            node.target = new Nodes.TypeRefStatic(0, scope.lookup((node.target as TypeRefName).name)!.nodes[0]);
             
             resolveNodes(node.args, state);
             return node as T;
@@ -287,10 +295,11 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         }
 
         case Tag.ExprGetLocal: {
-            // TODO: Error handling
-            console.log(scope.lookup(node.local as string));
-            node.local = convert(context, scope.lookup(node.local as string), Nodes.DeclVariable).id;
-            return node as T;
+            throw new Error("Not supported!");
+            // // TODO: Error handling
+            // console.log(scope.lookup(node.local as string));
+            // node.local = convert(context, scope.lookup(node.local as string), Nodes.DeclVariable).id;
+            // return node as T;
         }
 
         case Tag.ExprRefName: {
@@ -345,7 +354,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.TypeRefName: {
             // TODO: Handle errors
-            return new Nodes.TypeRefStatic(scope.lookup(node.name)!.nodes[0]) as T;
+            return new Nodes.TypeRefStatic(0, scope.lookup(node.name)!.nodes[0]) as T;
         }
     }
 

@@ -80,9 +80,8 @@ export class Compiler {
 
     public async compile(source: string | Source): Promise<string>
     {
-        const root    = new DeclStruct(0, 0, ".root", new Map(), new Set());
-        const module  = new DeclModule([root]);
-        const context = new Context(this, root.id, module);
+        const module  = new DeclModule();
+        const context = new Context(this, module.id, module);
 
         console.group(`Compiling`);
         console.time("Total");
@@ -90,7 +89,7 @@ export class Compiler {
         await this.parseFile(source, context);
 
         for (const stage of this.compileStages) {
-            serialize((context.module.nodes[4] as any).body)
+            //serialize((context.module.nodes[4] as any).body)
 
             console.time(stage.name);
             stage.execute(context);
@@ -133,5 +132,13 @@ function serialize(node: Node) {
         return value;
     }
 
+    if (node.tag === Tag.DeclModule) {
+        node.nodes[0] = null as any;
+    }
+
     console.log(JSON.stringify(node, convert, 4));
+
+    if (node.tag === Tag.DeclModule) {
+        node.nodes[0] = node;
+    }
 }

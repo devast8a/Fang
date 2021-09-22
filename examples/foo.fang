@@ -7,5 +7,6 @@ fn bar(foo: Foo) {}
 fn main() {
     val foo = Foo{}
     # foo.foo()
+    # val b = bar
     bar(foo)
 }

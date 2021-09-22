@@ -32,7 +32,9 @@ export function checkLifetime(context: Context) {
 
     // TODO: Only trigger on decl function
     for (const node of context.module.nodes) {
-        analyzeNode(context, node, state);
+        if (node.tag === Tag.DeclFunction) {
+            analyzeNode(context, node, state);
+        }
     }
 }
 

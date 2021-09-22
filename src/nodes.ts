@@ -116,10 +116,11 @@ export class DeclModule {
     public readonly parent = -1;
     public readonly id = 0;
     public readonly name = ""; // ???
+    public readonly nodes: Decl[];
 
-    public constructor(
-        public nodes: Decl[],
-    ) {}
+    public constructor() {
+        this.nodes = [this];
+    }
 }
 
 export class DeclStruct {
@@ -393,7 +394,8 @@ export class TypeRefStatic {
     public static readonly tag = Tag.TypeRefStatic;
 
     public constructor(
-        public type: Global,
+        public declaration: Global,
+        public member: Global,
     ) {}
 }
 
@@ -414,13 +416,13 @@ export namespace Type {
     export function isSubType(context: Context, child: Type | Decl, parent: Type | Decl): boolean {
         switch (parent.tag) {
             case Tag.DeclStruct:    break;
-            case Tag.TypeRefStatic: return isSubType(context, child, context.resolve(parent.type));
+            case Tag.TypeRefStatic: return isSubType(context, child, context.resolve2(parent));
             default: throw new Error(`isSubType: Has no handler for parent node '${Tag[parent.tag]}'`);
         }
 
         switch (child.tag) {
             case Tag.DeclStruct: return child === parent;
-            case Tag.TypeRefStatic: return isSubType(context, context.resolve(child.type), parent);
+            case Tag.TypeRefStatic: return isSubType(context, context.resolve2(child), parent);
             default: throw new Error(`isSubType: Has no handler for child node '${Tag[child.tag]}'`);
         }
     }
@@ -456,9 +458,8 @@ export namespace Expr {
                 return variable.type;
             }
 
-            case Tag.ExprConstruct: {
-                return expr.target;
-            }
+            case Tag.ExprRefStatic: return new TypeRefStatic(expr.declaration, expr.member);
+            case Tag.ExprConstruct: return expr.target;
         }
 
         throw new Error(`Unhandled case ${Tag[(expr as any).tag]}`);
@@ -528,14 +529,15 @@ export class Context<T extends Decl = Decl> {
         return globals.map(global => this.resolve(global));
     }
 
-    public resolve2(ref: ExprRefStatic): Decl {
+    public resolve2(ref: ExprRefStatic | TypeRefStatic): Decl {
         const declaration = this.module.nodes[ref.declaration as number];
         const member = ref.member as number;
 
         switch (declaration.tag) {
-            case Tag.DeclModule:   return declaration.nodes[member];
-            case Tag.DeclFunction: return declaration.variables[member];
-            default: throw new Error('Not implemented');
+            case Tag.DeclStruct:    throw new Error("No id?");
+            case Tag.DeclModule:    return declaration.nodes[member];
+            case Tag.DeclFunction:  return declaration.variables[member];
+            default: throw new Error(`Not implemented for ${Tag[declaration.tag]}`);
         }
     }
 }

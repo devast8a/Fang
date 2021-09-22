@@ -136,7 +136,7 @@ export class TargetC {
         switch (type.tag) {
             case Tag.DeclStruct:    this.emit(type.name); return;
             case Tag.TypeRefDecl:   this.emit(type.declaration.name); return;
-            case Tag.TypeRefStatic: this.emitTypeName(context, context.resolve(type.type)); return;
+            case Tag.TypeRefStatic: this.emitTypeName(context, context.resolve2(type)); return;
             case Tag.TypeInfer:     this.emit("INFER"); return;
             default:                throw new Error(`targetC>emitTypeName>${Tag[type.tag]}: Not implemented.`);
         }
