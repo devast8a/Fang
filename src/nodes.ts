@@ -39,11 +39,11 @@ export type Node =
     | Expr
     | Decl
     | Type
-    | DeclModule
     ;
 
 export type Decl =
     | DeclFunction      // fn name(parameters...) -> returnType { body... }
+    | DeclModule
     | DeclStruct        // class name { members... }
     | DeclSymbol        // Any symbol
     | DeclTrait         // trait name { members... }
@@ -112,6 +112,10 @@ export enum FunctionFlags {
 export class DeclModule {
     public readonly tag = Tag.DeclModule;
     public static readonly tag = Tag.DeclModule;
+
+    public readonly parent = -1;
+    public readonly id = 0;
+    public readonly name = ""; // ???
 
     public constructor(
         public nodes: Decl[],
@@ -337,7 +341,8 @@ export class ExprRefStatic {
     public static readonly tag = Tag.ExprRefStatic;
 
     public constructor(
-        public id: Global,
+        public declaration: Global,
+        public member: Global,
     ) {}
 }
 
@@ -521,5 +526,16 @@ export class Context<T extends Decl = Decl> {
 
     public resolveMany(globals: Global[]) {
         return globals.map(global => this.resolve(global));
+    }
+
+    public resolve2(ref: ExprRefStatic): Decl {
+        const declaration = this.module.nodes[ref.declaration as number];
+        const member = ref.member as number;
+
+        switch (declaration.tag) {
+            case Tag.DeclModule:   return declaration.nodes[member];
+            case Tag.DeclFunction: return declaration.variables[member];
+            default: throw new Error('Not implemented');
+        }
     }
 }

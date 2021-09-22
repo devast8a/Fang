@@ -29,7 +29,7 @@ export const resolveNodes = new Visitor({
 
                 switch (object.tag) {
                     case Tag.ExprRefStatic: {
-                        const ref = context.resolve(object.id);
+                        const ref = context.resolve2(object);
                         if (ref.tag !== Tag.DeclSymbol) { throw new Error('Not implemented yet'); }
 
                         // TODO: Check that this is actually a local
@@ -49,7 +49,8 @@ export const resolveNodes = new Visitor({
             }
 
             case Tag.ExprRefStatic: {
-                return new Nodes.ExprGetLocal(node.id);
+                // TODO: Fix references - ExprRefStatic assumes everything refers to a local that this fixes
+                return new Nodes.ExprGetLocal(node.member);
             }
         }
 

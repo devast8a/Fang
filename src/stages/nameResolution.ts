@@ -297,7 +297,9 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
             const r = scope.lookup(node.name)!;
             const id = r.id;
             console.log(r);
-            return new Nodes.ExprRefStatic(id) as T;
+            
+            // Hopefully this fixes it
+            return new Nodes.ExprRefStatic(-1, id) as T;
         }
 
         case Tag.ExprSetField: {
