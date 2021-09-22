@@ -113,7 +113,6 @@ export class DeclModule {
     public readonly tag = Tag.DeclModule;
     public static readonly tag = Tag.DeclModule;
 
-    public readonly name = ""; // ???
     public readonly nodes = new Array<Decl>();
 }
 
