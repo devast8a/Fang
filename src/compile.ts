@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Context, Decl, DeclModule, DeclStruct, Node, RootId, Tag } from './nodes';
+import { Context, DeclModule, Node, RootId, Tag } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';

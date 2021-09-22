@@ -198,7 +198,6 @@ function resolveNodes<T extends Node>(nodes: T[], state: State): T[] {
 
 function resolveNode<T extends Node>(_node: T, state: State): T {
     const node  = _node as Node;
-    const context = {} as Context;
 
     const scope = state.scopeMap.get(node);
 

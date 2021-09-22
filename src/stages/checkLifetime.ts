@@ -447,6 +447,8 @@ function pathToName(path: Path, fn: DeclFunction) {
     return path;
 }
 
+// Disable lint- This function is intended for visualizing ProgramState during debugging
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function format(state: ProgramState, fn: DeclFunction) {
     const output = [];
     const variables = state.variables;
