@@ -6,7 +6,6 @@ export function transformRemoveNesting(context: Context) {
             case Tag.DeclStruct:
             case Tag.DeclTrait:
             case Tag.DeclSymbol:
-            case Tag.DeclModule:
                 continue;
 
             case Tag.DeclFunction: {

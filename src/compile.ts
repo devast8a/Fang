@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Context, Decl, DeclModule, DeclStruct, Node, Tag } from './nodes';
+import { Context, Decl, DeclModule, DeclStruct, Node, RootId, Tag } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -81,7 +81,7 @@ export class Compiler {
     public async compile(source: string | Source): Promise<string>
     {
         const module  = new DeclModule();
-        const context = new Context(this, module.id, module);
+        const context = new Context(this, RootId, module);
 
         console.group(`Compiling`);
         console.time("Total");
@@ -132,13 +132,5 @@ function serialize(node: Node) {
         return value;
     }
 
-    if (node.tag === Tag.DeclModule) {
-        node.nodes[0] = null as any;
-    }
-
     console.log(JSON.stringify(node, convert, 4));
-
-    if (node.tag === Tag.DeclModule) {
-        node.nodes[0] = node;
-    }
 }

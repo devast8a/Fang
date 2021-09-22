@@ -55,7 +55,7 @@ function parse(context: Context, node: PNode): Expr {
                 }
             }
 
-            const struct = new Nodes.DeclStruct(context.parent.id, id, name, members, new Set(superTypes));
+            const struct = new Nodes.DeclStruct(context.parentId, id, name, members, new Set(superTypes));
             module.nodes[id] = struct;
             return new Nodes.ExprDeclaration(id);
         }
@@ -217,7 +217,7 @@ function parseVariable(node: PNode, context: Context): Nodes.DeclVariable {
     // attributes
     const value = node.data[5] === null ? null  : parse(context, node.data[5][3]);
 
-    const variable = new Nodes.DeclVariable(context.parent.id, UnresolvedId, name, type, value, flags);
+    const variable = new Nodes.DeclVariable(context.parentId, UnresolvedId, name, type, value, flags);
 
     switch (context.parent.tag) {
         case Tag.DeclFunction: {

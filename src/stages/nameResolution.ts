@@ -1,5 +1,4 @@
-import { NodeType } from '../ast/visitor';
-import { Node, Tag, DeclFunction, TypeRefName, DeclSymbol, Context } from '../nodes';
+import { Node, Tag, DeclFunction, TypeRefName, Context, RootId } from '../nodes';
 import * as Nodes from '../nodes';
 import { Scope } from './Scope';
 
@@ -26,8 +25,6 @@ function declareNodes(nodes: Node[], scope: Scope, state: State) {
     }
 }
 
-const ROOT = 0;
-
 function declareNode(node: Node, scope: Scope, state: State) {
     state.scopeMap.set(node, scope);
 
@@ -41,7 +38,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.DeclStruct: {
-            scope.declare(node.name, ROOT, node.id);
+            scope.declare(node.name, RootId, node.id);
             declareNodes(Array.from(node.superTypes), scope, state);
 
             return;
@@ -51,7 +48,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
             state.functions.push(node);
             state.functionId.push(node.id);
 
-            scope.declare(node.name, ROOT, node.id);
+            scope.declare(node.name, RootId, node.id);
 
             const inner = scope.newChildScope();
             declareNodes(node.parameters, inner, state);
@@ -64,7 +61,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.DeclTrait: {
-            scope.declare(node.name, ROOT, node.id);
+            scope.declare(node.name, RootId, node.id);
 
             // TODO: Support members
             return;
@@ -195,19 +192,6 @@ function declareNode(node: Node, scope: Scope, state: State) {
 
 function resolveNodes<T extends Node>(nodes: T[], state: State): T[] {
     return nodes.map(node => resolveNode(node, state));
-}
-
-function convert<T extends NodeType>(context: Context, set: DeclSymbol | null, type: T): InstanceType<T> {
-    if (set === null || set.nodes.length === 0) {
-        throw new Error();
-    }
-    const node = context.resolveGlobal(set.nodes[0]);
-
-    if (node.tag !== type.tag) {
-        throw new Error();
-    }
-
-    return node as InstanceType<T>;
 }
 
 function resolveNode<T extends Node>(_node: T, state: State): T {

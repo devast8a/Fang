@@ -39,11 +39,11 @@ export type Node =
     | Expr
     | Decl
     | Type
+    | DeclModule
     ;
 
 export type Decl =
     | DeclFunction      // fn name(parameters...) -> returnType { body... }
-    | DeclModule
     | DeclStruct        // class name { members... }
     | DeclSymbol        // Any symbol
     | DeclTrait         // trait name { members... }
@@ -113,14 +113,8 @@ export class DeclModule {
     public readonly tag = Tag.DeclModule;
     public static readonly tag = Tag.DeclModule;
 
-    public readonly parent = -1;
-    public readonly id = 0;
     public readonly name = ""; // ???
-    public readonly nodes: Decl[];
-
-    public constructor() {
-        this.nodes = [this];
-    }
+    public readonly nodes = new Array<Decl>();
 }
 
 export class DeclStruct {
@@ -496,7 +490,8 @@ export namespace Node {
     }
 }
 
-export const UnresolvedId = -1;
+export const RootId = -1;
+export const UnresolvedId = -2;
 
 export class Context<T extends Decl = Decl> {
     public constructor(
@@ -522,25 +517,30 @@ export class Context<T extends Decl = Decl> {
             throw new Error();
         }
 
-        const decl = this.module.nodes[ref as number];
-
-        if (type !== undefined && type.tag !== decl.tag) {
-            throw new Error();
-        }
-
-        return decl as any;
+        return as(this.module.nodes[ref as number], type);
     }
 
     public resolve<T extends Constructor<Decl> & {tag: Tag}>(ref: ExprRefStatic | TypeRefStatic, type?: T): InstanceType<T> {
+        if (ref.declaration === -1) {
+            return as(this.module.nodes[ref.member as number], type);
+        }
+
         const declaration = this.module.nodes[ref.declaration as number];
         const member = ref.member as number;
 
         // TODO: Verify type
         switch (declaration.tag) {
             case Tag.DeclStruct:    throw new Error("No id?");
-            case Tag.DeclModule:    return declaration.nodes[member] as any;
-            case Tag.DeclFunction:  return declaration.variables[member] as any;
+            case Tag.DeclFunction:  return as(declaration.variables[member], type);
             default: throw new Error(`Not implemented for ${Tag[declaration.tag]}`);
         }
     }
+}
+
+function as<T extends Constructor<Decl> & {tag: Tag}>(decl: Decl, type?: T): InstanceType<T> {
+    if (type !== undefined && type.tag !== decl.tag) {
+        throw new Error();
+    }
+
+    return decl as any;
 }
