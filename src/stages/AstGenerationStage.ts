@@ -50,8 +50,7 @@ function parse(context: Context, node: PNode): Expr {
             for (const member of body) {
                 if (member.tag === Tag.ExprDeclaration) {
                     const decl = context.resolveGlobal(member.id);
-
-                    members.set(decl.name, decl.id);
+                    members.set(decl.name, member.id);
                 }
             }
 
@@ -63,6 +62,9 @@ function parse(context: Context, node: PNode): Expr {
         case PTag.DeclFunction: {
             // Create function
             const fn = new Nodes.DeclFunction(context.parentId, module.nodes.length, "", [], InferType, [], Nodes.FunctionFlags.None);
+
+            // TODO: Refactor into a module.register
+            const id = module.nodes.length;
             module.nodes.push(fn);
 
             const ctx = context.next(fn);
@@ -78,7 +80,7 @@ function parse(context: Context, node: PNode): Expr {
                 parseList(ctx, node.data[7][1]) :
                 [new Nodes.ExprReturn(parse(ctx, node.data[7][4]))];
 
-            return new Nodes.ExprDeclaration(fn.id);
+            return new Nodes.ExprDeclaration(id);
         }
 
         case PTag.DeclVariable: {

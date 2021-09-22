@@ -12,9 +12,9 @@ export const resolveOverload = new Visitor({
                 }
 
                 // Resolve and check?
-                let candidates = target.nodes.map(node => context.resolveGlobal(node, DeclFunction));
+                let candidates = target.nodes.map(id => {return {id: id as number, function: context.resolveGlobal(id, DeclFunction)}});
                 candidates = candidates.filter(candidate =>
-                    isCandidateOverload(context, node.args, candidate),
+                    isCandidateOverload(context, node.args, candidate.function),
                 );
 
                 switch (candidates.length) {

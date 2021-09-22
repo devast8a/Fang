@@ -33,7 +33,7 @@ export const resolveNodes = new Visitor({
                         if (ref.tag !== Tag.DeclSymbol) { throw new Error('Not implemented yet'); }
 
                         // TODO: Check that this is actually a local
-                        const id = context.resolveGlobal(ref.nodes[0]).id;
+                        const id = ref.nodes[0];
                         object = new Nodes.ExprGetLocal(id);
                         break;
                     }

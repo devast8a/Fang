@@ -4,6 +4,8 @@ import { Scope } from './Scope';
 
 class State {
     scopeMap = new Map<Node, Scope>();
+
+    // TODO: Remove this mess and use Context
     functions = new Array<DeclFunction>();
     functionId = new Array<number>();
 
@@ -113,7 +115,7 @@ function declareNode(node: Node, scope: Scope, state: State) {
             const parent = state.functions[state.functions.length - 1];
             const variable = parent.variables[node.id];
 
-            scope.declare(variable.name, parent.id, node.id);
+            scope.declare(variable.name, state.functionId[state.functionId.length - 1], node.id);
             if (variable.value !== null) {
                 declareNode(variable.value, scope, state);
             }

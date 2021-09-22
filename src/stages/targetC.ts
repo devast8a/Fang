@@ -15,9 +15,6 @@ export class TargetC {
         // TODO: Forward declare
 
         for (const node of context.module.nodes) {
-            // Skip root node
-            if (node.id === 0) { continue; }
-
             this.emitNode(context, node);
         }
     }
