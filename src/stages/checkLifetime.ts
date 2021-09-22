@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { VariableFlags, DeclFunction, Node, Tag, DeclVariable, Context, DeclSymbol } from '../nodes';
+import { VariableFlags, DeclFunction, Node, Tag, DeclVariable, Context, DeclSymbol, Expr } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -28,56 +28,29 @@ import { VariableFlags, DeclFunction, Node, Tag, DeclVariable, Context, DeclSymb
 /** Language Semantics *********************************************************/
 
 export function checkLifetime(context: Context) {
-    const state = new ProgramState(null, new Map());
+    const program = new ProgramState(null, new Map());
 
     // TODO: Only trigger on decl function
-    for (const node of context.module.nodes) {
-        if (node.tag === Tag.DeclFunction) {
-            analyzeNode(context, node, state);
+    for (const decl of context.module.nodes) {
+        if (decl.tag === Tag.DeclFunction) {
+            const state = program.copyState();
+
+            for (let i = 0; i < decl.parameters.length; i++) {
+                state.assign(i);
+            }
+
+            analyzeNodes(context.next(decl), decl.body, state);
+            // console.log(expr.name + ": " + format(fnState, expr));
+            return;
         }
     }
 }
 
-function analyzeNode(context: Context, node: Node, state: ProgramState) {
-    switch (node.tag) {
-        case Tag.DeclStruct:
-        case Tag.DeclTrait:
+function analyzeNode(context: Context, expr: Expr, state: ProgramState) {
+    switch (expr.tag) {
         case Tag.ExprConstruct:
-        case Tag.DeclSymbol:
         {
-            console.warn(`checkLifetime>analyzeNode>${Tag[node.tag]}: Not implemented yet`);
-            return;
-        }
-
-        case Tag.DeclFunction: {
-            const fnState = state.copyState();
-
-            for (const parameter of node.parameters) {
-                fnState.assign(parameter.id);
-            }
-
-            analyzeNodes(context.next(node), node.body, fnState);
-            console.log(node.name + ": " + format(fnState, node));
-            return;
-        }
-
-        case Tag.DeclVariable: {
-            if (node.value !== null) {
-                analyzeNode(context, node.value, state);
-                state.assign(node.id);
-
-                // TODO: Handle references in a better way
-                // TODO: Fix support for references
-                // if (
-                //     node.value.tag === Tag.ExprConstruct &&
-                //     node.value.target.tag === Tag.DeclStruct &&
-                //     node.value.target.name === "Ref" &&
-                //     node.value.args[0].tag === Tag.ExprGetLocal
-                // ) {
-                //     state.ref(node.id, node.value.args[0].local);
-                // }
-            }
-
+            console.warn(`checkLifetime>analyzeNode>${Tag[expr.tag]}: Not implemented yet`);
             return;
         }
 
@@ -93,14 +66,14 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
         // }
 
         case Tag.ExprCallStatic: {
-            const target = context.resolve(node.target);
+            const target = context.resolve(expr.target);
 
             if (target.tag !== Tag.DeclFunction) {
                 throw new Error(`[INTERNAL ERROR] ExprCallStatic: Expected field to be resolved to function by this stage`);
             }
 
-            analyzeNodes(context, node.args, state);
-            handleArgs(context, new GroupedAccess(), target.parameters, node.args, state);
+            analyzeNodes(context, expr.args, state);
+            handleArgs(context, new GroupedAccess(), target.parameters, expr.args, state);
             return;
         }
 
@@ -111,22 +84,37 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
 
         case Tag.ExprDeclaration: {
             // TODO: Handle declarations properly after we fix the local/global symbol index problem
-            const variable = Node.as(context.parent, DeclFunction).variables[node.id];
-            analyzeNode(context, variable, state);
+            const variable = Node.as(context.parent, DeclFunction).variables[expr.id];
+
+            if (variable.value !== null) {
+                analyzeNode(context, variable.value, state);
+                state.assign(expr.id);
+
+                // TODO: Handle references in a better way
+                // TODO: Fix support for references
+                // if (
+                //     node.value.tag === Tag.ExprConstruct &&
+                //     node.value.target.tag === Tag.DeclStruct &&
+                //     node.value.target.name === "Ref" &&
+                //     node.value.args[0].tag === Tag.ExprGetLocal
+                // ) {
+                //     state.ref(node.id, node.value.args[0].local);
+                // }
+            }
             return;
         }
 
         case Tag.ExprGetLocal: {
             // TODO: Handle declarations properly after we fix the local/global symbol index problem
-            const id = Node.resolve(context, node.local, DeclSymbol).nodes[0];
+            const id = Node.resolve(context, expr.local, DeclSymbol).nodes[0];
             state.read(id);
             return;
         }
 
         case Tag.ExprSetField: {
-            analyzeNode(context, node.value, state);
-            analyzeNode(context, node.object, state);
-            state.assign(exprToPath(context, node));
+            analyzeNode(context, expr.value, state);
+            analyzeNode(context, expr.object, state);
+            state.assign(exprToPath(context, expr));
             return;
         }
 
@@ -149,7 +137,7 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
         // }
 
         case Tag.ExprDestroyLocal: {
-            state.delete(node.local);
+            state.delete(expr.local);
             return;
         }
 
@@ -159,12 +147,12 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
             const branches = state.copyState();
 
             // First branch
-            analyzeNode(context, node.branches[0].condition, branches)
-            analyzeNodes(context, node.branches[0].body, branches);
+            analyzeNode(context, expr.branches[0].condition, branches)
+            analyzeNodes(context, expr.branches[0].body, branches);
 
             // Remaining branches
-            for (let i = 1; i < node.branches.length; i++) {
-                const branch = node.branches[i];
+            for (let i = 1; i < expr.branches.length; i++) {
+                const branch = expr.branches[i];
                 const branchState = state.copyState();
 
                 analyzeNode(context, branch.condition, branchState);
@@ -173,7 +161,7 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
             }
 
             // Else branch
-            analyzeNodes(context, node.elseBranch, state);
+            analyzeNodes(context, expr.elseBranch, state);
             state.mergeState(branches);
             return;
         }
@@ -181,13 +169,13 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
         case Tag.ExprWhile: {
             // Loop taken one time
             const takenOnce = state.copyState();
-            analyzeNode(context, node.condition, takenOnce);
-            analyzeNodes(context, node.body, takenOnce);
+            analyzeNode(context, expr.condition, takenOnce);
+            analyzeNodes(context, expr.body, takenOnce);
 
             // Loop taken multiple times
             const takenMultiple = takenOnce.copyState();
-            analyzeNode(context, node.condition, takenMultiple);
-            analyzeNodes(context, node.body, takenMultiple);
+            analyzeNode(context, expr.condition, takenMultiple);
+            analyzeNodes(context, expr.body, takenMultiple);
 
             // Loop not taken
             state.mergeState(takenOnce);
@@ -196,12 +184,12 @@ function analyzeNode(context: Context, node: Node, state: ProgramState) {
         }
     }
 
-    throw new Error(`lifetimeCheck: No case for node '${Tag[node.tag]}'`);
+    throw new Error(`lifetimeCheck: No case for node '${Tag[expr.tag]}'`);
 }
 
-function analyzeNodes(context: Context, nodes: Node[], state: ProgramState) {
-    for (const node of nodes) {
-        analyzeNode(context, node, state);
+function analyzeNodes(context: Context, exprs: Expr[], state: ProgramState) {
+    for (const expr of exprs) {
+        analyzeNode(context, expr, state);
     }
 }
 
