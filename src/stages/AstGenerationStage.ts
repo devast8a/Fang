@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Context, Decl, Expr, Node, Tag, UnresolvedId } from '../nodes';
+import { Context, Decl, Expr, Node, RootId, Tag, UnresolvedId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType   = new Nodes.TypeInfer();
@@ -49,14 +49,16 @@ function parse(context: Context, node: PNode): Expr {
 
             for (const member of body) {
                 if (member.tag === Tag.ExprDeclaration) {
-                    const decl = context.resolveGlobal(member.id);
-                    members.set(decl.name, member.id);
+                    const decl = context.resolveGlobal(member.member);
+                    members.set(decl.name, member.member);
                 }
             }
 
             const struct = new Nodes.DeclStruct(context.parentId, id, name, members, new Set(superTypes));
+
+            // TODO: Refactor into a context.register
             module.nodes[id] = struct;
-            return new Nodes.ExprDeclaration(id);
+            return new Nodes.ExprDeclaration(RootId, id);
         }
 
         case PTag.DeclFunction: {
@@ -80,7 +82,7 @@ function parse(context: Context, node: PNode): Expr {
                 parseList(ctx, node.data[7][1]) :
                 [new Nodes.ExprReturn(parse(ctx, node.data[7][4]))];
 
-            return new Nodes.ExprDeclaration(id);
+            return new Nodes.ExprDeclaration(RootId, id);
         }
 
         case PTag.DeclVariable: {
@@ -89,7 +91,7 @@ function parse(context: Context, node: PNode): Expr {
             //  This matters because locals are stored with the function (ie. DeclFunction.locals) and fields/globals
             //  are stored with module (ie. DeclModule.nodes). This may change in the future.
             const variable = parseVariable(node, context);
-            return new Nodes.ExprDeclaration(variable.id);
+            return new Nodes.ExprDeclaration(context.parentId, variable.id);
         }
 
         case PTag.StmtIf: {

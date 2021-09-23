@@ -95,7 +95,7 @@ export class TargetC {
 
             case Tag.ExprDeclaration: {
                 // TODO: Handle declarations properly after we fix the local/global symbol index problem
-                const variable = this.context.variables[node.id];
+                const variable = this.context.variables[node.member];
                 this.emitNode(context, variable);
                 return;
             }

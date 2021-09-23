@@ -237,7 +237,8 @@ export class ExprDeclaration {
     public static readonly tag = Tag.ExprDeclaration;
 
     public constructor(
-        public id: number,
+        public declaration: number,
+        public member: number,
     ) {}
 }
 
@@ -519,7 +520,7 @@ export class Context<T extends Decl = Decl> {
         return as(this.module.nodes[ref as number], type);
     }
 
-    public resolve<T extends Constructor<Decl> & {tag: Tag}>(ref: ExprRefStatic | TypeRefStatic, type?: T): InstanceType<T> {
+    public resolve<T extends Constructor<Decl> & {tag: Tag}>(ref: ExprRefStatic | TypeRefStatic | ExprDeclaration, type?: T): InstanceType<T> {
         if (ref.declaration === -1) {
             return as(this.module.nodes[ref.member as number], type);
         }

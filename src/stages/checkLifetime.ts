@@ -84,11 +84,11 @@ function analyzeNode(context: Context, expr: Expr, state: ProgramState) {
 
         case Tag.ExprDeclaration: {
             // TODO: Handle declarations properly after we fix the local/global symbol index problem
-            const variable = Node.as(context.parent, DeclFunction).variables[expr.id];
+            const variable = Node.as(context.parent, DeclFunction).variables[expr.member];
 
             if (variable.value !== null) {
                 analyzeNode(context, variable.value, state);
-                state.assign(expr.id);
+                state.assign(expr.member);
 
                 // TODO: Handle references in a better way
                 // TODO: Fix support for references

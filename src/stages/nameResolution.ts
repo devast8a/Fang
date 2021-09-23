@@ -113,9 +113,9 @@ function declareNode(node: Node, scope: Scope, state: State) {
             // We don't know if we have a local (and should lookup the declaration in parent.variables) or
             //  if we have something else (and should lookup the declaration in module.nodes)
             const parent = state.functions[state.functions.length - 1];
-            const variable = parent.variables[node.id];
+            const variable = parent.variables[node.member];
 
-            scope.declare(variable.name, state.functionId[state.functionId.length - 1], node.id);
+            scope.declare(variable.name, state.functionId[state.functionId.length - 1], node.member);
             if (variable.value !== null) {
                 declareNode(variable.value, scope, state);
             }
@@ -271,7 +271,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
             // We don't know if we have a local (and should lookup the declaration in parent.variables) or
             //  if we have something else (and should lookup the declaration in module.nodes)
             const parent = state.functions[state.functions.length - 1];
-            const variable = parent.variables[node.id];
+            const variable = parent.variables[node.member];
 
             if (variable.value !== null) {
                 variable.value = resolveNode(variable.value, state);
