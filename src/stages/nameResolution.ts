@@ -1,13 +1,9 @@
-import { Node, Tag, DeclFunction, TypeRefName, Context, RootId } from '../nodes';
+import { Node, Tag, TypeRefName, Context, RootId } from '../nodes';
 import * as Nodes from '../nodes';
 import { Scope } from './Scope';
 
 class State {
     scopeMap = new Map<Node, Scope>();
-
-    // TODO: Remove this mess and use Context
-    functions = new Array<DeclFunction>();
-    functionId = new Array<number>();
 
     public constructor(
         public context: Context,
@@ -17,17 +13,17 @@ class State {
 export function nameResolution(nodes: Node[], scope: Scope, context: Context) {
     const state = new State(context);
 
-    declareNodes(nodes, scope, state);
-    resolveNodes(nodes, state);
+    declareNodes(context, nodes, scope, state);
+    resolveNodes(context, nodes, state);
 }
 
-function declareNodes(nodes: Node[], scope: Scope, state: State) {
+function declareNodes(context: Context, nodes: Node[], scope: Scope, state: State) {
     for (const node of nodes) {
-        declareNode(node, scope, state);
+        declareNode(context, node, scope, state);
     }
 }
 
-function declareNode(node: Node, scope: Scope, state: State) {
+function declareNode(context: Context, node: Node, scope: Scope, state: State) {
     state.scopeMap.set(node, scope);
 
     switch (node.tag) {
@@ -40,25 +36,25 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.DeclStruct: {
+            // Structures are always flattened and stored in the root object.
             scope.declare(node.name, RootId, node.id);
-            declareNodes(Array.from(node.superTypes), scope, state);
+
+            declareNodes(context, Array.from(node.superTypes), scope, state);
 
             return;
         }
 
         case Tag.DeclFunction: {
-            state.functions.push(node);
-            state.functionId.push(node.id);
-
+            // Functions are always flattened and stored in the root object.
             scope.declare(node.name, RootId, node.id);
 
+            const childContext = context.nextId(node.id);
             const inner = scope.newChildScope();
-            declareNodes(node.parameters, inner, state);
-            declareNode(node.returnType, inner, state);
-            declareNodes(node.body, inner, state);
 
-            state.functions.pop();
-            state.functionId.pop();
+            declareNodes(childContext, node.parameters, inner, state);
+            declareNode (childContext, node.returnType, inner, state);
+            declareNodes(childContext, node.body, inner, state);
+
             return;
         }
 
@@ -70,37 +66,27 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.DeclVariable: {
-            // TODO: Support global variables
-            // TODO: This can be replaced with a field (we flatten decls in ast generation)
-            const currentFunction = state.functions[state.functions.length - 1];
+            declareNode(context, node.type, scope, state);
+            if (node.value !== null) { declareNode(context, node.value, scope, state); }
 
-            // TODO: Move this into AstGenerationStage
-            // Register variable into function
-            node.id = currentFunction.variables.length;
-            currentFunction.variables.push(node);
-
-            declareNode(node.type, scope, state);
-            if (node.value !== null) { declareNode(node.value, scope, state); }
-
-            // Declare variable name
-            scope.declare(node.name, currentFunction.id, node.id);
-
+            // Variables are not flattened, and are stored in the enclosing declaration.
+            scope.declare(node.name, context.parentId, node.id);
             return;
         }
 
         case Tag.ExprCall: {
-            declareNode(node.target, scope, state);
-            declareNodes(node.args, scope, state);
+            declareNode (context, node.target, scope, state);
+            declareNodes(context, node.args, scope, state);
             return;
         }
 
         case Tag.ExprCallStatic: {
-            declareNodes(node.args, scope, state);
+            declareNodes(context, node.args, scope, state);
             return;
         }
 
         case Tag.ExprConstruct: {
-            declareNodes(node.args, scope, state);
+            declareNodes(context, node.args, scope, state);
             return;
         }
 
@@ -109,73 +95,66 @@ function declareNode(node: Node, scope: Scope, state: State) {
         }
 
         case Tag.ExprDeclaration: {
-            // TODO: Support other declaration types
-            // We don't know if we have a local (and should lookup the declaration in parent.variables) or
-            //  if we have something else (and should lookup the declaration in module.nodes)
-            const parent = state.functions[state.functions.length - 1];
-            const variable = parent.variables[node.member];
-
-            scope.declare(variable.name, state.functionId[state.functionId.length - 1], node.member);
-            if (variable.value !== null) {
-                declareNode(variable.value, scope, state);
-            }
+            const decl = context.resolve(node);
+            declareNode(context, decl, scope, state);
             return;
         }
 
         case Tag.ExprGetField: {
-            declareNode(node.object, scope, state);
+            declareNode(context, node.object, scope, state);
             return;
         }
 
         case Tag.ExprGetLocal: {
+            // Does not declare anything
             return;
         }
 
         case Tag.ExprMacroCall: {
+            // TODO: Needs to be implemented
             return;
         }
 
         case Tag.ExprRefName: {
-            // References never declare anything
+            // Does not declare anything
             return;
         }
 
         case Tag.ExprSetField: {
-            declareNode(node.object, scope, state);
-            declareNode(node.value, scope, state);
+            declareNode(context, node.object, scope, state);
+            declareNode(context, node.value, scope, state);
             return;
         }
 
         case Tag.ExprSetLocal: {
-            declareNode(node.value, scope, state);
+            declareNode(context, node.value, scope, state);
             return;
         }
 
         case Tag.ExprDestroyLocal: {
+            // Does not declare anything
             return;
         }
 
         case Tag.ExprIf: {
-            declareNodes(node.branches, scope, state);
+            declareNodes(context, node.branches, scope, state);
 
             const inner = scope.newChildScope();
-            declareNodes(node.elseBranch, inner, state);
+            declareNodes(context, node.elseBranch, inner, state);
             return;
         }
 
         case Tag.ExprIfBranch: {
             const inner = scope.newChildScope();
-
-            declareNode(node.condition, inner, state);
-            declareNodes(node.body, inner, state);
+            declareNode (context, node.condition, inner, state);
+            declareNodes(context, node.body, inner, state);
             return;
         }
 
         case Tag.ExprWhile: {
             const inner = scope.newChildScope();
-
-            declareNode(node.condition, inner, state);
-            declareNodes(node.body, inner, state);
+            declareNode (context, node.condition, inner, state);
+            declareNodes(context, node.body, inner, state);
             return;
         }
 
@@ -192,11 +171,12 @@ function declareNode(node: Node, scope: Scope, state: State) {
     throw new Error(`declareNode: No case for node '${Tag[node.tag]}'`);
 }
 
-function resolveNodes<T extends Node>(nodes: T[], state: State): T[] {
-    return nodes.map(node => resolveNode(node, state));
+// TODO: Replace resolveNodes with Visitor
+function resolveNodes<T extends Node>(context: Context, nodes: T[], state: State): T[] {
+    return nodes.map(node => resolveNode(context, node, state));
 }
 
-function resolveNode<T extends Node>(_node: T, state: State): T {
+function resolveNode<T extends Node>(context: Context, _node: T, state: State): T {
     const node  = _node as Node;
 
     const scope = state.scopeMap.get(node);
@@ -216,19 +196,18 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.DeclStruct: {
             // TODO: Implement
-            node.superTypes = new Set(resolveNodes(Array.from(node.superTypes), state));
+            node.superTypes = new Set(resolveNodes(context, Array.from(node.superTypes), state));
 
             return node as T;
         }
 
         case Tag.DeclFunction: {
-            state.functions.push(node);
+            const childContext = context.nextId(node.id);
 
-            node.parameters = resolveNodes(node.parameters, state);
-            node.returnType = resolveNode(node.returnType, state);
-            node.body       = resolveNodes(node.body, state);
+            node.parameters = resolveNodes(childContext, node.parameters, state);
+            node.returnType = resolveNode (childContext, node.returnType, state);
+            node.body       = resolveNodes(childContext, node.body, state);
 
-            state.functions.pop();
             return node as T;
         }
 
@@ -239,16 +218,16 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
 
         case Tag.DeclVariable: {
             if (node.value !== null) {
-                node.value = resolveNode(node.value, state);
+                node.value = resolveNode(context, node.value, state);
             }
-            node.type = resolveNode(node.type, state);
+            node.type = resolveNode(context, node.type, state);
             
             return node as T;
         }
 
         case Tag.ExprCall: {
-            node.target = resolveNode(node.target, state);
-            node.args   = resolveNodes(node.args, state);
+            node.target = resolveNode(context, node.target, state);
+            node.args   = resolveNodes(context, node.args, state);
 
             return node as T;
         }
@@ -258,7 +237,7 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
             const ref = scope.lookup((node.target as TypeRefName).name)!;
             node.target = new Nodes.TypeRefStatic(ref.parent, ref.id);
             
-            resolveNodes(node.args, state);
+            resolveNodes(context, node.args, state);
             return node as T;
         }
 
@@ -267,21 +246,13 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         }
 
         case Tag.ExprDeclaration: {
-            // TODO: Support other declaration types
-            // We don't know if we have a local (and should lookup the declaration in parent.variables) or
-            //  if we have something else (and should lookup the declaration in module.nodes)
-            const parent = state.functions[state.functions.length - 1];
-            const variable = parent.variables[node.member];
-
-            if (variable.value !== null) {
-                variable.value = resolveNode(variable.value, state);
-            }
-
+            const decl = context.resolve(node);
+            resolveNode(context, decl, state);
             return node as T;
         }
 
         case Tag.ExprGetField: {
-            node.object = resolveNode(node.object, state);
+            node.object = resolveNode(context, node.object, state);
             return node as T;
         }
 
@@ -299,8 +270,8 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         }
 
         case Tag.ExprSetField: {
-            node.object = resolveNode(node.object, state);
-            node.value  = resolveNode(node.value, state);
+            node.object = resolveNode(context, node.object, state);
+            node.value  = resolveNode(context, node.value, state);
 
             return node as T;
         }
@@ -314,20 +285,20 @@ function resolveNode<T extends Node>(_node: T, state: State): T {
         }
 
         case Tag.ExprIf: {
-            node.branches   = resolveNodes(node.branches, state);
-            node.elseBranch = resolveNodes(node.elseBranch, state);
+            node.branches   = resolveNodes(context, node.branches, state);
+            node.elseBranch = resolveNodes(context, node.elseBranch, state);
             return node as T;
         }
 
         case Tag.ExprIfBranch: {
-            node.condition = resolveNode(node.condition, state);
-            node.body      = resolveNodes(node.body, state);
+            node.condition = resolveNode (context, node.condition, state);
+            node.body      = resolveNodes(context, node.body, state);
             return node as T;
         }
 
         case Tag.ExprWhile: {
-            resolveNode(node.condition, state);
-            resolveNodes(node.body, state);
+            resolveNode (context, node.condition, state);
+            resolveNodes(context, node.body, state);
             return node as T;
         }
 
