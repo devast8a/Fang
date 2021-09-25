@@ -1,7 +1,6 @@
-import { Visitor } from '../ast/visitor';
+import { VisitChildren } from '../ast/VisitChildren';
+import { createVisitor } from '../ast/visitor';
 
-export const checkType = new Visitor({
-    after: (node, context) => {
-        return node;
-    }
+export const checkType = createVisitor(VisitChildren, (node, context) => {
+    return node;
 });

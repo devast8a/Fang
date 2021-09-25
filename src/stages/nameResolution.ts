@@ -1,20 +1,35 @@
-import { Node, Tag, TypeRefName, Context, RootId } from '../nodes';
+import { Node, Tag, Context, RootId } from '../nodes';
 import * as Nodes from '../nodes';
-import { Scope } from './Scope';
+import { Ref, Scope } from './Scope';
+import { createVisitor } from '../ast/visitor';
+import { VisitTypes } from "../ast/VisitTypes";
+import { VisitChildren } from "../ast/VisitChildren";
 
 class State {
     scopeMap = new Map<Node, Scope>();
 
-    public constructor(
-        public context: Context,
-    ) {}
+    public lookup(node: Node, name: string): Ref {
+        const scope = this.scopeMap.get(node);
+        
+        if (scope === undefined) {
+            throw new Error("scope is not defined for an object");
+        }
+
+        const ref = scope.lookup(name);
+
+        if (ref === null) {
+            throw new Error("symbol does not exist");
+        }
+
+        return ref;
+    }
 }
 
 export function nameResolution(nodes: Node[], scope: Scope, context: Context) {
-    const state = new State(context);
+    const state = new State();
 
     declareNodes(context, nodes, scope, state);
-    resolveNodes(context, nodes, state);
+    resolve(context.module, context, state);
 }
 
 function declareNodes(context: Context, nodes: Node[], scope: Scope, state: State) {
@@ -86,6 +101,7 @@ function declareNode(context: Context, node: Node, scope: Scope, state: State) {
         }
 
         case Tag.ExprConstruct: {
+            declareNode (context, node.target, scope, state);
             declareNodes(context, node.args, scope, state);
             return;
         }
@@ -171,147 +187,33 @@ function declareNode(context: Context, node: Node, scope: Scope, state: State) {
     throw new Error(`declareNode: No case for node '${Tag[node.tag]}'`);
 }
 
-// TODO: Replace resolveNodes with Visitor
-function resolveNodes<T extends Node>(context: Context, nodes: T[], state: State): T[] {
-    return nodes.map(node => resolveNode(context, node, state));
-}
-
-function resolveNode<T extends Node>(context: Context, _node: T, state: State): T {
-    const node  = _node as Node;
-
-    const scope = state.scopeMap.get(node);
-
-    if (scope === undefined) {
-        throw new Error(`Must call declareNode on node before calling resolveNode`);
-    }
-
+const resolve = createVisitor<State>(VisitChildren, VisitTypes, (node, context, state) => {
     switch (node.tag) {
-        case Tag.DeclModule: {
-            return node as T;
-        }
-
-        case Tag.DeclSymbol: {
-            return node as T;
-        }
-
-        case Tag.DeclStruct: {
-            // TODO: Implement
-            node.superTypes = new Set(resolveNodes(context, Array.from(node.superTypes), state));
-
-            return node as T;
-        }
-
         case Tag.DeclFunction: {
-            const childContext = context.nextId(node.id);
-
-            node.parameters = resolveNodes(childContext, node.parameters, state);
-            node.returnType = resolveNode (childContext, node.returnType, state);
-            node.body       = resolveNodes(childContext, node.body, state);
-
-            return node as T;
-        }
-
-        case Tag.DeclTrait: {
-            // TODO: Implement
-            return node as T;
+            node.returnType = resolve(node.returnType, context, state);
+            return node;
         }
 
         case Tag.DeclVariable: {
-            if (node.value !== null) {
-                node.value = resolveNode(context, node.value, state);
-            }
-            node.type = resolveNode(context, node.type, state);
-            
-            return node as T;
-        }
-
-        case Tag.ExprCall: {
-            node.target = resolveNode(context, node.target, state);
-            node.args   = resolveNodes(context, node.args, state);
-
-            return node as T;
+            node.type       = resolve(node.type, context, state);
+            return node;
         }
 
         case Tag.ExprConstruct: {
-            // TODO: Error handling
-            const ref = scope.lookup((node.target as TypeRefName).name)!;
-            node.target = new Nodes.TypeRefStatic(ref.parent, ref.id);
-            
-            resolveNodes(context, node.args, state);
-            return node as T;
-        }
-
-        case Tag.ExprConstant: {
-            return node as T;
-        }
-
-        case Tag.ExprDeclaration: {
-            const decl = context.resolve(node);
-            resolveNode(context, decl, state);
-            return node as T;
-        }
-
-        case Tag.ExprGetField: {
-            node.object = resolveNode(context, node.object, state);
-            return node as T;
-        }
-
-        case Tag.ExprGetLocal: {
-            throw new Error("Not supported!");
-            // // TODO: Error handling
-            // console.log(scope.lookup(node.local as string));
-            // node.local = convert(context, scope.lookup(node.local as string), Nodes.DeclVariable).id;
-            // return node as T;
+            node.target     = resolve(node.target, context, state);
+            return node;
         }
 
         case Tag.ExprRefName: {
-            const ref = scope.lookup(node.name)!;
-            return new Nodes.ExprRefStatic(ref.parent, ref.id) as T;
-        }
-
-        case Tag.ExprSetField: {
-            node.object = resolveNode(context, node.object, state);
-            node.value  = resolveNode(context, node.value, state);
-
-            return node as T;
-        }
-
-        case Tag.ExprSetLocal: {
-            throw new Error("Not supported");
-        }
-
-        case Tag.ExprDestroyLocal: {
-            throw new Error("Not supported");
-        }
-
-        case Tag.ExprIf: {
-            node.branches   = resolveNodes(context, node.branches, state);
-            node.elseBranch = resolveNodes(context, node.elseBranch, state);
-            return node as T;
-        }
-
-        case Tag.ExprIfBranch: {
-            node.condition = resolveNode (context, node.condition, state);
-            node.body      = resolveNodes(context, node.body, state);
-            return node as T;
-        }
-
-        case Tag.ExprWhile: {
-            resolveNode (context, node.condition, state);
-            resolveNodes(context, node.body, state);
-            return node as T;
-        }
-
-        case Tag.TypeInfer: {
-            return node as T;
+            const ref = state.lookup(node, node.name);
+            return new Nodes.ExprRefStatic(ref.declaration, ref.member);
         }
 
         case Tag.TypeRefName: {
-            // TODO: Handle errors
-            const ref = scope.lookup(node.name)!;
-            return new Nodes.TypeRefStatic(ref.parent, ref.id) as T;
+            const ref = state.lookup(node, node.name);
+            return new Nodes.TypeRefStatic(ref.declaration, ref.member);
         }
     }
 
-    throw new Error(`resolveNode: No case for node '${Tag[node.tag]}'`);
-}
+    return node;
+});

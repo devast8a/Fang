@@ -11,7 +11,7 @@ import { transformRemoveNesting } from './stages/transformRemoveNesting';
 import { resolveOverload } from './stages/resolveOverload';
 import { resolveNodes } from './stages/nodeResolution';
 import { ParserStage } from './stages/ParseStage';
-import { Visitor } from './ast/visitor';
+import { visit, Visitor } from './ast/visitor';
 import { inferType } from './stages/inferType';
 
 export interface ParseContext {
@@ -34,7 +34,7 @@ function wrap<T>(visitor: Visitor<T>, state: T) {
         for (const node of context.module.nodes) {
             if (node.tag === Tag.DeclFunction) {
                 // TODO: Create new copy of function
-                node.body = visitor.array(node.body, context.next(node), state);
+                node.body = visit.array(node.body, context.next(node), state, visitor);
             }
         }
     }

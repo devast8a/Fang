@@ -1,8 +1,8 @@
 // Equivalent to the context.resolve2
 export class Ref {
     public constructor(
-        public parent: number,
-        public id: number,
+        public declaration: number,
+        public member: number,
     ) {}
 }
 

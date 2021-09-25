@@ -1,4 +1,3 @@
-import { NodeType } from './ast/visitor';
 import { Constructor } from './common/constructor';
 import { Compiler } from './compile';
 
@@ -79,12 +78,7 @@ export type Type =
     | TypeRefStatic     //
     ;
 
-// References
-//  Remove concept of global/field/local?
-//  All references are two indexes. Parent / Field?
-type Global = string | number;
-type Field  = string | number;
-type Local  = string | number;
+// -------------------------------------------------------------------------
 
 export class DeclFunction {
     public readonly tag = Tag.DeclFunction;
@@ -402,6 +396,17 @@ export class TypeRefName {
     ) {}
 }
 
+// -------------------------------------------------------------------------
+
+// References
+//  Remove concept of global/field/local?
+//  All references are two indexes. Parent / Field?
+type Global = string | number;
+type Field  = string | number;
+type Local  = string | number;
+
+export type NodeConstructor<T extends Node = Node> = Constructor<T> & {tag: Tag};
+
 export namespace Type {
     export function canAssignTo(context: Context, child: Type | Decl, parent: Type | Decl) {
         return Type.isSubType(context, child, parent);
@@ -461,7 +466,7 @@ export namespace Expr {
 }
 
 export namespace Node {
-    export function as<T extends NodeType>(node: Node, type: T): InstanceType<T> {
+    export function as<T extends NodeConstructor>(node: Node, type: T): InstanceType<T> {
         if (node.tag === type.tag) {
             return node as any;
         } else {
@@ -469,9 +474,9 @@ export namespace Node {
         }
     }
 
-    export function resolve<T extends NodeType>(context: Context, id: Global): Decl
-    export function resolve<T extends NodeType>(context: Context, id: Global, type: T): InstanceType<T>
-    export function resolve<T extends NodeType>(context: Context, id: Global, type?: T): any {
+    export function resolve<T extends NodeConstructor>(context: Context, id: Global): Decl
+    export function resolve<T extends NodeConstructor>(context: Context, id: Global, type: T): InstanceType<T>
+    export function resolve<T extends NodeConstructor>(context: Context, id: Global, type?: T): any {
         if (typeof(id) !== 'number') {
             throw new Error('Expecting id to be a number');
         }
@@ -512,7 +517,7 @@ export class Context<T extends Decl = Decl> {
         return new Context<T>(this.compiler, parent.id, this.module);
     }
 
-    public resolveGlobal<T extends Constructor<Decl> & {tag: Tag}>(ref: Global, type?: T): InstanceType<T> {
+    public resolveGlobal<T extends NodeConstructor<Decl>>(ref: Global, type?: T): InstanceType<T> {
         if (typeof(ref) !== 'number') {
             throw new Error();
         }
@@ -520,7 +525,7 @@ export class Context<T extends Decl = Decl> {
         return as(this.module.nodes[ref as number], type);
     }
 
-    public resolve<T extends Constructor<Decl> & {tag: Tag}>(ref: ExprRefStatic | TypeRefStatic | ExprDeclaration, type?: T): InstanceType<T> {
+    public resolve<T extends NodeConstructor<Decl>>(ref: ExprRefStatic | TypeRefStatic | ExprDeclaration, type?: T): InstanceType<T> {
         if (ref.declaration === -1) {
             return as(this.module.nodes[ref.member as number], type);
         }

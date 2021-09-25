@@ -1,195 +1,74 @@
-import { Constructor } from '../common/constructor';
-import { Context, Expr, Node, Tag } from '../nodes';
-import * as Nodes from '../nodes';
+import { Context, Node } from '../nodes';
 
-export interface VisitorConfig<State> {
-    after?:  (node: Expr, context: Context, state: State) => Expr;
-    before?: (node: Expr, context: Context, state: State) => {node?: Expr, state?: State, continue?: boolean};
-    update?: (node: Expr, previous: Expr, context: Context, state: State) => Expr;
+/**
+ * Creates a "Chain of Responsibility", a list of functions where each function can perform a computation on a node
+ *  and/or pass the node to the some other function in the list.
+ * 
+ * Each function supplied to createVisitor receives a VisitorControl structure that contains the following functions.
+ *  - next, calls the next function in the list
+ *  - first, calls the first function in the list
+ * 
+ * There are several visitor functions (eg. VisitChildren) that can be used to quickly construct a typical AST visit
+ *  pass. These visitor functions have the same general structure: switch on the type of node, call `first` to recurse
+ *  into any children nodes, and call `next` to pass the node to the next visitor function.
+ * 
+ * A quick example:
+ * ```
+ * createVisitor(VisitChildren, (node) => {
+ *   if (node.tag === Tag.DeclFunction) {
+ *     console.log(`It's a function named ${node.name}`)
+ *   }
+ *   return node;
+ * })
+ * ```
+ */
+export function createVisitor<State = null>(...visitors: VisitorFn<State>[]): Visitor<State> {
+    const controls = new Array<VisitorControl<State>>();
+    const call = new Array<Visitor<State>>();
+
+    for (let index = 0; index < visitors.length; index++) {
+        call.push((node, context, state) => {
+            return visitors[index](node, context, state, controls[index]) as typeof node;
+        });
+    }
+
+    // In case the last function in the chain calls next, we want to throw a more meaningful error rather than
+    //  throw a null reference exception.
+    call.push(() => {
+        throw new Error('Called Control.next, but there is no next visitor');
+    });
+
+    for (let index = 0; index < visitors.length; index++) {
+        controls.push({
+            first:   call[0],
+            next:    call[index + 1],
+        });
+    }
+
+    return call[0];
 }
 
-export class Visitor<State = null> {
-    private readonly after?:  (node: Expr, context: Context, state: State) => Expr;
-    private readonly before?: (node: Expr, context: Context, state: State) => {node?: Expr, state?: State, continue?: boolean};
-    private readonly update?: (node: Expr, previous: Expr, context: Context, state: State) => Expr;
+export type Visitor<State> = <T extends Node>(node: T, context: Context, state: State) => T;
 
-    public constructor(config: VisitorConfig<State>) {
-        this.after  = config.after;
-        this.before = config.before;
-        this.update = config.update;
-    }
+export type VisitorFn<State> = (node: Node, context: Context, state: State, control: VisitorControl<State>) => Node;
 
-    public node(node: Expr, context: Context, state: State): Expr {
-        let replace: Expr | undefined = undefined;
+export interface VisitorControl<State> {
+    readonly next: Visitor<State>
+    readonly first: Visitor<State>
+}
 
-        if (this.before !== undefined) {
-            const result = this.before(node, context, state);
-
-            if (result.node !== undefined) {
-                node = result.node;
-            }
-
-            if (result.state !== undefined) {
-                state = result.state;
-            }
-            
-            if (result.continue === false) {
-                return node;
-            }
-        }
-
-        switch (node.tag) {
-            case Tag.ExprCall: {
-                const target = this.node(node.target, context, state);
-                const args   = this.array(node.args, context, state);
-                if (target !== node.target || args !== node.args) {
-                    replace = new Nodes.ExprCall(target, args);
-                }
-                break;
-            }
-
-            case Tag.ExprCallStatic: {
-                const args = this.array(node.args, context, state);
-                if (args !== node.args) {
-                    replace = new Nodes.ExprCallStatic(node.target, args);
-                }
-                break;
-            }
-
-            case Tag.ExprCallField: {
-                const object = this.node(node.object, context, state);
-                const args   = this.array(node.args, context, state);
-                if (object !== node.object || args !== node.args) {
-                    replace = new Nodes.ExprCallField(node.object, node.field, args);
-                }
-                break;
-            }
-
-            case Tag.ExprConstant: {
-                break;
-            }
-
-            case Tag.ExprConstruct: {
-                const args = this.array(node.args, context, state);
-                if (args !== node.args) {
-                    replace = new Nodes.ExprConstruct(node.target, args);
-                }
-                break;
-            }
-
-            case Tag.ExprDeclaration: {
-                break;
-            }
-
-            case Tag.ExprGetField: {
-                const object = this.node(node.object, context, state);
-                if (object !== node.object) {
-                    replace = new Nodes.ExprGetField(object, node.field);
-                }
-                break;
-            }
-
-            case Tag.ExprGetLocal: {
-                break;
-            }
-
-            case Tag.ExprMacroCall: {
-                // TODO: Implement ExprMacroCall correctly
-                break;
-            }
-
-            case Tag.ExprRefName: {
-                break;
-            }
-
-            case Tag.ExprRefStatic: {
-                break;
-            }
-
-            case Tag.ExprSetField: {
-                const object = this.node(node.object, context, state);
-                const value  = this.node(node.value, context, state);
-                if (object !== node.object || value !== node.value) {
-                    replace = new Nodes.ExprSetField(object, node.field, value);
-                }
-                break;
-            }
-
-            case Tag.ExprSetLocal: {
-                const value = this.node(node.value, context, state);
-                if (value !== node.value) {
-                    replace = new Nodes.ExprSetLocal(node.local, value);
-                }
-                break;
-            }
-
-            case Tag.ExprDestroyLocal: {
-                break;
-            }
-
-            case Tag.ExprIf: {
-                const branches   = this.array(node.branches, context, state);
-                const elseBranch = this.array(node.elseBranch, context, state);
-                if (branches !== node.branches || elseBranch !== node.elseBranch) {
-                    // TODO: Check branches are really an array of StmtIfBranch
-                    replace = new Nodes.ExprIf(branches as Nodes.ExprIfBranch[], elseBranch);
-                }
-                break;
-            }
-
-            case Tag.ExprIfBranch: {
-                const condition = this.node(node.condition, context, state);
-                const body      = this.array(node.body, context, state);
-                if (condition !== node.condition || body !== node.body) {
-                    replace = new Nodes.ExprIfBranch(condition, body);
-                }
-                break;
-            }
-
-            case Tag.ExprWhile: {
-                const condition = this.node(node.condition, context, state);
-                const body      = this.array(node.body, context, state);
-                if (condition !== node.condition || body !== node.body) {
-                    replace = new Nodes.ExprWhile(condition, body);
-                }
-                break;
-            }
-
-            case Tag.ExprReturn: {
-                if (node.expression !== null) {
-                    const expression = this.node(node.expression, context, state);
-                    if (expression !== node.expression) {
-                        replace = new Nodes.ExprReturn(expression);
-                    }
-                }
-                break;
-            }
-
-            default: {
-                throw new Error(`Visitor.node: No implementation for Node '${Tag[node.tag]}'`);
-            }
-        }
-
-        if (replace !== undefined) {
-            if (this.update !== undefined) {
-                node = this.update(replace, node, context, state);
-            } else {
-                node = replace;
-            }
-        }
-
-        if (this.after !== undefined) {
-            node = this.after(node, context, state);
-        }
-
-        return node;
-    }
-
-    public array(nodes: Expr[], context: Context, state: State): Expr[] {
+export namespace visit {
+    /**
+     * Visits an array of nodes. Similar to Array.map although it does not produce a copy of the array -unless- an
+     *  the function returns a different object.
+     * 
+     * TODO: This will likely become obsolete when expression flattening is introduced.
+     */
+    export function array<T extends Node, State>(nodes: T[], context: Context, state: State, visitor: Visitor<State>): T[] {
         const length = nodes.length;
         for (let index = 0; index < length; index++) {
             const input  = nodes[index];
-            const output = this.node(input, context, state);
+            const output = visitor(input, context, state);
 
             // Handle the case where one of the functions returned a new object.
             if (input !== output) {
@@ -199,7 +78,7 @@ export class Visitor<State = null> {
                 index++;
 
                 while (index < length) {
-                    copy[index] = this.node(nodes[index], context, state);
+                    copy[index] = visitor(nodes[index], context, state);
                     index++;
                 }
 
@@ -208,14 +87,4 @@ export class Visitor<State = null> {
         }
         return nodes;
     }
-}
-
-export type NodeType = Constructor<Node> & {tag: Tag};
-
-export function convert<T extends NodeType>(node: Node, type: T): InstanceType<T> {
-    if (node.tag === type.tag) {
-        return node as InstanceType<T>;
-    }
-
-    throw new Error(`Expected '${Tag[type.tag]}' but got a '${Tag[node.tag]} instead.`);
 }
