@@ -536,6 +536,12 @@ export class Context<T extends Decl = Decl> {
             default: throw new Error(`Not implemented for ${Tag[declaration.tag]}`);
         }
     }
+
+    public register(decl: Decl) {
+        const id = this.module.nodes.length;
+        this.module.nodes.push(decl);
+        return id;
+    }
 }
 
 function check<T extends NodeConstructor<Decl>>(decl: Decl, type?: T): InstanceType<T> {

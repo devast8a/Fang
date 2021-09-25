@@ -28,58 +28,48 @@ function parseList(context: Context, node: PNode) {
 }
 
 function parse(context: Context, node: PNode): Expr {
-    const module = context.module;
-
     switch (node.tag) {
         case PTag.DeclClass: {
-            // Setup id
-            const id = module.nodes.length;
-            module.nodes.push(Placeholder);
-            const ctx = context.nextId(id);
+            const decl = new Nodes.DeclStruct(context.parentId, "", new Map(), new Set());
+
+            const id = context.register(decl);
+            const childCtx = context.nextId(id);
 
             // keyword
-            const name = parseIdentifier(node.data[1]);
-            const superTypes = node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3]));
+            decl.name = parseIdentifier(node.data[1]);
+            decl.superTypes = new Set(node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3])));
             // generic
             // attributes
-            const body = parseList(ctx, node.data[5][1]);
+            const body = parseList(childCtx, node.data[5][1]);
 
             // Generate member mapping
-            const members = new Map();
-
             for (const member of body) {
                 if (member.tag === Tag.ExprDeclaration) {
-                    const decl = context.resolveGlobal(member.member);
-                    members.set(decl.name, member.member);
+                    const child = context.resolveGlobal(member.member);
+                    decl.members.set(child.name, member.member);
                 }
             }
 
-            const struct = new Nodes.DeclStruct(context.parentId, name, members, new Set(superTypes));
-
             // TODO: Refactor into a context.register
-            module.nodes[id] = struct;
             return new Nodes.ExprDeclaration(RootId, id);
         }
 
         case PTag.DeclFunction: {
-            // Create function
-            const fn = new Nodes.DeclFunction(context.parentId, "", [], InferType, [], Nodes.FunctionFlags.None);
+            const decl = new Nodes.DeclFunction(context.parentId, "", [], InferType, [], Nodes.FunctionFlags.None);
 
-            // TODO: Refactor into a module.register
-            const id = module.nodes.length;
-            module.nodes.push(fn);
-            const ctx = context.nextId(id);
+            const id = context.register(decl);
+            const childContext = context.nextId(id);
 
             // keyword
-            fn.name = parseIdentifier(node.data[1][1]);
+            decl.name = parseIdentifier(node.data[1][1]);
             // compileTime
-            fn.parameters = node.data[3].elements.map(variable => parseVariable(variable, ctx).variable);
-            fn.returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
+            decl.parameters = node.data[3].elements.map(variable => parseVariable(variable, childContext).variable);
+            decl.returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
             // generic
             // attributes
-            fn.body = (node.data[7].length === 2) ?
-                parseList(ctx, node.data[7][1]) :
-                [new Nodes.ExprReturn(parse(ctx, node.data[7][4]))];
+            decl.body = (node.data[7].length === 2) ?
+                parseList(childContext, node.data[7][1]) :
+                [new Nodes.ExprReturn(parse(childContext, node.data[7][4]))];
 
             return new Nodes.ExprDeclaration(RootId, id);
         }
