@@ -88,7 +88,6 @@ export class DeclFunction {
 
     public constructor(
         public parent: number,
-        public id: number,
 
         public name: string,
         public parameters: Array<DeclVariable>,
@@ -116,7 +115,6 @@ export class DeclStruct {
 
     public constructor(
         public parent: number,
-        public id: number,
 
         public name: string,
         public members: Map<string, Global>,
@@ -132,7 +130,6 @@ export class DeclSymbol {
 
     public constructor(
         public parent: number,
-        public id: number,
 
         public name: string,
     ) {}
@@ -144,7 +141,6 @@ export class DeclTrait {
 
     public constructor(
         public parent: number,
-        public id: number,
 
         public name: string,
         public members: Map<string, Global>,
@@ -159,7 +155,6 @@ export class DeclVariable {
 
     public constructor(
         public parent: number,
-        public id: number,
 
         public name: string,
         public type: Type,
@@ -502,6 +497,7 @@ export class Context<T extends Decl = Decl> {
     public constructor(
         public readonly compiler: Compiler,
         public readonly parentId: number,
+        public readonly currentId: number,
         public readonly module: DeclModule,
     ) {}
 
@@ -510,11 +506,11 @@ export class Context<T extends Decl = Decl> {
     }
 
     public nextId<T extends Decl = Decl>(parent: number) {
-        return new Context<T>(this.compiler, parent, this.module);
+        return new Context<T>(this.compiler, parent, UnresolvedId, this.module);
     }
 
-    public next<T extends Decl>(parent: T) {
-        return new Context<T>(this.compiler, parent.id, this.module);
+    public nextId2(parent: number, child: number) {
+        return new Context<T>(this.compiler, parent, child, this.module);
     }
 
     public resolveGlobal<T extends NodeConstructor<Decl>>(ref: Global, type?: T): InstanceType<T> {
@@ -522,12 +518,12 @@ export class Context<T extends Decl = Decl> {
             throw new Error();
         }
 
-        return as(this.module.nodes[ref as number], type);
+        return check(this.module.nodes[ref as number], type);
     }
 
     public resolve<T extends NodeConstructor<Decl>>(ref: ExprRefStatic | TypeRefStatic | ExprDeclaration, type?: T): InstanceType<T> {
         if (ref.declaration === -1) {
-            return as(this.module.nodes[ref.member as number], type);
+            return check(this.module.nodes[ref.member as number], type);
         }
 
         const declaration = this.module.nodes[ref.declaration as number];
@@ -536,16 +532,12 @@ export class Context<T extends Decl = Decl> {
         // TODO: Verify type
         switch (declaration.tag) {
             case Tag.DeclStruct:    throw new Error("No id?");
-            case Tag.DeclFunction:  return as(declaration.variables[member], type);
+            case Tag.DeclFunction:  return check(declaration.variables[member], type);
             default: throw new Error(`Not implemented for ${Tag[declaration.tag]}`);
         }
     }
 }
 
-function as<T extends Constructor<Decl> & {tag: Tag}>(decl: Decl, type?: T): InstanceType<T> {
-    if (type !== undefined && type.tag !== decl.tag) {
-        throw new Error();
-    }
-
-    return decl as any;
+function check<T extends NodeConstructor<Decl>>(decl: Decl, type?: T): InstanceType<T> {
+    return type === undefined ? decl as any : Node.as(decl, type);
 }

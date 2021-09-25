@@ -31,10 +31,14 @@ export interface CompileStage {
 
 function wrap<T>(visitor: Visitor<T>, state: T) {
     return (context: Context) => {
-        for (const node of context.module.nodes) {
+        const nodes = context.module.nodes;
+
+        for (let id = 0; id < nodes.length; id++) {
+            const node = nodes[id];
+
             if (node.tag === Tag.DeclFunction) {
                 // TODO: Create new copy of function
-                node.body = visit.array(node.body, context.next(node), state, visitor);
+                node.body = visit.array(node.body, context.nextId(id), state, visitor);
             }
         }
     }
@@ -81,7 +85,7 @@ export class Compiler {
     public async compile(source: string | Source): Promise<string>
     {
         const module  = new DeclModule();
-        const context = new Context(this, RootId, module);
+        const context = new Context(this, RootId, RootId, module);
 
         console.group(`Compiling`);
         console.time("Total");

@@ -4,7 +4,7 @@ import { Scope } from './stages/Scope';
 const scope = new Scope();
 
 function type(name: string) {
-    const struct = new DeclStruct(UnresolvedId, UnresolvedId, name, new Map(), new Set());
+    const struct = new DeclStruct(UnresolvedId, name, new Map(), new Set());
     const ref    = new TypeRefDecl(struct);
     // TODO: declare should take a Type too.
     // scope.declare(name, ref as any);

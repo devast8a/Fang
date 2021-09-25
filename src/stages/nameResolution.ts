@@ -1,4 +1,4 @@
-import { Node, Tag, Context, RootId } from '../nodes';
+import { Node, Tag, Context, RootId, UnresolvedId } from '../nodes';
 import * as Nodes from '../nodes';
 import { Ref, Scope } from './Scope';
 import { createVisitor } from '../ast/visitor';
@@ -6,13 +6,23 @@ import { VisitTypes } from "../ast/VisitTypes";
 import { VisitChildren } from "../ast/VisitChildren";
 
 class State {
-    scopeMap = new Map<Node, Scope>();
+    public readonly parentId: number;
+    public readonly currentId: number;
+
+    public constructor(
+        public scopeMap: Map<Node, Scope>,
+        public scope: Scope,
+        public context: Context,
+    ) {
+        this.parentId = context.parentId;
+        this.currentId = context.currentId;
+    }
 
     public lookup(node: Node, name: string): Ref {
         const scope = this.scopeMap.get(node);
         
         if (scope === undefined) {
-            throw new Error("scope is not defined for an object");
+            throw new Error("Could not find scope for current node - call declareNode");
         }
 
         const ref = scope.lookup(name);
@@ -23,23 +33,57 @@ class State {
 
         return ref;
     }
+
+    public declare(name: string, parent: number, id: number) {
+        this.scope.declare(name, parent, id);
+    }
+
+    public createChildState() {
+        return new State(
+            this.scopeMap,
+            this.scope.newChildScope(),
+            this.context.nextId2(this.context.currentId, UnresolvedId),
+        );
+    }
+
+    public changeCurrentId(id: number) {
+        return new State(
+            this.scopeMap,
+            this.scope,
+            this.context.nextId2(this.context.parentId, id),
+        );
+    }
+
+    // Avoid the verbose signature of Context.resolve
+    public resolve: typeof Context.prototype.resolve = (ref, type) =>
+        this.context.resolve(ref, type);
 }
 
-export function nameResolution(nodes: Node[], scope: Scope, context: Context) {
-    const state = new State();
+// TODO: Remove first parameter
+export function nameResolution(_: Node[], scope: Scope, context: Context) {
+    const state = new State(
+        new Map(),
+        scope,
+        context,
+    );
 
-    declareNodes(context, nodes, scope, state);
+    const nodes = context.module.nodes;
+
+    for (let id = 0; id < nodes.length; id++) {
+        declareNode(state.changeCurrentId(id), nodes[id]);
+    }
+
     resolve(context.module, context, state);
 }
 
-function declareNodes(context: Context, nodes: Node[], scope: Scope, state: State) {
+function declareNodes(context: State, nodes: Node[]) {
     for (const node of nodes) {
-        declareNode(context, node, scope, state);
+        declareNode(context, node);
     }
 }
 
-function declareNode(context: Context, node: Node, scope: Scope, state: State) {
-    state.scopeMap.set(node, scope);
+function declareNode(state: State, node: Node) {
+    state.scopeMap.set(node, state.scope);
 
     switch (node.tag) {
         case Tag.DeclModule: {
@@ -52,57 +96,55 @@ function declareNode(context: Context, node: Node, scope: Scope, state: State) {
 
         case Tag.DeclStruct: {
             // Structures are always flattened and stored in the root object.
-            scope.declare(node.name, RootId, node.id);
+            state.declare(node.name, RootId, state.currentId);
 
-            declareNodes(context, Array.from(node.superTypes), scope, state);
+            declareNodes(state, Array.from(node.superTypes));
 
             return;
         }
 
         case Tag.DeclFunction: {
             // Functions are always flattened and stored in the root object.
-            scope.declare(node.name, RootId, node.id);
+            state.declare(node.name, RootId, state.currentId);
+            const childState = state.createChildState();
 
-            const childContext = context.nextId(node.id);
-            const inner = scope.newChildScope();
-
-            declareNodes(childContext, node.parameters, inner, state);
-            declareNode (childContext, node.returnType, inner, state);
-            declareNodes(childContext, node.body, inner, state);
+            declareNodes(childState, node.parameters);
+            declareNode (childState, node.returnType);
+            declareNodes(childState, node.body);
 
             return;
         }
 
         case Tag.DeclTrait: {
-            scope.declare(node.name, RootId, node.id);
+            state.declare(node.name, RootId, state.currentId);
 
             // TODO: Support members
             return;
         }
 
         case Tag.DeclVariable: {
-            declareNode(context, node.type, scope, state);
-            if (node.value !== null) { declareNode(context, node.value, scope, state); }
+            declareNode(state, node.type);
+            if (node.value !== null) { declareNode(state, node.value); }
 
             // Variables are not flattened, and are stored in the enclosing declaration.
-            scope.declare(node.name, context.parentId, node.id);
+            state.declare(node.name, state.parentId, state.currentId);
             return;
         }
 
         case Tag.ExprCall: {
-            declareNode (context, node.target, scope, state);
-            declareNodes(context, node.args, scope, state);
+            declareNode (state, node.target);
+            declareNodes(state, node.args);
             return;
         }
 
         case Tag.ExprCallStatic: {
-            declareNodes(context, node.args, scope, state);
+            declareNodes(state, node.args);
             return;
         }
 
         case Tag.ExprConstruct: {
-            declareNode (context, node.target, scope, state);
-            declareNodes(context, node.args, scope, state);
+            declareNode (state, node.target);
+            declareNodes(state, node.args);
             return;
         }
 
@@ -111,13 +153,14 @@ function declareNode(context: Context, node: Node, scope: Scope, state: State) {
         }
 
         case Tag.ExprDeclaration: {
-            const decl = context.resolve(node);
-            declareNode(context, decl, scope, state);
+            const decl = state.resolve(node);
+            declareNode(state.changeCurrentId(node.member), decl);
+
             return;
         }
 
         case Tag.ExprGetField: {
-            declareNode(context, node.object, scope, state);
+            declareNode(state, node.object);
             return;
         }
 
@@ -137,13 +180,13 @@ function declareNode(context: Context, node: Node, scope: Scope, state: State) {
         }
 
         case Tag.ExprSetField: {
-            declareNode(context, node.object, scope, state);
-            declareNode(context, node.value, scope, state);
+            declareNode(state, node.object);
+            declareNode(state, node.value);
             return;
         }
 
         case Tag.ExprSetLocal: {
-            declareNode(context, node.value, scope, state);
+            declareNode(state, node.value);
             return;
         }
 
@@ -153,24 +196,24 @@ function declareNode(context: Context, node: Node, scope: Scope, state: State) {
         }
 
         case Tag.ExprIf: {
-            declareNodes(context, node.branches, scope, state);
+            declareNodes(state, node.branches);
 
-            const inner = scope.newChildScope();
-            declareNodes(context, node.elseBranch, inner, state);
+            const childState = state.createChildState();
+            declareNodes(childState, node.elseBranch);
             return;
         }
 
         case Tag.ExprIfBranch: {
-            const inner = scope.newChildScope();
-            declareNode (context, node.condition, inner, state);
-            declareNodes(context, node.body, inner, state);
+            const childState = state.createChildState();
+            declareNode (childState, node.condition);
+            declareNodes(childState, node.body);
             return;
         }
 
         case Tag.ExprWhile: {
-            const inner = scope.newChildScope();
-            declareNode (context, node.condition, inner, state);
-            declareNodes(context, node.body, inner, state);
+            const childState = state.createChildState();
+            declareNode (childState, node.condition);
+            declareNodes(childState, node.body);
             return;
         }
 

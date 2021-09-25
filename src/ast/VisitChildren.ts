@@ -15,8 +15,8 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         case Tag.DeclModule: {
             // TODO: Don't mutate node
             const nodes = node.nodes;
-            for (let i = 0; i < nodes.length; i++) {
-                nodes[i] = first(nodes[i], context, state);
+            for (let id = 0; id < nodes.length; id++) {
+                nodes[id] = first(nodes[id], context.nextId2(Nodes.RootId, id), state);
             }
 
             return next(node, context, state);
@@ -28,7 +28,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         }
 
         case Tag.DeclFunction: {
-            const child = context.next(node);
+            const child = context.nextId(context.currentId);
 
             const parameters = visit.array(node.parameters, child, state, first);
             const body = visit.array(node.body, child, state, first);
@@ -36,7 +36,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             if (parameters !== node.parameters || body !== node.body) {
                 // TODO: Move DeclFunction.variables into the constructor of DeclFunction
                 const old = node;
-                node = new Nodes.DeclFunction(node.parent, node.id, node.name, parameters as Nodes.DeclVariable[], node.returnType, body, node.flags);
+                node = new Nodes.DeclFunction(node.parent, node.name, parameters as Nodes.DeclVariable[], node.returnType, body, node.flags);
                 node.variables = old.variables;
             }
 
@@ -48,7 +48,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
                 const value = first(node.value, context, state);
 
                 if (value !== node.value) {
-                    node = new Nodes.DeclVariable(node.parent, node.id, node.name, node.type, value, node.flags);
+                    node = new Nodes.DeclVariable(node.parent, node.name, node.type, value, node.flags);
                 }
             }
 

@@ -13,14 +13,14 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
 
     switch (node.tag) {
         case Tag.DeclFunction: {
-            const child = context.next(node);
+            const child = context.nextId(context.currentId);
 
             const returnType = first(node.returnType, child, state);
 
             if (returnType !== node.returnType) {
                 // TODO: Move DeclFunction.variables into the constructor of DeclFunction
                 const old = node;
-                node = new Nodes.DeclFunction(node.parent, node.id, node.name, node.parameters, returnType, node.body, node.flags);
+                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, returnType, node.body, node.flags);
                 node.variables = old.variables;
             }
 
@@ -31,7 +31,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             const type = first(node.type, context, state);
 
             if (type !== node.type) {
-                node = new Nodes.DeclVariable(node.parent, node.id, node.name, type, node.value, node.flags);
+                node = new Nodes.DeclVariable(node.parent, node.name, type, node.value, node.flags);
             }
 
             return next(node, context, state);

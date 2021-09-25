@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context, Decl } from '../nodes';
+import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context, Decl, Expr } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -14,63 +14,72 @@ export class TargetC {
     public emitProgram(context: Context) {
         // TODO: Forward declare
 
-        for (const node of context.module.nodes) {
-            this.emitNode(context, node);
+        const nodes = context.module.nodes;
+
+        for (let id = 0; id < nodes.length; id++) {
+            const decl = nodes[id];
+
+            this.emitDecl(context, decl, id);
         }
     }
 
-    public emitNode(context: Context, node: Node) {
-        switch (node.tag) {
+    public emitDecl(context: Context, decl: Decl, id: number) {
+        switch (decl.tag) {
             case Tag.DeclTrait:
             case Tag.DeclSymbol:
-                console.warn(`targetC>emitNode>${Tag[node.tag]} not implemented`)
+                console.warn(`targetC>emitNode>${Tag[decl.tag]} not implemented`)
                 return;
 
             case Tag.DeclFunction: {
                 // Don't emit abstract functions as they should never participate in code execution anyway. They should
                 // always be instantiated in `transformInstantiate` into a concrete function.
-                if (Flags.has(node.flags, FunctionFlags.Abstract)) {
+                if (Flags.has(decl.flags, FunctionFlags.Abstract)) {
                     return;
                 }
 
                 // C doesn't support nested functions, `transformUnnest` guarantees no nested functions.
                 //  So we can keep track of the current function with a single variable.
-                this.context = node;
+                this.context = decl;
 
-                const ctx = context.next(node);
+                const ctx = context.nextId(id);
 
                 this.emitSeparator ();
-                this.emitTypeName  (ctx, node.returnType);
-                this.emit          (" ", node.name, "(");
-                this.emitParameters(ctx, node.parameters);
+                this.emitTypeName  (ctx, decl.returnType);
+                this.emit          (" ", decl.name, "(");
+                this.emitParameters(ctx, decl.parameters);
                 this.emit          (")");
-                this.emitBody      (ctx, node.body);
+                this.emitBody      (ctx, decl.body);
                 return;
             }
 
             case Tag.DeclStruct: {
                 // TODO: Cleanup resolution of members
-                const members = Array.from(node.members.values()).map(global => context.resolveGlobal(global));
+                const members = Array.from(decl.members.values()).map(global => context.resolveGlobal(global));
 
                 this.emitSeparator();
                 this.emit         ("typedef struct ");
-                this.emitBody     (context, members);
-                this.emit         (" ", node.name, ";");
+                // TODO: Emit members for Decl?
+                //this.emitBody     (context, members);
+                this.emit         (" ", decl.name, ";");
 
                 return;
             }
 
             case Tag.DeclVariable: {
-                this.emitTypeName(context, node.type);
-                this.emit        (" ", node.name);
+                this.emitTypeName(context, decl.type);
+                this.emit        (" ", decl.name);
 
-                if (node.value !== null) {
+                if (decl.value !== null) {
                     this.emit    (" = ");
-                    this.emitNode(context, node.value);
+                    this.emitExpr(context, decl.value);
                 }
                 return;
             }
+        }
+    }
 
+    public emitExpr(context: Context, expr: Expr) {
+        switch (expr.tag) {
             case Tag.ExprCallField: {
                 // this.emit         (node.field.name, "(");
                 // this.emitArguments(node.field.parameters, node.args);
@@ -79,24 +88,24 @@ export class TargetC {
             }
 
             case Tag.ExprCallStatic: {
-                const target = context.resolveGlobal(node.target) as DeclFunction;
+                const target = context.resolveGlobal(expr.target) as DeclFunction;
 
                 this.emit         (target.name, "(");
-                this.emitArguments(target.parameters, node.args);
+                this.emitArguments(target.parameters, expr.args);
                 this.emit         (")");
                 return;
             }
 
             case Tag.ExprConstant: {
                 // TODO: Encode strings correctly
-                this.emit(node.value);
+                this.emit(expr.value);
                 return;
             }
 
             case Tag.ExprDeclaration: {
                 // TODO: Handle declarations properly after we fix the local/global symbol index problem
-                const variable = this.context.variables[node.member];
-                this.emitNode(context, variable);
+                const variable = this.context.variables[expr.member];
+                this.emitDecl(context, variable, expr.member);
                 return;
             }
 
@@ -106,8 +115,8 @@ export class TargetC {
             }
 
             case Tag.ExprSetLocal: {
-                this.emit    (this.context.variables[node.local as number].name, " = ");
-                this.emitNode(context, node.value);
+                this.emit    (this.context.variables[expr.local as number].name, " = ");
+                this.emitExpr(context, expr.value);
                 return;
             }
 
@@ -118,15 +127,15 @@ export class TargetC {
 
             case Tag.ExprIf: {
                 this.emit    ("if (");
-                this.emitNode(context, node.branches[0].condition);
+                this.emitExpr(context, expr.branches[0].condition);
                 this.emit    (")");
-                this.emitBody(context, node.branches[0].body);
+                this.emitBody(context, expr.branches[0].body);
                 // TODO: Support else if / else
                 return;
             }
         }
 
-        throw new Error(`targetC>emitNode>${Tag[node.tag]}: Not implemented.`);
+        throw new Error(`targetC>emitNode>${Tag[expr.tag]}: Not implemented.`);
     }
 
     public emitTypeName(context: Context, type: Type | Decl) {
@@ -214,12 +223,12 @@ export class TargetC {
         }
     }
 
-    public emitBody(context: Context, nodes: Node[]) {
+    public emitBody(context: Context, nodes: Expr[]) {
         this.pushIndent();
         this.emit("{");
         for (const child of nodes) {
             this.emitNewline();
-            this.emitNode   (context, child);
+            this.emitExpr   (context, child);
             this.emit       (";");
         }
         this.popIndent();

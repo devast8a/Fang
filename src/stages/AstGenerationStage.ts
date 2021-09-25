@@ -54,7 +54,7 @@ function parse(context: Context, node: PNode): Expr {
                 }
             }
 
-            const struct = new Nodes.DeclStruct(context.parentId, id, name, members, new Set(superTypes));
+            const struct = new Nodes.DeclStruct(context.parentId, name, members, new Set(superTypes));
 
             // TODO: Refactor into a context.register
             module.nodes[id] = struct;
@@ -63,18 +63,17 @@ function parse(context: Context, node: PNode): Expr {
 
         case PTag.DeclFunction: {
             // Create function
-            const fn = new Nodes.DeclFunction(context.parentId, module.nodes.length, "", [], InferType, [], Nodes.FunctionFlags.None);
+            const fn = new Nodes.DeclFunction(context.parentId, "", [], InferType, [], Nodes.FunctionFlags.None);
 
             // TODO: Refactor into a module.register
             const id = module.nodes.length;
             module.nodes.push(fn);
-
-            const ctx = context.next(fn);
+            const ctx = context.nextId(id);
 
             // keyword
             fn.name = parseIdentifier(node.data[1][1]);
             // compileTime
-            fn.parameters = node.data[3].elements.map(variable => parseVariable(variable, ctx));
+            fn.parameters = node.data[3].elements.map(variable => parseVariable(variable, ctx).variable);
             fn.returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
             // generic
             // attributes
@@ -213,7 +212,7 @@ function convertVariableKeyword(keyword: string | undefined) {
     }
 }
 
-function parseVariable(node: PNode, context: Context): Nodes.DeclVariable {
+function parseVariable(node: PNode, context: Context) {
     const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
     const name  = parseIdentifier(node.data[1]);
     // compileTime
@@ -221,19 +220,18 @@ function parseVariable(node: PNode, context: Context): Nodes.DeclVariable {
     // attributes
     const value = node.data[5] === null ? null  : parse(context, node.data[5][3]);
 
-    const variable = new Nodes.DeclVariable(context.parentId, UnresolvedId, name, type, value, flags);
+    const variable = new Nodes.DeclVariable(context.parentId, name, type, value, flags);
 
     switch (context.parent.tag) {
         case Tag.DeclFunction: {
-            variable.id = context.parent.variables.length;
+            const id = context.parent.variables.length;
             context.parent.variables.push(variable);
-            break;
+
+            return {variable, id}
         }
 
         default: throw new Error('Not supported');
     }
-
-    return variable;
 }
 
 function parseIdentifier(node: PNode) {

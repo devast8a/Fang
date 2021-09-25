@@ -1,7 +1,11 @@
 import { Node, Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, UnresolvedId, Context, Expr } from '../nodes';
 
 export function transformRemoveNesting(context: Context) {
-    for (const node of context.module.nodes) {
+    const nodes = context.module.nodes;
+
+    for (let id = 0; id < nodes.length; id++) {
+        const node = nodes[id];
+
         switch (node.tag) {
             case Tag.DeclStruct:
             case Tag.DeclTrait:
@@ -12,7 +16,7 @@ export function transformRemoveNesting(context: Context) {
 
                 const output = new Array<Expr>();
                 for (const stmt of node.body) {
-                    transform(context.next(node), output, stmt);
+                    transform(context.nextId(id), output, stmt);
                     output.push(stmt);
                 }
                 node.body = output;
@@ -82,8 +86,8 @@ function useTemporaryVariable(context: Context<DeclFunction>, output: Node[], va
     const id = fn.variables.length;
 
     const variable = new DeclVariable(
+        // TODO: Set parent ID correctly
         UnresolvedId,
-        id,
 
         // TODO: Variable naming
         `_temp${fn.variables.length}`,

@@ -31,7 +31,11 @@ export function checkLifetime(context: Context) {
     const program = new ProgramState(null, new Map());
 
     // TODO: Only trigger on decl function
-    for (const decl of context.module.nodes) {
+    const nodes = context.module.nodes;
+
+    for (let id = 0; id < nodes.length; id++) {
+        const decl = nodes[id];
+
         if (decl.tag === Tag.DeclFunction) {
             const state = program.copyState();
 
@@ -39,7 +43,7 @@ export function checkLifetime(context: Context) {
                 state.assign(i);
             }
 
-            analyzeNodes(context.next(decl), decl.body, state);
+            analyzeNodes(context.nextId(id), decl.body, state);
             // console.log(expr.name + ": " + format(fnState, expr));
             return;
         }
