@@ -59,8 +59,7 @@ class State {
         this.context.resolve(ref, type);
 }
 
-// TODO: Remove first parameter
-export function nameResolution(_: Node[], scope: Scope, context: Context) {
+export function nameResolution(context: Context, scope: Scope) {
     const state = new State(
         new Map(),
         scope,

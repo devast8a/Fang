@@ -51,7 +51,7 @@ export class Compiler {
     ];
 
     private compileStages: CompileStage[] = [
-        {name: "Symbol Resolution",   execute: (context) => {nameResolution(context.module.nodes, builtin.scope.newChildScope(), context); }},
+        {name: "Symbol Resolution",   execute: (context) => {nameResolution(context, builtin.scope.newChildScope()); }},
         {name: "Type Inference",      execute: inferType},
         {name: "Symbol Resolution 2", execute: wrap(resolveNodes, null)},
         {name: "Overload Resolution", execute: wrap(resolveOverload, null)},
