@@ -87,4 +87,36 @@ export namespace visit {
         }
         return nodes;
     }
+
+    export function map<T extends Node, State>(nodes: Map<string, T>, context: Context, state: State, visitor: Visitor<State>): Map<string, T> {
+        const entries = Array.from(nodes.entries());
+        const values  = entries.map(entry => entry[1]);
+
+        const mapped  = visit.array(values, context, state, visitor);
+
+        if (mapped === values) {
+            return nodes;
+        }
+
+        const output = new Map<string, T>();
+        for (let i = 0; i < values.length; i++) {
+            output.set(entries[i][0], mapped[i]);
+        }
+        return output;
+    }
+
+    export function set<T extends Node, State>(nodes: Set<T>, context: Context, state: State, visitor: Visitor<State>): Set<T> {
+        const values = Array.from(nodes.values());
+        const mapped = visit.array(values, context, state, visitor);
+
+        if (mapped === values) {
+            return nodes;
+        }
+
+        const output = new Set<T>();
+        for (let i = 0; i < values.length; i++) {
+            output.add(mapped[i]);
+        }
+        return output;
+    }
 }

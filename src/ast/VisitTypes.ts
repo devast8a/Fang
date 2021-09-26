@@ -1,6 +1,6 @@
 import { Context, Node, Tag } from '../nodes';
 import * as Nodes from '../nodes';
-import { VisitorControl } from './visitor';
+import { visit, VisitorControl } from './visitor';
 
 /**
  * Recurses into fields of a node that are of type Type.
@@ -27,6 +27,26 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             return next(node, context, state);
         }
 
+        case Tag.DeclStruct: {
+            const superTypes = visit.set(node.superTypes, context, state, first);
+
+            if (superTypes !== node.superTypes) {
+                node = new Nodes.DeclStruct(node.parent, node.name, node.members, node.superTypes);
+            }
+
+            return next(node, context, state);
+        }
+
+        case Tag.DeclTrait: {
+            const superTypes = visit.set(node.superTypes, context, state, first);
+
+            if (superTypes !== node.superTypes) {
+                node = new Nodes.DeclTrait(node.parent, node.name, node.members, node.superTypes);
+            }
+
+            return next(node, context, state);
+        }
+
         case Tag.DeclVariable: {
             const type = first(node.type, context, state);
 
@@ -37,9 +57,40 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             return next(node, context, state);
         }
 
-        default: {
+        case Tag.ExprConstruct: {
+            const target = first(node.target, context, state);
+
+            if (target !== node.target) {
+                node = new Nodes.ExprConstruct(node.target, node.args);
+            }
+
             return next(node, context, state);
         }
+
+        case Tag.DeclModule:
+        case Tag.ExprCall:
+        case Tag.ExprCallField:
+        case Tag.ExprCallStatic:
+        case Tag.ExprConstant:
+        case Tag.ExprDeclaration:
+        case Tag.ExprDestroyField:
+        case Tag.ExprDestroyLocal:
+        case Tag.ExprGetField:
+        case Tag.ExprGetLocal:
+        case Tag.ExprIf:
+        case Tag.ExprIfBranch:
+        case Tag.ExprMacroCall:
+        case Tag.ExprRefName:
+        case Tag.ExprRefStatic:
+        case Tag.ExprReturn:
+        case Tag.ExprSetField:
+        case Tag.ExprSetLocal:
+        case Tag.ExprWhile:
+        case Tag.TypeInfer:
+        case Tag.TypeRefDecl:
+        case Tag.TypeRefName:
+        case Tag.TypeRefStatic:
+            return next(node, context, state);
     }
 
     throw new Error(`VisitType: No implementation for '${Tag[(node as any).tag]}'`);

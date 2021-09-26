@@ -93,7 +93,7 @@ export class Compiler {
         await this.parseFile(source, context);
 
         for (const stage of this.compileStages) {
-            //serialize((context.module.nodes[4] as any).body)
+            serialize(context.module);
 
             console.time(stage.name);
             stage.execute(context);

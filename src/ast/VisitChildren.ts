@@ -1,4 +1,4 @@
-import { Context, Node, Tag } from '../nodes';
+import { Context, DeclFunction, Node, Tag } from '../nodes';
 import * as Nodes from '../nodes';
 import { VisitorControl, visit } from './visitor';
 
@@ -22,11 +22,6 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             return next(node, context, state);
         }
 
-        case Tag.DeclStruct: {
-            console.warn("DeclStruct not supported by VisitChildren yet");
-            return node;
-        }
-
         case Tag.DeclFunction: {
             const child = context.nextId(context.currentId);
 
@@ -39,6 +34,18 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
                 node = new Nodes.DeclFunction(node.parent, node.name, parameters as Nodes.DeclVariable[], node.returnType, body, node.flags);
                 node.variables = old.variables;
             }
+
+            return next(node, context, state);
+        }
+
+        case Tag.DeclStruct: {
+            // TODO: Support members
+
+            return next(node, context, state);
+        }
+
+        case Tag.DeclTrait: {
+            // TODO: Support members
 
             return next(node, context, state);
         }
@@ -105,11 +112,10 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const decl = context.resolve(node);
 
             if (decl.tag === Tag.DeclVariable) {
-                // What happens if this changes
-                const d = first(decl, context, state);
+                const result = first(decl, context, state);
 
-                if (d !== decl) {
-                    console.log("DECL CHANGED!");
+                if (result !== decl) {
+                    Node.as(context.parent, DeclFunction).variables[node.member] = result;
                 }
             }
 

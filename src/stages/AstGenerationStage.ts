@@ -74,6 +74,30 @@ function parse(context: Context, node: PNode): Expr {
             return new Nodes.ExprDeclaration(RootId, id);
         }
 
+        case PTag.DeclTrait: {
+            const decl = new Nodes.DeclTrait(context.parentId, "", new Map(), new Set());
+
+            const id = context.register(decl);
+            const childContext = context.nextId(id);
+
+            // keyword
+            decl.name = parseIdentifier(node.data[1]);
+            decl.superTypes = new Set(node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3])));
+            // generic
+            // attributes
+            const body = parseList(childContext, node.data[5][1]);
+
+            // Generate member mapping
+            for (const member of body) {
+                if (member.tag === Tag.ExprDeclaration) {
+                    const child = context.resolveGlobal(member.member);
+                    decl.members.set(child.name, member.member);
+                }
+            }
+
+            return new Nodes.ExprDeclaration(RootId, id);
+        }
+
         case PTag.DeclVariable: {
             // TODO: Support globals / fields / etc...
             // Currently context.parent isn't setup correctly, so we don't know what type our parent is.

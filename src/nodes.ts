@@ -26,7 +26,6 @@ export enum Tag {
     ExprReturn,
     ExprSetField,
     ExprSetLocal,
-    ExprVariable,
     ExprWhile,
     TypeInfer,
     TypeRefDecl,

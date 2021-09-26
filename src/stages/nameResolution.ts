@@ -66,12 +66,7 @@ export function nameResolution(context: Context, scope: Scope) {
         context,
     );
 
-    const nodes = context.module.nodes;
-
-    for (let id = 0; id < nodes.length; id++) {
-        declareNode(state.changeCurrentId(id), nodes[id]);
-    }
-
+    declareNode(state, context.module);
     resolve(context.module, context, state);
 }
 
@@ -86,6 +81,15 @@ function declareNode(state: State, node: Node) {
 
     switch (node.tag) {
         case Tag.DeclModule: {
+            const nodes = node.nodes;
+
+            for (let id = 0; id < nodes.length; id++) {
+                const decl = nodes[id];
+                
+                if (decl.parent === RootId) {
+                    declareNode(state.changeCurrentId(id), decl);
+                }
+            }
             return;
         }
 

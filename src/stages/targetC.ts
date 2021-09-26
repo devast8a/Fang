@@ -25,7 +25,6 @@ export class TargetC {
 
     public emitDecl(context: Context, decl: Decl, id: number) {
         switch (decl.tag) {
-            case Tag.DeclTrait:
             case Tag.DeclSymbol:
                 console.warn(`targetC>emitNode>${Tag[decl.tag]} not implemented`)
                 return;
@@ -62,6 +61,10 @@ export class TargetC {
                 //this.emitBody     (context, members);
                 this.emit         (" ", decl.name, ";");
 
+                return;
+            }
+
+            case Tag.DeclTrait: {
                 return;
             }
 
@@ -141,6 +144,8 @@ export class TargetC {
     public emitTypeName(context: Context, type: Type | Decl) {
         switch (type.tag) {
             case Tag.DeclStruct:    this.emit(type.name); return;
+            case Tag.DeclTrait:     this.emit(type.name); return;
+
             case Tag.TypeRefDecl:   this.emit(type.declaration.name); return;
             case Tag.TypeRefStatic: this.emitTypeName(context, context.resolve(type)); return;
             case Tag.TypeInfer:     this.emit("INFER"); return;
