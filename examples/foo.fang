@@ -1,9 +1,15 @@
-trait X {}
-class Foo {}
+trait Foo {}
 
-fn bar(foo: Foo) {}
+class Bar impl Foo {}
+class Qux impl Foo {}
+
+fn useFoo(foo: Foo) {}
+
 
 fn main() {
-    val foo = Foo{}
-    bar(foo)
+    val bar = Bar{}
+    val qux = Qux{}
+
+    useFoo(bar)
+    useFoo(qux)
 }

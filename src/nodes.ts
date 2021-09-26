@@ -444,13 +444,7 @@ export namespace Type {
 export namespace Expr {
     export function getReturnType(context: Context, expr: Node): Type {
         switch (expr.tag) {
-            case Tag.ExprGetLocal: {
-                // TODO: Handle declarations properly after we fix the local/global symbol index problem
-                const symbol   = Node.resolve(context, expr.local, DeclSymbol);
-                const variable = Node.as(context.parent, DeclFunction).variables[symbol.nodes[0] as number];
-                return variable.type;
-            }
-
+            case Tag.ExprGetLocal:  return context.resolveLocal(expr.local, DeclVariable).type;
             case Tag.ExprRefStatic: return new TypeRefStatic(expr.declaration, expr.member);
             case Tag.ExprConstruct: return expr.target;
         }
@@ -518,6 +512,18 @@ export class Context<T extends Decl = Decl> {
         }
 
         return check(this.module.nodes[ref as number], type);
+    }
+
+    public resolveLocal<T extends NodeConstructor<Decl>>(ref: Local, type?: T): InstanceType<T> {
+        if (typeof(ref) !== 'number') {
+            throw new Error();
+        }
+
+        const parent = this.parent as Node;
+        switch (parent.tag) {
+            case Tag.DeclFunction: return check(parent.variables[ref], type);
+            default: throw new Error();
+        }
     }
 
     public resolve<T extends NodeConstructor<Decl>>(ref: ExprRefStatic | TypeRefStatic | ExprDeclaration, type?: T): InstanceType<T> {

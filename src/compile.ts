@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Context, DeclModule, Node, RootId, Tag } from './nodes';
+import { Context, DeclModule, FunctionFlags, Node, RootId, Tag, VariableFlags } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -13,6 +13,8 @@ import { resolveNodes } from './stages/nodeResolution';
 import { ParserStage } from './stages/ParseStage';
 import { visit, Visitor } from './ast/visitor';
 import { inferType } from './stages/inferType';
+import { markAbstractFunctions } from './stages/markAbstractFunctions';
+import { transformInstantiate } from './stages/instantiate';
 
 export interface ParseContext {
     source: Source;
@@ -30,18 +32,7 @@ export interface CompileStage {
 }
 
 function wrap<T>(visitor: Visitor<T>, state: T) {
-    return (context: Context) => {
-        const nodes = context.module.nodes;
-
-        for (let id = 0; id < nodes.length; id++) {
-            const node = nodes[id];
-
-            if (node.tag === Tag.DeclFunction) {
-                // TODO: Create new copy of function
-                node.body = visit.array(node.body, context.nextId(id), state, visitor);
-            }
-        }
-    }
+    return (context: Context) => visitor(context.module, context, state);
 }
 
 export class Compiler {
@@ -51,13 +42,15 @@ export class Compiler {
     ];
 
     private compileStages: CompileStage[] = [
-        {name: "Symbol Resolution",   execute: (context) => {nameResolution(context, builtin.scope.newChildScope()); }},
-        {name: "Type Inference",      execute: inferType},
-        {name: "Symbol Resolution 2", execute: wrap(resolveNodes, null)},
-        {name: "Overload Resolution", execute: wrap(resolveOverload, null)},
-        {name: "Type Check",          execute: wrap(checkType, null)},
-        {name: "Lifetime Check",      execute: checkLifetime},
-        {name: "Remove Nesting",      execute: transformRemoveNesting},
+        {name: "Symbol Resolution",     execute: (context) => {nameResolution(context, builtin.scope.newChildScope()); }},
+        {name: "Type Inference",        execute: inferType},
+        {name: "Symbol Resolution 2",   execute: wrap(resolveNodes, null)},
+        {name: "Overload Resolution",   execute: wrap(resolveOverload, null)},
+        {name: "Type Check",            execute: wrap(checkType, null)},
+        {name: "Lifetime Check",        execute: checkLifetime},
+        {name: "Remove Nesting",        execute: transformRemoveNesting},
+        {name: "Mark Abstract Funcs",   execute: wrap(markAbstractFunctions, null)},
+        {name: "Instantiate",           execute: wrap(transformInstantiate, null)},
     ];
 
     public async parseFile(source: string | Source, context: Context): Promise<Node[]>
@@ -92,15 +85,17 @@ export class Compiler {
 
         await this.parseFile(source, context);
 
-        for (const stage of this.compileStages) {
-            serialize(context.module);
+        Fs.writeFileSync(`build/output/0-initial.txt`, serialize(context.module));
 
+        let id = 1;
+        for (const stage of this.compileStages) {
             console.time(stage.name);
             stage.execute(context);
             console.timeEnd(stage.name);
-        }
 
-        serialize(module);
+            Fs.writeFileSync(`build/output/${id}-${stage.name}.txt`, serialize(context.module));
+            id++;
+        }
 
         const target = new TargetC();
         target.emitProgram(context);
@@ -124,7 +119,7 @@ export class Compiler {
 }
 
 function serialize(node: Node) {
-    function convert(key: string, value: any) {
+    function convert(this: any, key: string, value: any) {
         if (typeof(value) === 'object' && value !== null && value.constructor === Map) {
             return Array.from(value);
         }
@@ -133,8 +128,35 @@ function serialize(node: Node) {
             return Tag[value];
         }
 
+        if (key === "flags" && typeof(this.tag) === 'number') {
+            const self = this as Node;
+
+            switch (self.tag) {
+                case Tag.DeclFunction: return convertFlags("FunctionFlags", FunctionFlags, value);
+                case Tag.DeclVariable: return convertFlags("VariableFlags", VariableFlags, value);
+            }
+        }
+
         return value;
     }
 
-    console.log(JSON.stringify(node, convert, 4));
+    return JSON.stringify(node, convert, 4);
+}
+
+interface Flags {
+    [index: number]: string;
+}
+
+function convertFlags(name: string, flags: Flags, value: number) {
+    let flag = 1;
+    const output = [];
+
+    while (value >= flag) {
+        if ((value & flag) !== 0) {
+            output.push(name + "." + flags[flag]);
+        }
+        flag <<= 1;
+    }
+
+    return output.join(' | ')
 }
