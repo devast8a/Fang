@@ -3,13 +3,29 @@ trait Foo {}
 class Bar impl Foo {}
 class Qux impl Foo {}
 
-fn useFoo(foo: Foo) {}
+fn nestedInstantiationB(foo: Foo) {}
 
+fn nestedInstantiationA(foo: Foo) {
+    nestedInstantiationB(foo)
+}
+
+fn multiInstantiation(x: Foo, y: Foo) {}
+
+fn reuseInstantiation(x: Foo) {}
 
 fn main() {
     val bar = Bar{}
     val qux = Qux{}
 
-    useFoo(bar)
-    useFoo(qux)
+    nestedInstantiationA(bar)
+    nestedInstantiationA(qux)
+
+    multiInstantiation(bar, bar)
+    multiInstantiation(bar, qux)
+    multiInstantiation(qux, bar)
+    multiInstantiation(qux, qux)
+
+    reuseInstantiation(bar)
+    reuseInstantiation(bar)
+    reuseInstantiation(bar)
 }

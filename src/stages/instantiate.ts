@@ -77,12 +77,14 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
     const flags      = Flags.unset(fn.flags, FunctionFlags.Abstract);
     const body       = fn.body; 
 
-    // TODO: Execute transformInstantiate over the now instantiated function
     // TODO: Repair field lookups etc...
     const concreteFn = new DeclFunction(fn.parent, "", parameters, returnType, body, flags);
     concreteFn.variables = parameters.concat(fn.variables.slice(parameters.length));
     const id = context.register(concreteFn);
     concreteFn.name = `${fn.name}_${id}`;
+
+    // TODO: Simplify invocations like this.
+    context.module.nodes[id] = transformInstantiate(concreteFn, context.nextId2(Nodes.RootId, id), state);
 
     state.set(memoizeKey, id);
     return id;

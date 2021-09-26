@@ -15,7 +15,8 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         case Tag.DeclModule: {
             // TODO: Don't mutate node
             const nodes = node.nodes;
-            for (let id = 0; id < nodes.length; id++) {
+            const length = nodes.length;
+            for (let id = 0; id < length; id++) {
                 nodes[id] = first(nodes[id], context.nextId2(Nodes.RootId, id), state);
             }
 
