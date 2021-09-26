@@ -111,7 +111,9 @@ function declareNode(state: State, node: Node) {
             state.declare(node.name, RootId, state.currentId);
             const childState = state.createChildState();
 
-            declareNodes(childState, node.parameters);
+            for (let id = 0; id < node.parameters.length; id++) {
+                declareNode(childState.changeCurrentId(id), node.parameters[id]);
+            }
             declareNode (childState, node.returnType);
             declareNodes(childState, node.body);
 
