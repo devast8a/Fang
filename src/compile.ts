@@ -11,10 +11,11 @@ import { transformRemoveNesting } from './stages/transformRemoveNesting';
 import { resolveOverload } from './stages/resolveOverload';
 import { resolveNodes } from './stages/nodeResolution';
 import { ParserStage } from './stages/ParseStage';
-import { visit, Visitor } from './ast/visitor';
+import { Visitor } from './ast/visitor';
 import { inferType } from './stages/inferType';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { InstantiateState, transformInstantiate } from './stages/instantiate';
+import { mangleNames } from './stages/mangleNames';
 
 export interface ParseContext {
     source: Source;
@@ -49,6 +50,7 @@ export class Compiler {
         {name: "Type Check",            execute: wrap(checkType, null)},
         {name: "Lifetime Check",        execute: checkLifetime},
         {name: "Remove Nesting",        execute: transformRemoveNesting},
+        {name: "Mangle Names",          execute: wrap(mangleNames, null)},
         {name: "Mark Abstract Funcs",   execute: wrap(markAbstractFunctions, null)},
         {name: "Instantiate",           execute: wrap(transformInstantiate, new InstantiateState())},
     ];
