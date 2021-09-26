@@ -3,6 +3,7 @@ import { createVisitor, VisitorControl } from '../ast/visitor';
 import { Flags } from '../common/flags';
 import * as Nodes from '../nodes';
 import { Context, DeclFunction, DeclVariable, Expr, FunctionFlags, Node, Tag } from '../nodes';
+import { isAbstractType } from './markAbstractFunctions';
 
 function FilterAbstractFunctions<State>(node: Node, context: Context, state: State, control: VisitorControl<State>) {
     const {next} = control;
@@ -45,24 +46,21 @@ export const transformInstantiate = createVisitor(FilterAbstractFunctions, Visit
 // TODO: Execute transformInstantiate over the now instantiated function
 // TODO: Memoize instantiations
 function instantiate(context: Context, fn: DeclFunction, args: Expr[]) {
-    const type = Expr.getReturnType(context, args[0]);
+    const parameters = fn.parameters.map((parameter, index) => {
+        const type = isAbstractType(context, parameter.type) ?
+            Expr.getReturnType(context, args[index]) :
+            parameter.type
+
+        return new DeclVariable(parameter.parent, parameter.name, type, parameter.value, parameter.flags);
+    });
 
     // Instantiate a new copy of the function
-    const variables = fn.variables.map(variable => new DeclVariable(
-        variable.parent,
-        variable.name,
-        type,
-        variable.value,
-        variable.flags,
-    ));
-
     const returnType = fn.returnType;
-    const parameters = variables.slice(0, fn.parameters.length);
     const flags      = Flags.unset(fn.flags, FunctionFlags.Abstract);
     const body       = fn.body; 
 
     const concreteFn = new DeclFunction(fn.parent, "", parameters, returnType, body, flags);
-    concreteFn.variables = variables;
+    concreteFn.variables = parameters.concat(fn.variables.slice(parameters.length));
 
     const id = context.register(concreteFn);
 

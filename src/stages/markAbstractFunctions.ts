@@ -19,7 +19,7 @@ export const markAbstractFunctions = createVisitor((node, context) => {
     return node;
 });
 
-function isAbstractType(context: Context, type: Type): unknown {
+export function isAbstractType(context: Context, type: Type): unknown {
     switch (type.tag) {
         case Tag.TypeRefStatic: return context.resolve(type).tag === Tag.DeclTrait;
     }
