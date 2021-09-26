@@ -14,7 +14,7 @@ import { ParserStage } from './stages/ParseStage';
 import { visit, Visitor } from './ast/visitor';
 import { inferType } from './stages/inferType';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
-import { transformInstantiate } from './stages/instantiate';
+import { InstantiateState, transformInstantiate } from './stages/instantiate';
 
 export interface ParseContext {
     source: Source;
@@ -50,7 +50,7 @@ export class Compiler {
         {name: "Lifetime Check",        execute: checkLifetime},
         {name: "Remove Nesting",        execute: transformRemoveNesting},
         {name: "Mark Abstract Funcs",   execute: wrap(markAbstractFunctions, null)},
-        {name: "Instantiate",           execute: wrap(transformInstantiate, null)},
+        {name: "Instantiate",           execute: wrap(transformInstantiate, new InstantiateState())},
     ];
 
     public async parseFile(source: string | Source, context: Context): Promise<Node[]>

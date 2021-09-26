@@ -5,6 +5,18 @@ import * as Nodes from '../nodes';
 import { Context, DeclFunction, DeclVariable, Expr, FunctionFlags, Node, Tag } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
+export class InstantiateState {
+    private mapping = new Map<string, number>();
+
+    public set(key: string, id: number) {
+        return this.mapping.set(key, id);
+    }
+
+    public get(key: string): number | null {
+        return this.mapping.get(key) ?? null;
+    }
+}
+
 function FilterAbstractFunctions<State>(node: Node, context: Context, state: State, control: VisitorControl<State>) {
     const {next} = control;
 
@@ -20,7 +32,7 @@ function FilterAbstractFunctions<State>(node: Node, context: Context, state: Sta
     return node;
 }
 
-export const transformInstantiate = createVisitor(FilterAbstractFunctions, VisitChildren, (node, context, state) => {
+export const transformInstantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, (node, context, state) => {
     switch (node.tag) {
         case Tag.ExprCallStatic: {
             const target = context.resolveGlobal(node.target);
@@ -33,7 +45,7 @@ export const transformInstantiate = createVisitor(FilterAbstractFunctions, Visit
                 return node;
             }
 
-            const {id} = instantiate(context, target, node.args);
+            const id = instantiate(context, state, target, node.args);
 
             return new Nodes.ExprCallStatic(id, node.args);
         }
@@ -42,10 +54,16 @@ export const transformInstantiate = createVisitor(FilterAbstractFunctions, Visit
     return node;
 });
 
-// TODO: Instantiate using multiple parameters
-// TODO: Execute transformInstantiate over the now instantiated function
-// TODO: Memoize instantiations
-function instantiate(context: Context, fn: DeclFunction, args: Expr[]) {
+function instantiate(context: Context, state: InstantiateState, fn: DeclFunction, args: Expr[]) {
+    // Memoization
+    const memoizeKey   = generateId(context, fn, args);
+    const memoizeValue = state.get(memoizeKey);
+
+    if (memoizeValue !== null) {
+        return memoizeValue;
+    }
+
+    // Rewrite parameters
     const parameters = fn.parameters.map((parameter, index) => {
         const type = isAbstractType(context, parameter.type) ?
             Expr.getReturnType(context, args[index]) :
@@ -59,15 +77,26 @@ function instantiate(context: Context, fn: DeclFunction, args: Expr[]) {
     const flags      = Flags.unset(fn.flags, FunctionFlags.Abstract);
     const body       = fn.body; 
 
+    // TODO: Execute transformInstantiate over the now instantiated function
+    // TODO: Repair field lookups etc...
     const concreteFn = new DeclFunction(fn.parent, "", parameters, returnType, body, flags);
     concreteFn.variables = parameters.concat(fn.variables.slice(parameters.length));
-
     const id = context.register(concreteFn);
-
     concreteFn.name = `${fn.name}_${id}`;
 
-    return {
-        id: id,
-        fn: concreteFn,
-    };
+    state.set(memoizeKey, id);
+    return id;
+}
+
+function generateId(context: Context, fn: DeclFunction, args: Expr[]) {
+    const types = args.map(arg => {
+        const type = Expr.getReturnType(context, arg);
+
+        switch (type.tag) {
+            case Tag.TypeRefStatic: return type.member;
+            default: throw new Error("generateId - node type not supported");
+        }
+    });
+
+    return `F_${fn.name}_${types.join("_")}`;
 }
