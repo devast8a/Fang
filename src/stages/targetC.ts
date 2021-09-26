@@ -171,8 +171,7 @@ export class TargetC {
                 }
 
                 case Tag.ExprGetLocal: {
-                    // TODO: Handle properly after we fix the local/global symbol index problem
-                    const local = this.context.variables[0];
+                    const local = this.context.variables[arg.local as number];
 
                     // TODO: argumentIsPtr is wrong for locals, needs a parameter flag
                     // TODO: Switch to pointers for large objects
