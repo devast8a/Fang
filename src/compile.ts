@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Context, DeclModule, FunctionFlags, Node, RootId, Tag, VariableFlags } from './nodes';
+import { Context, Module, FunctionFlags, Node, RootId, Tag, VariableFlags } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -79,7 +79,7 @@ export class Compiler {
 
     public async compile(source: string | Source): Promise<string>
     {
-        const module  = new DeclModule();
+        const module  = new Module();
         const context = new Context(this, RootId, RootId, module);
 
         console.group(`Compiling`);

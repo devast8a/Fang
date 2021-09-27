@@ -5,7 +5,7 @@ export type Node =
     | Decl
     | Expr
     | Type
-    | DeclModule        // [Top level of a compilation unit]
+    | Module            // [Top level of a compilation unit]
     ;
 
 export type Decl =
@@ -46,8 +46,8 @@ export type Type =
     ;
 
 export enum Tag {
+    Module,
     DeclFunction,
-    DeclModule,
     DeclStruct,
     DeclSymbol,
     DeclTrait,
@@ -79,6 +79,13 @@ export enum Tag {
 
 // -------------------------------------------------------------------------
 
+export class Module {
+    public readonly tag = Tag.Module;
+    public static readonly tag = Tag.Module;
+
+    public readonly nodes = new Array<Decl>();
+}
+
 export class DeclFunction {
     public readonly tag = Tag.DeclFunction;
     public static readonly tag = Tag.DeclFunction;
@@ -99,13 +106,6 @@ export class DeclFunction {
 export enum FunctionFlags {
     None        = 0,
     Abstract    = 1 << 1,
-}
-
-export class DeclModule {
-    public readonly tag = Tag.DeclModule;
-    public static readonly tag = Tag.DeclModule;
-
-    public readonly nodes = new Array<Decl>();
 }
 
 export class DeclStruct {
@@ -493,7 +493,7 @@ export class Context<T extends Decl = Decl> {
         public readonly compiler: Compiler,
         public readonly parentId: number,
         public readonly currentId: number,
-        public readonly module: DeclModule,
+        public readonly module: Module,
     ) {}
 
     public get parent(): T {

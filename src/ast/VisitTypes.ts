@@ -67,7 +67,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             return next(node, context, state);
         }
 
-        case Tag.DeclModule:
+        case Tag.Module:
         case Tag.ExprCall:
         case Tag.ExprCallField:
         case Tag.ExprCallStatic:

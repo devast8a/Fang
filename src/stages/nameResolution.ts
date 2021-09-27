@@ -80,7 +80,7 @@ function declareNode(state: State, node: Node) {
     state.scopeMap.set(node, state.scope);
 
     switch (node.tag) {
-        case Tag.DeclModule: {
+        case Tag.Module: {
             const nodes = node.nodes;
 
             for (let id = 0; id < nodes.length; id++) {

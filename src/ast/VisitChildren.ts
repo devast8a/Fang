@@ -12,7 +12,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
     const {first, next} = control;
 
     switch (node.tag) {
-        case Tag.DeclModule: {
+        case Tag.Module: {
             // TODO: Don't mutate node
             const nodes = node.nodes;
             const length = nodes.length;

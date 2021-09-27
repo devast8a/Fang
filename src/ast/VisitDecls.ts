@@ -10,7 +10,7 @@ import { VisitorControl } from './visitor';
 export function VisitDecls<State>(node: Node, context: Context, state: State, control: VisitorControl<State>): Node {
     const {first, next} = control;
 
-    if (node.tag === Tag.DeclModule) {
+    if (node.tag === Tag.Module) {
         // TODO: Don't mutate node
         const nodes = node.nodes;
         for (let id = 0; id < nodes.length; id++) {
