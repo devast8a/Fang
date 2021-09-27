@@ -171,5 +171,5 @@ function convertFlags(name: string, flags: Flags, value: number) {
         flag <<= 1;
     }
 
-    return output.join(' | ')
+    return output;
 }
