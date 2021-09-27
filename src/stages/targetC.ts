@@ -1,3 +1,4 @@
+import { builtin } from '../Builtin';
 import { Flags } from '../common/flags';
 import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context, Decl, Expr } from '../nodes';
 
@@ -153,6 +154,23 @@ export class TargetC {
     }
 
     public emitTypeName(context: Context, type: Type | Decl) {
+        // Mangle C specific names
+        switch (type) {
+            case builtin.declarations.empty: this.emit("void"); return;
+
+            case builtin.declarations.bool:  this.emit("int"); return;
+
+            case builtin.declarations.s8:    this.emit("int8_t"); return;
+            case builtin.declarations.s16:   this.emit("int16_t"); return;
+            case builtin.declarations.s32:   this.emit("int32_t"); return;
+            case builtin.declarations.s64:   this.emit("int64_t"); return;
+
+            case builtin.declarations.u8:    this.emit("uint8_t"); return;
+            case builtin.declarations.u16:   this.emit("uint16_t"); return;
+            case builtin.declarations.u32:   this.emit("uint32_t"); return;
+            case builtin.declarations.u64:   this.emit("uint64_t"); return;
+        }
+
         switch (type.tag) {
             case Tag.DeclStruct:    this.emit(type.name); return;
             case Tag.DeclTrait:     this.emit(type.name); return;

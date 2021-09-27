@@ -5,7 +5,7 @@ export function inferType(context: Context) {
     for (const node of context.module.nodes) {
         switch (node.tag) {
             case Tag.DeclFunction: {
-                node.returnType = (node.returnType.tag === Tag.TypeInfer ? builtin.types.empty : node.returnType);
+                node.returnType = (node.returnType.tag === Tag.TypeInfer ? builtin.references.empty : node.returnType);
 
                 for (const variable of node.variables) {
                     if (variable.type.tag === Tag.TypeInfer) {

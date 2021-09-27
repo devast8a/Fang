@@ -51,7 +51,7 @@ function importInto(module: Module) {
 }
 
 export const builtin = {
-    types: {
+    references: {
         empty: empty.reference,
 
         bool: bool.reference,
@@ -67,6 +67,24 @@ export const builtin = {
         u64: u64.reference,
 
         str: str.reference,
+    },
+
+    declarations: {
+        empty: empty.declaration,
+
+        bool: bool.declaration,
+
+        s8: s8.declaration,
+        s16: s16.declaration,
+        s32: s32.declaration,
+        s64: s64.declaration,
+
+        u8: u8.declaration,
+        u16: u16.declaration,
+        u32: u32.declaration,
+        u64: u64.declaration,
+
+        str: str.declaration,
     },
 
     scope: scope,
