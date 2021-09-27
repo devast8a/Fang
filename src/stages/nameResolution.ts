@@ -215,6 +215,11 @@ function declareNode(state: State, node: Node) {
             return;
         }
 
+        case Tag.ExprReturn: {
+            if (node.expression !== null) { declareNode(state, node.expression); }
+            return;
+        }
+
         case Tag.ExprWhile: {
             const childState = state.createChildState();
             declareNode (childState, node.condition);

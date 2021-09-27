@@ -170,6 +170,13 @@ function analyzeNode(context: Context, expr: Expr, state: ProgramState) {
             return;
         }
 
+        case Tag.ExprReturn: {
+            if (expr.expression !== null) {
+                analyzeNode(context, expr.expression, state);
+            }
+            return;
+        }
+
         case Tag.ExprWhile: {
             // Loop taken one time
             const takenOnce = state.copyState();

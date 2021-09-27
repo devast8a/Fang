@@ -444,9 +444,11 @@ export namespace Type {
 export namespace Expr {
     export function getReturnType(context: Context, expr: Node): Type {
         switch (expr.tag) {
+            // TODO: Change ExprCall to assume ExprRefStatic?
+            case Tag.ExprCall:      return context.resolve(Node.as(expr.target, ExprRefStatic), DeclFunction).returnType;
+            case Tag.ExprConstruct: return expr.target;
             case Tag.ExprGetLocal:  return context.resolveLocal(expr.local, DeclVariable).type;
             case Tag.ExprRefStatic: return new TypeRefStatic(expr.declaration, expr.member);
-            case Tag.ExprConstruct: return expr.target;
         }
 
         throw new Error(`Unhandled case ${Tag[(expr as any).tag]}`);

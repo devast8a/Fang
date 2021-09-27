@@ -142,6 +142,13 @@ function parse(context: Context, node: PNode): Expr {
             }
         }
 
+        case PTag.StmtReturn: {
+            // keyword
+            const value = node.data[1] === null ? null : parse(context, node.data[1][1]);
+
+            return new Nodes.ExprReturn(value);
+        }
+
         case PTag.LiteralIntegerDec: {
             return new Nodes.ExprConstant({} as any, "");
         }

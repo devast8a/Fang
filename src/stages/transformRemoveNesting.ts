@@ -76,6 +76,11 @@ function transform(context: Context<DeclFunction>, output: Expr[], node: Node): 
         case Tag.ExprDestroyLocal: {
             return node;
         }
+
+        case Tag.ExprReturn: {
+            // TODO: Remove nesting as with ExprCallStatic
+            return node;
+        }
     }
 
     throw new Error(`transformRemoveNesting > transform > ${Tag[node.tag]}: Not implemented`);

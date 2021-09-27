@@ -136,6 +136,17 @@ export class TargetC {
                 // TODO: Support else if / else
                 return;
             }
+
+            case Tag.ExprReturn: {
+                if (expr.expression !== null) {
+                    this.emit    ("return ");
+                    this.emitExpr(context, expr.expression);
+                } else {
+                    this.emit    ("return");
+                }
+
+                return;
+            }
         }
 
         throw new Error(`targetC>emitNode>${Tag[expr.tag]}: Not implemented.`);
