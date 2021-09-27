@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Context, Decl, Expr, Node, RootId, Tag, UnresolvedId } from '../nodes';
+import { Context, Expr, Node, RootId, Tag } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType   = new Nodes.TypeInfer();
-const Placeholder = {} as Decl;
 
 export class AstGenerationStage implements ParseStage {
     public name = "Ast Generation";
