@@ -10,6 +10,7 @@ export type Node =
 
 export type Decl =
     | DeclFunction      // fn name(parameters...) -> returnType { body... }
+    | DeclImport
     | DeclStruct        // class name { members... }
     | DeclSymbol        // Any symbol
     | DeclTrait         // trait name { members... }
@@ -48,6 +49,7 @@ export type Type =
 export enum Tag {
     Module,
     DeclFunction,
+    DeclImport,
     DeclStruct,
     DeclSymbol,
     DeclTrait,
@@ -106,6 +108,20 @@ export class DeclFunction {
 export enum FunctionFlags {
     None        = 0,
     Abstract    = 1 << 1,
+}
+
+export class DeclImport {
+    public readonly tag = Tag.DeclImport;
+    public static readonly tag = Tag.DeclImport;
+
+    public constructor(
+        public parent: number,
+
+        public name: string,
+
+        public symbols: string[],
+        public references: Decl[],
+    ) {}
 }
 
 export class DeclStruct {
@@ -538,8 +554,8 @@ export class Context<T extends Decl = Decl> {
 
         // TODO: Verify type
         switch (declaration.tag) {
-            case Tag.DeclStruct:    throw new Error("No id?");
             case Tag.DeclFunction:  return check(declaration.variables[member], type);
+            case Tag.DeclImport:    return check(declaration.references[member], type);
             default: throw new Error(`Not implemented for ${Tag[declaration.tag]}`);
         }
     }

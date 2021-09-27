@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Context, Module, FunctionFlags, Node, RootId, Tag, VariableFlags } from './nodes';
+import { Context, Module, FunctionFlags, Node, RootId, Tag, VariableFlags, DeclImport } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -82,6 +82,8 @@ export class Compiler {
         const module  = new Module();
         const context = new Context(this, RootId, RootId, module);
 
+        builtin.importInto(module);
+
         console.group(`Compiling`);
         console.time("Total");
 
@@ -137,6 +139,15 @@ function serialize(node: Node) {
                 case Tag.DeclFunction: return convertFlags("FunctionFlags", FunctionFlags, value);
                 case Tag.DeclVariable: return convertFlags("VariableFlags", VariableFlags, value);
             }
+        }
+
+        if (value instanceof DeclImport) {
+            return {
+                name: value.name,
+                parent: value.parent,
+                symbols: value.symbols,
+                tag: value.tag,
+            };
         }
 
         return value;

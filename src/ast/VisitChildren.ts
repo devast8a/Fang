@@ -39,6 +39,10 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             return next(node, context, state);
         }
 
+        case Tag.DeclImport: {
+            return next(node, context, state);
+        }
+
         case Tag.DeclStruct: {
             // TODO: Support members
 

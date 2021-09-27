@@ -7,9 +7,10 @@ export function transformRemoveNesting(context: Context) {
         const node = nodes[id];
 
         switch (node.tag) {
+            case Tag.DeclImport:
             case Tag.DeclStruct:
-            case Tag.DeclTrait:
             case Tag.DeclSymbol:
+            case Tag.DeclTrait:
                 continue;
 
             case Tag.DeclFunction: {

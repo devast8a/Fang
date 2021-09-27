@@ -93,19 +93,6 @@ function declareNode(state: State, node: Node) {
             return;
         }
 
-        case Tag.DeclSymbol: {
-            return;
-        }
-
-        case Tag.DeclStruct: {
-            // Structures are always flattened and stored in the root object.
-            state.declare(node.name, RootId, state.currentId);
-
-            declareNodes(state, Array.from(node.superTypes));
-
-            return;
-        }
-
         case Tag.DeclFunction: {
             // Functions are always flattened and stored in the root object.
             state.declare(node.name, RootId, state.currentId);
@@ -116,6 +103,24 @@ function declareNode(state: State, node: Node) {
             }
             declareNode (childState, node.returnType);
             declareNodes(childState, node.body);
+
+            return;
+        }
+
+        case Tag.DeclImport: {
+            // TODO: Revisit this
+            return;
+        }
+
+        case Tag.DeclSymbol: {
+            return;
+        }
+
+        case Tag.DeclStruct: {
+            // Structures are always flattened and stored in the root object.
+            state.declare(node.name, RootId, state.currentId);
+
+            declareNodes(state, Array.from(node.superTypes));
 
             return;
         }

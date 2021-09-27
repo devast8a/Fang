@@ -1,14 +1,27 @@
-import { DeclStruct, TypeRefDecl, UnresolvedId } from './nodes';
+import { DeclImport, DeclStruct, Module, RootId, TypeRefStatic } from './nodes';
 import { Scope } from './stages/Scope';
 
+const builtinModule = new Module();
 const scope = new Scope();
+const importTable = new DeclImport(RootId, "FM_builtin", [], []);
+
+const ImportId = 0;
 
 function type(name: string) {
-    const struct = new DeclStruct(UnresolvedId, name, new Map(), new Set());
-    const ref    = new TypeRefDecl(struct);
-    // TODO: declare should take a Type too.
-    // scope.declare(name, ref as any);
-    return ref;
+    const struct = new DeclStruct(RootId, name, new Map(), new Set());
+
+    const id = builtinModule.nodes.length;
+    builtinModule.nodes.push(struct);
+    importTable.symbols.push(name);
+    importTable.references.push(struct);
+
+    scope.declare(name, ImportId, id);
+
+    return {
+        id: id,
+        reference: new TypeRefStatic(ImportId, id),
+        declaration: struct,
+    };
 }
 
 const empty = type("empty");
@@ -29,24 +42,34 @@ const u64   = type("u64");
 
 const str   = type("str");
 
+function importInto(module: Module) {
+    if (module.nodes.length !== 0) {
+        throw new Error("The compiler currently assumes that the builtin module is imported into id 0");
+    }
+
+    module.nodes.push(importTable);
+}
+
 export const builtin = {
-    empty,
+    types: {
+        empty: empty.reference,
 
-    bool,
-    // true: true_,
-    // false: false_,
+        bool: bool.reference,
 
-    s8,
-    s16,
-    s32,
-    s64,
+        s8: s8.reference,
+        s16: s16.reference,
+        s32: s32.reference,
+        s64: s64.reference,
 
-    u8,
-    u16,
-    u32,
-    u64,
+        u8: u8.reference,
+        u16: u16.reference,
+        u32: u32.reference,
+        u64: u64.reference,
 
-    str,
+        str: str.reference,
+    },
 
-    scope,
+    scope: scope,
+    module: builtinModule,
+    importInto: importInto,
 };
