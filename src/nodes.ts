@@ -1,6 +1,50 @@
 import { Constructor } from './common/constructor';
 import { Compiler } from './compile';
 
+export type Node =
+    | Decl
+    | Expr
+    | Type
+    | DeclModule        // [Top level of a compilation unit]
+    ;
+
+export type Decl =
+    | DeclFunction      // fn name(parameters...) -> returnType { body... }
+    | DeclStruct        // class name { members... }
+    | DeclSymbol        // Any symbol
+    | DeclTrait         // trait name { members... }
+    | DeclVariable      // val name: Type = Expr
+    ;
+
+export type Expr =
+    | ExprCall          // <target>(arguments...)           [resolves to ExprCallField, ExprCallStatic]
+    | ExprCallField     // object.field(arguments...)
+    | ExprCallStatic    // target(arguments...)
+    | ExprConstant      // [Any constant value]
+    | ExprConstruct     // T{}
+    | ExprDeclaration   // [Marks position of a Decl]
+    | ExprGetField      // expression.field                 [as r-value]
+    | ExprGetLocal      // local                            [as r-value]
+    | ExprMacroCall     // macro! argument
+    | ExprRefName       // identifier                       [resolves to ExprRefStatic]
+    | ExprRefStatic     // identifier                       [global reference]
+    | ExprSetField      // Expr.field = expression
+    | ExprSetLocal      // local = expression
+    | ExprDestroyField  // delete! expression.field
+    | ExprDestroyLocal  // delete! variable
+    | ExprIf            // if (condition) { ... } else if (condition) { ... } else { ... }
+    | ExprIfBranch      // if (condition) { ... }` or `else if (condition) { ... }
+    | ExprReturn        // return expression
+    | ExprWhile         // while (condition) { ... }
+    ;
+
+export type Type =
+    | TypeInfer         // [Infer this type. Not valid everywhere]
+    | TypeRefDecl       // [References a Decl directly]
+    | TypeRefName       // identifier                       [resolves to TypeRefStatic]
+    | TypeRefStatic     // identifier                       [global reference in type context]
+    ;
+
 export enum Tag {
     DeclFunction,
     DeclModule,
@@ -32,50 +76,6 @@ export enum Tag {
     TypeRefName,
     TypeRefStatic,
 }
-
-export type Node =
-    | Expr
-    | Decl
-    | Type
-    | DeclModule
-    ;
-
-export type Decl =
-    | DeclFunction      // fn name(parameters...) -> returnType { body... }
-    | DeclStruct        // class name { members... }
-    | DeclSymbol        // Any symbol
-    | DeclTrait         // trait name { members... }
-    | DeclVariable      // val name: Type = Expr
-    ;
-
-export type Expr =
-    | ExprCall          // <target>(arguments...)           [resolves to ExprCallField, ExprCallStatic]
-    | ExprCallField     // object.field(arguments...)
-    | ExprCallStatic    // target(arguments...)
-    | ExprConstant      // Any constant value
-    | ExprConstruct     // T{}
-    | ExprDeclaration   //
-    | ExprGetField      // expression.field                 [as r-value]
-    | ExprGetLocal      // local                            [as r-value]
-    | ExprMacroCall     // macro! argument
-    | ExprRefName       //                                  [resolves to ExprRefStatic]
-    | ExprRefStatic     //
-    | ExprSetField      // Expr.field = expression
-    | ExprSetLocal      // local = expression
-    | ExprDestroyField  // delete! expression.field
-    | ExprDestroyLocal  // delete! variable
-    | ExprIf            // if (condition) { ... } else if (condition) { ... } else { ... }
-    | ExprIfBranch      // Branches of an if statement
-    | ExprReturn        // return expression
-    | ExprWhile         // while (condition) { ... }
-    ;
-
-export type Type =
-    | TypeInfer         // Infer this type. Not valid everywhere.
-    | TypeRefDecl       //
-    | TypeRefName       //
-    | TypeRefStatic     //
-    ;
 
 // -------------------------------------------------------------------------
 
