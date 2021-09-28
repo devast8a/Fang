@@ -122,6 +122,11 @@ export class TargetC {
                 return;
             }
 
+            case Tag.ExprGetLocal: {
+                this.emit    (this.context.variables[expr.local as number].name);
+                return;
+            }
+
             case Tag.ExprSetLocal: {
                 this.emit    (this.context.variables[expr.local as number].name, " = ");
                 this.emitExpr(context, expr.value);
