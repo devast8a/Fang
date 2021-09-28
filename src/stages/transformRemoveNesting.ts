@@ -1,4 +1,4 @@
-import { Node, Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, UnresolvedId, Context, Expr } from '../nodes';
+import { Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, Context, Expr, ExprDeclaration } from '../nodes';
 
 export function transformRemoveNesting(context: Context) {
     const nodes = context.module.nodes;
@@ -14,10 +14,11 @@ export function transformRemoveNesting(context: Context) {
                 continue;
 
             case Tag.DeclFunction: {
+                const childContext = context.nextId<DeclFunction>(id)
 
                 const output = new Array<Expr>();
-                for (const stmt of node.body) {
-                    transform(context.nextId(id), output, stmt);
+                for (let stmt of node.body) {
+                    stmt = flatten(childContext, output, stmt, true);
                     output.push(stmt);
                 }
                 node.body = output;
@@ -30,8 +31,8 @@ export function transformRemoveNesting(context: Context) {
     }
 }
 
-function transform(context: Context<DeclFunction>, output: Expr[], node: Node): Expr {
-    switch (node.tag) {
+function flatten(context: Context<DeclFunction>, output: Expr[], expr: Expr, topLevel = false): Expr {
+    switch (expr.tag) {
         // case Tag.DeclVariable: {
         //     if (node.value !== null) {
         //         node.value = transform(context, output, node.value);
@@ -40,72 +41,65 @@ function transform(context: Context<DeclFunction>, output: Expr[], node: Node): 
         // }
 
         case Tag.ExprDeclaration: {
-            return node;
+            return expr;
         }
 
         case Tag.ExprConstruct: {
-            return node;
+            return extract(context, output, expr);
         }
 
         case Tag.ExprCallField: {
             // TODO: Removing nesting as with ExprCallStatic
-            return node;
+            return expr;
         }
 
         case Tag.ExprCallStatic: {
-            for (let index = 0; index < node.args.length; index++) {
-                const arg = node.args[index];
+            expr.args = flattenMany(context, output, expr.args);
 
-                switch (arg.tag) {
-                    case Tag.ExprCallStatic: {
-                        transform(context, output, arg);
-                        node.args[index] = useTemporaryVariable(context, output, arg);
-                        break;
-                    }
-
-                    // Don't need to remove nesting
-                    case Tag.ExprGetLocal:
-                        break;
-
-                    default:
-                        throw new Error(`transformRemoveNesting > transform > ExprCallStatic > ${Tag[arg.tag]}: Not implemented`);
-                }
+            if (topLevel) {
+                return expr;
+            } else {
+                return extract(context, output, expr);
             }
-            return node;
+        }
+
+        case Tag.ExprGetLocal: {
+            return expr;
         }
 
         case Tag.ExprDestroyLocal: {
-            return node;
+            return expr;
         }
 
         case Tag.ExprReturn: {
-            // TODO: Remove nesting as with ExprCallStatic
-            return node;
+            if (expr.expression !== null) {
+                expr.expression = flatten(context, output, expr.expression);
+            }
+
+            return expr;
         }
     }
 
-    throw new Error(`transformRemoveNesting > transform > ${Tag[node.tag]}: Not implemented`);
+    throw new Error(`transformRemoveNesting > transform > ${Tag[expr.tag]}: Not implemented`);
 }
 
-function useTemporaryVariable(context: Context<DeclFunction>, output: Node[], value: Expr): Expr {
+function flattenMany(context: Context<DeclFunction>, output: Expr[], exprs: Expr[]): Expr[] {
+    return exprs.map(expr => flatten(context, output, expr));
+}
+
+function extract(context: Context<DeclFunction>, output: Expr[], value: Expr): Expr {
     const fn = context.parent;
     const id = fn.variables.length;
 
     const variable = new DeclVariable(
-        // TODO: Set parent ID correctly
-        UnresolvedId,
-
-        // TODO: Variable naming
-        `_temp${fn.variables.length}`,
-
+        context.parentId,
+        `FZ_${fn.variables.length}`,
         Expr.getReturnType(context, value),
         value,
-
-        // TODO: Might need to apply more flags
         VariableFlags.Local,
     );
     fn.variables.push(variable);
-    output.push(variable);
+    output.push(new ExprDeclaration(context.parentId, fn.variables.length - 1));
 
     return new ExprGetLocal(id);
 }
