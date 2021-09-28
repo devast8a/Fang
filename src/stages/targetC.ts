@@ -53,19 +53,22 @@ export class TargetC {
             }
 
             case Tag.DeclStruct: {
-                // TODO: Cleanup resolution of members
-                const members = Array.from(decl.members.values()).map(global => context.resolveGlobal(global));
-
+                // TODO: Implement
                 this.emitSeparator();
                 this.emit         ("typedef struct ");
-                // TODO: Emit members for Decl?
-                //this.emitBody     (context, members);
+                this.emit         ("{ /* TODO: Emit code */ }")
                 this.emit         (" ", decl.name, ";");
 
                 return;
             }
 
             case Tag.DeclTrait: {
+                // TODO: Implement
+                this.emitSeparator();
+                this.emit         ("typedef struct ");
+                this.emit         ("{ /* TODO: Emit code */ }")
+                this.emit         (" ", decl.name, ";");
+
                 return;
             }
 
@@ -114,7 +117,8 @@ export class TargetC {
             }
 
             case Tag.ExprConstruct: {
-                this.emit("CONSTRUCT");
+                // TODO: Implement
+                this.emit("{ /* TODO: Emit code */ }");
                 return;
             }
 
