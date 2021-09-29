@@ -37,6 +37,11 @@ export class TargetC {
                     return;
                 }
 
+                // HACK: Replace with a proper FFI import system
+                if (/(infix|postfix|prefix)[^a-zA-Z0-9]/.test(decl.name)) {
+                    return;
+                }
+
                 // C doesn't support nested functions, `transformUnnest` guarantees no nested functions.
                 //  So we can keep track of the current function with a single variable.
                 this.context = decl;
@@ -97,10 +102,22 @@ export class TargetC {
             case Tag.ExprCallStatic: {
                 const target = context.resolveGlobal(expr.target) as DeclFunction;
 
-                this.emit         (target.name, "(");
-                this.emitArguments(target.parameters, expr.args);
-                this.emit         (")");
-                return;
+                switch (target.name) {
+                    // 
+                    case "FF_infix_43": {
+                        this.emitExpr(context, expr.args[0]);
+                        this.emit    (" + ");
+                        this.emitExpr(context, expr.args[1]);
+                        return;
+                    }
+
+                    default: {
+                        this.emit         (target.name, "(");
+                        this.emitArguments(target.parameters, expr.args);
+                        this.emit         (")");
+                        return;
+                    }
+                }
             }
 
             case Tag.ExprConstant: {

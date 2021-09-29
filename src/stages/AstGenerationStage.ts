@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { builtin } from '../Builtin';
 import { ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
 import { Context, Expr, Node, RootId, Tag } from '../nodes';
@@ -150,17 +151,25 @@ function parse(context: Context, node: PNode): Expr {
         }
 
         case PTag.LiteralIntegerDec: {
-            return new Nodes.ExprConstant({} as any, "");
+            return new Nodes.ExprConstant(builtin.references.u64, parseInt(node.data[0].value));
         }
 
         case PTag.ExprBinary: {
             switch (node.data.length) {
                 case 5: {
-                    return new Nodes.ExprCall(new Nodes.ExprRefName("+"), []);
+                    const symbol = node.data[2][0].value;
+                    return new Nodes.ExprCall(new Nodes.ExprRefName(`infix${symbol}`), [
+                        parse(context, node.data[0]),
+                        parse(context, node.data[4]),
+                    ]);
                 }
 
                 case 3: {
-                    return new Nodes.ExprCall(new Nodes.ExprRefName("+"), []);
+                    const symbol = node.data[1][0].value;
+                    return new Nodes.ExprCall(new Nodes.ExprRefName(`infix${symbol}`), [
+                        parse(context, node.data[0]),
+                        parse(context, node.data[2]),
+                    ]);
                 }
 
                 default: throw new Error('Unreachable')
