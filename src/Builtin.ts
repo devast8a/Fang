@@ -65,7 +65,9 @@ function importInto(target: Module) {
     target.nodes.push(importTable);
 
     for (const node of builtinModule.nodes) {
-        importTable.imports.push(node.name);
+        const id = target.nodes.length;
+
+        importTable.imports.push(id);
         target.nodes.push(node);
     }
 }

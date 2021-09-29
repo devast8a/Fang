@@ -137,7 +137,7 @@ function parse(context: Context, node: PNode): Expr {
             const value     = parse(context, node.data[2]);
 
             switch (node.data[0].tag) {
-                case PTag.ExprIdentifier: return new Nodes.ExprSetLocal(parseIdentifier(node.data[0].data[0]), value);
+                // case PTag.ExprIdentifier: return new Nodes.ExprSetLocal(parseIdentifier(node.data[0].data[0]), value);
                 case PTag.ExprIndexDot:   return new Nodes.ExprSetField(parse(context, node.data[0].data[0]), parseIdentifier(node.data[0].data[2]), value);
                 default: throw new Error("Unreachable");
             }

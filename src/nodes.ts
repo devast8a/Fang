@@ -428,9 +428,9 @@ export class TypeRefName {
 // References
 //  Remove concept of global/field/local?
 //  All references are two indexes. Parent / Field?
-type Global = string | number;
+type Global = number;
 type Field  = string | number;
-type Local  = string | number;
+type Local  = number;
 
 export type NodeConstructor<T extends Node = Node> = Constructor<T> & {tag: Tag};
 
