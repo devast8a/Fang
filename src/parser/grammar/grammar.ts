@@ -11,6 +11,9 @@ declare var integer_dec: any;
 declare var integer_hex: any;
 declare var integer_oct: any;
 declare var identifier: any;
+declare var prefix: any;
+declare var postfix: any;
+declare var infix: any;
 declare var ws: any;
 declare var comment: any;
 declare var newline: any;
@@ -105,7 +108,6 @@ const grammar: Grammar = {
     {"name": "DeclFunction$ebnf$6", "symbols": [], "postprocess": () => null},
     {"name": "DeclFunction", "symbols": ["DfKeyword", "DeclFunction$ebnf$1", "DeclFunction$ebnf$2", "DfParameters", "DeclFunction$ebnf$3", "DeclFunction$ebnf$4", "DeclFunction$ebnf$5", "DeclFunction$ebnf$6"], "postprocess": p.DeclFunction},
     {"name": "DfKeyword", "symbols": [{"literal":"fn"}]},
-    {"name": "DfKeyword", "symbols": [{"literal":"op"}]},
     {"name": "DfName", "symbols": ["__", "Identifier"]},
     {"name": "DfParameters$macrocall$2", "symbols": [{"literal":"("}]},
     {"name": "DfParameters$macrocall$3$ebnf$1", "symbols": ["NL"], "postprocess": id},
@@ -528,6 +530,9 @@ const grammar: Grammar = {
     {"name": "Attribute", "symbols": [{"literal":"#"}, "Atom"]},
     {"name": "CompileTime", "symbols": [{"literal":"!"}]},
     {"name": "Identifier", "symbols": [(lexer.has("identifier") ? {type: "identifier"} : identifier)]},
+    {"name": "Identifier", "symbols": [(lexer.has("prefix") ? {type: "prefix"} : prefix)]},
+    {"name": "Identifier", "symbols": [(lexer.has("postfix") ? {type: "postfix"} : postfix)]},
+    {"name": "Identifier", "symbols": [(lexer.has("infix") ? {type: "infix"} : infix)]},
     {"name": "__", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)]},
     {"name": "_$ebnf$1", "symbols": [(lexer.has("ws") ? {type: "ws"} : ws)], "postprocess": id},
     {"name": "_$ebnf$1", "symbols": [], "postprocess": () => null},

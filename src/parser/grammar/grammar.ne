@@ -80,7 +80,6 @@
 
     # Required
     DfKeyword       -> "fn"
-    DfKeyword       -> "op"
     DfName          -> __ Identifier
     DfParameters    -> STAR["(", NL:?, DeclParameter, COMMA, ")"]
 
@@ -492,6 +491,9 @@
 
 ## Identifier ######################################################################################
     Identifier -> %identifier
+    Identifier -> %prefix
+    Identifier -> %postfix
+    Identifier -> %infix
 
 ## Whitespace ######################################################################################
     # Single underscore is optional whitespace, double is required whitespace

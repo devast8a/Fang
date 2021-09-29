@@ -6,20 +6,30 @@ export const mangleNames = createVisitor(VisitDecls, (node, context) => {
     // TODO: Don't mutate nodes
     switch (node.tag) {
         case Tag.DeclFunction: {
-            node.name = `FF_${node.name}`;
+            const name = mangleSymbols(node.name);
+            node.name = `FF_${name}`;
             return node;
         }
 
         case Tag.DeclStruct: {
-            node.name = `FS_${node.name}`;
+            const name = mangleSymbols(node.name);
+            node.name = `FS_${name}`;
             return node;
         }
 
         case Tag.DeclTrait: {
-            node.name = `FT_${node.name}`;
+            const name = mangleSymbols(node.name);
+            node.name = `FT_${name}`;
             return node;
         }
     }
 
     return node;
 });
+
+function mangleSymbols(name: string) {
+    return name.replace(/[^a-zA-Z0-9]/gu, (symbol) => {
+        const code = symbol.charCodeAt(0);
+        return `_${code}`
+    });
+}
