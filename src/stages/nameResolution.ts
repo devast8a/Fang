@@ -240,6 +240,11 @@ function declareNode(state: State, node: Node) {
             // References never declare anything
             return;
         }
+
+        case Tag.TypeRefStatic: {
+            // References never declare anything
+            return;
+        }
     }
 
     throw new Error(`declareNode: No case for node '${Tag[node.tag]}'`);

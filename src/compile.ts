@@ -1,6 +1,6 @@
 import * as Fs from 'fs';
 import { AstGenerationStage } from "./stages/AstGenerationStage";
-import { Context, Module, FunctionFlags, Node, RootId, Tag, VariableFlags, DeclImport } from './nodes';
+import { Context, Module, FunctionFlags, Node, RootId, Tag, VariableFlags, DeclImport, DeclImportSymbol } from './nodes';
 import { Source } from './common/source';
 import { builtin } from './Builtin';
 import { checkLifetime } from './stages/checkLifetime';
@@ -141,11 +141,10 @@ function serialize(node: Node) {
             }
         }
 
-        if (value instanceof DeclImport) {
+        if (value instanceof DeclImportSymbol) {
             return {
                 name: value.name,
                 parent: value.parent,
-                symbols: value.symbols,
                 tag: value.tag,
             };
         }

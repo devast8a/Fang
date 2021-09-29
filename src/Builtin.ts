@@ -1,26 +1,36 @@
-import { DeclImport, DeclStruct, Module, RootId, TypeRefStatic } from './nodes';
+import { DeclFunction, DeclImport, DeclStruct, Module, RootId, TypeRefStatic } from './nodes';
 import { Scope } from './stages/Scope';
 
 const builtinModule = new Module();
 const scope = new Scope();
-const importTable = new DeclImport(RootId, "FM_builtin", [], []);
-
-const ImportId = 0;
 
 function type(name: string) {
-    const struct = new DeclStruct(RootId, name, new Map(), new Set());
+    const decl = new DeclStruct(RootId, name, new Map(), new Set());
 
     const id = builtinModule.nodes.length;
-    builtinModule.nodes.push(struct);
-    importTable.symbols.push(name);
-    importTable.references.push(struct);
+    builtinModule.nodes.push(decl);
 
-    scope.declare(name, ImportId, id);
+    scope.declare(name, RootId, id + 1);
 
     return {
         id: id,
-        reference: new TypeRefStatic(ImportId, id),
-        declaration: struct,
+        reference: new TypeRefStatic(RootId, id + 1),
+        declaration: decl,
+    };
+}
+
+function func(name: string, returnType: ReturnType<typeof type>) {
+    const decl = new DeclFunction(RootId, name, [], returnType.reference, [], 0);
+
+    const id = builtinModule.nodes.length;
+    builtinModule.nodes.push(decl);
+
+    scope.declare(name, RootId, id);
+
+    return {
+        id: id,
+        reference: new TypeRefStatic(RootId, id),
+        declaration: decl,
     };
 }
 
@@ -42,12 +52,22 @@ const u64   = type("u64");
 
 const str   = type("str");
 
-function importInto(module: Module) {
-    if (module.nodes.length !== 0) {
+const u64_plus = func("infix+", u64);
+
+function importInto(target: Module) {
+    if (target.nodes.length !== 0) {
         throw new Error("The compiler currently assumes that the builtin module is imported into id 0");
     }
 
-    module.nodes.push(importTable);
+    // Generate an import table
+    const importTable = new DeclImport(RootId, ".builtin", builtinModule, []);
+
+    target.nodes.push(importTable);
+
+    for (const node of builtinModule.nodes) {
+        importTable.imports.push(node.name);
+        target.nodes.push(node);
+    }
 }
 
 export const builtin = {
@@ -85,6 +105,10 @@ export const builtin = {
         u64: u64.declaration,
 
         str: str.declaration,
+    },
+
+    functions: {
+        u64_plus,
     },
 
     scope: scope,

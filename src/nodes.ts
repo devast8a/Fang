@@ -11,6 +11,7 @@ export type Node =
 export type Decl =
     | DeclFunction      // fn name(parameters...) -> returnType { body... }
     | DeclImport
+    | DeclImportSymbol
     | DeclStruct        // class name { members... }
     | DeclSymbol        // Any symbol
     | DeclTrait         // trait name { members... }
@@ -46,10 +47,12 @@ export type Type =
     | TypeRefStatic     // identifier                       [global reference in type context]
     ;
 
+
 export enum Tag {
     Module,
     DeclFunction,
     DeclImport,
+    DeclImportSymbol,
     DeclStruct,
     DeclSymbol,
     DeclTrait,
@@ -119,8 +122,22 @@ export class DeclImport {
 
         public name: string,
 
-        public symbols: string[],
-        public references: Decl[],
+        public module: Module,
+        public imports: Global[],
+    ) {}
+}
+
+export class DeclImportSymbol {
+    public readonly tag = Tag.DeclImportSymbol;
+    public static readonly tag = Tag.DeclImportSymbol;
+
+    public constructor(
+        public parent: number,
+
+        public name: string,
+
+        public declaration: Global,
+        public member: Global,
     ) {}
 }
 
@@ -460,9 +477,9 @@ export namespace Type {
 export namespace Expr {
     export function getReturnType(context: Context, expr: Node): Type {
         switch (expr.tag) {
-            // TODO: Change ExprCall to assume ExprRefStatic?
             case Tag.ExprCall:       return context.resolve(Node.as(expr.target, ExprRefStatic), DeclFunction).returnType;
             case Tag.ExprCallStatic: return context.resolveGlobal(expr.target, DeclFunction).returnType;
+            case Tag.ExprConstant:   return expr.type;
             case Tag.ExprConstruct:  return expr.target;
             case Tag.ExprGetLocal:   return context.resolveLocal(expr.local, DeclVariable).type;
             case Tag.ExprRefStatic:  return new TypeRefStatic(expr.declaration, expr.member);
@@ -556,7 +573,7 @@ export class Context<T extends Decl = Decl> {
         // TODO: Verify type
         switch (declaration.tag) {
             case Tag.DeclFunction:  return check(declaration.variables[member], type);
-            case Tag.DeclImport:    return check(declaration.references[member], type);
+            //case Tag.DeclImport:    return check(declaration.references[member], type);
             default: throw new Error(`Not implemented for ${Tag[declaration.tag]}`);
         }
     }
