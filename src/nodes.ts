@@ -555,11 +555,7 @@ export class Context<T extends Decl = Decl> {
             throw new Error();
         }
 
-        const parent = this.parent as Node;
-        switch (parent.tag) {
-            case Tag.DeclFunction: return check(parent.variables[ref], type);
-            default: throw new Error();
-        }
+        return check(Node.as(this.parent, DeclFunction).variables[ref], type);
     }
 
     public resolve<T extends NodeConstructor<Decl>>(ref: ExprRefStatic | TypeRefStatic | ExprDeclaration, type?: T): InstanceType<T> {
@@ -570,7 +566,6 @@ export class Context<T extends Decl = Decl> {
         const declaration = this.module.nodes[ref.declaration as number];
         const member = ref.member as number;
 
-        // TODO: Verify type
         switch (declaration.tag) {
             case Tag.DeclFunction:  return check(declaration.variables[member], type);
             //case Tag.DeclImport:    return check(declaration.references[member], type);
