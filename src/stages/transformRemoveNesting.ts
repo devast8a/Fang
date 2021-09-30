@@ -66,12 +66,17 @@ function flatten(context: Context<DeclFunction>, output: Expr[], expr: Expr, top
             return topLevel ? expr : extract(context, output, expr);
         }
 
+        case Tag.ExprGetField: {
+            expr.object = flatten(context, output, expr.object, topLevel);
+            return expr;
+        }
+
         case Tag.ExprGetLocal: {
             return expr;
         }
 
         case Tag.ExprSetLocal: {
-            expr.value = flatten(context, output, expr.value, true);
+            expr.value = flatten(context, output, expr.value, topLevel);
             return topLevel ? expr : extract(context, output, expr);
         }
 

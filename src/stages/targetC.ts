@@ -17,6 +17,9 @@ export class TargetC {
 
         const nodes = context.module.nodes;
 
+        this.emit("#include <stdint.h>\n");
+        this.emit("#define FF_main main\n");
+
         for (let id = 0; id < nodes.length; id++) {
             const decl = nodes[id];
 
@@ -156,20 +159,26 @@ export class TargetC {
                 return;
             }
 
-            case Tag.ExprGetLocal: {
-                this.emit    (this.context.variables[expr.local as number].name);
+            case Tag.ExprGetField: {
+                this.emitExpr(context, expr.object);
+                this.emit    (".", expr.field as string);
                 return;
             }
 
-            case Tag.ExprSetLocal: {
-                this.emit    (this.context.variables[expr.local as number].name, " = ");
-                this.emitExpr(context, expr.value);
+            case Tag.ExprGetLocal: {
+                this.emit    (this.context.variables[expr.local as number].name);
                 return;
             }
 
             case Tag.ExprSetField: {
                 this.emitExpr(context, expr.object);
                 this.emit    (".", expr.field as string, " = ");
+                this.emitExpr(context, expr.value);
+                return;
+            }
+
+            case Tag.ExprSetLocal: {
+                this.emit    (this.context.variables[expr.local as number].name, " = ");
                 this.emitExpr(context, expr.value);
                 return;
             }
