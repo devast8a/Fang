@@ -5,7 +5,7 @@ const builtinModule = new Module();
 const scope = new Scope();
 
 function type(name: string) {
-    const decl = new DeclStruct(RootId, name, new Map(), new Set());
+    const decl = new DeclStruct(RootId, name, [], new Set());
 
     const id = builtinModule.nodes.length;
     builtinModule.nodes.push(decl);

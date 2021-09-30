@@ -61,7 +61,24 @@ export class TargetC {
                 // TODO: Implement
                 this.emitSeparator();
                 this.emit         ("typedef struct ");
-                this.emit         ("{ /* TODO: Emit code */ }")
+
+                // Emit body
+                this.pushIndent();
+                this.emit("{");
+                for (let id = 0; id < decl.members.length; id++) {
+                    const child = decl.members[id];
+                    this.emitNewline();
+                    switch (child.tag) {
+                        case Tag.DeclVariable: this.emitDecl(context, child, id); break;
+                        case Tag.ExprDeclaration: this.emit("/* TODO: Implement decl */"); break;
+                        default: throw new Error("Unhandled case");
+                    }
+                    this.emit       (";");
+                }
+                this.popIndent();
+                this.emitNewline();
+                this.emit("}");
+
                 this.emit         (" ", decl.name, ";");
 
                 return;

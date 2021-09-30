@@ -121,6 +121,7 @@ function declareNode(state: State, node: Node) {
             state.declare(node.name, RootId, state.currentId);
 
             declareNodes(state, Array.from(node.superTypes));
+            declareNodes(state, node.members);
 
             return;
         }

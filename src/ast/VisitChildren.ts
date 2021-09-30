@@ -44,7 +44,11 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         }
 
         case Tag.DeclStruct: {
-            // TODO: Support members
+            const nodes = node.members;
+
+            for (let id = 0; id < nodes.length; id++) {
+                nodes[id] = first(nodes[id], context.nextId2(Nodes.RootId, id), state);
+            }
 
             return next(node, context, state);
         }

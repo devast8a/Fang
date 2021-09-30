@@ -149,7 +149,7 @@ export class DeclStruct {
         public parent: number,
 
         public name: string,
-        public members: Map<string, Global>,
+        public members: Array<ExprDeclaration | DeclVariable>,
         public superTypes: Set<Type>,
     ) {}
 }
