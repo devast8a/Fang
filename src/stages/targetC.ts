@@ -167,6 +167,13 @@ export class TargetC {
                 return;
             }
 
+            case Tag.ExprSetField: {
+                this.emitExpr(context, expr.object);
+                this.emit    (".", expr.field as string, " = ");
+                this.emitExpr(context, expr.value);
+                return;
+            }
+
             case Tag.ExprDestroyLocal: {
                 this.emit("DELETE");
                 return;

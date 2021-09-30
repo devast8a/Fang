@@ -1,6 +1,8 @@
+class Foo {
+    val bar: u8
+}
+
 fn main() {
-    val foo = 10
-    val bar = 20
-    val qux = foo + bar
-    val zug = foo+bar
+    val foo = Foo{}
+    foo.bar = 100
 }

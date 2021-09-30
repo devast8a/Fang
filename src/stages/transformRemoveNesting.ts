@@ -48,6 +48,14 @@ function flatten(context: Context<DeclFunction>, output: Expr[], expr: Expr, top
             return extract(context, output, expr);
         }
 
+        case Tag.ExprConstant: {
+            return expr;
+        }
+
+        case Tag.ExprDestroyLocal: {
+            return expr;
+        }
+
         case Tag.ExprCallField: {
             // TODO: Removing nesting as with ExprCallStatic
             return expr;
@@ -55,20 +63,21 @@ function flatten(context: Context<DeclFunction>, output: Expr[], expr: Expr, top
 
         case Tag.ExprCallStatic: {
             expr.args = flattenMany(context, output, expr.args);
-
-            if (topLevel) {
-                return expr;
-            } else {
-                return extract(context, output, expr);
-            }
+            return topLevel ? expr : extract(context, output, expr);
         }
 
         case Tag.ExprGetLocal: {
             return expr;
         }
 
-        case Tag.ExprDestroyLocal: {
-            return expr;
+        case Tag.ExprSetLocal: {
+            expr.value = flatten(context, output, expr.value, true);
+            return topLevel ? expr : extract(context, output, expr);
+        }
+
+        case Tag.ExprSetField: {
+            expr.value = flatten(context, output, expr.value, true);
+            return topLevel ? expr : extract(context, output, expr);
         }
 
         case Tag.ExprReturn: {
