@@ -1,11 +1,11 @@
-import { DeclFunction, DeclImport, DeclStruct, Module, RootId, TypeRefStatic } from './nodes';
+import { Children, DeclFunction, DeclImport, DeclStruct, Module, RootId, TypeRefStatic } from './nodes';
 import { Scope } from './stages/Scope';
 
 const builtinModule = new Module();
 const scope = new Scope();
 
 function type(name: string) {
-    const decl = new DeclStruct(RootId, name, [], new Set());
+    const decl = new DeclStruct(RootId, name, new Children(), new Set());
 
     const id = builtinModule.nodes.length;
     builtinModule.nodes.push(decl);

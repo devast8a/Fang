@@ -31,6 +31,7 @@ export enum PTag {
     LiteralIntegerHex,
     LiteralIntegerOct,
     LiteralString,
+    PExprArgument,
     StmtAssign,
     StmtForEach,
     StmtIf,
@@ -75,6 +76,7 @@ export const LiteralIntegerDec  = tag(PTag.LiteralIntegerDec);
 export const LiteralIntegerHex  = tag(PTag.LiteralIntegerHex);
 export const LiteralIntegerOct  = tag(PTag.LiteralIntegerOct);
 export const LiteralString      = tag(PTag.LiteralString);
+export const PExprArgument      = tag(PTag.PExprArgument);
 export const StmtAssign         = tag(PTag.StmtAssign);
 export const StmtForEach        = tag(PTag.StmtForEach);
 export const StmtIf             = tag(PTag.StmtIf);

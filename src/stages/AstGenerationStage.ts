@@ -30,7 +30,7 @@ function parseList(context: Context, node: PNode) {
 function parse(context: Context, node: PNode): Expr {
     switch (node.tag) {
         case PTag.DeclClass: {
-            const decl = new Nodes.DeclStruct(context.parentId, "", [], new Set());
+            const decl = new Nodes.DeclStruct(context.parentId, "", new Nodes.Children(), new Set());
 
             const id = context.register(decl);
             const childCtx = context.nextId(id);
@@ -148,6 +148,14 @@ function parse(context: Context, node: PNode): Expr {
             return new Nodes.ExprConstant(builtin.references.u64, parseInt(node.data[0].value));
         }
 
+        case PTag.PExprArgument: {
+            // name whitespace operator whitespace value
+            const name  = parseIdentifier(node.data[0]);
+            const value = parse(context, node.data[4]);
+
+            return new Nodes.ExprArgument(name, value);
+        }
+
         case PTag.ExprBinary: {
             switch (node.data.length) {
                 case 5: {
@@ -166,7 +174,9 @@ function parse(context: Context, node: PNode): Expr {
                     ]);
                 }
 
-                default: throw new Error('Unreachable')
+                default: {
+                    throw new Error('Unreachable')
+                }
             }
         }
 
@@ -255,8 +265,18 @@ function parseVariable(node: PNode, context: Context) {
         }
 
         case Tag.DeclStruct: {
-            const id = context.parent.members.length;
-            context.parent.members.push(variable);
+            const children = context.parent.children;
+
+            const id = children.nodes.length;
+            children.nodes.push(variable);
+
+            let nameMapping = children.names.get(name);
+            if (nameMapping === undefined) {
+                nameMapping = [];
+                children.names.set(name, nameMapping);
+            }
+
+            nameMapping.push(id);
 
             return {variable, id};
         }

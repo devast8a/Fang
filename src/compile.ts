@@ -64,11 +64,23 @@ export class Compiler {
         console.group(`Parsing ${source.path}`);
         console.time(`${source.path} Total`);
 
+        function filter(key: string, value: any) {
+            if (typeof(value) === 'object' && value !== null && value !== undefined && typeof(value.end_ws) !== 'undefined') {
+                return {name: "List", elements: value.elements};
+            }
+
+            return value;
+        }
+
+        let id = 0;
         let nodes = new Array<Node>();
         for (const stage of this.parseStages) {
             console.time(`${source.path} ${stage.name}`);
             nodes = stage.execute(nodes, {source, context});
             console.timeEnd(`${source.path} ${stage.name}`);
+
+            Fs.writeFileSync(`build/output/A${id}-${stage.name}.txt`, JSON.stringify(nodes, filter, 2));
+            id++;
         }
 
         console.timeEnd(`${source.path} Total`);
@@ -89,7 +101,7 @@ export class Compiler {
 
         await this.parseFile(source, context);
 
-        Fs.writeFileSync(`build/output/0-initial.txt`, serialize(context.module));
+        Fs.writeFileSync(`build/output/B0-initial.txt`, serialize(context.module));
 
         let id = 1;
         for (const stage of this.compileStages) {
@@ -97,7 +109,7 @@ export class Compiler {
             stage.execute(context);
             console.timeEnd(stage.name);
 
-            Fs.writeFileSync(`build/output/${id}-${stage.name}.txt`, serialize(context.module));
+            Fs.writeFileSync(`build/output/B${id}-${stage.name}.txt`, serialize(context.module));
             id++;
         }
 

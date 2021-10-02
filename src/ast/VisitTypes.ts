@@ -31,7 +31,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             const superTypes = visit.set(node.superTypes, context, state, first);
 
             if (superTypes !== node.superTypes) {
-                node = new Nodes.DeclStruct(node.parent, node.name, node.members, node.superTypes);
+                node = new Nodes.DeclStruct(node.parent, node.name, node.children, node.superTypes);
             }
 
             return next(node, context, state);
@@ -69,6 +69,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
 
         case Tag.Module:
         case Tag.DeclImport:
+        case Tag.ExprArgument:
         case Tag.ExprCall:
         case Tag.ExprCallField:
         case Tag.ExprCallStatic:

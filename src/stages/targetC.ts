@@ -1,6 +1,6 @@
 import { builtin } from '../Builtin';
 import { Flags } from '../common/flags';
-import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context, Decl, Expr } from '../nodes';
+import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context, Decl, Expr, DeclStruct } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -68,8 +68,9 @@ export class TargetC {
                 // Emit body
                 this.pushIndent();
                 this.emit("{");
-                for (let id = 0; id < decl.members.length; id++) {
-                    const child = decl.members[id];
+                const nodes = decl.children.nodes;
+                for (let id = 0; id < nodes.length; id++) {
+                    const child = nodes[id];
                     this.emitNewline();
                     switch (child.tag) {
                         case Tag.DeclVariable: this.emitDecl(context, child, id); break;
@@ -146,16 +147,49 @@ export class TargetC {
                 return;
             }
 
+            case Tag.ExprConstruct: {
+                // Assume that we have either only positional arguments -or- only named arguments
+                if (expr.args[0].tag === Tag.ExprArgument) {
+                    const target = Node.as(Type.resolve(context, expr.target), DeclStruct);
+
+                    // TODO: This is wrong for structures with member functions
+                    const fields = new Array(target.children.nodes.length);
+
+                    // Collect all of the nodes by name
+                    for (const arg of expr.args) {
+                        if (arg.tag !== Tag.ExprArgument) {
+                            throw new Error(`Arguments are expected to all be named or positional.`);
+                        }
+
+                        const id = target.children.names.get(arg.name)?.[0];
+                        if (id === undefined) {
+                            throw new Error(`Expecting field named ${arg.name} in structure ${target.name}`);
+                        }
+
+                        fields[id] = arg.value;
+                    }
+
+                    // Emit nodes in the correct order
+                    this.emit("{");
+                    for (let id = 0; id < fields.length; id++) {
+                        if (id > 0) {
+                            this.emit(", ");
+                        }
+
+                        this.emitExpr(context, fields[id]);
+                    }
+                    this.emit("}");
+                } else {
+                    // Positional arguments
+                    this.emit("{ /* TODO: Emit positional arguments */ }");
+                }
+                return;
+            }
+
             case Tag.ExprDeclaration: {
                 // TODO: Handle declarations properly after we fix the local/global symbol index problem
                 const variable = this.context.variables[expr.member];
                 this.emitDecl(context, variable, expr.member);
-                return;
-            }
-
-            case Tag.ExprConstruct: {
-                // TODO: Implement
-                this.emit("{ /* TODO: Emit code */ }");
                 return;
             }
 

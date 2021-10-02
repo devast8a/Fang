@@ -19,6 +19,7 @@ export type Decl =
     ;
 
 export type Expr =
+    | ExprArgument      // name: expression
     | ExprCall          // <target>(arguments...)           [resolves to ExprCallField, ExprCallStatic]
     | ExprCallField     // object.field(arguments...)
     | ExprCallStatic    // target(arguments...)
@@ -47,7 +48,6 @@ export type Type =
     | TypeRefStatic     // identifier                       [global reference in type context]
     ;
 
-
 export enum Tag {
     Module,
     DeclFunction,
@@ -57,6 +57,7 @@ export enum Tag {
     DeclSymbol,
     DeclTrait,
     DeclVariable,
+    ExprArgument,
     ExprCall,
     ExprCallField,
     ExprCallStatic,
@@ -141,6 +142,11 @@ export class DeclImportSymbol {
     ) {}
 }
 
+export class Children {
+    public nodes = new Array<ExprDeclaration | DeclVariable>();
+    public names = new Map<string, number[]>();
+}
+
 export class DeclStruct {
     public readonly tag = Tag.DeclStruct;
     public static readonly tag = Tag.DeclStruct;
@@ -149,7 +155,7 @@ export class DeclStruct {
         public parent: number,
 
         public name: string,
-        public members: Array<ExprDeclaration | DeclVariable>,
+        public children: Children,
         public superTypes: Set<Type>,
     ) {}
 }
@@ -200,6 +206,17 @@ export enum VariableFlags {
     Local   = 1 << 0,
     Mutates = 1 << 1,
     Owns    = 1 << 2,
+}
+
+/** Named Argument for ExprCall and ExprConstruct */
+export class ExprArgument {
+    public readonly tag = Tag.ExprArgument;
+    public static readonly tag = Tag.ExprArgument;
+
+    public constructor(
+        public name: string,
+        public value: Expr,
+    ) {}
 }
 
 export class ExprCall {
@@ -466,11 +483,16 @@ export namespace Type {
     }
 
     export function resolve(context: Context, type: Type): Decl {
-        throw new Error("Not implemented yet");
-    }
-    
-    export function is(context: Context, type: Type, tag: Tag): boolean {
-        throw new Error("Not implemented yet");
+        switch (type.tag) {
+            case Tag.TypeRefDecl:   return type.declaration;
+            case Tag.TypeRefStatic: return context.resolve(type);
+
+            case Tag.TypeInfer:
+            case Tag.TypeRefName:
+                throw new Error(`Can not resolve '${Tag[type.tag]}', type must be resolved by Type Inference or Name Resolution`);
+        }
+
+        throw new Error(`Can not resolve '${Tag[(type as any).tag]}', not implemented in for Type.resolve`);
     }
 }
 

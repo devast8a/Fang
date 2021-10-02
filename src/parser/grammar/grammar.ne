@@ -262,7 +262,7 @@
     EcTarget        -> Atom
     EcArguments     -> STAR["(", N_, EcArgument, COMMA, ")"]
     EcArgument      -> Expr
-    EcArgument      -> Identifier _ ":" _ Expr
+    EcArgument      -> Identifier _ ":" _ Expr                  {%p.PExprArgument%}
 
     # Contexts
     Stmt            -> ExprCall
@@ -282,9 +282,9 @@
 
     # Required
     EnTarget        -> Atom
-    EnArguments     -> STAR["{", _, EcArgument, COMMA, "}"]
+    EnArguments     -> STAR["{", _, EnArgument, COMMA, "}"]
     EnArgument      -> Expr
-    EnArgument      -> Identifier _ ":" _ Expr
+    EnArgument      -> Identifier _ ":" _ Expr                  {%p.PExprArgument%}
 
     # Contexts
     Atom            -> ExprConstruct

@@ -44,9 +44,10 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         }
 
         case Tag.DeclStruct: {
-            const nodes = node.members;
+            const nodes = node.children.nodes;
 
             for (let id = 0; id < nodes.length; id++) {
+                // Assume that the name doesn't change
                 nodes[id] = first(nodes[id], context.nextId2(Nodes.RootId, id), state);
             }
 
@@ -66,6 +67,16 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
                 if (value !== node.value) {
                     node = new Nodes.DeclVariable(node.parent, node.name, node.type, value, node.flags);
                 }
+            }
+
+            return next(node, context, state);
+        }
+
+        case Tag.ExprArgument: {
+            const value = first(node.value, context, state);
+
+            if (value !== node.value) {
+                node = new Nodes.ExprArgument(node.name, value);
             }
 
             return next(node, context, state);

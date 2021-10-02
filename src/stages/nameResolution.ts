@@ -121,7 +121,7 @@ function declareNode(state: State, node: Node) {
             state.declare(node.name, RootId, state.currentId);
 
             declareNodes(state, Array.from(node.superTypes));
-            declareNodes(state, node.members);
+            declareNodes(state, node.children.nodes);
 
             return;
         }
@@ -139,6 +139,11 @@ function declareNode(state: State, node: Node) {
 
             // Variables are not flattened, and are stored in the enclosing declaration.
             state.declare(node.name, state.parentId, state.currentId);
+            return;
+        }
+
+        case Tag.ExprArgument: {
+            declareNode (state, node.value);
             return;
         }
 
