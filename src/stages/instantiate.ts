@@ -72,6 +72,10 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
         return new DeclVariable(parameter.parent, parameter.name, type, parameter.value, parameter.flags);
     });
 
+    const variables = fn.variables.slice(parameters.length).map((variable) => {
+        return new DeclVariable(variable.parent, variable.name, variable.type, variable.value, variable.flags);
+    })
+
     // Instantiate a new copy of the function
     const returnType = fn.returnType;
     const flags      = Flags.unset(fn.flags, FunctionFlags.Abstract);
@@ -79,7 +83,7 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
 
     // TODO: Repair field lookups etc...
     const concreteFn = new DeclFunction(fn.parent, "", parameters, returnType, body, flags);
-    concreteFn.variables = parameters.concat(fn.variables.slice(parameters.length));
+    concreteFn.variables = parameters.concat(variables);
     const id = context.register(concreteFn);
     concreteFn.name = `${fn.name}_${id}`;
 
@@ -100,5 +104,5 @@ function generateId(context: Context, fn: DeclFunction, args: Expr[]) {
         }
     });
 
-    return `F_${fn.name}_${types.join("_")}`;
+    return fn.name + '$' + types.join("$");
 }
