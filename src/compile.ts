@@ -50,9 +50,9 @@ export class Compiler {
         {name: "Type Check",            execute: wrap(checkType, null)},
         {name: "Lifetime Check",        execute: checkLifetime},
         {name: "Remove Nesting",        execute: transformRemoveNesting},
-        {name: "Mangle Names",          execute: wrap(mangleNames, null)},
         {name: "Mark Abstract Funcs",   execute: wrap(markAbstractFunctions, null)},
         {name: "Instantiate",           execute: wrap(transformInstantiate, new InstantiateState())},
+        {name: "Mangle Names",          execute: wrap(mangleNames, null)},
     ];
 
     public async parseFile(source: string | Source, context: Context): Promise<Node[]>
