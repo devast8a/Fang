@@ -2,7 +2,7 @@
 import { builtin } from '../Builtin';
 import { ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Context, Expr, Node, RootId, Tag } from '../nodes';
+import { Children, Context, Expr, Node, RootId, Tag } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType   = new Nodes.TypeInfer();
@@ -30,7 +30,7 @@ function parseList(context: Context, node: PNode) {
 function parse(context: Context, node: PNode): Expr {
     switch (node.tag) {
         case PTag.DeclClass: {
-            const decl = new Nodes.DeclStruct(context.parentId, "", new Nodes.Children(), new Set());
+            const decl = new Nodes.DeclStruct(context.parentId, "", new Children(), new Set());
 
             const id = context.register(decl);
             const childCtx = context.nextId(id);
@@ -69,25 +69,20 @@ function parse(context: Context, node: PNode): Expr {
         }
 
         case PTag.DeclTrait: {
-            const decl = new Nodes.DeclTrait(context.parentId, "", new Map(), new Set());
+            const decl = new Nodes.DeclTrait(context.parentId, "", new Children(), new Set());
 
             const id = context.register(decl);
-            const childContext = context.nextId(id);
+            const childCtx = context.nextId(id);
 
             // keyword
             decl.name = parseIdentifier(node.data[1]);
             decl.superTypes = new Set(node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3])));
             // generic
             // attributes
-            const body = parseList(childContext, node.data[5][1]);
+            // members
 
-            // Generate member mapping
-            for (const member of body) {
-                if (member.tag === Tag.ExprDeclaration) {
-                    const child = context.resolveGlobal(member.member);
-                    decl.members.set(child.name, member.member);
-                }
-            }
+            // TODO: Fix DeclVariable, it is currently inconsistent with the rest of the declarations as it registers itself to parent (See parseVariable)
+            parseList(childCtx, node.data[5][1]) as Array<Nodes.ExprDeclaration | Nodes.DeclVariable>;
 
             return new Nodes.ExprDeclaration(RootId, id);
         }
@@ -264,6 +259,7 @@ function parseVariable(node: PNode, context: Context) {
             return {variable, id};
         }
 
+        case Tag.DeclTrait:
         case Tag.DeclStruct: {
             const children = context.parent.children;
 

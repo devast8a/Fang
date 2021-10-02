@@ -48,14 +48,21 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
 
             for (let id = 0; id < nodes.length; id++) {
                 // Assume that the name doesn't change
-                nodes[id] = first(nodes[id], context.nextId2(Nodes.RootId, id), state);
+                const childContext = context.nextId2(context.parentId, id);
+                nodes[id] = first(nodes[id], childContext, state);
             }
 
             return next(node, context, state);
         }
 
         case Tag.DeclTrait: {
-            // TODO: Support members
+            const nodes = node.children.nodes;
+
+            for (let id = 0; id < nodes.length; id++) {
+                // Assume that the name doesn't change
+                const childContext = context.nextId2(context.parentId, id);
+                nodes[id] = first(nodes[id], childContext, state);
+            }
 
             return next(node, context, state);
         }

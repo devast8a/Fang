@@ -1,8 +1,26 @@
-class Foo {
-    val bar: u8
+trait Pair {
+    val x: u8
+    val y: u8
 }
 
-fn main() {
-    val foo = Foo{}
-    foo.bar = 100
+class Vec2d {
+    val x: u8
+    val y: u8
+}
+
+class Vec3d {
+    val x: u8
+    val y: u8
+    val z: u8
+}
+
+fn sum(pair: Pair) -> u8 {
+    return pair.x + pair.y
+}
+
+fn main() -> u8 {
+    val v2d = Vec2d{1, 2}
+    val v3d = Vec3d{3, 4, 5}
+
+    return sum(v2d) + sum(v3d)
 }

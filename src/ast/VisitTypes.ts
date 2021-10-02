@@ -41,7 +41,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             const superTypes = visit.set(node.superTypes, context, state, first);
 
             if (superTypes !== node.superTypes) {
-                node = new Nodes.DeclTrait(node.parent, node.name, node.members, node.superTypes);
+                node = new Nodes.DeclTrait(node.parent, node.name, node.children, node.superTypes);
             }
 
             return next(node, context, state);

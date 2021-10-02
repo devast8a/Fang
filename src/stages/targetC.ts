@@ -13,8 +13,6 @@ export class TargetC {
     private context!: DeclFunction;
 
     public emitProgram(context: Context) {
-        // TODO: Forward declare
-
         const nodes = context.module.nodes;
 
         this.emit("#include <stdint.h>\n");
@@ -23,7 +21,53 @@ export class TargetC {
         for (let id = 0; id < nodes.length; id++) {
             const decl = nodes[id];
 
-            this.emitDecl(context, decl, id);
+            if (decl.tag === Tag.DeclStruct) {
+                // TODO: Replace with a proper FFI import system
+                const ignore = ["FS_empty", "FS_bool", "FS_s8", "FS_s16", "FS_s32", "FS_s64", "FS_u8", "FS_u16", "FS_u32", "FS_u64", "FS_str"];
+                if (ignore.indexOf(decl.name) !== -1) {
+                    continue;
+                }
+
+                // C doesn't support nested functions, `transformUnnest` guarantees no nested functions.
+                //  So we can keep track of the current function with a single variable.
+                this.emitNewline();
+                this.emit("struct ", decl.name, ";")
+            }
+        }
+
+        this.emitNewline();
+
+        for (let id = 0; id < nodes.length; id++) {
+            const decl = nodes[id];
+
+            if (decl.tag === Tag.DeclFunction) {
+                // Don't emit abstract functions as they should never participate in code execution anyway. They should
+                // always be instantiated in `transformInstantiate` into a concrete function.
+                if (Flags.has(decl.flags, FunctionFlags.Abstract)) {
+                    continue;
+                }
+
+                // TODO: Replace with a proper FFI import system
+                if (/(infix|postfix|prefix)[^a-zA-Z0-9]/.test(decl.name)) {
+                    continue;
+                }
+
+                // C doesn't support nested functions, `transformUnnest` guarantees no nested functions.
+                //  So we can keep track of the current function with a single variable.
+                this.context = decl;
+
+                const ctx = context.nextId(id);
+
+                this.emitNewline();
+                this.emitTypeName(ctx, decl.returnType);
+                this.emit(" ", decl.name, "(");
+                this.emitParameters(ctx, decl.parameters);
+                this.emit(");");
+            }
+        }
+
+        for (let id = 0; id < nodes.length; id++) {
+            this.emitDecl(context, nodes[id], id);
         }
     }
 
@@ -40,7 +84,7 @@ export class TargetC {
                     return;
                 }
 
-                // HACK: Replace with a proper FFI import system
+                // TODO: Replace with a proper FFI import system
                 if (/(infix|postfix|prefix)[^a-zA-Z0-9]/.test(decl.name)) {
                     return;
                 }
@@ -61,9 +105,14 @@ export class TargetC {
             }
 
             case Tag.DeclStruct: {
-                // TODO: Implement
+                // TODO: Replace with a proper FFI import system
+                const ignore = ["FS_empty", "FS_bool", "FS_s8", "FS_s16", "FS_s32", "FS_s64", "FS_u8", "FS_u16", "FS_u32", "FS_u64", "FS_str"];
+                if (ignore.indexOf(decl.name) !== -1) {
+                    break;
+                }
+
                 this.emitSeparator();
-                this.emit         ("typedef struct ");
+                this.emit         ("struct ", decl.name);
 
                 // Emit body
                 this.pushIndent();
@@ -83,18 +132,13 @@ export class TargetC {
                 this.emitNewline();
                 this.emit("}");
 
-                this.emit         (" ", decl.name, ";");
+                this.emit         (";");
 
                 return;
             }
 
             case Tag.DeclTrait: {
                 // TODO: Implement
-                this.emitSeparator();
-                this.emit         ("typedef struct ");
-                this.emit         ("{ /* TODO: Emit code */ }")
-                this.emit         (" ", decl.name, ";");
-
                 return;
             }
 
@@ -181,7 +225,15 @@ export class TargetC {
                     this.emit("}");
                 } else {
                     // Positional arguments
-                    this.emit("{ /* TODO: Emit positional arguments */ }");
+                    this.emit("{");
+                    for (let id = 0; id < expr.args.length; id++) {
+                        if (id > 0) {
+                            this.emit(", ");
+                        }
+
+                        this.emitExpr(context, expr.args[id]);
+                    }
+                    this.emit("}");
                 }
                 return;
             }
@@ -265,7 +317,7 @@ export class TargetC {
         }
 
         switch (type.tag) {
-            case Tag.DeclStruct:    this.emit(type.name); return;
+            case Tag.DeclStruct:    this.emit("struct ", type.name); return;
             case Tag.DeclTrait:     this.emit(type.name); return;
 
             case Tag.TypeRefDecl:   this.emit(type.declaration.name); return;

@@ -181,7 +181,7 @@ export class DeclTrait {
         public parent: number,
 
         public name: string,
-        public members: Map<string, Global>,
+        public children: Children,
         public superTypes: Set<Type>,
     ) {}
 }

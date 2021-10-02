@@ -129,7 +129,9 @@ function declareNode(state: State, node: Node) {
         case Tag.DeclTrait: {
             state.declare(node.name, RootId, state.currentId);
 
-            // TODO: Support members
+            declareNodes(state, Array.from(node.superTypes));
+            declareNodes(state, node.children.nodes);
+
             return;
         }
 
