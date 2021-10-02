@@ -137,7 +137,11 @@ export class Compiler {
 function serialize(node: Node) {
     function convert(this: any, key: string, value: any) {
         if (typeof(value) === 'object' && value !== null && value.constructor === Map) {
-            return Array.from(value);
+            const object: any = {};
+            for (const [k, v] of value) {
+                object[k] = v;
+            }
+            return object;
         }
 
         if (key === "tag" && typeof(value) === 'number') {
@@ -153,7 +157,7 @@ function serialize(node: Node) {
             }
         }
 
-        if (value instanceof DeclImportSymbol) {
+        if (value instanceof DeclImport) {
             return {
                 name: value.name,
                 parent: value.parent,
