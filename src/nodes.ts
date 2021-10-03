@@ -19,7 +19,7 @@ export type Decl =
     ;
 
 export type Expr =
-    | ExprArgument      // name: expression
+    | ExprNamedArgument      // name: expression
     | ExprCall          // <target>(arguments...)           [resolves to ExprCallField, ExprCallStatic]
     | ExprCallField     // object.field(arguments...)
     | ExprCallStatic    // target(arguments...)
@@ -57,7 +57,7 @@ export enum Tag {
     DeclSymbol,
     DeclTrait,
     DeclVariable,
-    ExprArgument,
+    ExprNamedArgument,
     ExprCall,
     ExprCallField,
     ExprCallStatic,
@@ -208,10 +208,9 @@ export enum VariableFlags {
     Owns    = 1 << 2,
 }
 
-/** Named Argument for ExprCall and ExprConstruct */
-export class ExprArgument {
-    public readonly tag = Tag.ExprArgument;
-    public static readonly tag = Tag.ExprArgument;
+export class ExprNamedArgument {
+    public readonly tag = Tag.ExprNamedArgument;
+    public static readonly tag = Tag.ExprNamedArgument;
 
     public constructor(
         public name: string,

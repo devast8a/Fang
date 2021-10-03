@@ -193,7 +193,7 @@ export class TargetC {
 
             case Tag.ExprConstruct: {
                 // Assume that we have either only positional arguments -or- only named arguments
-                if (expr.args[0].tag === Tag.ExprArgument) {
+                if (expr.args[0].tag === Tag.ExprNamedArgument) {
                     const target = Node.as(Type.resolve(context, expr.target), DeclStruct);
 
                     // TODO: This is wrong for structures with member functions
@@ -201,7 +201,7 @@ export class TargetC {
 
                     // Collect all of the nodes by name
                     for (const arg of expr.args) {
-                        if (arg.tag !== Tag.ExprArgument) {
+                        if (arg.tag !== Tag.ExprNamedArgument) {
                             throw new Error(`Arguments are expected to all be named or positional.`);
                         }
 

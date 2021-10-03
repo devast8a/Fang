@@ -148,7 +148,7 @@ function parse(context: Context, node: PNode): Expr {
             const name  = parseIdentifier(node.data[0]);
             const value = parse(context, node.data[4]);
 
-            return new Nodes.ExprArgument(name, value);
+            return new Nodes.ExprNamedArgument(name, value);
         }
 
         case PTag.ExprBinary: {

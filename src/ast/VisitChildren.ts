@@ -79,11 +79,11 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             return next(node, context, state);
         }
 
-        case Tag.ExprArgument: {
+        case Tag.ExprNamedArgument: {
             const value = first(node.value, context, state);
 
             if (value !== node.value) {
-                node = new Nodes.ExprArgument(node.name, value);
+                node = new Nodes.ExprNamedArgument(node.name, value);
             }
 
             return next(node, context, state);

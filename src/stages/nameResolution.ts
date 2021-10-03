@@ -144,7 +144,7 @@ function declareNode(state: State, node: Node) {
             return;
         }
 
-        case Tag.ExprArgument: {
+        case Tag.ExprNamedArgument: {
             declareNode (state, node.value);
             return;
         }
