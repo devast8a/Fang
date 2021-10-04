@@ -7,17 +7,16 @@ export function inferType(context: Context) {
             case Tag.DeclFunction: {
                 node.returnType = (node.returnType.tag === Tag.TypeInfer ? builtin.references.empty : node.returnType);
 
-                for (const variable of node.variables) {
-                    // TODO: Redesign variable storage to avoid null check
-                    if (variable === null) {
+                for (const child of node.children.decls) {
+                    if (child.tag !== Tag.DeclVariable) {
                         continue;
                     }
 
-                    if (variable.type.tag === Tag.TypeInfer) {
-                        if (variable.value === null) {
+                    if (child.type.tag === Tag.TypeInfer) {
+                        if (child.value === null) {
                             throw new Error();
                         } else {
-                            variable.type = Expr.getReturnType(context, variable.value);
+                            child.type = Expr.getReturnType(context, child.value);
                         }
                     }
                 }

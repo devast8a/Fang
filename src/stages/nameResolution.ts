@@ -99,7 +99,7 @@ function declareNode(state: State, node: Node) {
             const childState = state.createChildState();
 
             for (let id = 0; id < node.parameters; id++) {
-                declareNode(childState.changeCurrentId(id), node.variables[id]);
+                declareNode(childState.changeCurrentId(id), node.children.decls[id]);
             }
             declareNode (childState, node.returnType);
             declareNodes(childState, node.body);

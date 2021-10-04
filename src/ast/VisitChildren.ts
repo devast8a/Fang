@@ -24,13 +24,13 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         }
 
         case Tag.DeclFunction: {
-            const child = context.nextId(context.currentId);
+            const childContext = context.nextId(context.currentId);
 
-            const variables = visit.array(node.variables, child, state, first);
-            const body = visit.array(node.body, child, state, first);
+            const children = visit.children(node.children, childContext, state, first);
+            const body = visit.array(node.body, childContext, state, first);
 
-            if (variables !== node.variables || body !== node.body) {
-                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, node.returnType, body, node.expressions, variables, node.flags);
+            if (children !== node.children || body !== node.body) {
+                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, node.returnType, body, children, node.flags);
             }
 
             return next(node, context, state);
@@ -41,24 +41,24 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         }
 
         case Tag.DeclStruct: {
-            const nodes = node.children.decls;
+            const childContext = context.nextId(context.currentId);
 
-            for (let id = 0; id < nodes.length; id++) {
-                // Assume that the name doesn't change
-                const childContext = context.nextId2(context.parentId, id);
-                nodes[id] = first(nodes[id], childContext, state);
+            const children = visit.children(node.children, childContext, state, first);
+
+            if (children !== node.children) {
+                node = new Nodes.DeclStruct(node.parent, node.name, children, node.superTypes);
             }
 
             return next(node, context, state);
         }
 
         case Tag.DeclTrait: {
-            const nodes = node.children.decls;
+            const childContext = context.nextId(context.currentId);
 
-            for (let id = 0; id < nodes.length; id++) {
-                // Assume that the name doesn't change
-                const childContext = context.nextId2(context.parentId, id);
-                nodes[id] = first(nodes[id], childContext, state);
+            const children = visit.children(node.children, childContext, state, first);
+
+            if (children !== node.children) {
+                node = new Nodes.DeclTrait(node.parent, node.name, children, node.superTypes);
             }
 
             return next(node, context, state);
@@ -139,7 +139,9 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
                 const result = first(decl, context, state);
 
                 if (result !== decl) {
-                    Node.as(context.parent, DeclFunction).variables[node.member] = result;
+                    // Update variables
+                    throw new Error('Not implemented');
+                    // Node.as(context.parent, DeclFunction).variables[node.member] = result;
                 }
             }
 

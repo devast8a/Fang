@@ -47,6 +47,13 @@ function reserveExprId(context: Context) {
     return id;
 }
 
+function assignExpr(context: Context, id: number, expr: Expr) {
+    const exprs = context.container.exprs;
+    exprs[id] = expr;
+
+    return expr;
+}
+
 function reserveMemberId(context: Context) {
     const decls = context.container.decls;
     
@@ -68,10 +75,6 @@ function assignMember(context: Context, id: number, decl: Decl) {
     container.decls[id] = decl as any;
 
     return new Nodes.ExprDeclaration(Nodes.UnresolvedId, context.containerId, id);
-}
-
-function assignExpr(context: Context, id: number, expr: Expr) {
-    return expr;
 }
 
 class Context {
@@ -126,9 +129,7 @@ function parse(
             const returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
             const body = parseBody(children, parent, node.data[7]);
 
-            const variables = children.container.decls as Nodes.DeclVariable[];
-
-            const decl = new Nodes.DeclFunction(context.containerId, name, parameters.length, returnType, body, [], variables, Nodes.FunctionFlags.None);
+            const decl = new Nodes.DeclFunction(context.containerId, name, parameters.length, returnType, body, children.container, Nodes.FunctionFlags.None);
 
             return assignDecl(context, id, decl);
         }

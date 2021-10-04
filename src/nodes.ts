@@ -107,11 +107,14 @@ export class DeclFunction {
 
         // Children
         public body: Array<Expr>,
-        public expressions: Array<Expr>,
-        public variables: Array<DeclVariable>,
+        public children: Children,
 
         public flags: FunctionFlags,
-    ) {}
+    ) { }
+    
+    public getParameters() {
+        return this.children.decls.slice(0, this.parameters) as DeclVariable[];
+    }
 }
 
 export enum FunctionFlags {
@@ -591,33 +594,51 @@ export class Context<T extends Decl = Decl> {
     }
 
     public resolveGlobal<T extends NodeConstructor<Decl>>(ref: Global, type?: T): InstanceType<T> {
-        if (typeof(ref) !== 'number') {
-            throw new Error();
-        }
-
-        return check(this.module.nodes[ref as number], type);
+        return check(this.module.nodes[ref], type);
     }
 
     public resolveLocal<T extends NodeConstructor<Decl>>(ref: Local, type?: T): InstanceType<T> {
-        if (typeof(ref) !== 'number') {
-            throw new Error();
-        }
+        const decl = this.parent;
 
-        return check(Node.as(this.parent, DeclFunction).variables[ref], type);
+        switch (decl.tag) {
+            case Tag.DeclFunction:
+            case Tag.DeclStruct:
+            case Tag.DeclTrait: {
+                const member = (decl as DeclFunction | DeclStruct | DeclTrait).children.decls[ref];
+
+                if (member.tag === Tag.ExprDeclaration) {
+                    return this.resolve(member, type);
+                } else {
+                    return check(member, type);
+                }
+            }
+                
+            default: throw new Error('Not implemented');
+        }
     }
 
     public resolve<T extends NodeConstructor<Decl>>(ref: ExprRefStatic | TypeRefStatic | ExprDeclaration, type?: T): InstanceType<T> {
+        // Global reference
         if (ref.declaration === -1) {
-            return check(this.module.nodes[ref.member as number], type);
+            return check(this.module.nodes[ref.member], type);
         }
 
-        const declaration = this.module.nodes[ref.declaration as number];
-        const member = ref.member as number;
+        const decl = this.module.nodes[ref.declaration];
 
-        switch (declaration.tag) {
-            case Tag.DeclFunction:  return check(declaration.variables[member], type);
-            //case Tag.DeclImport:    return check(declaration.references[member], type);
-            default: throw new Error(`Not implemented for ${Tag[declaration.tag]}`);
+        switch (decl.tag) {
+            case Tag.DeclFunction:
+            case Tag.DeclStruct:
+            case Tag.DeclTrait: {
+                const member = decl.children.decls[ref.member];
+
+                if (member.tag === Tag.ExprDeclaration) {
+                    return this.resolve(member, type);
+                } else {
+                    return check(member, type);
+                }
+            }
+                
+            default: throw new Error('Not implemented');
         }
     }
 

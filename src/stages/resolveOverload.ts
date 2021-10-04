@@ -12,7 +12,7 @@ export const resolveOverload = createVisitor(VisitChildren, (node, context) => {
             }
 
             // Resolve and check?
-            let candidates = target.nodes.map(id => {return {id: id as number, function: context.resolveGlobal(id, DeclFunction)}});
+            let candidates = target.nodes.map(id => {return {id: id, function: context.resolveGlobal(id, DeclFunction)}});
             candidates = candidates.filter(candidate =>
                 isCandidateOverload(context, node.args, candidate.function),
             );
@@ -29,7 +29,7 @@ export const resolveOverload = createVisitor(VisitChildren, (node, context) => {
 });
 
 function isCandidateOverload(context: Context, args: Expr[], candidate: DeclFunction) {
-    const params = candidate.variables.slice(0, candidate.parameters);
+    const params = candidate.getParameters();
     
     // TODO[dev]: Support variadic functions
     if (args.length !== params.length) {

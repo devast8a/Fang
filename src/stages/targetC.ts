@@ -61,7 +61,7 @@ export class TargetC {
                 this.emitNewline();
                 this.emitTypeName(ctx, decl.returnType);
                 this.emit(" ", decl.name, "(");
-                this.emitParameters(ctx, decl.variables.slice(0, decl.parameters));
+                this.emitParameters(ctx, decl.children.decls.slice(0, decl.parameters) as DeclVariable[]);
                 this.emit(");");
             }
         }
@@ -98,7 +98,7 @@ export class TargetC {
                 this.emitSeparator ();
                 this.emitTypeName  (ctx, decl.returnType);
                 this.emit          (" ", decl.name, "(");
-                this.emitParameters(ctx, decl.variables.slice(0, decl.parameters));
+                this.emitParameters(ctx, decl.children.decls.slice(0, decl.parameters) as DeclVariable[]);
                 this.emit          (")");
                 this.emitBody      (ctx, decl.body);
                 return;
@@ -178,7 +178,7 @@ export class TargetC {
 
                     default: {
                         this.emit         (target.name, "(");
-                        this.emitArguments(target.variables.slice(0, target.parameters), expr.args);
+                        this.emitArguments(target.children.decls.slice(0, target.parameters) as DeclVariable[], expr.args);
                         this.emit         (")");
                         return;
                     }
@@ -240,7 +240,7 @@ export class TargetC {
 
             case Tag.ExprDeclaration: {
                 // TODO: Handle declarations properly after we fix the local/global symbol index problem
-                const variable = this.context.variables[expr.member];
+                const variable = this.context.children.decls[expr.member] as DeclVariable;
                 this.emitDecl(context, variable, expr.member);
                 return;
             }
@@ -252,7 +252,7 @@ export class TargetC {
             }
 
             case Tag.ExprGetLocal: {
-                this.emit    (this.context.variables[expr.local as number].name);
+                this.emit    ((this.context.children.decls[expr.local] as DeclVariable).name);
                 return;
             }
 
@@ -264,7 +264,7 @@ export class TargetC {
             }
 
             case Tag.ExprSetLocal: {
-                this.emit    (this.context.variables[expr.local as number].name, " = ");
+                this.emit    ((this.context.children.decls[expr.local] as DeclVariable).name, ' = ');
                 this.emitExpr(context, expr.value);
                 return;
             }
@@ -345,7 +345,7 @@ export class TargetC {
                 }
 
                 case Tag.ExprGetLocal: {
-                    const local = this.context.variables[arg.local as number];
+                    const local = this.context.children.decls[arg.local] as DeclVariable;
 
                     // TODO: argumentIsPtr is wrong for locals, needs a parameter flag
                     // TODO: Switch to pointers for large objects

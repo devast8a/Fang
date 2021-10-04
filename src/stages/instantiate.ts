@@ -64,9 +64,9 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
     }
 
     // Rewrite parameters
-    const variables = fn.variables.map((variable, index) => {
-        // TODO: Redesign variable storage to avoid null check
-        if (variable === null) {
+    const decls = fn.children.decls.map((variable, index) => {
+        // TODO: Copy the declaration
+        if (variable.tag !== Tag.DeclVariable) {
             return variable;
         }
         
@@ -77,17 +77,21 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
         return new DeclVariable(variable.parent, variable.name, type, variable.value, variable.flags);
     });
 
+    // TODO: Map over decls properly
+    const children = new Nodes.Children();
+    children.decls = decls;
+
     // Instantiate a new copy of the function
     const returnType = fn.returnType;
     const flags      = Flags.unset(fn.flags, FunctionFlags.Abstract);
     const body       = fn.body; 
 
     // TODO: Repair field lookups etc...
-    const id = context.module.nodes.length;
-    const concreteFn = new DeclFunction(fn.parent, fn.name + id, fn.parameters, returnType, body, [], variables, flags);
-    context.register(concreteFn);
 
-    // TODO: Simplify invocations like this.
+    // TODO: Simplify assigning nodes.
+    const id = context.module.nodes.length;
+    const concreteFn = new DeclFunction(fn.parent, fn.name + id, fn.parameters, returnType, body, children, flags);
+    context.register(concreteFn);
     context.module.nodes[id] = transformInstantiate(concreteFn, context.nextId2(Nodes.RootId, id), state);
 
     state.set(memoizeKey, id);

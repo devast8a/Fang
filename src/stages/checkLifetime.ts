@@ -88,23 +88,23 @@ function analyzeNode(context: Context, expr: Expr, state: ProgramState) {
 
         case Tag.ExprDeclaration: {
             // TODO: Handle declarations properly after we fix the local/global symbol index problem
-            const variable = Node.as(context.parent, DeclFunction).variables[expr.member];
+            //const variable = Node.as(context.parent, DeclFunction).variables[expr.member];
 
-            if (variable.value !== null) {
-                analyzeNode(context, variable.value, state);
-                state.assign(expr.member);
+            //if (variable.value !== null) {
+            //    analyzeNode(context, variable.value, state);
+            //    state.assign(expr.member);
 
-                // TODO: Handle references in a better way
-                // TODO: Fix support for references
-                // if (
-                //     node.value.tag === Tag.ExprConstruct &&
-                //     node.value.target.tag === Tag.DeclStruct &&
-                //     node.value.target.name === "Ref" &&
-                //     node.value.args[0].tag === Tag.ExprGetLocal
-                // ) {
-                //     state.ref(node.id, node.value.args[0].local);
-                // }
-            }
+            //    // TODO: Handle references in a better way
+            //    // TODO: Fix support for references
+            //    // if (
+            //    //     node.value.tag === Tag.ExprConstruct &&
+            //    //     node.value.target.tag === Tag.DeclStruct &&
+            //    //     node.value.target.name === "Ref" &&
+            //    //     node.value.args[0].tag === Tag.ExprGetLocal
+            //    // ) {
+            //    //     state.ref(node.id, node.value.args[0].local);
+            //    // }
+            //}
             return;
         }
 
@@ -451,8 +451,9 @@ function exprToPath(context: Context, expr: Node): Path {
 }
 
 function pathToName(path: Path, fn: DeclFunction) {
+    // TODO: Fix implementation
     if (typeof(path) === 'number') {
-        return fn.variables[path].name;
+        return "TEMPORARY";
     }
 
     return path;

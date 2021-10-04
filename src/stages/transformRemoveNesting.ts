@@ -103,17 +103,17 @@ function flattenMany(context: Context<DeclFunction>, output: Expr[], exprs: Expr
 
 function extract(context: Context<DeclFunction>, output: Expr[], value: Expr): Expr {
     const fn = context.parent;
-    const id = fn.variables.length;
+    const id = fn.children.decls.length;
 
     const variable = new DeclVariable(
         context.parentId,
-        `FZ_${fn.variables.length}`,
+        `FZ_${id}`,
         Expr.getReturnType(context, value),
         value,
         VariableFlags.Local,
     );
-    fn.variables.push(variable);
-    output.push(new ExprDeclaration(UnresolvedId, context.parentId, fn.variables.length - 1));
+    fn.children.decls.push(variable);
+    output.push(new ExprDeclaration(UnresolvedId, context.parentId, id));
 
     return new ExprGetLocal(UnresolvedId, id);
 }
