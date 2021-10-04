@@ -98,8 +98,8 @@ function declareNode(state: State, node: Node) {
             state.declare(node.name, RootId, state.currentId);
             const childState = state.createChildState();
 
-            for (let id = 0; id < node.parameters.length; id++) {
-                declareNode(childState.changeCurrentId(id), node.parameters[id]);
+            for (let id = 0; id < node.parameters; id++) {
+                declareNode(childState.changeCurrentId(id), node.variables[id]);
             }
             declareNode (childState, node.returnType);
             declareNodes(childState, node.body);
@@ -121,7 +121,7 @@ function declareNode(state: State, node: Node) {
             state.declare(node.name, RootId, state.currentId);
 
             declareNodes(state, Array.from(node.superTypes));
-            declareNodes(state, node.children.nodes);
+            declareNodes(state, node.children.decls);
 
             return;
         }
@@ -130,7 +130,7 @@ function declareNode(state: State, node: Node) {
             state.declare(node.name, RootId, state.currentId);
 
             declareNodes(state, Array.from(node.superTypes));
-            declareNodes(state, node.children.nodes);
+            declareNodes(state, node.children.decls);
 
             return;
         }

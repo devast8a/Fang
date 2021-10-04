@@ -2,7 +2,7 @@
 import { builtin } from '../Builtin';
 import { ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Children, Decl, Expr, Module, Node, RootId, Tag } from '../nodes';
+import { Children, Decl, Expr, Module, Node, RootId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType   = new Nodes.TypeInfer();
@@ -40,18 +40,18 @@ function assignDecl(context: Context, id: number, decl: Decl) {
 }
 
 function reserveExprId(context: Context) {
-    const nodes = context.container.nodes;
+    const exprs = context.container.exprs;
 
-    const id = nodes.length;
-    nodes.push(null as any);
+    const id = exprs.length;
+    exprs.push(null as any);
     return id;
 }
 
 function reserveMemberId(context: Context) {
-    const nodes = context.container.nodes;
+    const decls = context.container.decls;
     
-    const id = nodes.length;
-    nodes.push(null as any);
+    const id = decls.length;
+    decls.push(null as any);
     return id;
 }
 
@@ -65,7 +65,7 @@ function assignMember(context: Context, id: number, decl: Decl) {
     }
 
     mapping.push(id);
-    container.nodes[id] = decl as any;
+    container.decls[id] = decl as any;
 
     return new Nodes.ExprDeclaration(Nodes.UnresolvedId, context.containerId, id);
 }
@@ -120,14 +120,15 @@ function parse(
                 // const value = parameter.data[5] === null ? null  : parse(context, id, parameter.data[5][3]);
 
                 const decl = new Nodes.DeclVariable(children.containerId, name, type, null, flags);
-                children.container.nodes.push(decl);
+                children.container.decls.push(decl);
                 return decl;
             });
             const returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
             const body = parseBody(children, parent, node.data[7]);
 
-            const decl = new Nodes.DeclFunction(context.containerId, name, parameters, returnType, body, Nodes.FunctionFlags.None);
-            decl.variables = children.container.nodes as Nodes.DeclVariable[];
+            const variables = children.container.decls as Nodes.DeclVariable[];
+
+            const decl = new Nodes.DeclFunction(context.containerId, name, parameters.length, returnType, body, [], variables, Nodes.FunctionFlags.None);
 
             return assignDecl(context, id, decl);
         }

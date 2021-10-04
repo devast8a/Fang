@@ -96,15 +96,20 @@ export class DeclFunction {
     public readonly tag = Tag.DeclFunction;
     public static readonly tag = Tag.DeclFunction;
 
-    public variables = new Array<DeclVariable>();
-
     public constructor(
         public parent: number,
 
         public name: string,
-        public parameters: Array<DeclVariable>,
+
+        // Signature
+        public parameters: number,
         public returnType: Type,
+
+        // Children
         public body: Array<Expr>,
+        public expressions: Array<Expr>,
+        public variables: Array<DeclVariable>,
+
         public flags: FunctionFlags,
     ) {}
 }
@@ -143,8 +148,9 @@ export class DeclImportSymbol {
 }
 
 export class Children {
-    public nodes = new Array<ExprDeclaration | DeclVariable>();
-    public names = new Map<string, number[]>();
+    public decls = new Array<ExprDeclaration | DeclVariable>();
+    public exprs = new Array<Expr>();
+    public names = new Map<string, Array<number>>();
 }
 
 export class DeclStruct {

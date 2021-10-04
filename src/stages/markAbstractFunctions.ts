@@ -6,7 +6,7 @@ import { Context, FunctionFlags, Tag, Type } from '../nodes';
 export const markAbstractFunctions = createVisitor(VisitDecls, (node, context) => {
     // TODO: Don't mutate function
     if (node.tag === Tag.DeclFunction) {
-        if (node.parameters.some(parameter => isAbstractType(context, parameter.type))) {
+        if (node.variables.slice(0, node.parameters).some(parameter => isAbstractType(context, parameter.type))) {
             node.flags = Flags.set(node.flags, FunctionFlags.Abstract);
         }
     }

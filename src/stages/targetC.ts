@@ -61,7 +61,7 @@ export class TargetC {
                 this.emitNewline();
                 this.emitTypeName(ctx, decl.returnType);
                 this.emit(" ", decl.name, "(");
-                this.emitParameters(ctx, decl.parameters);
+                this.emitParameters(ctx, decl.variables.slice(0, decl.parameters));
                 this.emit(");");
             }
         }
@@ -98,7 +98,7 @@ export class TargetC {
                 this.emitSeparator ();
                 this.emitTypeName  (ctx, decl.returnType);
                 this.emit          (" ", decl.name, "(");
-                this.emitParameters(ctx, decl.parameters);
+                this.emitParameters(ctx, decl.variables.slice(0, decl.parameters));
                 this.emit          (")");
                 this.emitBody      (ctx, decl.body);
                 return;
@@ -117,7 +117,7 @@ export class TargetC {
                 // Emit body
                 this.pushIndent();
                 this.emit("{");
-                const nodes = decl.children.nodes;
+                const nodes = decl.children.decls;
                 for (let id = 0; id < nodes.length; id++) {
                     const child = nodes[id];
                     this.emitNewline();
@@ -178,7 +178,7 @@ export class TargetC {
 
                     default: {
                         this.emit         (target.name, "(");
-                        this.emitArguments(target.parameters, expr.args);
+                        this.emitArguments(target.variables.slice(0, target.parameters), expr.args);
                         this.emit         (")");
                         return;
                     }
@@ -197,7 +197,7 @@ export class TargetC {
                     const target = Node.as(Type.resolve(context, expr.target), DeclStruct);
 
                     // TODO: This is wrong for structures with member functions
-                    const fields = new Array(target.children.nodes.length);
+                    const fields = new Array(target.children.decls.length);
 
                     // Collect all of the nodes by name
                     for (const arg of expr.args) {

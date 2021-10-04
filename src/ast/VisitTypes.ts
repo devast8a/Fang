@@ -18,10 +18,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             const returnType = first(node.returnType, child, state);
 
             if (returnType !== node.returnType) {
-                // TODO: Move DeclFunction.variables into the constructor of DeclFunction
-                const old = node;
-                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, returnType, node.body, node.flags);
-                node.variables = old.variables;
+                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, returnType, node.body, node.expressions, node.variables, node.flags);
             }
 
             return next(node, context, state);

@@ -29,7 +29,7 @@ export const resolveOverload = createVisitor(VisitChildren, (node, context) => {
 });
 
 function isCandidateOverload(context: Context, args: Expr[], candidate: DeclFunction) {
-    const params = candidate.parameters;
+    const params = candidate.variables.slice(0, candidate.parameters);
     
     // TODO[dev]: Support variadic functions
     if (args.length !== params.length) {

@@ -26,14 +26,11 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         case Tag.DeclFunction: {
             const child = context.nextId(context.currentId);
 
-            const parameters = visit.array(node.parameters, child, state, first);
+            const variables = visit.array(node.variables, child, state, first);
             const body = visit.array(node.body, child, state, first);
 
-            if (parameters !== node.parameters || body !== node.body) {
-                // TODO: Move DeclFunction.variables into the constructor of DeclFunction
-                const old = node;
-                node = new Nodes.DeclFunction(node.parent, node.name, parameters as Nodes.DeclVariable[], node.returnType, body, node.flags);
-                node.variables = old.variables;
+            if (variables !== node.variables || body !== node.body) {
+                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, node.returnType, body, node.expressions, variables, node.flags);
             }
 
             return next(node, context, state);
@@ -44,7 +41,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         }
 
         case Tag.DeclStruct: {
-            const nodes = node.children.nodes;
+            const nodes = node.children.decls;
 
             for (let id = 0; id < nodes.length; id++) {
                 // Assume that the name doesn't change
@@ -56,7 +53,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
         }
 
         case Tag.DeclTrait: {
-            const nodes = node.children.nodes;
+            const nodes = node.children.decls;
 
             for (let id = 0; id < nodes.length; id++) {
                 // Assume that the name doesn't change

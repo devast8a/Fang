@@ -39,9 +39,9 @@ export function checkLifetime(context: Context) {
         if (decl.tag === Tag.DeclFunction) {
             const state = program.copyState();
 
-            for (let i = 0; i < decl.parameters.length; i++) {
-                state.assign(i);
-            }
+            //for (let i = 0; i < decl.parameters.length; i++) {
+            //    state.assign(i);
+            //}
 
             analyzeNodes(context.nextId(id), decl.body, state);
             // console.log(expr.name + ": " + format(fnState, expr));
@@ -77,7 +77,7 @@ function analyzeNode(context: Context, expr: Expr, state: ProgramState) {
             }
 
             analyzeNodes(context, expr.args, state);
-            handleArgs(context, new GroupedAccess(), target.parameters, expr.args, state);
+            //handleArgs(context, new GroupedAccess(), target.parameters, expr.args, state);
             return;
         }
 

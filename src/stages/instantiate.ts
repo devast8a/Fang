@@ -64,22 +64,18 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
     }
 
     // Rewrite parameters
-    const parameters = fn.parameters.map((parameter, index) => {
-        const type = isAbstractType(context, parameter.type) ?
-            Expr.getReturnType(context, args[index]) :
-            parameter.type
-
-        return new DeclVariable(parameter.parent, parameter.name, type, parameter.value, parameter.flags);
-    });
-
-    const variables = fn.variables.slice(parameters.length).map((variable) => {
+    const variables = fn.variables.map((variable, index) => {
         // TODO: Redesign variable storage to avoid null check
         if (variable === null) {
             return variable;
         }
+        
+        const type = index < fn.parameters && isAbstractType(context, variable.type) ?
+            Expr.getReturnType(context, args[index]) :
+            variable.type;
 
-        return new DeclVariable(variable.parent, variable.name, variable.type, variable.value, variable.flags);
-    })
+        return new DeclVariable(variable.parent, variable.name, type, variable.value, variable.flags);
+    });
 
     // Instantiate a new copy of the function
     const returnType = fn.returnType;
@@ -87,10 +83,9 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
     const body       = fn.body; 
 
     // TODO: Repair field lookups etc...
-    const concreteFn = new DeclFunction(fn.parent, "", parameters, returnType, body, flags);
-    concreteFn.variables = parameters.concat(variables);
-    const id = context.register(concreteFn);
-    concreteFn.name = `${fn.name}_${id}`;
+    const id = context.module.nodes.length;
+    const concreteFn = new DeclFunction(fn.parent, fn.name + id, fn.parameters, returnType, body, [], variables, flags);
+    context.register(concreteFn);
 
     // TODO: Simplify invocations like this.
     context.module.nodes[id] = transformInstantiate(concreteFn, context.nextId2(Nodes.RootId, id), state);
