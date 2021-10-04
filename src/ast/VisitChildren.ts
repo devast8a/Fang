@@ -83,7 +83,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const value = first(node.value, context, state);
 
             if (value !== node.value) {
-                node = new Nodes.ExprNamedArgument(node.name, value);
+                node = new Nodes.ExprNamedArgument(node.parent, node.name, value);
             }
 
             return next(node, context, state);
@@ -94,7 +94,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const args = visit.array(node.args, context, state, first);
 
             if (target !== node.target || args !== node.args) {
-                node = new Nodes.ExprCall(target, args);
+                node = new Nodes.ExprCall(node.parent, target, args);
             }
 
             return next(node, context, state);
@@ -104,7 +104,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const args = visit.array(node.args, context, state, first);
 
             if (args !== node.args) {
-                node = new Nodes.ExprCallStatic(node.target, args);
+                node = new Nodes.ExprCallStatic(node.parent, node.target, args);
             }
 
             return next(node, context, state);
@@ -115,7 +115,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const args = visit.array(node.args, context, state, first);
 
             if (object !== node.object || args !== node.args) {
-                node = new Nodes.ExprCallField(node.object, node.field, args);
+                node = new Nodes.ExprCallField(node.parent, node.object, node.field, args);
             }
 
             return next(node, context, state);
@@ -129,7 +129,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const args = visit.array(node.args, context, state, first);
 
             if (args !== node.args) {
-                node = new Nodes.ExprConstruct(node.target, args);
+                node = new Nodes.ExprConstruct(node.parent, node.target, args);
             }
 
             return next(node, context, state);
@@ -153,7 +153,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const object = first(node.object, context, state);
 
             if (object !== node.object) {
-                node = new Nodes.ExprGetField(object, node.field);
+                node = new Nodes.ExprGetField(node.parent, object, node.field);
             }
 
             return next(node, context, state);
@@ -176,7 +176,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const value = first(node.value, context, state);
 
             if (object !== node.object || value !== node.value) {
-                node = new Nodes.ExprSetField(object, node.field, value);
+                node = new Nodes.ExprSetField(node.parent, object, node.field, value);
             }
 
             return next(node, context, state);
@@ -186,7 +186,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const value = first(node.value, context, state);
 
             if (value !== node.value) {
-                node = new Nodes.ExprSetLocal(node.local, value);
+                node = new Nodes.ExprSetLocal(node.parent, node.local, value);
             }
 
             return next(node, context, state);
@@ -197,7 +197,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const elseBranch = visit.array(node.elseBranch, context, state, first);
 
             if (branches !== node.branches || elseBranch !== node.elseBranch) {
-                node = new Nodes.ExprIf(branches as Nodes.ExprIfBranch[], elseBranch);
+                node = new Nodes.ExprIf(node.parent, branches as Nodes.ExprIfBranch[], elseBranch);
             }
 
             return next(node, context, state);
@@ -208,7 +208,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const body = visit.array(node.body, context, state, first);
 
             if (condition !== node.condition || body !== node.body) {
-                node = new Nodes.ExprIfBranch(condition, body);
+                node = new Nodes.ExprIfBranch(node.parent, condition, body);
             }
 
             return next(node, context, state);
@@ -219,7 +219,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const body = visit.array(node.body, context, state, first);
 
             if (condition !== node.condition || body !== node.body) {
-                node = new Nodes.ExprWhile(condition, body);
+                node = new Nodes.ExprWhile(node.parent, condition, body);
             }
 
             return next(node, context, state);
@@ -230,7 +230,7 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
                 const expression = first(node.expression, context, state);
 
                 if (expression !== node.expression) {
-                    node = new Nodes.ExprReturn(expression);
+                    node = new Nodes.ExprReturn(node.parent, expression);
                 }
             }
 

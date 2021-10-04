@@ -277,7 +277,7 @@ const resolve = createVisitor<State>(VisitChildren, VisitTypes, (node, context, 
 
         case Tag.ExprRefName: {
             const ref = state.lookup(node, node.name);
-            return new Nodes.ExprRefStatic(ref.declaration, ref.member);
+            return new Nodes.ExprRefStatic(node.parent, ref.declaration, ref.member);
         }
 
         case Tag.TypeRefName: {

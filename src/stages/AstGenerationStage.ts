@@ -36,7 +36,7 @@ function reserveDeclId(context: Context) {
 function assignDecl(context: Context, id: number, decl: Decl) {
     context.module.nodes[id] = decl;
 
-    return new Nodes.ExprDeclaration(RootId, id);
+    return new Nodes.ExprDeclaration(Nodes.UnresolvedId, RootId, id);
 }
 
 function reserveExprId(context: Context) {
@@ -67,7 +67,7 @@ function assignMember(context: Context, id: number, decl: Decl) {
     mapping.push(id);
     container.nodes[id] = decl as any;
 
-    return new Nodes.ExprDeclaration(context.containerId, id);
+    return new Nodes.ExprDeclaration(Nodes.UnresolvedId, context.containerId, id);
 }
 
 function assignExpr(context: Context, id: number, expr: Expr) {
@@ -166,7 +166,7 @@ function parse(
             const condition = parse(context, id, node.data[2][3]);
             const body      = parseBody(context, id, node.data[3])
 
-            return new Nodes.ExprWhile(condition, body as any);
+            return new Nodes.ExprWhile(parent, condition, body as any);
         }
 
         case PTag.StmtReturn: {
@@ -175,12 +175,12 @@ function parse(
             // keyword value
             const value = node.data[1] === null ? null : parse(context, id, node.data[1][1]);
 
-            const expr = new Nodes.ExprReturn(value);
+            const expr = new Nodes.ExprReturn(parent, value);
             return assignExpr(context, id, expr);
         }
 
         case PTag.LiteralIntegerDec: {
-            return new Nodes.ExprConstant(builtin.references.u64, parseInt(node.data[0].value));
+            return new Nodes.ExprConstant(parent, builtin.references.u64, parseInt(node.data[0].value));
         }
 
         case PTag.PExprArgument: {
@@ -190,7 +190,7 @@ function parse(
             const name  = parseIdentifier(node.data[0]);
             const value = parse(context, id, node.data[4]);
 
-            const expr = new Nodes.ExprNamedArgument(name, value);
+            const expr = new Nodes.ExprNamedArgument(parent, name, value);
             return assignExpr(context, id, expr);
         }
 
@@ -204,9 +204,9 @@ function parse(
                     const symbol = node.data[1][0].value;
                     const right = parse(context, id, node.data[2]);
 
-                    const name = new Nodes.ExprRefName(`infix${symbol}`);
+                    const name = new Nodes.ExprRefName(parent, `infix${symbol}`);
 
-                    const expr = new Nodes.ExprCall(name, [left, right]);
+                    const expr = new Nodes.ExprCall(parent, name, [left, right]);
                     return assignExpr(context, id, expr);
                 }
 
@@ -218,9 +218,9 @@ function parse(
                     const symbol = node.data[2][0].value;
                     const right = parse(context, id, node.data[4]);
 
-                    const name = new Nodes.ExprRefName(`infix${symbol}`);
+                    const name = new Nodes.ExprRefName(parent, `infix${symbol}`);
 
-                    const expr = new Nodes.ExprCall(name, [left, right]);
+                    const expr = new Nodes.ExprCall(parent, name, [left, right]);
                     return assignExpr(context, id, expr);
                 }
 
@@ -237,7 +237,7 @@ function parse(
             const target    = parseType(node.data[0]);
             const args      = node.data[2].elements.map((expr) => parse(context, id, expr));
 
-            const expr = new Nodes.ExprConstruct(target, args);
+            const expr = new Nodes.ExprConstruct(parent, target, args);
             return assignExpr(context, id, expr);
         }
 
@@ -247,7 +247,7 @@ function parse(
             // identifier
             const name = parseIdentifier(node.data[0]);
 
-            const expr = new Nodes.ExprRefName(name);
+            const expr = new Nodes.ExprRefName(parent, name);
             return assignExpr(context, id, expr);
         }
 
@@ -258,7 +258,7 @@ function parse(
             const target = parse(context, id, node.data[0]);
             const name   = parseIdentifier(node.data[2]);
 
-            const expr = new Nodes.ExprGetField(target, name);
+            const expr = new Nodes.ExprGetField(parent, target, name);
             return assignExpr(context, id, expr);
         }
 
@@ -269,7 +269,7 @@ function parse(
             const target = parse(context, id, node.data[0]);
             const args   = node.data[2].elements.map((expr) => parse(context, id, expr));
 
-            const expr = new Nodes.ExprCall(target, args);
+            const expr = new Nodes.ExprCall(parent, target, args);
             return assignExpr(context, id, expr);
         }
 
@@ -280,7 +280,7 @@ function parse(
             const target = parseIdentifier(node.data[0]);
             const arg    = parse(context, id, node.data[2][1]);
 
-            const expr = new Nodes.ExprMacroCall(target, [arg]);
+            const expr = new Nodes.ExprMacroCall(parent, target, [arg]);
             return assignExpr(context, id, expr);
         }
     }
@@ -295,7 +295,7 @@ function parseBody(context: Context, parent: number, ast: PNode): Expr[] {
     } else {
         // whitespace "=>" whitespace expression
         const expression = parse(context, parent, ast[4]);
-        return [new Nodes.ExprReturn(expression)];
+        return [new Nodes.ExprReturn(parent, expression)];
     }
 }
 

@@ -47,7 +47,7 @@ export const transformInstantiate = createVisitor<InstantiateState>(FilterAbstra
 
             const id = instantiate(context, state, target, node.args);
 
-            return new Nodes.ExprCallStatic(id, node.args);
+            return new Nodes.ExprCallStatic(node.parent, id, node.args);
         }
     }
 

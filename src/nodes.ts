@@ -213,6 +213,7 @@ export class ExprNamedArgument {
     public static readonly tag = Tag.ExprNamedArgument;
 
     public constructor(
+        public parent: ExprId,
         public name: string,
         public value: Expr,
     ) {}
@@ -223,6 +224,7 @@ export class ExprCall {
     public static readonly tag = Tag.ExprCall;
 
     public constructor(
+        public parent: ExprId,
         public target: Expr,
         public args: Array<Expr>,
     ) {}
@@ -233,6 +235,7 @@ export class ExprCallField {
     public static readonly tag = Tag.ExprCallField;
 
     public constructor(
+        public parent: ExprId,
         public object: Expr,
         public field: Field,
         public args: Array<Expr>,
@@ -244,6 +247,7 @@ export class ExprCallStatic {
     public static readonly tag = Tag.ExprCallStatic;
 
     public constructor(
+        public parent: ExprId,
         public target: Global,
         public args: Array<Expr>,
     ) {}
@@ -254,6 +258,7 @@ export class ExprConstruct {
     public static readonly tag = Tag.ExprConstruct;
 
     public constructor(
+        public parent: ExprId,
         public target: Type,
         public args: Array<Expr>,
     ) {}
@@ -264,6 +269,7 @@ export class ExprConstant {
     public static readonly tag = Tag.ExprConstant;
 
     public constructor(
+        public parent: ExprId,
         public type: Type,
         public value: any,
     ) {}
@@ -274,6 +280,7 @@ export class ExprDeclaration {
     public static readonly tag = Tag.ExprDeclaration;
 
     public constructor(
+        public parent: ExprId,
         public declaration: number,
         public member: number,
     ) {}
@@ -284,6 +291,7 @@ export class ExprGetField {
     public static readonly tag = Tag.ExprGetField;
 
     public constructor(
+        public parent: ExprId,
         public object: Expr,
         public field: Field,
     ) {}
@@ -294,6 +302,7 @@ export class ExprGetLocal {
     public static readonly tag = Tag.ExprGetLocal;
     
     public constructor(
+        public parent: ExprId,
         public local: Local,
     ) {}
 }
@@ -303,6 +312,7 @@ export class ExprMacroCall {
     public static readonly tag = Tag.ExprMacroCall;
 
     public constructor(
+        public parent: ExprId,
         public target: string,
         public args: Expr[],
     ) {}
@@ -313,6 +323,7 @@ export class ExprSetField {
     public static readonly tag = Tag.ExprSetField;
 
     public constructor(
+        public parent: ExprId,
         public object: Expr,
         public field: Field,
         public value: Expr,
@@ -324,6 +335,7 @@ export class ExprSetLocal {
     public static readonly tag = Tag.ExprSetLocal;
 
     public constructor(
+        public parent: ExprId,
         public local: Local,
         public value: Expr,
     ) {}
@@ -334,6 +346,7 @@ export class ExprDestroyField {
     public static readonly tag = Tag.ExprDestroyField;
 
     public constructor(
+        public parent: ExprId,
         public object: Expr,
         public field: Field,
     ) {}
@@ -344,6 +357,7 @@ export class ExprDestroyLocal {
     public static readonly tag = Tag.ExprDestroyLocal;
 
     public constructor(
+        public parent: ExprId,
         public local: Local,
     ) {}
 }
@@ -353,6 +367,7 @@ export class ExprIf {
     public static readonly tag = Tag.ExprIf;
 
     public constructor(
+        public parent: ExprId,
         public branches: Array<ExprIfBranch>,
         public elseBranch: Array<Expr>,
     ) {}
@@ -363,6 +378,7 @@ export class ExprIfBranch {
     public static readonly tag = Tag.ExprIfBranch;
 
     public constructor(
+        public parent: ExprId,
         public condition: Expr,
         public body: Array<Expr>,
     ) {}
@@ -373,6 +389,7 @@ export class ExprRefStatic {
     public static readonly tag = Tag.ExprRefStatic;
 
     public constructor(
+        public parent: ExprId,
         public declaration: Global,
         public member: Global,
     ) {}
@@ -383,6 +400,7 @@ export class ExprRefName {
     public static readonly tag = Tag.ExprRefName;
 
     public constructor(
+        public parent: ExprId,
         public name: string,
     ) {}
 }
@@ -392,6 +410,7 @@ export class ExprReturn {
     public static readonly tag = Tag.ExprReturn;
 
     public constructor(
+        public parent: ExprId,
         public expression: Expr | null,
     ) {}
 }
@@ -401,6 +420,7 @@ export class ExprWhile {
     public static readonly tag = Tag.ExprWhile;
 
     public constructor(
+        public parent: ExprId,
         public condition: Expr,
         public body: Array<Expr>
     ) {}
@@ -447,6 +467,7 @@ export class TypeRefName {
 type Global = number;
 type Field  = string | number;
 type Local  = number;
+type ExprId  = number;
 
 export type NodeConstructor<T extends Node = Node> = Constructor<T> & {tag: Tag};
 

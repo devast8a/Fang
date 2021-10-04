@@ -1,4 +1,4 @@
-import { Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, Context, Expr, ExprDeclaration } from '../nodes';
+import { Tag, DeclFunction, DeclVariable, VariableFlags, ExprGetLocal, Context, Expr, ExprDeclaration, UnresolvedId } from '../nodes';
 
 export function transformRemoveNesting(context: Context) {
     const nodes = context.module.nodes;
@@ -113,7 +113,7 @@ function extract(context: Context<DeclFunction>, output: Expr[], value: Expr): E
         VariableFlags.Local,
     );
     fn.variables.push(variable);
-    output.push(new ExprDeclaration(context.parentId, fn.variables.length - 1));
+    output.push(new ExprDeclaration(UnresolvedId, context.parentId, fn.variables.length - 1));
 
-    return new ExprGetLocal(id);
+    return new ExprGetLocal(UnresolvedId, id);
 }

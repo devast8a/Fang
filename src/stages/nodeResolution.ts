@@ -10,12 +10,12 @@ export const resolveNodes = createVisitor(VisitChildren, (node, context) => {
 
             switch (target.tag) {
                 case Tag.ExprGetLocal:
-                    return new Nodes.ExprCallStatic(target.local, node.args);
+                    return new Nodes.ExprCallStatic(Nodes.UnresolvedId, target.local, node.args);
 
                 case Tag.ExprGetField:
                     // Or we could translate this into a flat call?
                     // TODO: Do proper name lookup here
-                    return new Nodes.ExprCallField(target.object, target.field as any, node.args);
+                    return new Nodes.ExprCallField(Nodes.UnresolvedId, target.object, target.field as any, node.args);
 
                 default:
                     throw new Error(`resolveNodes > ExprCall > ${Tag[target.tag]} not supported`);
@@ -25,7 +25,7 @@ export const resolveNodes = createVisitor(VisitChildren, (node, context) => {
 
         case Tag.ExprRefStatic: {
             // TODO: Fix references - ExprRefStatic assumes everything refers to a local that this fixes
-            return new Nodes.ExprGetLocal(node.member);
+            return new Nodes.ExprGetLocal(Nodes.UnresolvedId, node.member);
         }
     }
 

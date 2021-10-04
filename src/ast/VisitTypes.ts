@@ -61,7 +61,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             const target = first(node.target, context, state);
 
             if (target !== node.target) {
-                node = new Nodes.ExprConstruct(node.target, node.args);
+                node = new Nodes.ExprConstruct(node.parent, node.target, node.args);
             }
 
             return next(node, context, state);
