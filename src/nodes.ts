@@ -156,7 +156,7 @@ export class DeclStruct {
 
         public name: string,
         public children: Children,
-        public superTypes: Set<Type>,
+        public superTypes: Type[],
     ) {}
 }
 
@@ -182,7 +182,7 @@ export class DeclTrait {
 
         public name: string,
         public children: Children,
-        public superTypes: Set<Type>,
+        public superTypes: Type[],
     ) {}
 }
 

@@ -8,6 +8,11 @@ export function inferType(context: Context) {
                 node.returnType = (node.returnType.tag === Tag.TypeInfer ? builtin.references.empty : node.returnType);
 
                 for (const variable of node.variables) {
+                    // TODO: Redesign variable storage to avoid null check
+                    if (variable === null) {
+                        continue;
+                    }
+
                     if (variable.type.tag === Tag.TypeInfer) {
                         if (variable.value === null) {
                             throw new Error();

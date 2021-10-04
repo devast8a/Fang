@@ -73,6 +73,11 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
     });
 
     const variables = fn.variables.slice(parameters.length).map((variable) => {
+        // TODO: Redesign variable storage to avoid null check
+        if (variable === null) {
+            return variable;
+        }
+
         return new DeclVariable(variable.parent, variable.name, variable.type, variable.value, variable.flags);
     })
 

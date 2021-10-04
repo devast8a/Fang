@@ -28,7 +28,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
         }
 
         case Tag.DeclStruct: {
-            const superTypes = visit.set(node.superTypes, context, state, first);
+            const superTypes = visit.array(node.superTypes, context, state, first);
 
             if (superTypes !== node.superTypes) {
                 node = new Nodes.DeclStruct(node.parent, node.name, node.children, node.superTypes);
@@ -38,7 +38,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
         }
 
         case Tag.DeclTrait: {
-            const superTypes = visit.set(node.superTypes, context, state, first);
+            const superTypes = visit.array(node.superTypes, context, state, first);
 
             if (superTypes !== node.superTypes) {
                 node = new Nodes.DeclTrait(node.parent, node.name, node.children, node.superTypes);

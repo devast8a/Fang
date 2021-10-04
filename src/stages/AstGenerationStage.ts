@@ -2,7 +2,7 @@
 import { builtin } from '../Builtin';
 import { ParseContext, ParseStage } from '../compile';
 import * as Nodes from '../nodes';
-import { Children, Context, Expr, Node, RootId, Tag } from '../nodes';
+import { Children, Decl, Expr, Module, Node, RootId, Tag } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType   = new Nodes.TypeInfer();
@@ -15,128 +15,168 @@ export class AstGenerationStage implements ParseStage {
 
         const output = [];
 
+        const ctx = new Context(context.module, RootId, new Children());
+
         for (const node of nodes) {
-            output.push(parse(context, node));
+            output.push(parse(ctx, RootId, node));
         }
 
         return output;
     }
 }
 
-function parseList(context: Context, node: PNode) {
-    return node.elements.map(node => parse(context, node));
+function reserveDeclId(context: Context) {
+    const nodes = context.module.nodes;
+
+    const id = nodes.length;
+    nodes.push(null as any);
+    return id;
 }
 
-function parse(context: Context, node: PNode): Expr {
+function assignDecl(context: Context, id: number, decl: Decl) {
+    context.module.nodes[id] = decl;
+
+    return new Nodes.ExprDeclaration(RootId, id);
+}
+
+function reserveExprId(context: Context) {
+    const nodes = context.container.nodes;
+
+    const id = nodes.length;
+    nodes.push(null as any);
+    return id;
+}
+
+function reserveMemberId(context: Context) {
+    const nodes = context.container.nodes;
+    
+    const id = nodes.length;
+    nodes.push(null as any);
+    return id;
+}
+
+function assignMember(context: Context, id: number, decl: Decl) {
+    const container = context.container;
+
+    let mapping = container.names.get(decl.name);
+    if (mapping === undefined) {
+        mapping = [];
+        container.names.set(decl.name, mapping);
+    }
+
+    mapping.push(id);
+    container.nodes[id] = decl as any;
+
+    return new Nodes.ExprDeclaration(context.containerId, id);
+}
+
+function assignExpr(context: Context, id: number, expr: Expr) {
+    return expr;
+}
+
+class Context {
+    constructor(
+        readonly module: Module,
+        readonly containerId: number,
+        readonly container: Children,
+    ) { }
+    
+    createChildContext(container: number) {
+        return new Context(this.module, container, new Children());
+    }
+}
+
+function parse(
+    context: Context,
+    parent: number,
+    node: PNode
+): Expr {
     switch (node.tag) {
         case PTag.DeclClass: {
-            const decl = new Nodes.DeclStruct(context.parentId, "", new Children(), new Set());
+            const id = reserveDeclId(context);
+            const children = context.createChildContext(id);
 
-            const id = context.register(decl);
-            const childCtx = context.nextId(id);
+            // keyword name superTypes generic attributes body
+            const name = parseIdentifier(node.data[1]);
+            const superTypes = node.data[2]?.map(x => parseType(x[3]));
+            // TODO: Use output
+            const body = parseBody(children, parent, node.data[5]);
 
-            // keyword
-            decl.name = parseIdentifier(node.data[1]);
-            decl.superTypes = new Set(node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3])));
-            // generic
-            // attributes
-            // members
-
-            // TODO: Fix DeclVariable, it is currently inconsistent with the rest of the declarations as it registers itself to parent (See parseVariable)
-            parseList(childCtx, node.data[5][1]) as Array<Nodes.ExprDeclaration | Nodes.DeclVariable>;
-
-            return new Nodes.ExprDeclaration(RootId, id);
+            const decl = new Nodes.DeclStruct(context.containerId, name, children.container, superTypes);
+            return assignDecl(context, id, decl);
         }
 
         case PTag.DeclFunction: {
-            const decl = new Nodes.DeclFunction(context.parentId, "", [], InferType, [], Nodes.FunctionFlags.None);
+            const id = reserveDeclId(context);
+            const children = context.createChildContext(id);
 
-            const id = context.register(decl);
-            const childContext = context.nextId(id);
+            // keyword name compileTime parameters returnType generic attributes body
+            const name = parseIdentifier(node.data[1][1]);
+            const parameters = node.data[3].elements.map(parameter => {
+                // keyword name compileTime type attribute lifetime value
+                const flags = convertVariableKeyword(parameter.data[0]?.[0]?.value);
+                const name  = parseIdentifier(parameter.data[1]);
+                const type  = parameter.data[3] === null ? InferType : parseType(parameter.data[3][3]);
+                // const value = parameter.data[5] === null ? null  : parse(context, id, parameter.data[5][3]);
 
-            // keyword
-            decl.name = parseIdentifier(node.data[1][1]);
-            // compileTime
-            decl.parameters = node.data[3].elements.map(variable => parseVariable(variable, childContext).variable);
-            decl.returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
-            // generic
-            // attributes
-            decl.body = (node.data[7].length === 2) ?
-                parseList(childContext, node.data[7][1]) :
-                [new Nodes.ExprReturn(parse(childContext, node.data[7][4]))];
+                const decl = new Nodes.DeclVariable(children.containerId, name, type, null, flags);
+                children.container.nodes.push(decl);
+                return decl;
+            });
+            const returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
+            const body = parseBody(children, parent, node.data[7]);
 
-            return new Nodes.ExprDeclaration(RootId, id);
+            const decl = new Nodes.DeclFunction(context.containerId, name, parameters, returnType, body, Nodes.FunctionFlags.None);
+            decl.variables = children.container.nodes as Nodes.DeclVariable[];
+
+            return assignDecl(context, id, decl);
         }
 
         case PTag.DeclTrait: {
-            const decl = new Nodes.DeclTrait(context.parentId, "", new Children(), new Set());
+            const id = reserveDeclId(context);
+            const children = context.createChildContext(id);
 
-            const id = context.register(decl);
-            const childCtx = context.nextId(id);
+            // keyword name superTypes generic attributes body
+            const name = parseIdentifier(node.data[1]);
+            const superTypes = node.data[2]?.map(x => parseType(x[3]));
+            // TODO: Use output
+            const body = parseBody(children, parent, node.data[5]);
 
-            // keyword
-            decl.name = parseIdentifier(node.data[1]);
-            decl.superTypes = new Set(node.data[2] === null ? [] : node.data[2].map(x => parseType(x[3])));
-            // generic
-            // attributes
-            // members
-
-            // TODO: Fix DeclVariable, it is currently inconsistent with the rest of the declarations as it registers itself to parent (See parseVariable)
-            parseList(childCtx, node.data[5][1]) as Array<Nodes.ExprDeclaration | Nodes.DeclVariable>;
-
-            return new Nodes.ExprDeclaration(RootId, id);
+            const decl = new Nodes.DeclTrait(context.containerId, name, children.container, superTypes);
+            return assignDecl(context, id, decl);
         }
 
         case PTag.DeclVariable: {
-            // TODO: Support globals / fields / etc...
-            // Currently context.parent isn't setup correctly, so we don't know what type our parent is.
-            //  This matters because locals are stored with the function (ie. DeclFunction.locals) and fields/globals
-            //  are stored with module (ie. DeclModule.nodes). This may change in the future.
-            const variable = parseVariable(node, context);
-            return new Nodes.ExprDeclaration(context.parentId, variable.id);
-        }
+            const id = reserveMemberId(context);
 
-        case PTag.StmtIf: {
-            // TODO: Finish implementing if
-            // keyword
-            const condition = parse(context, node.data[1][2]);
-            const body      = parseList(context, node.data[2]);
-            // branches
-            const elseBranch = node.data[4] === null ?
-                [] :
-                parseList(context, node.data[4][1]);
+            // keyword name compileTime type attribute value
+            const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
+            const name  = parseIdentifier(node.data[1]);
+            const type  = node.data[3] === null ? InferType : parseType(node.data[3][3]);
+            const value = node.data[5] === null ? null  : parse(context, Nodes.UnresolvedId, node.data[5][3]);
 
-            // TODO: Resolve
-            const firstBranch = new Nodes.ExprIfBranch(condition, body as any);
-            
-            return new Nodes.ExprIf([firstBranch], elseBranch as any);
+            const decl = new Nodes.DeclVariable(context.containerId, name, type, value, flags);
+            return assignMember(context, id, decl);
         }
 
         case PTag.StmtWhile: {
-            // keyword
-            // compileTime
-            const condition = parse(context, node.data[2][3]);
-            const body      = parseList(context, node.data[3]);
+            const id = reserveExprId(context);
+
+            // keyword compileTime condition body
+            const condition = parse(context, id, node.data[2][3]);
+            const body      = parseBody(context, id, node.data[3])
 
             return new Nodes.ExprWhile(condition, body as any);
         }
 
-        case PTag.StmtAssign: {
-            // Target Operator Value
-            const value     = parse(context, node.data[2]);
-
-            switch (node.data[0].tag) {
-                // case PTag.ExprIdentifier: return new Nodes.ExprSetLocal(parseIdentifier(node.data[0].data[0]), value);
-                case PTag.ExprIndexDot:   return new Nodes.ExprSetField(parse(context, node.data[0].data[0]), parseIdentifier(node.data[0].data[2]), value);
-                default: throw new Error("Unreachable");
-            }
-        }
-
         case PTag.StmtReturn: {
-            // keyword
-            const value = node.data[1] === null ? null : parse(context, node.data[1][1]);
+            const id = reserveExprId(context);
 
-            return new Nodes.ExprReturn(value);
+            // keyword value
+            const value = node.data[1] === null ? null : parse(context, id, node.data[1][1]);
+
+            const expr = new Nodes.ExprReturn(value);
+            return assignExpr(context, id, expr);
         }
 
         case PTag.LiteralIntegerDec: {
@@ -144,29 +184,44 @@ function parse(context: Context, node: PNode): Expr {
         }
 
         case PTag.PExprArgument: {
+            const id = reserveExprId(context);
+
             // name whitespace operator whitespace value
             const name  = parseIdentifier(node.data[0]);
-            const value = parse(context, node.data[4]);
+            const value = parse(context, id, node.data[4]);
 
-            return new Nodes.ExprNamedArgument(name, value);
+            const expr = new Nodes.ExprNamedArgument(name, value);
+            return assignExpr(context, id, expr);
         }
 
         case PTag.ExprBinary: {
             switch (node.data.length) {
-                case 5: {
-                    const symbol = node.data[2][0].value;
-                    return new Nodes.ExprCall(new Nodes.ExprRefName(`infix${symbol}`), [
-                        parse(context, node.data[0]),
-                        parse(context, node.data[4]),
-                    ]);
+                case 3: {
+                    const id = reserveExprId(context);
+
+                    // expression operator expression
+                    const left = parse(context, id, node.data[0]);
+                    const symbol = node.data[1][0].value;
+                    const right = parse(context, id, node.data[2]);
+
+                    const name = new Nodes.ExprRefName(`infix${symbol}`);
+
+                    const expr = new Nodes.ExprCall(name, [left, right]);
+                    return assignExpr(context, id, expr);
                 }
 
-                case 3: {
-                    const symbol = node.data[1][0].value;
-                    return new Nodes.ExprCall(new Nodes.ExprRefName(`infix${symbol}`), [
-                        parse(context, node.data[0]),
-                        parse(context, node.data[2]),
-                    ]);
+                case 5: {
+                    const id = reserveExprId(context);
+
+                    // expression whitespace operator whitespace expression
+                    const left = parse(context, id, node.data[0]);
+                    const symbol = node.data[2][0].value;
+                    const right = parse(context, id, node.data[4]);
+
+                    const name = new Nodes.ExprRefName(`infix${symbol}`);
+
+                    const expr = new Nodes.ExprCall(name, [left, right]);
+                    return assignExpr(context, id, expr);
                 }
 
                 default: {
@@ -176,47 +231,72 @@ function parse(context: Context, node: PNode): Expr {
         }
 
         case PTag.ExprConstruct: {
-            const target    = parseType(node.data[0]);
-            // compileTime
-            const args      = node.data[2].elements.map((expr) => parse(context, expr));
+            const id = reserveExprId(context);
 
-            return new Nodes.ExprConstruct(target, args);
+            // target compileTime arguments
+            const target    = parseType(node.data[0]);
+            const args      = node.data[2].elements.map((expr) => parse(context, id, expr));
+
+            const expr = new Nodes.ExprConstruct(target, args);
+            return assignExpr(context, id, expr);
         }
 
         case PTag.ExprIdentifier: {
+            const id = reserveExprId(context);
+
+            // identifier
             const name = parseIdentifier(node.data[0]);
 
-            switch (name) {
-                // case "true":  return builtin.true;
-                // case "false": return builtin.false;
-                default:      return new Nodes.ExprRefName(name);
-            }
+            const expr = new Nodes.ExprRefName(name);
+            return assignExpr(context, id, expr);
         }
 
         case PTag.ExprIndexDot: {
-            const target = parse(context, node.data[0]);
+            const id = reserveExprId(context);
+
+            // target operator name
+            const target = parse(context, id, node.data[0]);
             const name   = parseIdentifier(node.data[2]);
 
-            return new Nodes.ExprGetField(target, name);
+            const expr = new Nodes.ExprGetField(target, name);
+            return assignExpr(context, id, expr);
         }
 
         case PTag.ExprCall: {
-            const target = parse(context, node.data[0]);
-            // compileTime
-            const args   = node.data[2].elements.map((expr) => parse(context, expr));
+            const id = reserveExprId(context);
 
-            return new Nodes.ExprCall(target, args);
+            // target compileTime args
+            const target = parse(context, id, node.data[0]);
+            const args   = node.data[2].elements.map((expr) => parse(context, id, expr));
+
+            const expr = new Nodes.ExprCall(target, args);
+            return assignExpr(context, id, expr);
         }
 
         case PTag.ExprMacroCall: {
+            const id = reserveExprId(context);
+            
+            // target compileTime argument
             const target = parseIdentifier(node.data[0]);
-            const expr   = parse(context, node.data[2][1]);
+            const arg    = parse(context, id, node.data[2][1]);
 
-            return new Nodes.ExprMacroCall(target, [expr]);
+            const expr = new Nodes.ExprMacroCall(target, [arg]);
+            return assignExpr(context, id, expr);
         }
     }
 
     throw new Error(`parseExpr: No case for '${PTag[node.tag]}'`)
+}
+
+function parseBody(context: Context, parent: number, ast: PNode): Expr[] {
+    if (ast.length === 2) {
+        // whitespace body
+        return ast[1].elements.map(node => parse(context, parent, node));
+    } else {
+        // whitespace "=>" whitespace expression
+        const expression = parse(context, parent, ast[4]);
+        return [new Nodes.ExprReturn(expression)];
+    }
 }
 
 function parseType(node: PNode): Nodes.Type {
@@ -237,47 +317,6 @@ function convertVariableKeyword(keyword: string | undefined) {
         case "own":     return Nodes.VariableFlags.Local | Nodes.VariableFlags.Owns;
         case undefined: return Nodes.VariableFlags.Local;
         default: throw new Error("Unreachable");
-    }
-}
-
-function parseVariable(node: PNode, context: Context) {
-    const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
-    const name  = parseIdentifier(node.data[1]);
-    // compileTime
-    const type  = node.data[3] === null ? InferType : parseType(node.data[3][3]);
-    // attributes
-    const value = node.data[5] === null ? null  : parse(context, node.data[5][3]);
-
-    const variable = new Nodes.DeclVariable(context.parentId, name, type, value, flags);
-
-    // TODO: Unify declaration in parent
-    switch (context.parent.tag) {
-        case Tag.DeclFunction: {
-            const id = context.parent.variables.length;
-            context.parent.variables.push(variable);
-
-            return {variable, id};
-        }
-
-        case Tag.DeclTrait:
-        case Tag.DeclStruct: {
-            const children = context.parent.children;
-
-            const id = children.nodes.length;
-            children.nodes.push(variable);
-
-            let nameMapping = children.names.get(name);
-            if (nameMapping === undefined) {
-                nameMapping = [];
-                children.names.set(name, nameMapping);
-            }
-
-            nameMapping.push(id);
-
-            return {variable, id};
-        }
-
-        default: throw new Error('Not supported');
     }
 }
 
