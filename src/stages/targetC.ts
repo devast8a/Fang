@@ -1,6 +1,6 @@
 import { builtin } from '../Builtin';
 import { Flags } from '../common/flags';
-import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context, Decl, Expr, DeclStruct } from '../nodes';
+import { Node, Tag, Type, DeclVariable, DeclFunction, VariableFlags, FunctionFlags, Context, Decl, Expr, DeclStruct, Children } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -100,7 +100,7 @@ export class TargetC {
                 this.emit          (" ", decl.name, "(");
                 this.emitParameters(ctx, decl.children.decls.slice(0, decl.parameters) as DeclVariable[]);
                 this.emit          (")");
-                this.emitBody      (ctx, decl.body);
+                this.emitBody      (ctx, decl.children);
                 return;
             }
 
@@ -278,7 +278,7 @@ export class TargetC {
                 this.emit    ("if (");
                 this.emitExpr(context, expr.branches[0].condition);
                 this.emit    (")");
-                this.emitBody(context, expr.branches[0].body);
+                //this.emitBody(context, expr.branches[0].body);
                 // TODO: Support else if / else
                 return;
             }
@@ -401,12 +401,14 @@ export class TargetC {
         }
     }
 
-    public emitBody(context: Context, nodes: Expr[]) {
+    public emitBody(context: Context, children: Children) {
+        const exprs = children.exprs;
+
         this.pushIndent();
         this.emit("{");
-        for (const child of nodes) {
+        for (const child of children.body) {
             this.emitNewline();
-            this.emitExpr   (context, child);
+            this.emitExpr   (context, exprs[child]);
             this.emit       (";");
         }
         this.popIndent();

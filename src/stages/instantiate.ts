@@ -84,13 +84,12 @@ function instantiate(context: Context, state: InstantiateState, fn: DeclFunction
     // Instantiate a new copy of the function
     const returnType = fn.returnType;
     const flags      = Flags.unset(fn.flags, FunctionFlags.Abstract);
-    const body       = fn.body; 
 
     // TODO: Repair field lookups etc...
 
     // TODO: Simplify assigning nodes.
     const id = context.module.nodes.length;
-    const concreteFn = new DeclFunction(fn.parent, fn.name + id, fn.parameters, returnType, body, children, flags);
+    const concreteFn = new DeclFunction(fn.parent, fn.name + id, fn.parameters, returnType, children, flags);
     context.register(concreteFn);
     context.module.nodes[id] = transformInstantiate(concreteFn, context.nextId2(Nodes.RootId, id), state);
 

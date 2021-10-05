@@ -106,7 +106,6 @@ export class DeclFunction {
         public returnType: Type,
 
         // Children
-        public body: Array<Expr>,
         public children: Children,
 
         public flags: FunctionFlags,
@@ -154,6 +153,7 @@ export class Children {
     public decls = new Array<ExprDeclaration | DeclVariable>();
     public exprs = new Array<Expr>();
     public names = new Map<string, Array<number>>();
+    public body  = new Array<number>();
 }
 
 export class DeclStruct {

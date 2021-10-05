@@ -18,7 +18,7 @@ export function VisitTypes<State>(node: Node, context: Context, state: State, co
             const returnType = first(node.returnType, child, state);
 
             if (returnType !== node.returnType) {
-                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, returnType, node.body, node.children, node.flags);
+                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, returnType, node.children, node.flags);
             }
 
             return next(node, context, state);

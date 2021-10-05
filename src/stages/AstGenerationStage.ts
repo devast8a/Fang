@@ -18,7 +18,7 @@ export class AstGenerationStage implements ParseStage {
         const ctx = new Context(context.module, RootId, new Children());
 
         for (const node of nodes) {
-            output.push(parse(ctx, RootId, node));
+            output.push(lookup(ctx, parse(ctx, RootId, node)));
         }
 
         return output;
@@ -36,7 +36,13 @@ function reserveDeclId(context: Context) {
 function assignDecl(context: Context, id: number, decl: Decl) {
     context.module.nodes[id] = decl;
 
-    return new Nodes.ExprDeclaration(Nodes.UnresolvedId, RootId, id);
+    const exprs = context.container.exprs;
+    const expr_id = exprs.length;
+
+    const expr = new Nodes.ExprDeclaration(Nodes.UnresolvedId, RootId, id);
+    exprs.push(expr);
+
+    return expr_id;
 }
 
 function reserveExprId(context: Context) {
@@ -50,8 +56,7 @@ function reserveExprId(context: Context) {
 function assignExpr(context: Context, id: number, expr: Expr) {
     const exprs = context.container.exprs;
     exprs[id] = expr;
-
-    return expr;
+    return id;
 }
 
 function reserveMemberId(context: Context) {
@@ -74,7 +79,13 @@ function assignMember(context: Context, id: number, decl: Decl) {
     mapping.push(id);
     container.decls[id] = decl as any;
 
-    return new Nodes.ExprDeclaration(Nodes.UnresolvedId, context.containerId, id);
+    const exprs = context.container.exprs;
+    const expr_id = exprs.length;
+
+    const expr = new Nodes.ExprDeclaration(Nodes.UnresolvedId, context.containerId, id);
+    exprs.push(expr);
+
+    return expr_id;
 }
 
 class Context {
@@ -89,11 +100,21 @@ class Context {
     }
 }
 
+function lookup(context: Context, id: number): Expr
+function lookup(context: Context, id: number | null): Expr | null
+function lookup(context: Context, id: number | null): Expr | null {
+    if (id === null) {
+        return null;
+    }
+
+    return context.container.exprs[id];
+}
+
 function parse(
     context: Context,
     parent: number,
     node: PNode
-): Expr {
+): number {
     switch (node.tag) {
         case PTag.DeclClass: {
             const id = reserveDeclId(context);
@@ -127,9 +148,9 @@ function parse(
                 return decl;
             });
             const returnType = node.data[4] === null ? InferType : parseType(node.data[4][3]);
-            const body = parseBody(children, parent, node.data[7]);
+            children.container.body = parseBodyId(children, parent, node.data[7]);
 
-            const decl = new Nodes.DeclFunction(context.containerId, name, parameters.length, returnType, body, children.container, Nodes.FunctionFlags.None);
+            const decl = new Nodes.DeclFunction(context.containerId, name, parameters.length, returnType, children.container, Nodes.FunctionFlags.None);
 
             return assignDecl(context, id, decl);
         }
@@ -157,7 +178,7 @@ function parse(
             const type  = node.data[3] === null ? InferType : parseType(node.data[3][3]);
             const value = node.data[5] === null ? null  : parse(context, Nodes.UnresolvedId, node.data[5][3]);
 
-            const decl = new Nodes.DeclVariable(context.containerId, name, type, value, flags);
+            const decl = new Nodes.DeclVariable(context.containerId, name, type, lookup(context, value), flags);
             return assignMember(context, id, decl);
         }
 
@@ -168,7 +189,8 @@ function parse(
             const condition = parse(context, id, node.data[2][3]);
             const body      = parseBody(context, id, node.data[3])
 
-            return new Nodes.ExprWhile(parent, condition, body as any);
+            const expr = new Nodes.ExprWhile(parent, lookup(context, condition), body as any);
+            return assignExpr(context, id, expr);
         }
 
         case PTag.StmtReturn: {
@@ -177,12 +199,16 @@ function parse(
             // keyword value
             const value = node.data[1] === null ? null : parse(context, id, node.data[1][1]);
 
-            const expr = new Nodes.ExprReturn(parent, value);
+            const expr = new Nodes.ExprReturn(parent, lookup(context, value));
             return assignExpr(context, id, expr);
         }
 
         case PTag.LiteralIntegerDec: {
-            return new Nodes.ExprConstant(parent, builtin.references.u64, parseInt(node.data[0].value));
+            const id = reserveExprId(context);
+
+            const expr = new Nodes.ExprConstant(parent, builtin.references.u64, parseInt(node.data[0].value));
+
+            return assignExpr(context, id, expr);
         }
 
         case PTag.PExprArgument: {
@@ -192,7 +218,7 @@ function parse(
             const name  = parseIdentifier(node.data[0]);
             const value = parse(context, id, node.data[4]);
 
-            const expr = new Nodes.ExprNamedArgument(parent, name, value);
+            const expr = new Nodes.ExprNamedArgument(parent, name, lookup(context, value));
             return assignExpr(context, id, expr);
         }
 
@@ -208,7 +234,7 @@ function parse(
 
                     const name = new Nodes.ExprRefName(parent, `infix${symbol}`);
 
-                    const expr = new Nodes.ExprCall(parent, name, [left, right]);
+                    const expr = new Nodes.ExprCall(parent, name, [lookup(context, left), lookup(context, right)]);
                     return assignExpr(context, id, expr);
                 }
 
@@ -222,7 +248,7 @@ function parse(
 
                     const name = new Nodes.ExprRefName(parent, `infix${symbol}`);
 
-                    const expr = new Nodes.ExprCall(parent, name, [left, right]);
+                    const expr = new Nodes.ExprCall(parent, name, [lookup(context, left), lookup(context, right)]);
                     return assignExpr(context, id, expr);
                 }
 
@@ -237,7 +263,7 @@ function parse(
 
             // target compileTime arguments
             const target    = parseType(node.data[0]);
-            const args      = node.data[2].elements.map((expr) => parse(context, id, expr));
+            const args      = node.data[2].elements.map((expr) => lookup(context, parse(context, id, expr)));
 
             const expr = new Nodes.ExprConstruct(parent, target, args);
             return assignExpr(context, id, expr);
@@ -260,7 +286,7 @@ function parse(
             const target = parse(context, id, node.data[0]);
             const name   = parseIdentifier(node.data[2]);
 
-            const expr = new Nodes.ExprGetField(parent, target, name);
+            const expr = new Nodes.ExprGetField(parent, lookup(context, target), name);
             return assignExpr(context, id, expr);
         }
 
@@ -269,9 +295,9 @@ function parse(
 
             // target compileTime args
             const target = parse(context, id, node.data[0]);
-            const args   = node.data[2].elements.map((expr) => parse(context, id, expr));
+            const args   = node.data[2].elements.map((expr) => lookup(context, parse(context, id, expr)));
 
-            const expr = new Nodes.ExprCall(parent, target, args);
+            const expr = new Nodes.ExprCall(parent, lookup(context, target), args);
             return assignExpr(context, id, expr);
         }
 
@@ -282,7 +308,7 @@ function parse(
             const target = parseIdentifier(node.data[0]);
             const arg    = parse(context, id, node.data[2][1]);
 
-            const expr = new Nodes.ExprMacroCall(parent, target, [arg]);
+            const expr = new Nodes.ExprMacroCall(parent, target, [lookup(context, arg)]);
             return assignExpr(context, id, expr);
         }
     }
@@ -293,11 +319,20 @@ function parse(
 function parseBody(context: Context, parent: number, ast: PNode): Expr[] {
     if (ast.length === 2) {
         // whitespace body
-        return ast[1].elements.map(node => parse(context, parent, node));
+        return ast[1].elements.map(node => lookup(context, parse(context, parent, node)));
     } else {
         // whitespace "=>" whitespace expression
         const expression = parse(context, parent, ast[4]);
-        return [new Nodes.ExprReturn(parent, expression)];
+        return [new Nodes.ExprReturn(parent, lookup(context, expression))];
+    }
+}
+
+function parseBodyId(context: Context, parent: number, ast: PNode): number[] {
+    if (ast.length === 2) {
+        // whitespace body
+        return ast[1].elements.map(node => parse(context, parent, node));
+    } else {
+        throw new Error('Not implemented yet');
     }
 }
 

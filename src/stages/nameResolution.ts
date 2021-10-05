@@ -102,7 +102,8 @@ function declareNode(state: State, node: Node) {
                 declareNode(childState.changeCurrentId(id), node.children.decls[id]);
             }
             declareNode (childState, node.returnType);
-            declareNodes(childState, node.body);
+
+            declareNodes(childState, node.children.exprs);
 
             return;
         }

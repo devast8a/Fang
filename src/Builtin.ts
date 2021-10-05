@@ -20,7 +20,7 @@ function type(name: string) {
 }
 
 function func(name: string, returnType: ReturnType<typeof type>) {
-    const decl = new DeclFunction(RootId, name, 0, returnType.reference, [], new Children(), 0);
+    const decl = new DeclFunction(RootId, name, 0, returnType.reference, new Children(), 0);
 
     const id = builtinModule.nodes.length;
     builtinModule.nodes.push(decl);

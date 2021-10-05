@@ -43,7 +43,7 @@ export function checkLifetime(context: Context) {
             //    state.assign(i);
             //}
 
-            analyzeNodes(context.nextId(id), decl.body, state);
+            //analyzeNodes(context.nextId(id), decl.body, state);
             // console.log(expr.name + ": " + format(fnState, expr));
             return;
         }

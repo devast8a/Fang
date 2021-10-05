@@ -1,4 +1,4 @@
-import { Context, DeclFunction, Node, Tag } from '../nodes';
+import { Context, Node, Tag } from '../nodes';
 import * as Nodes from '../nodes';
 import { VisitorControl, visit } from './visitor';
 
@@ -27,10 +27,16 @@ export function VisitChildren<State>(node: Node, context: Context, state: State,
             const childContext = context.nextId(context.currentId);
 
             const children = visit.children(node.children, childContext, state, first);
-            const body = visit.array(node.body, childContext, state, first);
 
-            if (children !== node.children || body !== node.body) {
-                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, node.returnType, body, children, node.flags);
+            const body = node.children.body;
+            const exprs = node.children.exprs;
+
+            for (const id of body) {
+                exprs[id] = first(exprs[id], context, state);
+            }
+
+            if (children !== node.children) {
+                node = new Nodes.DeclFunction(node.parent, node.name, node.parameters, node.returnType, children, node.flags);
             }
 
             return next(node, context, state);

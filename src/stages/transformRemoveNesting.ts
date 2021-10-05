@@ -16,12 +16,12 @@ export function transformRemoveNesting(context: Context) {
             case Tag.DeclFunction: {
                 const childContext = context.nextId<DeclFunction>(id)
 
-                const output = new Array<Expr>();
-                for (let stmt of node.body) {
-                    stmt = flatten(childContext, output, stmt, true);
-                    output.push(stmt);
-                }
-                node.body = output;
+                //const output = new Array<Expr>();
+                //for (let stmt of node.body) {
+                //    stmt = flatten(childContext, output, stmt, true);
+                //    output.push(stmt);
+                //}
+                //node.body = output;
 
                 continue;
             }
