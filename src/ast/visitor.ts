@@ -1,4 +1,6 @@
-import { Children, Context, Node } from '../nodes';
+import { Children, Node } from '../nodes';
+
+class Context { }
 
 /**
  * Creates a "Chain of Responsibility", a list of functions where each function can perform a computation on a node
@@ -55,50 +57,4 @@ export type VisitorFn<State> = (node: Node, context: Context, state: State, cont
 export interface VisitorControl<State> {
     readonly next: Visitor<State>
     readonly first: Visitor<State>
-}
-
-export namespace visit {
-    /**
-     * Visits an array of nodes. Similar to Array.map although it does not produce a copy of the array -unless- an
-     *  the function returns a different object.
-     * 
-     * TODO: This will likely become obsolete when expression flattening is introduced.
-     */
-    export function array<T extends Node, State>(nodes: T[], context: Context, state: State, visitor: Visitor<State>): T[] {
-        const length = nodes.length;
-        for (let index = 0; index < length; index++) {
-            const input  = nodes[index];
-            const output = visitor(input, context, state);
-
-            // Handle the case where one of the functions returned a new object.
-            if (input !== output) {
-                const copy = nodes.slice();
-
-                copy[index] = output;
-                index++;
-
-                while (index < length) {
-                    copy[index] = visitor(nodes[index], context, state);
-                    index++;
-                }
-
-                return copy;
-            }
-        }
-        return nodes;
-    }
-
-    export function children<State>(children: Children, context: Context, state: State, visitor: Visitor<State>): Children {
-        const decls = children.decls;
-        const length = decls.length;
-
-        // TODO: Handle decl changing the name
-        // TODO: Avoid mutating `children`
-        for (let id = 0; id < length; id++) {
-            const childContext = context.nextId2(context.parentId, id);
-            decls[id] = visitor(decls[id], childContext, state);
-        }
-
-        return children;
-    }
 }
