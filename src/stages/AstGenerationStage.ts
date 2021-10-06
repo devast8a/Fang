@@ -1,5 +1,5 @@
 import * as Nodes from '../nodes';
-import { Decl, Expr, Node, Ref } from '../nodes';
+import { Decl, Node } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
@@ -39,9 +39,21 @@ function parse(parent: State, node: PNode): number {
                 // keyword name compileTime parameters returnType generic attributes body
                 const name = parseIdentifier(node.data[1][1]);
                 const returnType = parseTypeNull(node.data[4]?.[3]);
+                const parameters = node.data[3].elements.map(parameter => parse(children, parameter));
                 const body = parseBody(children, node.data[7]);
 
-                return new Nodes.DeclFunction(name, returnType, [], children.finalize(body));
+                return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body));
+            });
+        }
+        case PTag.DeclParameter: {
+            return parent.declare(Storage.Parameter, (id) => {
+                // keyword name compileTime type attribute lifetime value
+                const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
+                const name  = parseIdentifier(node.data[1]);
+                const type  = parseTypeNull(node.data[3]?.[3]);
+                const value = parseNull(parent, node.data[6]?.[3]);
+
+                return new Nodes.DeclVariable(name, type, value, flags);
             });
         }
 
@@ -64,10 +76,9 @@ function parse(parent: State, node: PNode): number {
                 const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
                 const name  = parseIdentifier(node.data[1]);
                 const type  = parseTypeNull(node.data[3]?.[3]);
+                const value = parseNull(parent, node.data[5]?.[3]);
 
-                // const value = parse(context, Nodes.UnresolvedId, node.data[5][3]);
-
-                return new Nodes.DeclVariable(name, type, flags);
+                return new Nodes.DeclVariable(name, type, value, flags);
             });
         }
 
@@ -245,6 +256,7 @@ enum Storage {
     ParentDecl,
     ParentExpr,
     RootDecl,
+    Parameter,
 }
 
 class State {
@@ -258,6 +270,7 @@ class State {
             case Storage.ParentDecl: return this.declare_impl(declare, this.parent.decl, Nodes.RefLocal);
             case Storage.ParentExpr: return this.declare_impl(declare, this.parent.expr, null);
             case Storage.RootDecl:   return this.declare_impl(declare, this.root.decl, Nodes.RefGlobal);
+            case Storage.Parameter:  return this.declare_impl(declare, this.parent.decl, null);
             default: throw new Error('Unreachable: Unhandled case');
         }
     }
@@ -276,7 +289,7 @@ class State {
     private declare_impl(
         declare: (id: number, state: State) => Node,
         nodes: Node[],
-        Ref: {new(id: number): Ref} | null,
+        Ref: {new(id: number): any} | null,
     ) {
         const id = nodes.length;
         nodes.push(null as any);

@@ -48,6 +48,7 @@ export enum Tag {
     DeclTrait,
     DeclVariable,
 
+    ExprCall,
     ExprConstant,
     ExprCreate,
     ExprDeclaration,
@@ -126,6 +127,7 @@ export class DeclVariable {
     public constructor(
         public readonly name: string,
         public readonly type: Type,
+        public readonly value: RefExpr | null,
         public readonly flags: DeclVariableFlags,
     ) { }
 }
@@ -139,8 +141,8 @@ export enum DeclVariableFlags {
 // Expressions =================================================================
 
 export class ExprCall {
-    public readonly tag = Tag.ExprConstant;
-    public static readonly tag = Tag.ExprConstant;
+    public readonly tag = Tag.ExprCall;
+    public static readonly tag = Tag.ExprCall;
 
     public constructor(
         public readonly ref: RefDecl,
