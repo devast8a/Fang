@@ -1,4 +1,4 @@
-import { Node, Tag } from '../nodes';
+import { DeclVariableFlags, Node, Tag } from '../nodes';
 
 export function serialize(node: Node) {
     function convert(this: any, key: string, value: any) {
@@ -17,10 +17,9 @@ export function serialize(node: Node) {
         if (key === "flags" && typeof(this.tag) === 'number') {
             const self = this as Node;
 
-            // switch (self.tag) {
-            //     case Tag.DeclFunction: return convertFlags("FunctionFlags", FunctionFlags, value);
-            //     case Tag.DeclVariable: return convertFlags("VariableFlags", VariableFlags, value);
-            // }
+            switch (self.tag) {
+                 case Tag.DeclVariable: return convertFlags("DeclVariableFlags", DeclVariableFlags, value);
+            }
         }
 
         return value;

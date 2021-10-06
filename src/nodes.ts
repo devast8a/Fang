@@ -3,7 +3,7 @@ export type Node =
     | Decl
     | Expr
     | Type
-    | Ref<any>
+    | RefDecl
     ;
 
 export type Decl =
@@ -14,8 +14,10 @@ export type Decl =
     ;
 
 export type Expr =
+    | ExprCall
     | ExprConstant
     | ExprCreate
+    | ExprDeclaration
     | ExprDestroy
     | ExprGet
     | ExprIf
@@ -25,7 +27,8 @@ export type Expr =
     | ExprWhile
     ;
 
-export type Ref<T> =
+export type Ref =
+    | RefField
     | RefGlobal
     | RefGlobalMember
     | RefLocal
@@ -47,6 +50,7 @@ export enum Tag {
 
     ExprConstant,
     ExprCreate,
+    ExprDeclaration,
     ExprDestroy,
     ExprGet,
     ExprIf,
@@ -55,6 +59,7 @@ export enum Tag {
     ExprSet,
     ExprWhile,
 
+    RefField,
     RefGlobal,
     RefGlobalMember,
     RefLocal,
@@ -64,6 +69,9 @@ export enum Tag {
     TypeInfer,
 }
 
+type RefDecl = Ref;
+type RefExpr = number;
+
 // Module ======================================================================
 
 export class Module {
@@ -72,15 +80,6 @@ export class Module {
 
     public constructor(
         public readonly children: Children,
-    ) { }
-}
-
-export class Children {
-    public constructor(
-        public readonly decl: readonly (Decl | Ref<Decl>)[],
-        public readonly expr: readonly Expr[],
-        public readonly body: readonly number[],
-        public readonly names: ReadonlyMap<string, readonly number[]>,
     ) { }
 }
 
@@ -127,7 +126,14 @@ export class DeclVariable {
     public constructor(
         public readonly name: string,
         public readonly type: Type,
+        public readonly flags: DeclVariableFlags,
     ) { }
+}
+
+export enum DeclVariableFlags {
+    None = 0,
+    Mutable = 1 << 0,
+    Owns = 1 << 1,
 }
 
 // Expressions =================================================================
@@ -137,8 +143,8 @@ export class ExprCall {
     public static readonly tag = Tag.ExprConstant;
 
     public constructor(
-        public readonly ref: Ref<Decl>,
-        public readonly args: readonly Ref<Expr>[],
+        public readonly ref: RefDecl,
+        public readonly args: readonly RefExpr[],
     ) { }
 }
 
@@ -158,16 +164,26 @@ export class ExprCreate {
 
     public constructor(
         public readonly type: Type,
-        public readonly args: readonly Ref<Expr>[],
+        public readonly args: readonly RefExpr[],
     ) { }
 }
+
+export class ExprDeclaration {
+    public readonly tag = Tag.ExprDeclaration;
+    public static readonly tag = Tag.ExprDeclaration;
+
+    public constructor(
+        public readonly target: RefDecl,
+    ) { }
+}
+
 
 export class ExprDestroy {
     public readonly tag = Tag.ExprDestroy;
     public static readonly tag = Tag.ExprDestroy;
 
     public constructor(
-        public readonly target: Ref<Decl>,
+        public readonly target: RefDecl,
     ) { }
 }
 
@@ -176,7 +192,7 @@ export class ExprGet {
     public static readonly tag = Tag.ExprGet;
 
     public constructor(
-        public readonly target: Ref<Decl>,
+        public readonly target: RefDecl,
     ) { }
 }
 
@@ -185,7 +201,7 @@ export class ExprIf {
     public static readonly tag = Tag.ExprIf;
 
     public constructor(
-        public readonly cases: readonly Ref<ExprIfCase>[],
+        public readonly cases: readonly RefExpr[],
     ) { }
 }
 
@@ -194,8 +210,8 @@ export class ExprIfCase {
     public static readonly tag = Tag.ExprIfCase;
 
     public constructor(
-        public readonly condition: Ref<Expr> | null,
-        public readonly body: readonly Ref<Expr>[],
+        public readonly condition: RefExpr | null,
+        public readonly body: readonly RefExpr[],
     ) { }
 }
 
@@ -204,7 +220,7 @@ export class ExprReturn {
     public static readonly tag = Tag.ExprReturn;
 
     public constructor(
-        public readonly value: Ref<Expr> | null,
+        public readonly value: RefExpr | null,
     ) { }
 }
 
@@ -213,8 +229,8 @@ export class ExprSet {
     public static readonly tag = Tag.ExprSet;
 
     public constructor(
-        public readonly target: Ref<Decl>,
-        public readonly value: Ref<Expr>,
+        public readonly target: RefDecl,
+        public readonly value: RefExpr,
     ) { }
 }
 
@@ -223,12 +239,22 @@ export class ExprWhile {
     public static readonly tag = Tag.ExprWhile;
 
     public constructor(
-        public readonly condition: Ref<Expr>,
-        public readonly body: readonly Ref<Expr>[],
+        public readonly condition: RefExpr,
+        public readonly body: readonly RefExpr[],
     ) { }
 }
 
 // References ==================================================================
+
+export class RefField {
+    public readonly tag = Tag.RefField;
+    public static readonly tag = Tag.RefField;
+
+    public constructor(
+        public readonly target: RefExpr,
+        public readonly field: Ref,
+    ) { }
+}
 
 export class RefGlobal {
     public readonly tag = Tag.RefGlobal;
@@ -274,11 +300,31 @@ export class TypeGet {
     public static readonly tag = Tag.TypeGet;
 
     public constructor(
-        public readonly target: Ref<Decl>,
+        public readonly target: RefDecl,
     ) { }
 }
 
 export class TypeInfer {
     public readonly tag = Tag.TypeInfer;
     public static readonly tag = Tag.TypeInfer;
+}
+
+// Children ====================================================================
+
+export class Children {
+    public constructor(
+        public readonly decl: readonly (Decl | RefDecl)[],
+        public readonly expr: readonly Expr[],
+        public readonly body: readonly number[],
+        public readonly names: ReadonlyMap<string, readonly number[]>,
+    ) { }
+}
+
+export class MutableChildren {
+    public constructor(
+        public readonly decl: (Decl | RefDecl)[],
+        public readonly expr: Expr[],
+        public readonly body: number[],
+        public readonly names: Map<string, number[]>,
+    ) { }
 }

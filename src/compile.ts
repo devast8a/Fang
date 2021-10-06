@@ -2,6 +2,8 @@ import * as Fs from 'fs';
 import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
+import { parseAst } from './stages/AstGenerationStage';
+import { Module } from './nodes';
 
 export class Compiler {
     public async parseFile(source: string | Source): Promise<null>
@@ -13,9 +15,17 @@ export class Compiler {
         console.group(`Parsing ${source.path}`);
         console.time(`${source.path} Total`);
 
+        console.time(`${source.path} Parsing`);
         const ast = parseSource(source);
-        const nodes = parseAst(ast);
+        console.timeEnd(`${source.path} Parsing`);
 
+        console.time(`${source.path} Ast Generation`);
+        const nodes = parseAst(ast);
+        console.timeEnd(`${source.path} Ast Generation`);
+
+        const module = new Module(nodes);
+
+        Fs.writeFileSync('build/output/0-Ast Generation.txt', serialize(module));
 
         console.timeEnd(`${source.path} Total`);
         console.groupEnd();

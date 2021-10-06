@@ -1,31 +1,23 @@
 import { Parser } from 'nearley';
-import { ParseContext, ParseStage } from '../compile';
-import { Node } from '../nodes';
+import { Source } from '../common/source';
 import Grammar from '../parser/grammar';
+import { PNode } from '../parser/post_processor';
 
-export class ParserStage implements ParseStage {
-    public name = "Parse";
+export function parseSource(source: Source): PNode[] {
+    const parser = new Parser(Grammar);
+    parser.feed(source.content);
 
-    public execute(nodes: Node[], context: ParseContext) {
-        if (nodes.length > 0) {
-            throw new Error("ParseStage must have an empty array of nodes passed to it");
-        }
-
-        const parser = new Parser(Grammar);
-        parser.feed(context.source.content);
-
-        if (parser.results.length > 1) {
-            parser.results.forEach((result, index) => {
-                console.log(`========== ${index} ==========`)
-                console.log(JSON.stringify(result, undefined, 4));
-            });
-            throw new Error("Internal Error: AMBIGUOUS GRAMMAR");
-        }
-
-        if (parser.results.length === 0) {
-            throw new Error("Internal Error: INCOMPLETE PARSE");
-        }
-
-        return (parser.results[0] as any[]).filter((_, index) => index % 2 === 0);
+    if (parser.results.length > 1) {
+        parser.results.forEach((result, index) => {
+            console.log(`========== ${index} ==========`)
+            console.log(JSON.stringify(result, undefined, 4));
+        });
+        throw new Error("Internal Error: AMBIGUOUS GRAMMAR");
     }
+
+    if (parser.results.length === 0) {
+        throw new Error("Internal Error: INCOMPLETE PARSE");
+    }
+
+    return (parser.results[0] as any[]).filter((_, index) => index % 2 === 0);
 }
