@@ -60,7 +60,45 @@ export interface VisitorControl<State> {
 }
 
 export namespace visit {
-    export function children<State>(state: State, children: Children, visitor: Visitor<State>) {
-        throw new Error('Not implemented yet');
+    export function fieldNode<T extends Node, State>(state: State, node: T, parent: number, id: number, control: VisitorControl<State>, field: keyof T) {
+        const previous = node[field] as any;
+        const updated = control.first(state, previous, parent, id);
+
+        if (previous !== updated) {
+            // TODO: Implement a clone function
+            node = Object.assign({}, node);
+            node[field] = updated;
+        }
+
+        return control.next(state, node, parent, id);
+    }
+
+    export function fieldArray<T extends Node, State>(state: State, node: T, parent: number, id: number, control: VisitorControl<State>, field: keyof T) {
+        // TODO: Implement
+        return control.next(state, node, parent, id);
+    }
+
+    export function array<T extends Node, State>(state: State, children: readonly T[], id: number, visitor: Visitor<State>): readonly T[] {
+        const length = children.length;
+        for (let childId = 0; childId < length; childId++) {
+            const previous = children[childId];
+            const updated = visitor(state, previous, id, childId);
+
+            // Handle the case where one of the called updated the object
+            if (previous !== updated) {
+                const copy = children.slice();
+
+                copy[childId] = updated;
+                childId++;
+
+                while (childId < length) {
+                    copy[childId] = visitor(state, children[childId], id, childId);
+                    childId++;
+                }
+
+                return copy;
+            }
+        }
+        return children;
     }
 }

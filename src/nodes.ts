@@ -3,7 +3,7 @@ export type Node =
     | Decl
     | Expr
     | Type
-    | RefDecl
+    | Ref
     ;
 
 export type Decl =
@@ -70,8 +70,12 @@ export enum Tag {
     TypeInfer,
 }
 
-type RefDecl = Ref;
-type RefExpr = number;
+export const RootId = -1;
+export const BadId = -2;
+
+// These aliases are intended to ease refactoring rather than hide implementation details.
+export type RefDecl = Ref;
+export type RefExpr = number;
 
 // Module ======================================================================
 
@@ -145,7 +149,7 @@ export class ExprCall {
     public static readonly tag = Tag.ExprCall;
 
     public constructor(
-        public readonly ref: RefDecl,
+        public readonly target: RefDecl,
         public readonly args: readonly RefExpr[],
     ) { }
 }

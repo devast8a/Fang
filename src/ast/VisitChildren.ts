@@ -1,29 +1,10 @@
-import { Node, Tag } from '../nodes';
-import { VisitorControl } from './visitor';
+import { Children, Node, Tag } from '../nodes';
+import { visit, VisitorControl } from './visitor';
 
 export function VisitChildren<State>(state: State, node: Node, parent: number, id: number, control: VisitorControl<State>): Node {
     const { first, next } = control;
 
     switch (node.tag) {
-        // Nodes that have children
-        case Tag.Module:
-        case Tag.DeclFunction:
-        case Tag.DeclStruct:
-        case Tag.DeclTrait: {
-            // TODO: Capture results
-            const decls = node.children.decl;
-            for (let child = 0; child < decls.length; child++) {
-                first(state, decls[child], id, child);
-            }
-
-            const exprs = node.children.expr;
-            for (let child = 0; child < exprs.length; child++) {
-                first(state, exprs[child], id, child);
-            }
-
-            return next(state, node, parent, id);
-        }
-            
         // Nodes that don't
         case Tag.DeclVariable:
         case Tag.ExprCall:
@@ -43,9 +24,29 @@ export function VisitChildren<State>(state: State, node: Node, parent: number, i
         case Tag.RefLocal:
         case Tag.RefName:
         case Tag.TypeGet:
-        case Tag.TypeInfer: {
+        case Tag.TypeInfer:
+            return next(state, node, parent, id);
+
+        // Nodes that have children
+        case Tag.Module:
+        case Tag.DeclFunction:
+        case Tag.DeclStruct:
+        case Tag.DeclTrait: {
+            const children = node.children;
+
+            const decl = visit.array(state, children.decl, id, first);
+            const expr = visit.array(state, children.expr, id, first);
+
+            if (children.decl !== decl || children.expr !== expr) {
+                // TODO: Implement a clone function
+                node = Object.assign({}, node, {
+                    children: new Children(decl, expr, children.body, children.names)
+                });
+            }
+
             return next(state, node, parent, id);
         }
+            
     }
 
     throw new Error(`Unreachable: Unhandled case '${Tag[(node as any)?.tag]}'`);

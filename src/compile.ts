@@ -3,7 +3,8 @@ import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
 import { parseAst } from './stages/AstGenerationStage';
-import { Module } from './nodes';
+import { Module, RootId } from './nodes';
+import { resolveNames } from './stages/resolveNames';
 
 export class Compiler {
     public async parseFile(source: string | Source): Promise<null>
@@ -25,7 +26,16 @@ export class Compiler {
 
         const module = new Module(nodes);
 
-        Fs.writeFileSync('build/output/0-Ast Generation.txt', serialize(module));
+        const before = serialize(module);
+        const module2 = resolveNames(module, module, RootId, RootId);
+        const after = serialize(module);
+
+        if (before !== after) {
+            console.log('OOPS MUTATING!');
+        }
+
+        Fs.writeFileSync('build/output/0-Ast Generation.txt', after);
+        Fs.writeFileSync('build/output/1-Name Resolution.txt', serialize(module2));
 
         console.timeEnd(`${source.path} Total`);
         console.groupEnd();

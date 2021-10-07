@@ -295,18 +295,21 @@ class State {
         nodes.push(null as any);
         nodes[id] = declare(id, this);
 
+        const name = (nodes[id] as Decl).name;
+        if (name !== undefined) {
+            let mapping = this.parent.names.get(name);
+            if (mapping === undefined) {
+                mapping = [];
+                this.parent.names.set(name, mapping);
+            }
+            mapping.push(id);
+        }
+
         if (Ref === null) {
             return id;
         }
 
         // Must be a declaration at this point
-        const name = (nodes[id] as Decl).name;
-        let mapping = this.parent.names.get(name);
-        if (mapping === undefined) {
-            mapping = [];
-            this.parent.names.set(name, mapping);
-        }
-        mapping.push(id);
 
         const eid = this.parent.expr.length;
         this.parent.expr.push(new Nodes.ExprDeclaration(new Ref(id)));
