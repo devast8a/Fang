@@ -65,16 +65,20 @@ export namespace visit {
         const updated = control.first(state, previous, parent, id);
 
         if (previous !== updated) {
-            // TODO: Implement a clone function
-            node = Object.assign({}, node);
-            node[field] = updated;
+            node = Node.mutate(node, { [field]: updated } as any);
         }
 
         return control.next(state, node, parent, id);
     }
 
     export function fieldArray<T extends Node, State>(state: State, node: T, parent: number, id: number, control: VisitorControl<State>, field: keyof T) {
-        // TODO: Implement
+        const previous = node[field] as any;
+        const updated = array(state, previous, id, control.first);
+
+        if (previous !== updated) {
+            node = Node.mutate(node, { [field]: updated } as any);
+        }
+
         return control.next(state, node, parent, id);
     }
 

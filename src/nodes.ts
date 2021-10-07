@@ -334,3 +334,47 @@ export class MutableChildren {
         public readonly names: Map<string, number[]>,
     ) { }
 }
+
+// Utilities ===================================================================
+
+export namespace Node {
+    type HasChildren = Module | DeclFunction | DeclStruct | DeclTrait;
+
+    export function hasChildren(node: Node): node is HasChildren {
+        switch (node.tag) {
+            case Tag.DeclVariable:
+            case Tag.ExprCall:
+            case Tag.ExprConstant:
+            case Tag.ExprCreate:
+            case Tag.ExprDeclaration:
+            case Tag.ExprDestroy:
+            case Tag.ExprGet:
+            case Tag.ExprIf:
+            case Tag.ExprIfCase:
+            case Tag.ExprReturn:
+            case Tag.ExprSet:
+            case Tag.ExprWhile:
+            case Tag.RefField:
+            case Tag.RefGlobal:
+            case Tag.RefGlobalMember:
+            case Tag.RefLocal:
+            case Tag.RefName:
+            case Tag.TypeGet:
+            case Tag.TypeInfer:
+                return false;
+
+            case Tag.Module:
+            case Tag.DeclFunction:
+            case Tag.DeclStruct:
+            case Tag.DeclTrait:
+                return true;
+        }
+
+        throw new Error(`Unreachable: Unhandled case '${Tag[(node as any)?.tag]}'`);
+    }
+
+    export function mutate<T extends Node>(node: T, fields: Partial<T>): T {
+        // TODO: Implement a clone function
+        return Object.assign({}, node, fields);
+    }
+}

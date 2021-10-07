@@ -1,3 +1,9 @@
+class u8 {
+}
+
+fn infix+() {
+}
+
 trait Pair {
     val x: u8
     val y: u8
