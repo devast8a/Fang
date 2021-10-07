@@ -1,7 +1,7 @@
 class u8 {
 }
 
-fn infix+() {
+fn infix+() -> u8 {
 }
 
 trait Pair {

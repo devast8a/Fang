@@ -5,9 +5,14 @@ import { parseSource } from './stages/ParseStage';
 import { parseAst } from './stages/AstGenerationStage';
 import { Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
+import { TargetC } from './targets/targetC';
 
 export class Compiler {
-    public async parseFile(source: string | Source): Promise<null>
+    private stages: [string, (module: Module) => Module][] = [
+        ['Resolve Names', (module) => resolveNames(module, module, RootId, RootId)]
+    ];
+
+    public async parseFile(source: string | Source): Promise<Module>
     {
         if (!(source instanceof Source)) {
             source = new Source(source, await Fs.promises.readFile(source, "utf8"));
@@ -24,30 +29,34 @@ export class Compiler {
         const nodes = parseAst(ast);
         console.timeEnd(`${source.path} Ast Generation`);
 
-        const module = new Module(nodes);
-
-        const before = serialize(module);
-        const module2 = resolveNames(module, module, RootId, RootId);
-        const after = serialize(module);
-
-        if (before !== after) {
-            console.log('OOPS MUTATING!');
-        }
-
-        Fs.writeFileSync('build/output/0-Ast Generation.txt', after);
-        Fs.writeFileSync('build/output/1-Name Resolution.txt', serialize(module2));
-
         console.timeEnd(`${source.path} Total`);
         console.groupEnd();
 
-        return null;
+        return new Module(nodes);
     }
 
     public async compile(source: string | Source): Promise<string>
     {
-        await this.parseFile(source);
+        let module = await this.parseFile(source);
 
-        return "";
+        let id = 0;
+        Fs.writeFileSync(`build/output/${id++}-Initial.txt`, serialize(module));
+        for (const [name, fn] of this.stages) {
+            console.time(name);
+            module = fn(module);
+            console.timeEnd(name);
+
+            Fs.writeFileSync(`build/output/${id++}-${name}.txt`, serialize(module));
+        }
+
+        console.time("Code Generation");
+        const target = new TargetC(module);
+        target.emitProgram();
+        const code = target.toString();
+        console.timeEnd("Code Generation");
+        Fs.writeFileSync(`build/output/${id++}-Code Generation.txt`, code);
+
+        return code;
     }
 
     public static async compile(path: string) {
