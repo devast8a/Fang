@@ -29,8 +29,8 @@ export function createVisitor<State = null>(...visitors: VisitorFn<State>[]): Vi
     const call = new Array<Visitor<State>>();
 
     for (let index = 0; index < visitors.length; index++) {
-        call.push((node, context, state) => {
-            return visitors[index](node, context, state, controls[index]) as typeof node;
+        call.push((state, node, parent, id) => {
+            return visitors[index](state, node, parent, id, controls[index]) as typeof node;
         });
     }
 
@@ -50,11 +50,17 @@ export function createVisitor<State = null>(...visitors: VisitorFn<State>[]): Vi
     return call[0];
 }
 
-export type Visitor<State> = <T extends Node>(node: T, context: Context, state: State) => T;
+export type Visitor<State> = <T extends Node>(state: State, node: T, parent: number, id: number) => T;
 
-export type VisitorFn<State> = (node: Node, context: Context, state: State, control: VisitorControl<State>) => Node;
+export type VisitorFn<State> = (state: State, node: Node, parent: number, id: number, control: VisitorControl<State>) => Node;
 
 export interface VisitorControl<State> {
     readonly next: Visitor<State>
     readonly first: Visitor<State>
+}
+
+export namespace visit {
+    export function children<State>(state: State, children: Children, visitor: Visitor<State>) {
+        throw new Error('Not implemented yet');
+    }
 }
