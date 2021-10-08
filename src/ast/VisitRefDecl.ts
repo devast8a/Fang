@@ -1,7 +1,7 @@
-import { Node, Tag } from '../nodes';
+import { Context, Node, Tag } from '../nodes';
 import { visit, VisitorControl } from './visitor';
 
-export function VisitRefDecl<State>(state: State, node: Node, parent: number, id: number, control: VisitorControl<State>): Node {
+export function VisitRefDecl<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>): Node {
     switch (node.tag) {
         // Nodes with DeclRef member
         case Tag.ExprCall:
@@ -10,7 +10,7 @@ export function VisitRefDecl<State>(state: State, node: Node, parent: number, id
         case Tag.ExprGet:
         case Tag.ExprSet:
         case Tag.TypeGet:
-            return visit.fieldNode(state, node, parent, id, control, 'target');
+            return visit.fieldNode(context, node, id, state, control, 'target');
 
         // Nodes without DeclRef member
         case Tag.Module:
@@ -24,13 +24,14 @@ export function VisitRefDecl<State>(state: State, node: Node, parent: number, id
         case Tag.ExprIfCase:
         case Tag.ExprReturn:
         case Tag.ExprWhile:
-        case Tag.RefField:
+        case Tag.RefFieldId:
+        case Tag.RefFieldName:
         case Tag.RefGlobal:
         case Tag.RefGlobalMember:
         case Tag.RefLocal:
         case Tag.RefName:
         case Tag.TypeInfer:
-            return control.next(state, node, parent, id);
+            return control.next(context, node, id, state);
     }
 
     throw new Error(`Unreachable: Unhandled case '${Tag[(node as any)?.tag]}'`);

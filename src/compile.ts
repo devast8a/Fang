@@ -3,13 +3,15 @@ import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
 import { parseAst } from './stages/AstGenerationStage';
-import { Module, RootId } from './nodes';
+import { Context, Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
+import { inferTypes } from './stages/inferTypes';
 
 export class Compiler {
-    private stages: [string, (module: Module) => Module][] = [
-        ['Resolve Names', (module) => resolveNames(module, module, RootId, RootId)]
+    private stages: [string, (context: Context) => Module][] = [
+        ['Resolve Names', (context) => resolveNames(context, context.module, RootId, null)],
+        ['Type Inference', (context) => inferTypes(context, context.module, RootId, null)],
     ];
 
     public async parseFile(source: string | Source): Promise<Module>
@@ -43,7 +45,7 @@ export class Compiler {
         Fs.writeFileSync(`build/output/${id++}-Initial.txt`, serialize(module));
         for (const [name, fn] of this.stages) {
             console.time(name);
-            module = fn(module);
+            module = fn(new Context(module, module.children, RootId));
             console.timeEnd(name);
 
             Fs.writeFileSync(`build/output/${id++}-${name}.txt`, serialize(module));

@@ -10,10 +10,6 @@ export class TargetC {
         private module: Module,
     ) { }
 
-    public emit(...text: string[]) {
-        this.output.push(...text);
-    }
-
     public emitProgram() {
         this.emit("#include <stdint.h>\n");
         this.emit("#define FF_main main\n");
@@ -57,7 +53,6 @@ export class TargetC {
                 return;
             }
                 
-            case Tag.RefField:
             case Tag.RefGlobal:
             case Tag.RefGlobalMember:
             case Tag.RefLocal:
@@ -69,8 +64,55 @@ export class TargetC {
         throw new Error(`Unreachable: Unhandled case '${Tag[(decl as any).tag]}'`);
     }
 
-    public emitExpr(expr: Expr, parent: number, id: number) {
-        this.emit('/* TODO: Emit expr */');
+    public emitExpr(container: Children, parent: number, id: number) {
+        const expr = container.expr[id];
+
+        switch (expr.tag) {
+            case Tag.ExprCall: {
+                const fn = resolve(this.module, expr.target, parent);
+                this.emit(fn.name);
+                return;
+            }
+                
+            case Tag.ExprConstant: {
+                // TODO: Depending on the constant type we need to change encoding
+                this.emit(expr.value);
+                return;
+            }
+
+            case Tag.ExprDeclaration: {
+                // Depends on the kind of declaration
+                const decl = resolve(this.module, expr.target, parent);
+
+                switch (decl.tag) {
+                    case Tag.DeclVariable: {
+                        this.emitTypeName(decl.type, parent);
+                        this.emit(" ", decl.name);
+                        if (decl.value !== null) {
+                            this.emit(" = ");
+                            this.emitExpr(container, parent, decl.value);
+                        }
+                        return;
+                    }
+                }
+                throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}' for ExprDeclaration`);
+            }
+                
+            case Tag.ExprReturn: {
+                if (expr.value === null) {
+                    this.emit("return;");
+                } else {
+                    this.emit("return ");
+                    this.emitExpr(container, parent, expr.value);
+                }
+                return;
+            }
+        }
+        throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
+    }
+
+    public emit(...text: string[]) {
+        this.output.push(...text);
     }
 
     public emitTypeName(type: Type, parent: number) {
@@ -118,9 +160,9 @@ export class TargetC {
     public emitBody(children: Children, parent: number) {
         this.pushIndent();
         this.emit("{");
-        for (let id = 0; id < children.body.length; id++) {
+        for (const child of children.body) {
             this.emitNewline();
-            this.emitExpr(children.expr[children.body[id]], parent, id);
+            this.emitExpr(children, parent, child);
             this.emit(";");
         }
         this.popIndent();
@@ -145,7 +187,6 @@ export class TargetC {
 }
 
 function resolve(module: Module, ref: Ref, parent: number): Decl {
-    // TODO: Check output is a decl
     switch (ref.tag) {
         case Tag.RefGlobal:       return toDecl(module.children.decl[ref.id]);
         case Tag.RefGlobalMember: return toDecl(getChildren(module.children.decl[ref.id]).decl[ref.member]);

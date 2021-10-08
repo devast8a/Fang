@@ -1,6 +1,4 @@
-import { Children, Node } from '../nodes';
-
-class Context { }
+import { Context, Node } from '../nodes';
 
 /**
  * Creates a "Chain of Responsibility", a list of functions where each function can perform a computation on a node
@@ -29,8 +27,8 @@ export function createVisitor<State = null>(...visitors: VisitorFn<State>[]): Vi
     const call = new Array<Visitor<State>>();
 
     for (let index = 0; index < visitors.length; index++) {
-        call.push((state, node, parent, id) => {
-            return visitors[index](state, node, parent, id, controls[index]) as typeof node;
+        call.push((context, node, id, state) => {
+            return visitors[index](context, node, id, state, controls[index]) as typeof node;
         });
     }
 
@@ -50,9 +48,9 @@ export function createVisitor<State = null>(...visitors: VisitorFn<State>[]): Vi
     return call[0];
 }
 
-export type Visitor<State> = <T extends Node>(state: State, node: T, parent: number, id: number) => T;
+export type Visitor<State> = <T extends Node>(context: Context, node: T, id: number, state: State) => T;
 
-export type VisitorFn<State> = (state: State, node: Node, parent: number, id: number, control: VisitorControl<State>) => Node;
+export type VisitorFn<State> = (context: Context, node: Node, id: number, state: State, control: VisitorControl<State>) => Node;
 
 export interface VisitorControl<State> {
     readonly next: Visitor<State>
@@ -60,44 +58,44 @@ export interface VisitorControl<State> {
 }
 
 export namespace visit {
-    export function fieldNode<T extends Node, State>(state: State, node: T, parent: number, id: number, control: VisitorControl<State>, field: keyof T) {
+    export function fieldNode<T extends Node, State>(context: Context, node: T, id: number, state: State, control: VisitorControl<State>, field: keyof T) {
         const previous = node[field] as any;
-        const updated = control.first(state, previous, parent, id);
+        const updated = control.first(context, previous, id, state);
 
         if (previous !== updated) {
             node = Node.mutate(node, { [field]: updated } as any);
         }
 
-        return control.next(state, node, parent, id);
+        return control.next(context, node, id, state);
     }
 
-    export function fieldArray<T extends Node, State>(state: State, node: T, parent: number, id: number, control: VisitorControl<State>, field: keyof T) {
+    export function fieldArray<T extends Node, State>(context: Context, node: T, id: number, state: State, control: VisitorControl<State>, field: keyof T) {
         const previous = node[field] as any;
-        const updated = array(state, previous, id, control.first);
+        const updated = array(context, previous, state, control.first);
 
         if (previous !== updated) {
             node = Node.mutate(node, { [field]: updated } as any);
         }
 
-        return control.next(state, node, parent, id);
+        return control.next(context, node, id, state);
     }
 
-    export function array<T extends Node, State>(state: State, children: readonly T[], id: number, visitor: Visitor<State>): readonly T[] {
+    export function array<T extends Node, State>(context: Context, children: readonly T[], state: State, visitor: Visitor<State>): readonly T[] {
         const length = children.length;
-        for (let childId = 0; childId < length; childId++) {
-            const previous = children[childId];
-            const updated = visitor(state, previous, id, childId);
+        for (let child = 0; child < length; child++) {
+            const previous = children[child];
+            const updated = visitor(context, previous, child, state);
 
             // Handle the case where one of the called updated the object
             if (previous !== updated) {
                 const copy = children.slice();
 
-                copy[childId] = updated;
-                childId++;
+                copy[child] = updated;
+                child++;
 
-                while (childId < length) {
-                    copy[childId] = visitor(state, children[childId], id, childId);
-                    childId++;
+                while (child < length) {
+                    copy[child] = visitor(context, children[child], child, state);
+                    child++;
                 }
 
                 return copy;

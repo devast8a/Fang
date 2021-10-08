@@ -192,7 +192,7 @@ function parseRef(parent: State, node: PNode) {
             const target = parse(parent, node.data[0]);
             const name = parseIdentifier(node.data[2]);
 
-            return new Nodes.RefField(target, new Nodes.RefName(name));
+            return new Nodes.RefFieldName(target, name);
         }
             
         default: {

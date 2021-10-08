@@ -1,3 +1,5 @@
+import { Constructor } from './common/constructor';
+
 export type Node =
     | Module
     | Decl
@@ -28,7 +30,8 @@ export type Expr =
     ;
 
 export type Ref =
-    | RefField
+    | RefFieldId
+    | RefFieldName
     | RefGlobal
     | RefGlobalMember
     | RefLocal
@@ -39,6 +42,7 @@ export type Type =
     | TypeGet
     | TypeInfer
     ;
+
 
 export enum Tag {
     Module,
@@ -60,7 +64,8 @@ export enum Tag {
     ExprSet,
     ExprWhile,
 
-    RefField,
+    RefFieldId,
+    RefFieldName,
     RefGlobal,
     RefGlobalMember,
     RefLocal,
@@ -76,6 +81,8 @@ export const BadId = -2;
 // These aliases are intended to ease refactoring rather than hide implementation details.
 export type RefDecl = Ref;
 export type RefExpr = number;
+
+export type NodeType<T> = Constructor<T> & { tag: Tag };
 
 // Module ======================================================================
 
@@ -252,13 +259,23 @@ export class ExprWhile {
 
 // References ==================================================================
 
-export class RefField {
-    public readonly tag = Tag.RefField;
-    public static readonly tag = Tag.RefField;
+export class RefFieldId {
+    public readonly tag = Tag.RefFieldId;
+    public static readonly tag = Tag.RefFieldId;
 
     public constructor(
         public readonly target: RefExpr,
-        public readonly field: Ref,
+        public readonly field: number,
+    ) { }
+}
+
+export class RefFieldName {
+    public readonly tag = Tag.RefFieldName;
+    public static readonly tag = Tag.RefFieldName;
+
+    public constructor(
+        public readonly target: RefExpr,
+        public readonly field: string,
     ) { }
 }
 
@@ -335,6 +352,16 @@ export class MutableChildren {
     ) { }
 }
 
+// Context =====================================================================
+
+export class Context {
+    public constructor(
+        public readonly module: Module,
+        public readonly container: Children,
+        public readonly parent: number,
+    ) { }
+}
+
 // Utilities ===================================================================
 
 export namespace Node {
@@ -354,7 +381,7 @@ export namespace Node {
             case Tag.ExprReturn:
             case Tag.ExprSet:
             case Tag.ExprWhile:
-            case Tag.RefField:
+            case Tag.RefFieldName:
             case Tag.RefGlobal:
             case Tag.RefGlobalMember:
             case Tag.RefLocal:
@@ -373,8 +400,51 @@ export namespace Node {
         throw new Error(`Unreachable: Unhandled case '${Tag[(node as any)?.tag]}'`);
     }
 
+    export function getChildren(decl: Decl | Ref) {
+        if (!Node.hasChildren(decl)) {
+            throw new Error(`Unexpected node of type '${Tag[decl.tag]}', expected a node that has children.`);
+        }
+
+        return decl.children;
+    }
+
     export function mutate<T extends Node>(node: T, fields: Partial<T>): T {
         // TODO: Implement a clone function
         return Object.assign({}, node, fields);
+    }
+
+    export function as<T>(node: Node, type: NodeType<T>): T {
+        if (node.tag === type.tag) {
+            return node as any;
+        }
+
+        throw new Error(`Expected node of type '${Tag[type.tag]}' but got node of type '${Tag[node.tag]}'`);
+    }
+}
+
+export namespace Decl {
+}
+
+export namespace Expr {
+    export function getReturnType(context: Context, expr: Expr): Type {
+        switch (expr.tag) {
+            case Tag.ExprCall:        return Node.as(Ref.resolve(context, expr.target), DeclFunction).returnType;
+            case Tag.ExprConstant:    return expr.type;
+            case Tag.ExprCreate:      return expr.type;
+            case Tag.ExprGet:         return Node.as(Ref.resolve(context, expr.target), DeclVariable).type;
+        }
+
+        throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
+    }
+
+    export function get(context: Context, id: number) {
+        return context.container.expr[id];
+    }
+}
+
+export namespace Ref {
+    export function resolve(context: Context, ref: Ref): Decl {
+        throw new Error("Not implemented yet");
+        throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
     }
 }
