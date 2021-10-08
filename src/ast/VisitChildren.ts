@@ -13,10 +13,10 @@ export function VisitChildren<State>(context: Context, node: Node, id: number, s
             id
         );
 
-        const decl = visit.array(childContext, children.decl, state, first);
-        const expr = visit.array(childContext, children.expr, state, first);
+        const decl = visit.array(childContext, children.decls, state, first);
+        const expr = visit.array(childContext, children.exprs, state, first);
 
-        if (children.decl !== decl || children.expr !== expr) {
+        if (children.decls !== decl || children.exprs !== expr) {
             node = Node.mutate(node, {
                 children: new Children(decl, expr, children.body, children.names)
             });

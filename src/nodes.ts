@@ -81,6 +81,8 @@ export const BadId = -2;
 // These aliases are intended to ease refactoring rather than hide implementation details.
 export type RefDecl = Ref;
 export type RefExpr = number;
+export type ExprId = number;
+export type DeclId = number;
 
 export type NodeType<T> = Constructor<T> & { tag: Tag };
 
@@ -95,6 +97,15 @@ export class Module {
     ) { }
 }
 
+export class MutModule {
+    public readonly tag = Tag.Module;
+    public static readonly tag = Tag.Module;
+
+    public constructor(
+        public readonly children: MutChildren,
+    ) { }
+}
+
 // Declarations ================================================================
 
 export class DeclFunction {
@@ -104,7 +115,7 @@ export class DeclFunction {
     public constructor(
         public readonly name: string,
         public readonly returnType: Type,
-        public readonly parameters: number[],
+        public readonly parameters: DeclId[],
         public readonly children: Children,
     ) { }
 }
@@ -265,7 +276,7 @@ export class RefFieldId {
 
     public constructor(
         public readonly target: RefExpr,
-        public readonly field: number,
+        public readonly field: DeclId,
     ) { }
 }
 
@@ -284,7 +295,7 @@ export class RefGlobal {
     public static readonly tag = Tag.RefGlobal;
 
     public constructor(
-        public readonly id: number,
+        public readonly id: DeclId,
     ) { }
 }
 
@@ -293,8 +304,8 @@ export class RefGlobalMember {
     public static readonly tag = Tag.RefGlobalMember;
 
     public constructor(
-        public readonly id: number,
-        public readonly member: number,
+        public readonly id: DeclId,
+        public readonly member: DeclId,
     ) { }
 }
 
@@ -303,7 +314,7 @@ export class RefLocal {
     public static readonly tag = Tag.RefLocal;
 
     public constructor(
-        public readonly id: number,
+        public readonly id: DeclId,
     ) { }
 }
 
@@ -336,19 +347,19 @@ export class TypeInfer {
 
 export class Children {
     public constructor(
-        public readonly decl: readonly (Decl | RefDecl)[],
-        public readonly expr: readonly Expr[],
-        public readonly body: readonly number[],
-        public readonly names: ReadonlyMap<string, readonly number[]>,
+        public readonly decls: readonly (Decl | RefDecl)[],
+        public readonly exprs: readonly Expr[],
+        public readonly body: readonly ExprId[],
+        public readonly names: ReadonlyMap<string, readonly DeclId[]>,
     ) { }
 }
 
-export class MutableChildren {
+export class MutChildren {
     public constructor(
-        public readonly decl: (Decl | RefDecl)[],
-        public readonly expr: Expr[],
-        public readonly body: number[],
-        public readonly names: Map<string, number[]>,
+        public readonly decls: (Decl | RefDecl)[],
+        public readonly exprs: Expr[],
+        public readonly body: ExprId[],
+        public readonly names: Map<string, DeclId[]>,
     ) { }
 }
 
@@ -358,15 +369,54 @@ export class Context {
     public constructor(
         public readonly module: Module,
         public readonly container: Children,
-        public readonly parent: number,
+        public readonly parent: DeclId,
     ) { }
+
+    public createChildContext(container: Children, parent: DeclId) {
+        return new Context(this.module, container, parent);
+    }
+}
+
+export class MutContext {
+    public constructor(
+        public readonly module: MutModule,
+        public readonly container: MutChildren,
+        public readonly parent: DeclId,
+    ) { }
+
+    public static fromContext(context: Context) {
+        return new MutContext(context.module as any, context.container as any, context.parent);
+    }
+
+    public createChildContext(container: MutChildren, parent: DeclId): MutContext {
+        return new MutContext(this.module, container, parent);
+    }
+
+    public updateExpr(id: ExprId, expr: Expr) {
+        this.container.exprs[id] = expr;
+    }
 }
 
 // Utilities ===================================================================
 
 export namespace Node {
-    type HasChildren = Module | DeclFunction | DeclStruct | DeclTrait;
+    export function as<T>(node: Node, type: NodeType<T>): T {
+        if (node.tag === type.tag) {
+            return node as any;
+        }
 
+        throw new Error(`Expected node of type '${Tag[type.tag]}' but got node of type '${Tag[node.tag]}'`);
+    }
+
+    export function getChildren(decl: Decl | Ref) {
+        if (!Node.hasChildren(decl)) {
+            throw new Error(`Unexpected node of type '${Tag[decl.tag]}', expected a node that has children.`);
+        }
+
+        return decl.children;
+    }
+
+    type HasChildren = Module | DeclFunction | DeclStruct | DeclTrait;
     export function hasChildren(node: Node): node is HasChildren {
         switch (node.tag) {
             case Tag.DeclVariable:
@@ -400,25 +450,9 @@ export namespace Node {
         throw new Error(`Unreachable: Unhandled case '${Tag[(node as any)?.tag]}'`);
     }
 
-    export function getChildren(decl: Decl | Ref) {
-        if (!Node.hasChildren(decl)) {
-            throw new Error(`Unexpected node of type '${Tag[decl.tag]}', expected a node that has children.`);
-        }
-
-        return decl.children;
-    }
-
     export function mutate<T extends Node>(node: T, fields: Partial<T>): T {
         // TODO: Implement a clone function
         return Object.assign({}, node, fields);
-    }
-
-    export function as<T>(node: Node, type: NodeType<T>): T {
-        if (node.tag === type.tag) {
-            return node as any;
-        }
-
-        throw new Error(`Expected node of type '${Tag[type.tag]}' but got node of type '${Tag[node.tag]}'`);
     }
 }
 
@@ -426,6 +460,10 @@ export namespace Decl {
 }
 
 export namespace Expr {
+    export function get(context: Context, id: ExprId) {
+        return context.container.exprs[id];
+    }
+
     export function getReturnType(context: Context, expr: Expr): Type {
         switch (expr.tag) {
             case Tag.ExprCall:        return Node.as(Ref.resolve(context, expr.target), DeclFunction).returnType;
@@ -436,15 +474,22 @@ export namespace Expr {
 
         throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
     }
-
-    export function get(context: Context, id: number) {
-        return context.container.expr[id];
-    }
 }
 
 export namespace Ref {
     export function resolve(context: Context, ref: Ref): Decl {
-        throw new Error("Not implemented yet");
+        switch (ref.tag) {
+            //case Tag.RefFieldId:        return ;
+            case Tag.RefGlobal:         return context.module.children.decls[ref.id] as Decl;
+            case Tag.RefGlobalMember:   return Node.getChildren(context.module.children.decls[ref.id]).decls[ref.member] as Decl;
+            case Tag.RefLocal:          return context.container.decls[ref.id] as Decl;
+
+            case Tag.RefFieldName:
+            case Tag.RefName: {
+                throw new Error(`'${Tag[ref.tag]}' can not be handled by Ref.resolve. Instead it must be resolved by resolveNames first.`);
+            }
+        }
+
         throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
     }
 }

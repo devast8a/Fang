@@ -5,7 +5,7 @@ import { PNode, PTag } from '../parser/post_processor';
 const InferType = new Nodes.TypeInfer();
 
 export function parseAst(ast: PNode[]) {
-    const root = new Nodes.MutableChildren([], [], [], new Map());
+    const root = new Nodes.MutChildren([], [], [], new Map());
     const state = new State(root, root);
 
     const body = [];
@@ -261,16 +261,16 @@ enum Storage {
 
 class State {
     public constructor(
-        private readonly root: Nodes.MutableChildren,
-        private readonly parent: Nodes.MutableChildren,
+        private readonly root: Nodes.MutChildren,
+        private readonly parent: Nodes.MutChildren,
     ) { }
 
     public declare(storage: Storage, declare: (id: number, state: State) => Node): number {
         switch (storage) {
-            case Storage.ParentDecl: return this.declare_impl(declare, this.parent.decl, Nodes.RefLocal);
-            case Storage.ParentExpr: return this.declare_impl(declare, this.parent.expr, null);
-            case Storage.RootDecl:   return this.declare_impl(declare, this.root.decl, Nodes.RefGlobal);
-            case Storage.Parameter:  return this.declare_impl(declare, this.parent.decl, null);
+            case Storage.ParentDecl: return this.declare_impl(declare, this.parent.decls, Nodes.RefLocal);
+            case Storage.ParentExpr: return this.declare_impl(declare, this.parent.exprs, null);
+            case Storage.RootDecl:   return this.declare_impl(declare, this.root.decls, Nodes.RefGlobal);
+            case Storage.Parameter:  return this.declare_impl(declare, this.parent.decls, null);
             default: throw new Error('Unreachable: Unhandled case');
         }
     }
@@ -311,20 +311,20 @@ class State {
 
         // Must be a declaration at this point
 
-        const eid = this.parent.expr.length;
-        this.parent.expr.push(new Nodes.ExprDeclaration(new Ref(id)));
+        const eid = this.parent.exprs.length;
+        this.parent.exprs.push(new Nodes.ExprDeclaration(new Ref(id)));
 
         return eid;
     }
 
     public createChildState() {
-        return new State(this.root, new Nodes.MutableChildren([], [], null as any, new Map()));
+        return new State(this.root, new Nodes.MutChildren([], [], null as any, new Map()));
     }
 
     public finalize(body: number[]) {
         return new Nodes.Children(
-            this.parent.decl,
-            this.parent.expr,
+            this.parent.decls,
+            this.parent.exprs,
             body,
             this.parent.names,
         );

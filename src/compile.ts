@@ -52,8 +52,8 @@ export class Compiler {
         }
 
         console.time("Code Generation");
-        const target = new TargetC(module);
-        target.emitProgram();
+        const target = new TargetC();
+        target.emitProgram(new Context(module, module.children, RootId));
         const code = target.toString();
         console.timeEnd("Code Generation");
         Fs.writeFileSync(`build/output/${id++}-Code Generation.txt`, code);
