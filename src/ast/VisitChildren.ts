@@ -1,7 +1,7 @@
-import { Children, Context, Node } from '../nodes';
+import { Children, Context, Node, NodeId } from '../nodes';
 import { visit, VisitorControl } from './visitor';
 
-export function VisitChildren<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>): Node {
+export function VisitChildren<State>(context: Context, node: Node, id: NodeId, state: State, control: VisitorControl<State>): Node {
     const { first, next } = control;
 
     if (Node.hasChildren(node)) {

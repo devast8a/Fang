@@ -1,4 +1,4 @@
-import { Context, Node } from '../nodes';
+import { Context, Node, NodeId } from '../nodes';
 
 /**
  * Creates a "Chain of Responsibility", a list of functions where each function can perform a computation on a node
@@ -48,9 +48,9 @@ export function createVisitor<State = null>(...visitors: VisitorFn<State>[]): Vi
     return call[0];
 }
 
-export type Visitor<State> = <T extends Node>(context: Context, node: T, id: number, state: State) => T;
+export type Visitor<State> = <T extends Node>(context: Context, node: T, id: NodeId, state: State) => T;
 
-export type VisitorFn<State> = (context: Context, node: Node, id: number, state: State, control: VisitorControl<State>) => Node;
+export type VisitorFn<State> = (context: Context, node: Node, id: NodeId, state: State, control: VisitorControl<State>) => Node;
 
 export interface VisitorControl<State> {
     readonly next: Visitor<State>
@@ -58,7 +58,7 @@ export interface VisitorControl<State> {
 }
 
 export namespace visit {
-    export function fieldNode<T extends Node, State>(context: Context, node: T, id: number, state: State, control: VisitorControl<State>, field: keyof T) {
+    export function fieldNode<T extends Node, State>(context: Context, node: T, id: NodeId, state: State, control: VisitorControl<State>, field: keyof T) {
         const previous = node[field] as any;
         const updated = control.first(context, previous, id, state);
 
@@ -69,7 +69,7 @@ export namespace visit {
         return control.next(context, node, id, state);
     }
 
-    export function fieldArray<T extends Node, State>(context: Context, node: T, id: number, state: State, control: VisitorControl<State>, field: keyof T) {
+    export function fieldArray<T extends Node, State>(context: Context, node: T, id: NodeId, state: State, control: VisitorControl<State>, field: keyof T) {
         const previous = node[field] as any;
         const updated = array(context, previous, state, control.first);
 

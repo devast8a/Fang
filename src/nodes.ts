@@ -78,13 +78,30 @@ export enum Tag {
 export const RootId = -1;
 export const BadId = -2;
 
-// These aliases are intended to ease refactoring rather than hide implementation details.
+export type NodeType<T> = Constructor<T> & { tag: Tag };
+
+/*
+    These aliases are intended to ease refactoring and improve readability rather than hide implementation details.
+
+    DeclId, ExprId, NodeId
+    - These identify Decl, Expr, and Nodes for a particular instance of Context.
+    - Only use NodeId if you don't know if the id refers to a Decl or an Expr.
+    - Prefer to use these throughout the compiler over Ref, but don't store them or pass them around in a way that the
+        context could change and make the identifier invalid.
+    - Avoid these as a field of a Node and instead use RefDecl and RefExpr instead. The only exception to this is if the Node has
+        children and the target is always one of those children (DeclFunction's parameters for example).
+
+    RefDecl, RefExpr
+    - These identify Decl and Expr within a particular module and are not sensitive to the context.
+    - Prefer to use these as 
+    - Avoid these throughout the compiler and instead use DeclId, ExprId, NodeId.
+*/
+export type DeclId = number;
+export type ExprId = number;
+export type NodeId = number;
+
 export type RefDecl = Ref;
 export type RefExpr = number;
-export type ExprId = number;
-export type DeclId = number;
-
-export type NodeType<T> = Constructor<T> & { tag: Tag };
 
 // Module ======================================================================
 
@@ -115,7 +132,7 @@ export class DeclFunction {
     public constructor(
         public readonly name: string,
         public readonly returnType: Type,
-        public readonly parameters: DeclId[],
+        public readonly parameters: DeclId[],   // Indexes into children.decls
         public readonly children: Children,
     ) { }
 }

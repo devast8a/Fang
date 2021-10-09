@@ -1,7 +1,7 @@
-import { Context, Node, Tag } from '../nodes';
+import { Context, Node, NodeId, Tag } from '../nodes';
 import { visit, VisitorControl } from './visitor';
 
-export function VisitRefDecl<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>): Node {
+export function VisitRefDecl<State>(context: Context, node: Node, id: NodeId, state: State, control: VisitorControl<State>): Node {
     switch (node.tag) {
         // Nodes with DeclRef member
         case Tag.ExprCall:

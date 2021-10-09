@@ -1,4 +1,5 @@
-import { Children, Context, Decl, DeclFunction, Expr, Module, Node, Ref, RefExpr, RootId, Tag, Type } from '../nodes';
+import { Flags } from '../common/flags';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, RefExpr, Tag, Type, DeclVariableFlags } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -15,7 +16,7 @@ export class TargetC {
         }
     }
 
-    public emitDecl(context: Context, decl: Decl | Ref, id: number) {
+    public emitDecl(context: Context, decl: Decl | Ref, id: DeclId) {
         switch (decl.tag) {
             case Tag.DeclFunction: {
                 const ctx = context.createChildContext(decl.children, id);
@@ -23,7 +24,7 @@ export class TargetC {
                 this.emitSeparator();
                 this.emitTypeName(ctx, decl.returnType);
                 this.emit(" ", decl.name, "(");
-                //this.emitParameters(ctx, decl.children.decls.slice(0, decl.parameters) as DeclVariable[]);
+                this.emitParameters(ctx, decl.parameters);
                 this.emit(")");
                 this.emitBody(ctx, decl.children.body);
                 return;
@@ -57,7 +58,7 @@ export class TargetC {
         throw new Error(`Unreachable: Unhandled case '${Tag[(decl as any).tag]}'`);
     }
 
-    public emitExpr(context: Context, id: number, expr?: Expr) {
+    public emitExpr(context: Context, id: ExprId, expr?: Expr) {
         expr = expr ?? Expr.get(context, id);
 
         switch (expr.tag) {
@@ -65,11 +66,13 @@ export class TargetC {
                 const fn = Node.as(Ref.resolve(context, expr.target), DeclFunction);
 
                 if (fn.name.startsWith('infix')) {
-                    this.emitArgument(context, fn, expr.args, 0);
+                    this.emitExpr(context, expr.args[0]);
                     this.emit(' + ');
-                    this.emitArgument(context, fn, expr.args, 1);
+                    this.emitExpr(context, expr.args[1]);
                 } else {
-                    this.emit(fn.name);
+                    this.emit(fn.name, '(',);
+                    this.emitArguments(context, fn, expr.args);
+                    this.emit(')');
                 }
                 return;
             }
@@ -81,6 +84,18 @@ export class TargetC {
             }
                 
             case Tag.ExprCreate: {
+                this.emit("{",);
+                let first = true;
+                for (const arg of expr.args) {
+                    if (!first) {
+                        this.emit(", ");
+                    } else {
+                        first = false;
+                    }
+
+                    this.emitExpr(context, arg);
+                }
+                this.emit("}",);
                 return;
             }
 
@@ -103,6 +118,18 @@ export class TargetC {
                 throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}' for ExprDeclaration`);
             }
                 
+            case Tag.ExprGet: {
+                const targetRef = expr.target;
+
+                if (targetRef.tag !== Tag.RefFieldName) {
+                    const target = Ref.resolve(context, targetRef);
+                    this.emit(target.name);
+                } else {
+                    this.emit("/* FIELD ACCESS */");
+                }
+                return;
+            }
+                
             case Tag.ExprReturn: {
                 if (expr.value === null) {
                     this.emit("return;");
@@ -120,8 +147,84 @@ export class TargetC {
         this.output.push(...text);
     }
 
-    public emitArgument(context: Context, fn: DeclFunction, args: ReadonlyArray<RefExpr>, index: number) {
-        return;
+    public emitArguments(context: Context, fn: DeclFunction, args: ReadonlyArray<RefExpr>) {
+        for (let index = 0; index < args.length; index++) {
+            if (index > 0) {
+                this.emit(", ");
+            }
+
+            const argId = args[index];
+            const arg = Expr.get(context, argId);
+
+            const paramId = fn.parameters[index];
+            const param = Node.as(fn.children.decls[paramId], DeclVariable);
+
+            switch (arg.tag) {
+                case Tag.ExprConstant: {
+                    // TODO: Encode strings correctly
+                    this.emit(arg.value);
+                    break;
+                }
+
+                case Tag.ExprGet: {
+                    const local = Node.as(Ref.resolve(context, arg.target), DeclVariable);
+
+                    // TODO: argumentIsPtr is wrong for locals, needs a parameter flag
+                    // TODO: Switch to pointers for large objects
+                    const argumentIsPtr  = Flags.has(local.flags, DeclVariableFlags.Mutable)
+                    const parameterIsPtr = Flags.has(param.flags, DeclVariableFlags.Mutable);
+
+                    // Match pointer-ness of the parameter and the argument
+                    if (parameterIsPtr) {
+                        if (argumentIsPtr) {
+                            this.emit(local.name);
+                        } else {
+                            this.emit("&", local.name);
+                        }
+                    } else {
+                        if (argumentIsPtr) {
+                            this.emit("*", local.name);
+                        } else {
+                            this.emit(local.name);
+                        }
+                    }
+
+                    break;
+                }
+
+                default: {
+                    throw new Error(`targetC > emitArguments > ${Tag[arg.tag]}: Not implemented.`);
+                }
+            }
+        }
+    }
+
+    public emitParameters(context: Context, parameters: DeclId[]) {
+        let first = true;
+
+        for (const parameterId of parameters) {
+            if (!first) {
+                this.emit(", ");
+            } else {
+                first = false;
+            }
+
+            const parameter = Node.as(context.container.decls[parameterId], DeclVariable);
+
+            this.emitTypeName(context, parameter.type);
+
+            // Turn mutable parameters into pointers so we can modify their values
+            const parameterIsPtr = Flags.has(parameter.flags, DeclVariableFlags.Mutable);
+
+            // Use `restrict` for pointers to inform the C compiler that arguments for this parameter are only accessed
+            //  by this parameter so that it can better optimize output. ie. No aliasing for the argument's value. This
+            //  is guaranteed by `checkLifetime`.
+            if (parameterIsPtr) {
+                this.emit("* restrict");
+            }
+
+            this.emit(" ", parameter.name);
+        }
     }
 
     public emitTypeName(context: Context, type: Type) {

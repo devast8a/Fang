@@ -1,5 +1,5 @@
 import * as Nodes from '../nodes';
-import { Decl, Node } from '../nodes';
+import { Decl, ExprId, Node, NodeId } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
@@ -17,7 +17,7 @@ export function parseAst(ast: PNode[]) {
 }
 
 // TODO: ExprDecl
-function parse(parent: State, node: PNode): number {
+function parse(parent: State, node: PNode): NodeId {
     switch (node.tag) {
         case PTag.DeclClass: {
             return parent.declare(Storage.RootDecl, (id) => {
@@ -201,11 +201,11 @@ function parseRef(parent: State, node: PNode) {
     }
 }
 
-function parseNull(parent: State, node: PNode | null | undefined): number | null {
+function parseNull(parent: State, node: PNode | null | undefined): NodeId | null {
     return node === undefined || node === null ? null : parse(parent, node);
 }
 
-function parseBody(state: State, ast: PNode): number[] {
+function parseBody(state: State, ast: PNode): NodeId[] {
     switch (ast.length) {
         case 2: {
             // whitespace body
@@ -265,7 +265,7 @@ class State {
         private readonly parent: Nodes.MutChildren,
     ) { }
 
-    public declare(storage: Storage, declare: (id: number, state: State) => Node): number {
+    public declare(storage: Storage, declare: (id: NodeId, state: State) => Node): NodeId {
         switch (storage) {
             case Storage.ParentDecl: return this.declare_impl(declare, this.parent.decls, Nodes.RefLocal);
             case Storage.ParentExpr: return this.declare_impl(declare, this.parent.exprs, null);
@@ -287,9 +287,9 @@ class State {
      * @see State.declare
      */
     private declare_impl(
-        declare: (id: number, state: State) => Node,
+        declare: (id: NodeId, state: State) => Node,
         nodes: Node[],
-        Ref: {new(id: number): any} | null,
+        Ref: {new(id: NodeId): any} | null,
     ) {
         const id = nodes.length;
         nodes.push(null as any);
@@ -321,7 +321,7 @@ class State {
         return new State(this.root, new Nodes.MutChildren([], [], null as any, new Map()));
     }
 
-    public finalize(body: number[]) {
+    public finalize(body: ExprId[]) {
         return new Nodes.Children(
             this.parent.decls,
             this.parent.exprs,
