@@ -120,13 +120,34 @@ export class TargetC {
             case Tag.ExprGet: {
                 const targetRef = expr.target;
 
-                if (targetRef.tag !== Tag.RefFieldName) {
-                    const target = Ref.resolve(context, targetRef);
-                    this.emit(target.name);
-                } else {
-                    this.emit("/* FIELD ACCESS */");
+                switch (targetRef.tag) {
+                    case Tag.RefFieldId: {
+                        throw new Error(`Not implemented yet`);
+                    }
+
+                    case Tag.RefFieldName: {
+                        this.emitExpr(context, targetRef.target);
+                        this.emit('.', targetRef.field);
+                        return;
+                    }
+
+                    case Tag.RefLocal:
+                    case Tag.RefGlobal:
+                    case Tag.RefGlobalMember: {
+                        const target = Ref.resolve(context, targetRef);
+                        this.emit(target.name);
+                        return;
+                    }
+
+                    case Tag.RefName: {
+                        throw new Error(`'${Tag[targetRef.tag]}' (for the identifier '${targetRef.name}') should have been resolved during name resolution.`);
+                    }
+                        
+                        
+                    default: {
+                        throw new Error(`Unreachable: Unhandled case '${Tag[(targetRef as any).tag]}'`);
+                    }
                 }
-                return;
             }
                 
             case Tag.ExprReturn: {
