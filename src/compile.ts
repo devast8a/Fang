@@ -7,11 +7,13 @@ import { Context, Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
 import { inferTypes } from './stages/inferTypes';
+import { checkLifetime } from './stages/checkLifetime';
 
 export class Compiler {
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Names', (context) => resolveNames(context, context.module, RootId, null)],
         ['Type Inference', (context) => inferTypes(context, context.module, RootId, null)],
+        ['Check: Lifetime', (context) => checkLifetime(context)],
     ];
 
     public async parseFile(source: string | Source): Promise<Module>
