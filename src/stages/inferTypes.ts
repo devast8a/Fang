@@ -15,7 +15,6 @@ export const inferTypes = createVisitor(VisitChildren, (context, node) => {
                 throw new Error('USER ERROR');
             }
 
-            console.log(node.value);
             const value = Expr.get(context, node.value);
             const type = Expr.getReturnType(context, value);
             return Node.mutate(node, { type });

@@ -101,7 +101,6 @@ export class TargetC {
 
             case Tag.ExprDeclaration: {
                 // Depends on the kind of declaration
-                console.log(expr, expr.target);
                 const decl = Ref.resolve(context, expr.target);
 
                 switch (decl.tag) {
