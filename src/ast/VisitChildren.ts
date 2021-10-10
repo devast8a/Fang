@@ -7,11 +7,7 @@ export function VisitChildren<State>(context: Context, node: Node, id: NodeId, s
     if (Node.hasChildren(node)) {
         const children = node.children;
 
-        const childContext = new Context(
-            context.module,
-            children,
-            id
-        );
+        const childContext = context.createChildContext(children, id);
 
         const decl = visit.array(childContext, children.decls, state, first);
         const expr = visit.array(childContext, children.exprs, state, first);

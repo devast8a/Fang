@@ -16,7 +16,6 @@ export function parseAst(ast: PNode[]) {
     return state.finalize(body);
 }
 
-// TODO: ExprDecl
 function parse(parent: State, node: PNode): NodeId {
     switch (node.tag) {
         case PTag.DeclClass: {

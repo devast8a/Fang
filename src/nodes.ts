@@ -384,34 +384,49 @@ export class MutChildren {
 
 export class Context {
     public constructor(
+        public errors: CompileError[],
         public readonly module: Module,
         public readonly container: Children,
         public readonly parent: DeclId,
     ) { }
 
     public createChildContext(container: Children, parent: DeclId) {
-        return new Context(this.module, container, parent);
+        return new Context(this.errors, this.module, container, parent);
+    }
+
+    public error(error: CompileError) {
+        this.errors.push(error);
     }
 }
 
 export class MutContext {
     public constructor(
+        public errors: CompileError[],
         public readonly module: MutModule,
         public readonly container: MutChildren,
         public readonly parent: DeclId,
     ) { }
 
     public static fromContext(context: Context) {
-        return new MutContext(context.module as any, context.container as any, context.parent);
+        return new MutContext(context.errors, context.module as any, context.container as any, context.parent);
     }
 
     public createChildContext(container: MutChildren, parent: DeclId): MutContext {
-        return new MutContext(this.module, container, parent);
+        return new MutContext(this.errors, this.module, container, parent);
     }
 
+    public error(error: CompileError) {
+        this.errors.push(error);
+    }
+
+    /* Mutable specific members */
     public updateExpr(id: ExprId, expr: Expr) {
         this.container.exprs[id] = expr;
     }
+}
+
+export interface CompileError {
+    // TODO: Define the interface
 }
 
 // Utilities ===================================================================
@@ -508,5 +523,11 @@ export namespace Ref {
         }
 
         throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
+    }
+}
+
+export namespace Type {
+    export function canAssignTo(source: Type, target: Type): boolean {
+        return false;
     }
 }

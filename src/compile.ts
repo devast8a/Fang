@@ -3,17 +3,19 @@ import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
 import { parseAst } from './stages/AstGenerationStage';
-import { Context, Module, RootId } from './nodes';
+import { CompileError, Context, Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
 import { inferTypes } from './stages/inferTypes';
 import { checkLifetime } from './stages/checkLifetime';
+import { checkTypes } from './stages/checkTypes';
 
 export class Compiler {
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Names', (context) => resolveNames(context, context.module, RootId, null)],
         ['Type Inference', (context) => inferTypes(context, context.module, RootId, null)],
         ['Check: Lifetime', (context) => checkLifetime(context)],
+        ['Check: Types', (context) => checkTypes(context, context.module, RootId, null)],
     ];
 
     public async parseFile(source: string | Source): Promise<Module>
@@ -43,19 +45,25 @@ export class Compiler {
     {
         let module = await this.parseFile(source);
 
+        const errors = new Array<CompileError>();
+
         let id = 0;
         Fs.writeFileSync(`build/output/${id++}-Initial.txt`, serialize(module));
         for (const [name, fn] of this.stages) {
             console.time(name);
-            module = fn(new Context(module, module.children, RootId));
+            module = fn(new Context(errors, module, module.children, RootId));
             console.timeEnd(name);
 
             Fs.writeFileSync(`build/output/${id++}-${name}.txt`, serialize(module));
         }
 
+        if (errors.length > 0) {
+            console.log('Errors');
+        }
+
         console.time("Code Generation");
         const target = new TargetC();
-        target.emitProgram(new Context(module, module.children, RootId));
+        target.emitProgram(new Context(errors, module, module.children, RootId));
         const code = target.toString();
         console.timeEnd("Code Generation");
         Fs.writeFileSync(`build/output/${id++}-Code Generation.txt`, code);
