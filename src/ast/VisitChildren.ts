@@ -9,12 +9,12 @@ export function VisitChildren<State>(context: Context, node: Node, id: NodeId, s
 
         const childContext = context.createChildContext(children, id);
 
-        const decl = visit.array(childContext, children.decls, state, first);
-        const expr = visit.array(childContext, children.exprs, state, first);
+        const decls = visit.array(childContext, children.decls, state, first);
+        const exprs = visit.array(childContext, children.exprs, state, first);
 
-        if (children.decls !== decl || children.exprs !== expr) {
+        if (children.decls !== decls || children.exprs !== exprs) {
             node = Node.mutate(node, {
-                children: new Children(decl, expr, children.body, children.names)
+                children: new Children(decls, exprs, children.body, children.names)
             });
         }
     }
