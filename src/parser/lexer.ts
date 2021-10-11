@@ -12,11 +12,11 @@ const lexer = moo.compile({
   identifier:       {
     match: /[a-zA-Z_][a-zA-Z0-9_]*/,
     type: moo.keywords({
-      kw_class: "class",
       kw_fn: "fn",
       kw_impl: "impl",
       kw_mut: "mut",
       kw_own: "own",
+      kw_struct: "struct",
       kw_trait: "trait",
       kw_val: "val",
     })

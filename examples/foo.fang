@@ -1,4 +1,4 @@
-class u32 {}
+struct u32 {}
 fn infix+(left: u32, right: u32) -> u32 {}
 
 trait Pair {
@@ -6,12 +6,12 @@ trait Pair {
     val y: u32
 }
 
-class Vec2d {
+struct Vec2d {
     val x: u32
     val y: u32
 }
 
-class Vec3d {
+struct Vec3d {
     val x: u32
     val y: u32
     val z: u32

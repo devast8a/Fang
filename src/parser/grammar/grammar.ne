@@ -7,6 +7,10 @@
     # Expr/* - Syntax for expressions
     # Stmt/* - Syntax for statement
 
+# TODO: Rename DeclClass to DeclStruct
+# TODO: Rename PStmt* nodes to PExpr* nodes
+# TODO: Remove Stmt/Expr differentiation
+
 ## Abbreviations ###################################################################################
     ## Dc - DeclClass
     ## Df - DeclFunction
@@ -46,7 +50,7 @@
     main -> NL:? (Stmt (StmtSep Stmt):* NL:?):? {%p.MainProcessor%}
 
 ## Decl/Class ######################################################################################
-    DeclClass    -> DcKeyword DcName DcImplement:* DcGeneric:? DcAttribute:* DcBody:? {%p.DeclClass%}
+    DeclClass    -> DcKeyword DcName DcImplement:* DcGeneric:? DcAttribute:* DcBody:? {%p.PDeclStruct%}
 
     # Examples:
     #   class Foo impl ClassName #attribute {}
@@ -55,7 +59,7 @@
     #   Attributes
 
     # Required
-    DcKeyword       -> "class" __
+    DcKeyword       -> "struct" __
     DcName          -> Identifier
 
     # Optional After
@@ -68,7 +72,7 @@
     Stmt            -> DeclClass
 
 ## Decl/Function ###################################################################################
-    DeclFunction     -> DfKeyword DfName:? CompileTime:? DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.DeclFunction%}
+    DeclFunction     -> DfKeyword DfName:? CompileTime:? DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.PDeclFunction%}
 
     # Examples:
     #   fn name(){ ... }
@@ -110,7 +114,7 @@
     # After the function name but before the body in DeclFunction
 
 ## Decl/Parameter ##################################################################################
-    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpLifetime:? DpValue:? {%p.DeclParameter%}
+    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpLifetime:? DpValue:? {%p.PDeclParameter%}
 
     # Examples:
     #   name
@@ -139,7 +143,7 @@
     # Function declaration parameter's list (DeclFunction)
 
 ## Decl/Trait ######################################################################################
-    DeclTrait    -> DtKeyword DtName DtImplement:* DtGeneric:? DtAttribute:* DtBody:? {%p.DeclTrait%}
+    DeclTrait    -> DtKeyword DtName DtImplement:* DtGeneric:? DtAttribute:* DtBody:? {%p.PDeclTrait%}
 
     # Examples:
     #   trait Foo impl ClassName #attribute {}
@@ -161,7 +165,7 @@
     Stmt            -> DeclTrait
 
 ## Decl/Variable ###################################################################################
-    DeclVariable     -> DvKeyword DvName CompileTime:? DvType:? DvAttribute:* DvValue:? {%p.DeclVariable%}
+    DeclVariable     -> DvKeyword DvName CompileTime:? DvType:? DvAttribute:* DvValue:? {%p.PDeclVariable%}
 
     # Exmaples:
     #   val name
@@ -202,30 +206,30 @@
 
     # Binary Expressions
     # x + y or x+y
-    ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
-    ExprBinary      -> ExprUnary NL OperatorSpaced __ ExprBinary    {%p.ExprBinary%}
-    ExprBinary      -> ExprUnary __ OperatorSpaced NL ExprBinary    {%p.ExprBinary%}
-    ExprBinary      -> Atom Operator Atom                           {%p.ExprBinary%}
+    ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.PExprBinary%}
+    ExprBinary      -> ExprUnary NL OperatorSpaced __ ExprBinary    {%p.PExprBinary%}
+    ExprBinary      -> ExprUnary __ OperatorSpaced NL ExprBinary    {%p.PExprBinary%}
+    ExprBinary      -> Atom Operator Atom                           {%p.PExprBinary%}
     ExprBinary      -> ExprUnary
 
     # Unary Expressions
     # ++x or x++
-    ExprUnary       -> Operator Atom                                {%p.ExprUnaryPrefix%}
-    ExprUnary       -> Atom Operator                                {%p.ExprUnaryPostfix%}
+    ExprUnary       -> Operator Atom                                {%p.PExprUnaryPrefix%}
+    ExprUnary       -> Atom Operator                                {%p.PExprUnaryPostfix%}
     ExprUnary       -> Atom
 
     # Atoms
     Atom            -> "(" _ Expr _ ")"
     Atom            -> ExprIdentifier
 
-    ExprIdentifier  -> Identifier {%p.ExprIdentifier%}
+    ExprIdentifier  -> Identifier {%p.PExprIdentifier%}
 
     # Literals
-    Atom            -> %string_double_quote   {%p.LiteralString%}       # "foo"
-    Atom            -> %integer_bin           {%p.LiteralIntegerBin%}   # 0b1010101101 0b1011_1011
-    Atom            -> %integer_dec           {%p.LiteralIntegerDec%}   # 208124 012985  1_000_000
-    Atom            -> %integer_hex           {%p.LiteralIntegerHex%}   # 0x01234567890ABCDEF 0xFF_FF
-    Atom            -> %integer_oct           {%p.LiteralIntegerOct%}   # 0o01234567 0o123_123_123
+    Atom            -> %string_double_quote   {%p.PLiteralString%}       # "foo"
+    Atom            -> %integer_bin           {%p.PLiteralIntegerBin%}   # 0b1010101101 0b1011_1011
+    Atom            -> %integer_dec           {%p.PLiteralIntegerDec%}   # 208124 012985  1_000_000
+    Atom            -> %integer_hex           {%p.PLiteralIntegerHex%}   # 0x01234567890ABCDEF 0xFF_FF
+    Atom            -> %integer_oct           {%p.PLiteralIntegerOct%}   # 0o01234567 0o123_123_123
 
 ## Expr/Literals/List ##############################################################################
     ExprList        -> STAR["[", _, Expr, COMMA, "]"]
@@ -250,7 +254,7 @@
     Atom            -> ExprDictionary
 
 ## Expr/Call #######################################################################################
-    ExprCall        -> EcTarget CompileTime:? EcArguments {%p.ExprCall%}
+    ExprCall        -> EcTarget CompileTime:? EcArguments {%p.PExprCall%}
 
     # Examples:
     #   foo(bar, baz)
@@ -262,14 +266,14 @@
     EcTarget        -> Atom
     EcArguments     -> STAR["(", N_, EcArgument, COMMA, ")"]
     EcArgument      -> Expr
-    EcArgument      -> Identifier _ ":" _ Expr                  {%p.PExprArgument%}
+    EcArgument      -> Identifier _ ":" _ Expr                  {%p.PExprNamedArgument%}
 
     # Contexts
     Stmt            -> ExprCall
     Atom            -> ExprCall
 
 ## Expr/Construct ##################################################################################
-    ExprConstruct   -> EnTarget CompileTime:? EnArguments {%p.ExprConstruct%}
+    ExprConstruct   -> EnTarget CompileTime:? EnArguments {%p.PExprConstruct%}
 
     # En - n for "new"
 
@@ -284,7 +288,7 @@
     EnTarget        -> Atom
     EnArguments     -> STAR["{", _, EnArgument, COMMA, "}"]
     EnArgument      -> Expr
-    EnArgument      -> Identifier _ ":" _ Expr                  {%p.PExprArgument%}
+    EnArgument      -> Identifier _ ":" _ Expr                  {%p.PExprNamedArgument%}
 
     # Contexts
     Atom            -> ExprConstruct
@@ -327,7 +331,7 @@
     Atom            -> ExprIndexBracket
 
 ## Expr/IndexDot ###################################################################################
-    ExprIndexDot    -> EdTarget EdOperator EdName {%p.ExprIndexDot%}
+    ExprIndexDot    -> EdTarget EdOperator EdName {%p.PExprIndexDot%}
 
     # Examples:
     #   foo.bar.baz
@@ -344,7 +348,7 @@
     Atom            -> ExprIndexDot
 
 ## Expr/MacroCall###################################################################################
-    ExprMacroCall   -> EmTarget CompileTime EmArgument:? {%p.ExprMacroCall%}
+    ExprMacroCall   -> EmTarget CompileTime EmArgument:? {%p.PExprMacroCall%}
 
     # Examples:
     #   foo! x + y
@@ -361,7 +365,7 @@
     ExprBinary      -> ExprMacroCall
 
 ## Stmt/Assign #####################################################################################
-    StmtAssign      -> SaTarget SaOperator SaValue {%p.StmtAssign%}
+    StmtAssign      -> SaTarget SaOperator SaValue {%p.PExprSet%}
 
     # Required
     SaTarget        -> ExprIdentifier
@@ -375,7 +379,7 @@
     Stmt            -> StmtAssign
 
 ## Stmt/ForEach ####################################################################################
-    StmtForEach     -> SfKeyword CompileTime:? SfCondition SfBody {%p.StmtForEach%}
+    StmtForEach     -> SfKeyword CompileTime:? SfCondition SfBody {%p.PExprForEach%}
 
     # Required
     SfKeyword       -> "for"
@@ -386,7 +390,7 @@
     Stmt            -> StmtForEach
 
 ## Stmt/If #########################################################################################
-    StmtIf          -> SiKeyword SiCondition SiBody SiElif:* SiElse:? {%p.StmtIf%}
+    StmtIf          -> SiKeyword SiCondition SiBody SiElif:* SiElse:? {%p.PExprIf%}
 
     # Examples:
     #   if(x == false){ ... }
@@ -412,7 +416,7 @@
     Stmt            -> StmtIf
 
 ## Stmt/Match ######################################################################################
-    StmtMatch       -> SmKeyword SmValue SmCases {%p.StmtMatch%}
+    StmtMatch       -> SmKeyword SmValue SmCases {%p.PExprMatch%}
 
     SmKeyword       -> "match" CompileTime:? N_
     SmValue         -> "(" _ Expr _ ")" N_
@@ -424,7 +428,7 @@
     Stmt            -> StmtMatch
 
 ## Stmt/Return #####################################################################################
-    StmtReturn      -> SrKeyword SrValue:? {%p.StmtReturn%}
+    StmtReturn      -> SrKeyword SrValue:? {%p.PExprReturn%}
 
     # Examples
     #   return
@@ -440,7 +444,7 @@
     Stmt            -> StmtReturn
 
 ## Stmt/While ######################################################################################
-    StmtWhile     -> SwKeyword CompileTime:? SwCondition SwBody {%p.StmtWhile%}
+    StmtWhile     -> SwKeyword CompileTime:? SwCondition SwBody {%p.PExprWhile%}
 
     # Examples:
     #   while(x == false){ ... }

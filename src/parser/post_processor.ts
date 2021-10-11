@@ -13,31 +13,31 @@
  */
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export enum PTag {
-    DeclClass,
-    DeclFunction,
-    DeclParameter,
-    DeclTrait,
-    DeclVariable,
-    ExprBinary,
-    ExprCall,
-    ExprConstruct,
-    ExprIdentifier,
-    ExprIndexDot,
-    ExprMacroCall,
-    ExprUnaryPostfix,
-    ExprUnaryPrefix,
-    LiteralIntegerBin,
-    LiteralIntegerDec,
-    LiteralIntegerHex,
-    LiteralIntegerOct,
-    LiteralString,
-    PExprArgument,
-    StmtAssign,
-    StmtForEach,
-    StmtIf,
-    StmtMatch,
-    StmtReturn,
-    StmtWhile,
+    PDeclFunction,
+    PDeclParameter,
+    PDeclStruct,
+    PDeclTrait,
+    PDeclVariable,
+    PExprBinary,
+    PExprCall,
+    PExprConstruct,
+    PExprForEach,
+    PExprIdentifier,
+    PExprIf,
+    PExprIndexDot,
+    PExprMacroCall,
+    PExprMatch,
+    PExprNamedArgument,
+    PExprReturn,
+    PExprSet,
+    PExprUnaryPostfix,
+    PExprUnaryPrefix,
+    PExprWhile,
+    PLiteralIntegerBin,
+    PLiteralIntegerDec,
+    PLiteralIntegerHex,
+    PLiteralIntegerOct,
+    PLiteralString,
 }
 
 export type PNode =
@@ -58,31 +58,31 @@ function tag(tag: PTag) {
     };
 }
 
-export const DeclClass          = tag(PTag.DeclClass);
-export const DeclFunction       = tag(PTag.DeclFunction);
-export const DeclParameter      = tag(PTag.DeclParameter);
-export const DeclTrait          = tag(PTag.DeclTrait);
-export const DeclVariable       = tag(PTag.DeclVariable);
-export const ExprBinary         = tag(PTag.ExprBinary);
-export const ExprCall           = tag(PTag.ExprCall);
-export const ExprConstruct      = tag(PTag.ExprConstruct);
-export const ExprIdentifier     = tag(PTag.ExprIdentifier);
-export const ExprIndexDot       = tag(PTag.ExprIndexDot);
-export const ExprMacroCall      = tag(PTag.ExprMacroCall);
-export const ExprUnaryPostfix   = tag(PTag.ExprUnaryPostfix);
-export const ExprUnaryPrefix    = tag(PTag.ExprUnaryPrefix);
-export const LiteralIntegerBin  = tag(PTag.LiteralIntegerBin);
-export const LiteralIntegerDec  = tag(PTag.LiteralIntegerDec);
-export const LiteralIntegerHex  = tag(PTag.LiteralIntegerHex);
-export const LiteralIntegerOct  = tag(PTag.LiteralIntegerOct);
-export const LiteralString      = tag(PTag.LiteralString);
-export const PExprArgument      = tag(PTag.PExprArgument);
-export const StmtAssign         = tag(PTag.StmtAssign);
-export const StmtForEach        = tag(PTag.StmtForEach);
-export const StmtIf             = tag(PTag.StmtIf);
-export const StmtMatch          = tag(PTag.StmtMatch);
-export const StmtReturn         = tag(PTag.StmtReturn);
-export const StmtWhile          = tag(PTag.StmtWhile);
+export const PDeclFunction       = tag(PTag.PDeclFunction);
+export const PDeclParameter      = tag(PTag.PDeclParameter);
+export const PDeclStruct         = tag(PTag.PDeclStruct);
+export const PDeclTrait          = tag(PTag.PDeclTrait);
+export const PDeclVariable       = tag(PTag.PDeclVariable);
+export const PExprBinary         = tag(PTag.PExprBinary);
+export const PExprCall           = tag(PTag.PExprCall);
+export const PExprConstruct      = tag(PTag.PExprConstruct);
+export const PExprForEach        = tag(PTag.PExprForEach);
+export const PExprIdentifier     = tag(PTag.PExprIdentifier);
+export const PExprIf             = tag(PTag.PExprIf);
+export const PExprIndexDot       = tag(PTag.PExprIndexDot);
+export const PExprMacroCall      = tag(PTag.PExprMacroCall);
+export const PExprMatch          = tag(PTag.PExprMatch);
+export const PExprNamedArgument  = tag(PTag.PExprNamedArgument);
+export const PExprReturn         = tag(PTag.PExprReturn);
+export const PExprSet            = tag(PTag.PExprSet);
+export const PExprUnaryPostfix   = tag(PTag.PExprUnaryPostfix);
+export const PExprUnaryPrefix    = tag(PTag.PExprUnaryPrefix);
+export const PExprWhile          = tag(PTag.PExprWhile);
+export const PLiteralIntegerBin  = tag(PTag.PLiteralIntegerBin);
+export const PLiteralIntegerDec  = tag(PTag.PLiteralIntegerDec);
+export const PLiteralIntegerHex  = tag(PTag.PLiteralIntegerHex);
+export const PLiteralIntegerOct  = tag(PTag.PLiteralIntegerOct);
+export const PLiteralString      = tag(PTag.PLiteralString);
 
 // Post-processors /////////////////////////////////////////////////////////////////////////////////
 export function RejectOperators(node: any, location: any, reject: any) {
