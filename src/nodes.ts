@@ -33,7 +33,8 @@ export type Ref =
     | RefFieldId
     | RefFieldName
     | RefGlobal
-    | RefGlobalMember
+    | RefGlobalDecl
+    | RefGlobalExpr
     | RefLocal
     | RefName
     ;
@@ -42,7 +43,6 @@ export type Type =
     | TypeGet
     | TypeInfer
     ;
-
 
 export enum Tag {
     Module,
@@ -67,7 +67,8 @@ export enum Tag {
     RefFieldId,
     RefFieldName,
     RefGlobal,
-    RefGlobalMember,
+    RefGlobalDecl,
+    RefGlobalExpr,
     RefLocal,
     RefName,
 
@@ -316,13 +317,23 @@ export class RefGlobal {
     ) { }
 }
 
-export class RefGlobalMember {
-    public readonly tag = Tag.RefGlobalMember;
-    public static readonly tag = Tag.RefGlobalMember;
+export class RefGlobalDecl {
+    public readonly tag = Tag.RefGlobalDecl;
+    public static readonly tag = Tag.RefGlobalDecl;
 
     public constructor(
         public readonly id: DeclId,
         public readonly member: DeclId,
+    ) { }
+}
+
+export class RefGlobalExpr {
+    public readonly tag = Tag.RefGlobalExpr;
+    public static readonly tag = Tag.RefGlobalExpr;
+
+    public constructor(
+        public readonly id: DeclId,
+        public readonly member: ExprId,
     ) { }
 }
 
@@ -465,7 +476,7 @@ export namespace Node {
             case Tag.ExprWhile:
             case Tag.RefFieldName:
             case Tag.RefGlobal:
-            case Tag.RefGlobalMember:
+            case Tag.RefGlobalDecl:
             case Tag.RefLocal:
             case Tag.RefName:
             case Tag.TypeGet:
@@ -489,6 +500,9 @@ export namespace Node {
 }
 
 export namespace Decl {
+    export function idToRef(context: Context, id: DeclId) {
+        return new RefGlobalDecl(context.parent, id);
+    }
 }
 
 export namespace Expr {
@@ -506,6 +520,10 @@ export namespace Expr {
 
         throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
     }
+
+    export function idToRef(context: Context, id: ExprId) {
+        return new RefGlobalExpr(context.parent, id);
+    }
 }
 
 export namespace Ref {
@@ -513,7 +531,7 @@ export namespace Ref {
         switch (ref.tag) {
             //case Tag.RefFieldId:        return ;
             case Tag.RefGlobal:         return context.module.children.decls[ref.id] as Decl;
-            case Tag.RefGlobalMember:   return Node.getChildren(context.module.children.decls[ref.id]).decls[ref.member] as Decl;
+            case Tag.RefGlobalDecl:   return Node.getChildren(context.module.children.decls[ref.id]).decls[ref.member] as Decl;
             case Tag.RefLocal:          return context.container.decls[ref.id] as Decl;
 
             case Tag.RefFieldName:

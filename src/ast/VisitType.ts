@@ -28,7 +28,7 @@ export function VisitType<State>(context: Context, node: Node, id: NodeId, state
         case Tag.RefFieldId:
         case Tag.RefFieldName:
         case Tag.RefGlobal:
-        case Tag.RefGlobalMember:
+        case Tag.RefGlobalDecl:
         case Tag.RefLocal:
         case Tag.RefName:
         case Tag.TypeGet:

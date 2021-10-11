@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, RefExpr, Tag, Type, DeclVariableFlags } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -133,7 +133,7 @@ export class TargetC {
 
                     case Tag.RefLocal:
                     case Tag.RefGlobal:
-                    case Tag.RefGlobalMember: {
+                    case Tag.RefGlobalDecl: {
                         const target = Ref.resolve(context, targetRef);
                         this.emit(target.name);
                         return;
@@ -167,7 +167,7 @@ export class TargetC {
         this.output.push(...text);
     }
 
-    public emitArguments(context: Context, fn: DeclFunction, args: ReadonlyArray<RefExpr>) {
+    public emitArguments(context: Context, fn: DeclFunction, args: ReadonlyArray<ExprId>) {
         for (let index = 0; index < args.length; index++) {
             if (index > 0) {
                 this.emit(", ");
@@ -289,7 +289,7 @@ export class TargetC {
         this.emit("}");
     }
 
-    public emitBody(context: Context, exprs: ReadonlyArray<RefExpr>) {
+    public emitBody(context: Context, exprs: ReadonlyArray<ExprId>) {
         this.pushIndent();
         this.emit("{");
         for (const id of exprs) {

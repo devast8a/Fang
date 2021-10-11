@@ -2,7 +2,7 @@ import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
 import { VisitRefDecl } from '../ast/VisitRefDecl';
 import { VisitType } from '../ast/VisitType';
-import { Context, Node, RefGlobal, RefGlobalMember, RefLocal, RootId, Tag } from '../nodes';
+import { Context, Node, RefGlobal, RefGlobalDecl, RefLocal, RootId, Tag } from '../nodes';
 
 function lookup(context: Context, name: string) {
     // TODO: Support caching
@@ -23,7 +23,7 @@ function lookup(context: Context, name: string) {
         if (ids !== undefined) {
             return currentId === context.parent ?
                 new RefLocal(ids[0]) :
-                new RefGlobalMember(currentId, ids[0]);
+                new RefGlobalDecl(currentId, ids[0]);
         }
 
         // TODO: Find real parent id

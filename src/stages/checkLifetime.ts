@@ -376,7 +376,7 @@ function refToPath(ref: Ref): Path {
         case Tag.RefFieldId:      throw new Error(`Not implemented yet`);
         case Tag.RefFieldName:    return `FIELD`;
         case Tag.RefGlobal:       return `global.${ref.id}`;
-        case Tag.RefGlobalMember: return `global.${ref.id}.${ref.member}`;
+        case Tag.RefGlobalDecl: return `global.${ref.id}.${ref.member}`;
         case Tag.RefLocal:        return ref.id;
         case Tag.RefName:         throw new Error('Unreachable');
     }

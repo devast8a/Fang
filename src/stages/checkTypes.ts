@@ -1,6 +1,6 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
-import { Expr, Tag, Type } from '../nodes';
+import { Context, Decl, Expr, Ref, Tag, Type } from '../nodes';
 
 export const checkTypes = createVisitor(VisitChildren, (context, node, id, state) => {
     switch (node.tag) {
@@ -10,7 +10,12 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id, state
                 const sourceType = Expr.getReturnType(context, source);
 
                 if (!Type.canAssignTo(sourceType, node.type)) {
-                    context.error(new AssignmentError(0));
+                    context.error(new AssignmentError(
+                        context,
+                        Expr.idToRef(context, node.value), sourceType,
+                        Decl.idToRef(context, id), node.type,
+                        Decl.idToRef(context, id),
+                    ));
                 }
             }
         }
@@ -19,8 +24,13 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id, state
     return node;
 });
 
-class AssignmentError {
+export class AssignmentError {
     public constructor(
-        public source: number,
+        public context: Context,
+        public source: Ref,
+        public sourceType: Type,
+        public destination: Ref,
+        public destinationType: Type,
+        public assignment: Ref,
     ) { }
 }

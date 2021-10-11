@@ -2,7 +2,7 @@ import * as Fs from 'fs';
 import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
-import { parseAst } from './stages/AstGenerationStage';
+import { AdditionalData, Location, parseAst } from './stages/AstGenerationStage';
 import { CompileError, Context, Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
@@ -11,6 +11,9 @@ import { checkLifetime } from './stages/checkLifetime';
 import { checkTypes } from './stages/checkTypes';
 
 export class Compiler {
+    private locations!: AdditionalData<Location>;
+    private source!: Source;
+
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Names', (context) => resolveNames(context, context.module, RootId, null)],
         ['Type Inference', (context) => inferTypes(context, context.module, RootId, null)],
@@ -32,13 +35,16 @@ export class Compiler {
         console.timeEnd(`${source.path} Parsing`);
 
         console.time(`${source.path} Ast Generation`);
-        const nodes = parseAst(ast);
+        const {children, locations} = parseAst(ast);
         console.timeEnd(`${source.path} Ast Generation`);
+
+        this.locations = locations;
+        this.source = source;
 
         console.timeEnd(`${source.path} Total`);
         console.groupEnd();
 
-        return new Module(nodes);
+        return new Module(children);
     }
 
     public async compile(source: string | Source): Promise<string>
@@ -55,10 +61,6 @@ export class Compiler {
             console.timeEnd(name);
 
             Fs.writeFileSync(`build/output/${id++}-${name}.txt`, serialize(module));
-        }
-
-        if (errors.length > 0) {
-            console.log('Errors');
         }
 
         console.time("Code Generation");
