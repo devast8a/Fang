@@ -9,16 +9,23 @@ import { TargetC } from './targets/targetC';
 import { inferTypes } from './stages/inferTypes';
 import { checkLifetime } from './stages/checkLifetime';
 import { checkTypes } from './stages/checkTypes';
+import { markAbstractFunctions } from './stages/markAbstractFunctions';
+import { Visitor } from './ast/visitor';
+
+function visitor(visitor: Visitor<null>) {
+    return (context: Context) => visitor(context, context.module, RootId, null);
+}
 
 export class Compiler {
     private locations!: AdditionalData<Location>;
     private source!: Source;
 
     private stages: [string, (context: Context) => Module][] = [
-        ['Resolve Names', (context) => resolveNames(context, context.module, RootId, null)],
-        ['Type Inference', (context) => inferTypes(context, context.module, RootId, null)],
-        ['Check: Lifetime', (context) => checkLifetime(context)],
-        ['Check: Types', (context) => checkTypes(context, context.module, RootId, null)],
+        ['Resolve Names', visitor(resolveNames)],
+        ['Type Inference', visitor(inferTypes)],
+        ['Check: Lifetime', checkLifetime],
+        ['Check: Types', visitor(checkTypes)],
+        ['Mark Generic Functions', visitor(markAbstractFunctions)],
     ];
 
     public async parseFile(source: string | Source): Promise<Module>
