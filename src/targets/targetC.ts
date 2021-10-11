@@ -8,7 +8,6 @@ export class TargetC {
 
     public emitProgram(context: Context) {
         this.emit("#include <stdint.h>\n");
-        this.emit("#define FF_main main\n");
 
         const decl = context.module.children.decls;
         for (let id = 0; id < decl.length; id++) {
@@ -19,6 +18,10 @@ export class TargetC {
     public emitDecl(context: Context, decl: Decl | Ref, id: DeclId) {
         switch (decl.tag) {
             case Tag.DeclFunction: {
+                if (decl.name.indexOf("infix") !== -1) {
+                    return;
+                }
+
                 const ctx = context.createChildContext(decl.children, id);
 
                 this.emitSeparator();
@@ -36,6 +39,7 @@ export class TargetC {
                 this.emitSeparator();
                 this.emit("struct ", decl.name);
                 this.emitDecls(ctx, decl.children.decls);
+                this.emit(';');
                 return;
             }
                 
@@ -45,6 +49,7 @@ export class TargetC {
                 this.emitSeparator();
                 this.emit("struct ", decl.name);
                 this.emitDecls(ctx, decl.children.decls);
+                this.emit(';');
                 return;
             }
                 
@@ -127,6 +132,7 @@ export class TargetC {
 
                     case Tag.RefFieldName: {
                         this.emitExpr(context, targetRef.target);
+                        // TODO: Need to check if local is a pointer
                         this.emit('.', targetRef.field);
                         return;
                     }
@@ -254,8 +260,17 @@ export class TargetC {
                 
                 // TODO: Implement FFI system to allow aliasing underlying target identifiers
                 switch (name) {
-                    case "u8": this.emit("uint8_t"); return;
-                    default: this.emit(name);
+                    case "u8":  this.emit("uint8_t"); return;
+                    case "u16": this.emit("uint16_t"); return;
+                    case "u32": this.emit("uint32_t"); return;
+                    case "u64": this.emit("uint64_t"); return;
+
+                    case "s8":  this.emit("int8_t"); return;
+                    case "s16": this.emit("int16_t"); return;
+                    case "s32": this.emit("int32_t"); return;
+                    case "s64": this.emit("int64_t"); return;
+
+                    default: this.emit('struct ', name);
                 }
                 return;
             }

@@ -1,30 +1,27 @@
-class u8 {
-}
-
-fn infix+(left: u8, right: u8) -> u8 {
-}
+class u32 {}
+fn infix+(left: u32, right: u32) -> u32 {}
 
 trait Pair {
-    val x: u8
-    val y: u8
+    val x: u32
+    val y: u32
 }
 
 class Vec2d {
-    val x: u8
-    val y: u8
+    val x: u32
+    val y: u32
 }
 
 class Vec3d {
-    val x: u8
-    val y: u8
-    val z: u8
+    val x: u32
+    val y: u32
+    val z: u32
 }
 
-fn sum(pair: Pair) -> u8 {
+fn sum(pair: Pair) -> u32 {
     return pair.x + pair.y
 }
 
-fn main() -> u8 {
+fn main() -> u32 {
     val v2d = Vec2d{1, 2}
     val v3d = Vec3d{3, 4, 5}
 
