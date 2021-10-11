@@ -221,6 +221,18 @@ function parse(parent: State, node: PNode): NodeId {
                 return new Nodes.ExprReturn(value);
             });
         }
+            
+        case PTag.PExprSet: {
+            return parent.declare(Storage.ParentExpr, (id) => {
+                parent.locations.set(Storage.ParentExpr, id, getLocation(node))
+
+                // target operator value
+                const target = parseRef(parent, node.data[0]);
+                const value = parse(parent, node.data[2]);
+
+                return new Nodes.ExprSet(target, value);
+            });
+        }
 
         case PTag.PExprWhile: {
             return parent.declare(Storage.ParentExpr, (id) => {

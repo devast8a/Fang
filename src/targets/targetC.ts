@@ -192,6 +192,42 @@ export class TargetC {
                 }
                 return;
             }
+                
+            case Tag.ExprSet: {
+                const targetRef = expr.target;
+
+                switch (targetRef.tag) {
+                    case Tag.RefFieldId: {
+                        throw new Error(`Not implemented yet`);
+                    }
+
+                    case Tag.RefFieldName: {
+                        this.emitExpr(context, targetRef.target);
+                        // TODO: Need to check if local is a pointer
+                        this.emit('.', targetRef.field, ' = ');
+                        this.emitExpr(context, expr.value);
+                        return;
+                    }
+
+                    case Tag.RefLocal:
+                    case Tag.RefGlobal:
+                    case Tag.RefGlobalDecl: {
+                        const target = Ref.resolve(context, targetRef);
+                        this.emit(target.name, ' = ');
+                        this.emitExpr(context, expr.value);
+                        return;
+                    }
+
+                    case Tag.RefName: {
+                        throw new Error(`'${Tag[targetRef.tag]}' (for the identifier '${targetRef.name}') should have been resolved during name resolution.`);
+                    }
+                        
+                        
+                    default: {
+                        throw new Error(`Unreachable: Unhandled case '${Tag[(targetRef as any).tag]}'`);
+                    }
+                }
+            }
         }
         throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
     }
