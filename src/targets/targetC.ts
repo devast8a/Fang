@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags, DeclFunctionFlags } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -9,16 +9,48 @@ export class TargetC {
     public emitProgram(context: Context) {
         this.emit("#include <stdint.h>\n");
 
-        const decl = context.module.children.decls;
-        for (let id = 0; id < decl.length; id++) {
-            this.emitDecl(context, decl[id] as Decl, id);
+        const decls = context.module.children.decls;
+
+        // Forward declare structures
+        this.emitSeparator();
+        for (let id = 0; id < decls.length; id++) {
+            const decl = decls[id];
+
+            if (decl.tag === Tag.DeclStruct) {
+                this.emit('struct ', decl.name, ';');
+                this.emitNewline();
+            }
+        }
+
+        // Forward declare functions
+        this.emitSeparator();
+        for (let id = 0; id < decls.length; id++) {
+            const decl = decls[id];
+
+            if (decl.tag === Tag.DeclFunction) {
+                if (decl.name.indexOf("infix") !== -1 || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
+                    continue;
+                }
+
+                const ctx = context.createChildContext(decl.children, id);
+
+                this.emitTypeName(ctx, decl.returnType);
+                this.emit(" ", decl.name, "(");
+                this.emitParameters(ctx, decl.parameters);
+                this.emit(");");
+                this.emitNewline();
+            }
+        }
+
+        for (let id = 0; id < decls.length; id++) {
+            this.emitDecl(context, decls[id] as Decl, id);
         }
     }
 
     public emitDecl(context: Context, decl: Decl | Ref, id: DeclId) {
         switch (decl.tag) {
             case Tag.DeclFunction: {
-                if (decl.name.indexOf("infix") !== -1) {
+                if (decl.name.indexOf("infix") !== -1 || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
                     return;
                 }
 
@@ -37,19 +69,14 @@ export class TargetC {
                 const ctx = context.createChildContext(decl.children, id);
 
                 this.emitSeparator();
-                this.emit("struct ", decl.name);
+                this.emit("struct ", decl.name, " ");
                 this.emitDecls(ctx, decl.children.decls);
                 this.emit(';');
                 return;
             }
                 
             case Tag.DeclTrait: {
-                const ctx = context.createChildContext(decl.children, id);
-
-                this.emitSeparator();
-                this.emit("struct ", decl.name);
-                this.emitDecls(ctx, decl.children.decls);
-                this.emit(';');
+                // TODO: Implement
                 return;
             }
                 

@@ -140,7 +140,7 @@ export class DeclFunction {
 }
 export enum DeclFunctionFlags {
     None     = 0,
-    Generic  = 1 << 0,
+    Abstract  = 1 << 0,
 }
 
 export class DeclStruct {
@@ -397,6 +397,7 @@ export class MutChildren {
 
 // Context =====================================================================
 
+// TODO: Support adding new nodes
 export class Context {
     public constructor(
         public errors: CompileError[],
@@ -437,6 +438,27 @@ export class MutContext {
     /* Mutable specific members */
     public updateExpr(id: ExprId, expr: Expr) {
         this.container.exprs[id] = expr;
+    }
+
+    public declareLocalExpr(expr: Expr) {
+        const exprs = this.container.exprs;
+        const id = exprs.length;
+        exprs.push(expr);
+        return id;
+    }
+
+    public declareLocalDecl(decl: Decl) {
+        const decls = this.container.decls;
+        const id = decls.length;
+        decls.push(decl);
+        return new RefLocal(id);
+    }
+
+    public declareGlobalDecl(decl: Decl) {
+        const decls = this.module.children.decls;
+        const id = decls.length;
+        decls.push(decl);
+        return new RefGlobal(id);
     }
 }
 

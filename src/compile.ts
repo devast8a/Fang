@@ -11,9 +11,12 @@ import { checkLifetime } from './stages/checkLifetime';
 import { checkTypes } from './stages/checkTypes';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { Visitor } from './ast/visitor';
+import { instantiate, InstantiateState } from './stages/instantiate';
 
-function visitor(visitor: Visitor<null>) {
-    return (context: Context) => visitor(context, context.module, RootId, null);
+function visitor(visitor: Visitor<null>): (context: Context) => Module
+function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
+function visitor<State>(visitor: Visitor<State>, state?: State) {
+    return (context: Context) => visitor(context, context.module, RootId, state ?? (null as any));
 }
 
 export class Compiler {
@@ -26,6 +29,7 @@ export class Compiler {
         ['Check: Lifetime', checkLifetime],
         ['Check: Types', visitor(checkTypes)],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
+        ['Instantiate', visitor(instantiate, new InstantiateState())]
     ];
 
     public async parseFile(source: string | Source): Promise<Module>
