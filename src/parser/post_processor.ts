@@ -13,6 +13,7 @@
  */
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export enum PTag {
+    PDeclEnum,
     PDeclFunction,
     PDeclParameter,
     PDeclStruct,
@@ -58,6 +59,7 @@ function tag(tag: PTag) {
     };
 }
 
+export const PDeclEnum           = tag(PTag.PDeclEnum);
 export const PDeclFunction       = tag(PTag.PDeclFunction);
 export const PDeclParameter      = tag(PTag.PDeclParameter);
 export const PDeclStruct         = tag(PTag.PDeclStruct);

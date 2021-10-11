@@ -71,6 +71,25 @@
     # Contexts
     Stmt            -> DeclClass
 
+## Decl/Enum #######################################################################################
+    DeclEnum -> DeKeyword DeName DeBody:? {%p.PDeclEnum%}
+
+    # Examples:
+    #   trait Foo impl ClassName #attribute {}
+
+    # Supports:
+    #   Attributes
+
+    # Required
+    DeKeyword       -> "enum" __
+    DeName          -> Identifier
+
+    # Optional After
+    DeBody          -> N_ BODY[Stmt]
+
+    # Contexts
+    Stmt            -> DeclEnum
+
 ## Decl/Function ###################################################################################
     DeclFunction     -> DfKeyword DfName:? CompileTime:? DfParameters DfReturnType:? DfGeneric:? DfAttribute:* DfBody:? {%p.PDeclFunction%}
 
