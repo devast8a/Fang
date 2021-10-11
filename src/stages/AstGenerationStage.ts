@@ -88,7 +88,7 @@ function parse(parent: State, node: PNode): NodeId {
                 const parameters = node.data[3].elements.map(parameter => parse(children, parameter));
                 const body = parseBody(children, node.data[7]);
 
-                return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body));
+                return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body), Nodes.DeclFunctionFlags.None);
             });
         }
         case PTag.DeclParameter: {

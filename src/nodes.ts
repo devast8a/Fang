@@ -135,7 +135,12 @@ export class DeclFunction {
         public readonly returnType: Type,
         public readonly parameters: DeclId[],   // Indexes into children.decls
         public readonly children: Children,
+        public readonly flags: DeclFunctionFlags,
     ) { }
+}
+export enum DeclFunctionFlags {
+    None     = 0,
+    Generic  = 1 << 0,
 }
 
 export class DeclStruct {
@@ -171,11 +176,10 @@ export class DeclVariable {
         public readonly flags: DeclVariableFlags,
     ) { }
 }
-
 export enum DeclVariableFlags {
-    None = 0,
+    None    = 0,
     Mutable = 1 << 0,
-    Owns = 1 << 1,
+    Owns    = 1 << 1,
 }
 
 // Expressions =================================================================

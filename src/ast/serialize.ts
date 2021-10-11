@@ -1,4 +1,4 @@
-import { DeclVariableFlags, Node, Tag } from '../nodes';
+import { DeclFunctionFlags, DeclVariableFlags, Node, Tag } from '../nodes';
 
 export function serialize(node: Node) {
     function convert(this: any, key: string, value: any) {
@@ -18,7 +18,9 @@ export function serialize(node: Node) {
             const self = this as Node;
 
             switch (self.tag) {
-                 case Tag.DeclVariable: return convertFlags("DeclVariableFlags", DeclVariableFlags, value);
+                case Tag.DeclVariable: return convertFlags("DeclVariableFlags", DeclVariableFlags, value);
+                case Tag.DeclFunction: return convertFlags("DeclFunctionFlags", DeclFunctionFlags, value);
+                default: throw new Error('Not implemented yet');
             }
         }
 
