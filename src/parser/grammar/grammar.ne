@@ -422,10 +422,10 @@
 
     # Required
     SiKeyword       -> "if" N_
-    SiElifKeyword   -> N_ "else" __ "if" N_
-    SiElseKeyword   -> N_ "else" N_
-    SiCondition     -> "(" _ Expr _ ")" N_
-    SiBody          -> BODY[Stmt]
+    SiElifKeyword   -> N_ "else" __ "if" _
+    SiElseKeyword   -> N_ "else"
+    SiCondition     -> "(" _ Expr _ ")"
+    SiBody          -> N_ BODY[Stmt]
 
     # Optional After
     SiElif          -> SiElifKeyword SiCondition SiBody

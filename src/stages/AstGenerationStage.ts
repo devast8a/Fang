@@ -195,6 +195,49 @@ function parse(parent: State, node: PNode): NodeId {
                 return new Nodes.ExprCreate(type, args);
             });
         }
+            
+        case PTag.PExprIf: {
+            return parent.declare(Storage.ParentExpr, (id) => {
+                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
+
+                // keyword condition body elseif else
+                const firstCondition = parse(parent, node.data[1][2]);
+                const firstBody = parseBody(parent, node.data[2]);
+                const others = node.data[3];
+                const lastBody = parseBodyNull(parent, node.data[4]?.[1]);
+
+                const cases = [];
+                
+                // First case
+                cases.push(parent.declare(Storage.ParentExpr, (id) => {
+                    parent.locations.set(Storage.ParentExpr, id, getLocation(node.data[2]));
+                    return new Nodes.ExprIfCase(firstCondition, firstBody);
+                }));
+
+                // Other cases
+                for (const other of others) {
+                    cases.push(parent.declare(Storage.ParentExpr, (id) => {
+                        parent.locations.set(Storage.ParentExpr, id, getLocation(other));
+
+                        // keyword condition body
+                        const condition = parse(parent, other[1][2]);
+                        const body = parseBody(parent, other[2]);
+
+                        return new Nodes.ExprIfCase(condition, body);
+                    }));
+                }
+
+                // Last case (else)
+                if (lastBody !== null) {
+                    cases.push(parent.declare(Storage.ParentExpr, (id) => {
+                        parent.locations.set(Storage.ParentExpr, id, getLocation(node.data[4]));
+                        return new Nodes.ExprIfCase(null, lastBody);
+                    }));
+                }
+
+                return new Nodes.ExprIf(cases);
+            });
+        }
 
         case PTag.PExprIdentifier:
         case PTag.PExprIndexDot: {
@@ -285,13 +328,17 @@ function parseNull(parent: State, node: PNode | null | undefined): NodeId | null
     return node === undefined || node === null ? null : parse(parent, node);
 }
 
+function parseBodyNull(parent: State, node: PNode): NodeId[] | null {
+    return node === undefined || node === null ? null : parseBody(parent, node);
+}
+
 function parseBody(state: State, ast: PNode): NodeId[] {
     switch (ast.length) {
         case 2: {
             // whitespace body
             return ast[1].elements.map(node => parse(state, node));
         }
-            
+
         case 4: {
             // whitespace => whitespace expression
             throw new Error('Not implemented yet');

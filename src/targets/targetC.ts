@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags, DeclFunctionFlags } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase } from '../nodes';
 
 export class TargetC {
     private output = new Array<string>();
@@ -181,6 +181,19 @@ export class TargetC {
                         throw new Error(`Unreachable: Unhandled case '${Tag[(targetRef as any).tag]}'`);
                     }
                 }
+            }
+                
+            case Tag.ExprIf: {
+                // First case
+                const first = Expr.get(context, expr.cases[0]) as ExprIfCase;
+
+                this.emit('if (');
+                this.emitExpr(context, first.condition!);
+                this.emit(')');
+
+                this.emitBody(context, first.body);
+
+                return;
             }
                 
             case Tag.ExprReturn: {

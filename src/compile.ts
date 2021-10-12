@@ -26,8 +26,8 @@ export class Compiler {
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Names', visitor(resolveNames)],
         ['Type Inference', visitor(inferTypes)],
-        ['Check: Lifetime', checkLifetime],
         ['Check: Types', visitor(checkTypes)],
+        // ['Check: Lifetime', checkLifetime],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
         ['Instantiate', visitor(instantiate, new InstantiateState())]
     ];
