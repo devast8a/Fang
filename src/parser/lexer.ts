@@ -43,7 +43,6 @@ const lexer = moo.compile({
   integer_bin: /0b[01][01_]*/,
   integer_dec: /[0-9][0-9_]*/,
   integer_hex: /0x[0-9a-fA-F][0-9a-fA-F_]*/,
-  integer_oct: /0o[0-7][0-7_]*/,
 });
 
 export default lexer;

@@ -248,7 +248,6 @@
     Atom            -> %integer_bin           {%p.PLiteralIntegerBin%}   # 0b1010101101 0b1011_1011
     Atom            -> %integer_dec           {%p.PLiteralIntegerDec%}   # 208124 012985  1_000_000
     Atom            -> %integer_hex           {%p.PLiteralIntegerHex%}   # 0x01234567890ABCDEF 0xFF_FF
-    Atom            -> %integer_oct           {%p.PLiteralIntegerOct%}   # 0o01234567 0o123_123_123
 
 ## Expr/Literals/List ##############################################################################
     ExprList        -> STAR["[", _, Expr, COMMA, "]"]

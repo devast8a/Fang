@@ -9,7 +9,6 @@ declare var string_double_quote: any;
 declare var integer_bin: any;
 declare var integer_dec: any;
 declare var integer_hex: any;
-declare var integer_oct: any;
 declare var identifier: any;
 declare var prefix: any;
 declare var postfix: any;
@@ -273,7 +272,6 @@ const grammar: Grammar = {
     {"name": "Atom", "symbols": [(lexer.has("integer_bin") ? {type: "integer_bin"} : integer_bin)], "postprocess": p.PLiteralIntegerBin},
     {"name": "Atom", "symbols": [(lexer.has("integer_dec") ? {type: "integer_dec"} : integer_dec)], "postprocess": p.PLiteralIntegerDec},
     {"name": "Atom", "symbols": [(lexer.has("integer_hex") ? {type: "integer_hex"} : integer_hex)], "postprocess": p.PLiteralIntegerHex},
-    {"name": "Atom", "symbols": [(lexer.has("integer_oct") ? {type: "integer_oct"} : integer_oct)], "postprocess": p.PLiteralIntegerOct},
     {"name": "ExprList$macrocall$2", "symbols": [{"literal":"["}]},
     {"name": "ExprList$macrocall$3", "symbols": ["_"]},
     {"name": "ExprList$macrocall$4", "symbols": ["Expr"]},
