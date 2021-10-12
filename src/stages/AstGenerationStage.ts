@@ -71,7 +71,7 @@ function parse(parent: State, node: PNode): NodeId {
                 const name = parseIdentifier(node.data[1][1]);
                 const returnType = parseTypeNull(node.data[4]?.[3]);
                 const parameters = node.data[3].elements.map(parameter => parse(children, parameter));
-                const body = parseBody(children, node.data[7]);
+                const body = parseBodyNull(children, node.data[7]) ?? [];
 
                 return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body), Nodes.DeclFunctionFlags.None);
             });
@@ -99,7 +99,7 @@ function parse(parent: State, node: PNode): NodeId {
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
                 const superTypes = node.data[2]?.map(x => parseType(x[3]));
-                const body = parseBody(children, node.data[5]);
+                const body = parseBodyNull(children, node.data[5]) ?? [];
 
                 return new Nodes.DeclStruct(name, superTypes, children.finalize(body));
             });
@@ -114,7 +114,7 @@ function parse(parent: State, node: PNode): NodeId {
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
                 const superTypes = node.data[2]?.map(x => parseType(x[3]));
-                const body = parseBody(children, node.data[5]);
+                const body = parseBodyNull(children, node.data[5]) ?? [];
 
                 return new Nodes.DeclTrait(name, superTypes, children.finalize(body));
             });
