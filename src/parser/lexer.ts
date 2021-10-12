@@ -5,9 +5,9 @@ const lexer = moo.compile({
   newline:          {match: '\n', lineBreaks: true},
   ws:               /[ \t]+/,
 
-  infix:            /infix[~!@#$%^&*+=|?/:.\-\\][~!@#$%^&*+=|?/:.\-\\<>]*/,
-  postfix:          /postfix[~!@#$%^&*+=|?/:.\-\\][~!@#$%^&*+=|?/:.\-\\<>]*/,
-  prefix:           /prefix[~!@#$%^&*+=|?/:.\-\\][~!@#$%^&*+=|?/:.\-\\<>]*/,
+  infix:            /infix[~!@#$%^&*+=|?/:.\-\\<>]+/,
+  postfix:          /postfix[~!@#$%^&*+=|?/:.\-\\<>]+/,
+  prefix:           /prefix[~!@#$%^&*+=|?/:.\-\\<>]+/,
 
   identifier:       {
     match: /[a-zA-Z_][a-zA-Z0-9_]*/,
