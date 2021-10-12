@@ -24,6 +24,10 @@ export function serialize(node: Node) {
             }
         }
 
+        if (key === 'exprs' || key === 'decls' && value instanceof Array) {
+            return value.map((value: any, index: any) => Object.assign({}, {id: index}, value));
+        }
+
         return value;
     }
 
