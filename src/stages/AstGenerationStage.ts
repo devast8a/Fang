@@ -71,6 +71,7 @@ function parse(parent: State, node: PNode): NodeId {
                 const name = parseIdentifier(node.data[1][1]);
                 const returnType = parseTypeNull(node.data[4]?.[3]);
                 const parameters = node.data[3].elements.map(parameter => parse(children, parameter));
+                const attributes = node.data[6].map(attribute => parse(parent, attribute[1][1]));
                 const body = parseBodyNull(children, node.data[7]) ?? [];
 
                 return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body), Nodes.DeclFunctionFlags.None);
@@ -289,11 +290,46 @@ function parse(parent: State, node: PNode): NodeId {
             });
         }
 
+        case PTag.PLiteralIntegerBin: {
+            return parent.declare(Storage.ParentExpr, (id) => {
+                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
+
+                const value = parseInt(node.data[0].value.slice(2).replace(/_/g, ''), 2);
+                return new Nodes.ExprConstant(null as any, value);
+            });
+        }
+
         case PTag.PLiteralIntegerDec: {
             return parent.declare(Storage.ParentExpr, (id) => {
                 parent.locations.set(Storage.ParentExpr, id, getLocation(node));
 
-                return new Nodes.ExprConstant(null as any, parseInt(node.data[0].value));
+                const value = parseInt(node.data[0].value.replace(/_/g, ''), 10);
+                return new Nodes.ExprConstant(null as any, value);
+            });
+        }
+
+        case PTag.PLiteralIntegerHex: {
+            return parent.declare(Storage.ParentExpr, (id) => {
+                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
+
+                const value = parseInt(node.data[0].value.slice(2).replace(/_/g, ''), 16);
+                return new Nodes.ExprConstant(null as any, value);
+            });
+        }
+
+        case PTag.PLiteralString: {
+            return parent.declare(Storage.ParentExpr, (id) => {
+                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
+
+                const value = node.data[0].value.slice(1,-1).replace(/\\(.)/, (_,c) => {
+                    switch (c) {
+                        case '\\': return "\\";
+                        case '"': return "\"";
+                        default: throw new Error("Not implemented yet");
+                    }
+                });
+
+                return new Nodes.ExprConstant(null as any, value);
             });
         }
     }
