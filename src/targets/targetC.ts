@@ -204,9 +204,24 @@ export class TargetC {
                 this.emit('if (');
                 this.emitExpr(context, first.condition!);
                 this.emit(')');
-
                 this.emitBody(context, first.body);
 
+                // Other cases
+                for (let i = 1; i < expr.cases.length; i++) {
+                    const other = Node.as(Expr.get(context, expr.cases[i]), ExprIfCase);
+
+                    if (other.condition === null) {
+                        // Last case (else)
+                        this.emit(' else ');
+                        this.emitBody(context, other.body);
+                    } else {
+                        // Other cases
+                        this.emit(' else if (');
+                        this.emitExpr(context, other.condition);
+                        this.emit(') ')
+                        this.emitBody(context, other.body);
+                    }
+                }
                 return;
             }
                 
