@@ -420,6 +420,9 @@ function parseOperator(node: PNode) {
     // @see grammar.ne: OperatorSpaced
     if (node.length === 1) {
         return node[0].value;
+    } else if (node[1] === null) {
+        // TODO: Solve why it is possible to get a operator with two elements where the second is null
+        return node[0].value;
     } else {
         return node[0].value + node[1].value;
     }

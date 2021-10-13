@@ -1,43 +1,38 @@
+## Builtins
 struct u32 {}
 struct bool {}
 struct str {}
 struct empty {}
-
 fn infix_codegen()
+
 fn infix+(left: u32, right: u32) -> u32
+fn infix-(left: u32, right: u32) -> u32
+fn infix%(left: u32, right: u32) -> u32
+
 fn infix<(left: u32, right: u32) -> bool
 fn infix<=(left: u32, right: u32) -> bool
+fn infix==(left: u32, right: u32) -> bool
 
 fn printf(s: str, d: u32) -> empty
 
-trait Pair {
-    val x: u32
-    val y: u32
-}
+fn calculate() -> u32 {
+    val num: u32 = 0
+    val sum: u32 = 0
 
-struct Vec2d {
-    val x: u32
-    val y: u32
-}
+    while (num < 1000) {
+        if (num % 3 == 0) {
+            sum = sum + num
+        } else if (num % 5 == 0) {
+            sum = sum + num
+        }
 
-struct Vec3d {
-    val x: u32
-    val y: u32
-    val z: u32
-}
+        num = num + 1
+    }
 
-fn sum(pair: Pair) -> u32 {
-    return pair.x + pair.y
+    return sum
 }
 
 fn main() -> u32 {
-    val v2d = Vec2d{1, 2}
-    val v3d = Vec3d{3, 4, 5}
-
-    if (v2d.x <= 10) {
-        v2d.x = 10
-    }
-
-    val s = sum(v2d) + sum(v3d)
-    printf("%d\n", s)
+    val sum = calculate!()
+    printf("%d\n", sum)
 }

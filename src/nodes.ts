@@ -256,6 +256,7 @@ export class ExprIfCase {
     public static readonly tag = Tag.ExprIfCase;
 
     public constructor(
+        // TODO: Don't use null to signal else cases. It causes us to check for the null everywhere.
         public readonly condition: RefExpr | null,
         public readonly body: readonly RefExpr[],
     ) { }
