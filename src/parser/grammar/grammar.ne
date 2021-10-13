@@ -401,8 +401,8 @@
 
     # Required
     SfKeyword       -> "for"
-    SfCondition     -> _ "(" _ Identifier __ "in" __ Expr _ ")" N_
-    SfBody          -> BODY[Stmt]
+    SfCondition     -> _ "(" _ Identifier __ "in" __ Expr _ ")"
+    SfBody          -> N_ BODY[Stmt]
 
     # Contexts
     Stmt            -> StmtForEach
@@ -473,8 +473,8 @@
 
     # Required
     SwKeyword       -> "while"
-    SwCondition     -> _ "(" _ Expr _ ")" N_
-    SwBody          -> BODY[Stmt]
+    SwCondition     -> _ "(" _ Expr _ ")"
+    SwBody          -> N_ BODY[Stmt]
 
     # Context
     Stmt            -> StmtWhile

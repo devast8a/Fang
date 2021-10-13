@@ -270,6 +270,14 @@ export class TargetC {
                     }
                 }
             }
+                
+            case Tag.ExprWhile: {
+                this.emit('while (');
+                this.emitExpr(context, expr.condition);
+                this.emit(') ');
+                this.emitBody(context, expr.body);
+                return;
+            }
         }
         throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
     }
