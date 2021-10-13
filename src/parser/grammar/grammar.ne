@@ -225,9 +225,9 @@
 
     # Binary Expressions
     # x + y or x+y
-    ExprBinary      -> ExprUnary __ OperatorSpaced __ ExprBinary    {%p.PExprBinary%}
-    ExprBinary      -> ExprUnary NL OperatorSpaced __ ExprBinary    {%p.PExprBinary%}
-    ExprBinary      -> ExprUnary __ OperatorSpaced NL ExprBinary    {%p.PExprBinary%}
+    ExprBinary      -> ExprBinary __ OperatorSpaced __ ExprUnary    {%p.PExprBinary%}
+    ExprBinary      -> ExprBinary NL OperatorSpaced __ ExprUnary    {%p.PExprBinary%}
+    ExprBinary      -> ExprBinary __ OperatorSpaced NL ExprUnary    {%p.PExprBinary%}
     ExprBinary      -> Atom Operator Atom                           {%p.PExprBinary%}
     ExprBinary      -> ExprUnary
 
@@ -238,7 +238,7 @@
     ExprUnary       -> Atom
 
     # Atoms
-    Atom            -> "(" _ Expr _ ")"
+    Atom            -> "(" _ Expr _ ")"                             {% (node) => node[2]  %}
     Atom            -> ExprIdentifier
 
     ExprIdentifier  -> Identifier {%p.PExprIdentifier%}
