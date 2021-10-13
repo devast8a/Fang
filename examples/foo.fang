@@ -1,10 +1,14 @@
 struct u32 {}
 struct bool {}
+struct str {}
+struct empty {}
 
 fn infix_codegen()
 fn infix+(left: u32, right: u32) -> u32
 fn infix<(left: u32, right: u32) -> bool
 fn infix<=(left: u32, right: u32) -> bool
+
+fn printf(s: str, d: u32) -> empty
 
 trait Pair {
     val x: u32
@@ -34,5 +38,6 @@ fn main() -> u32 {
         v2d.x = 10
     }
 
-    return sum(v2d) + sum(v3d)
+    val s = sum(v2d) + sum(v3d)
+    printf("%d\n", s)
 }

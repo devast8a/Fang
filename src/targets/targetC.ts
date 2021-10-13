@@ -8,6 +8,7 @@ export class TargetC {
 
     public emitProgram(context: Context) {
         this.emit("#include <stdint.h>\n");
+        this.emit("#include <stdio.h>\n");
 
         const decls = context.module.children.decls;
 
@@ -28,7 +29,11 @@ export class TargetC {
             const decl = decls[id];
 
             if (decl.tag === Tag.DeclFunction) {
-                if (decl.name.indexOf("infix") !== -1 || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
+                if (decl.name.indexOf("infix") !== -1 || decl.name === "printf") {
+                    continue;
+                }
+
+                if (Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
                     continue;
                 }
 
@@ -50,7 +55,11 @@ export class TargetC {
     public emitDecl(context: Context, decl: Decl | Ref, id: DeclId) {
         switch (decl.tag) {
             case Tag.DeclFunction: {
-                if (decl.name.indexOf("infix") !== -1 || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
+                if (decl.name.indexOf("infix") !== -1 || decl.name === "printf") {
+                    return;
+                }
+
+                if (Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
                     return;
                 }
 
@@ -111,7 +120,12 @@ export class TargetC {
                 
             case Tag.ExprConstant: {
                 // TODO: Depending on the constant type we need to change encoding
-                this.emit(expr.value);
+                // TODO: Dispatch on expr.type rather than typeof(expr.value)
+                if (typeof(expr.value) === 'number') {
+                    this.emit(expr.value.toString());
+                } else {
+                    this.emit(JSON.stringify(expr.value));
+                }
                 return;
             }
                 
@@ -263,8 +277,7 @@ export class TargetC {
 
             switch (arg.tag) {
                 case Tag.ExprConstant: {
-                    // TODO: Encode strings correctly
-                    this.emit(arg.value);
+                    this.emitExpr(context, argId, arg);
                     break;
                 }
 

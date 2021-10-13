@@ -325,6 +325,7 @@ function parse(parent: State, node: PNode): NodeId {
                     switch (c) {
                         case '\\': return "\\";
                         case '"': return "\"";
+                        case 'n': return "\n";
                         default: throw new Error("Not implemented yet");
                     }
                 });
