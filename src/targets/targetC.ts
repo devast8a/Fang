@@ -99,7 +99,7 @@ export class TargetC {
 
                 if (fn.name.startsWith('infix')) {
                     this.emitExpr(context, expr.args[0]);
-                    this.emit(' + ');
+                    this.emit(' ', fn.name.slice(5), ' ');
                     this.emitExpr(context, expr.args[1]);
                 } else {
                     this.emit(fn.name, '(',);

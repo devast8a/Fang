@@ -143,7 +143,7 @@ function parse(parent: State, node: PNode): NodeId {
 
                         // expression operator expression
                         const left = parse(parent, node.data[0]);
-                        const symbol = node.data[1][0].value;
+                        const symbol = parseOperator(node.data[1]);
                         const right = parse(parent, node.data[2]);
 
                         return new Nodes.ExprCall(
@@ -159,7 +159,7 @@ function parse(parent: State, node: PNode): NodeId {
 
                         // expression operator expression
                         const left = parse(parent, node.data[0]);
-                        const symbol = node.data[2][0].value;
+                        const symbol = parseOperator(node.data[2]);
                         const right = parse(parent, node.data[4]);
 
                         return new Nodes.ExprCall(
@@ -413,6 +413,15 @@ function convertVariableKeyword(keyword: string | undefined) {
 
 function parseIdentifier(node: PNode) {
     return node.value;
+}
+
+function parseOperator(node: PNode) {
+    // @see grammar.ne: OperatorSpaced
+    if (node.length === 1) {
+        return node[0].value;
+    } else {
+        return node[0].value + node[1].value;
+    }
 }
 
 enum Storage {
