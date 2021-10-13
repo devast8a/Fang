@@ -191,6 +191,7 @@ export class ExprCall {
     public constructor(
         public readonly target: RefDecl,
         public readonly args: readonly RefExpr[],
+        public readonly compileTime: boolean,
     ) { }
 }
 

@@ -148,7 +148,8 @@ function parse(parent: State, node: PNode): NodeId {
 
                         return new Nodes.ExprCall(
                             new Nodes.RefName(`infix${symbol}`),
-                            [left, right]
+                            [left, right],
+                            false
                         );
                     });
                 }
@@ -164,7 +165,8 @@ function parse(parent: State, node: PNode): NodeId {
 
                         return new Nodes.ExprCall(
                             new Nodes.RefName(`infix${symbol}`),
-                            [left, right]
+                            [left, right],
+                            false,
                         );
                     });
                 }
@@ -179,9 +181,10 @@ function parse(parent: State, node: PNode): NodeId {
 
                 // target compileTime arguments
                 const target = parseRef(parent, node.data[0]);
+                const compileTime = node.data[1] !== null;
                 const args = node.data[2].elements.map((expr) => parse(parent, expr));
 
-                return new Nodes.ExprCall(target, args);
+                return new Nodes.ExprCall(target, args, compileTime);
             });
         }
 

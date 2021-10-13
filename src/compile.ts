@@ -3,7 +3,7 @@ import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
 import { AdditionalData, Location, parseAst } from './stages/AstGenerationStage';
-import { CompileError, Context, Module, RootId } from './nodes';
+import { CompileError, Context, DeclFunction, DeclFunctionFlags, Expr, ExprConstant, Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
 import { inferTypes } from './stages/inferTypes';
@@ -12,6 +12,8 @@ import { checkTypes } from './stages/checkTypes';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { Visitor } from './ast/visitor';
 import { instantiate, InstantiateState } from './stages/instantiate';
+import { VirtualMachine } from './interpret/interpret';
+import { evaluateCompileTime } from './stages/evaluateCompileTime';
 
 function visitor(visitor: Visitor<null>): (context: Context) => Module
 function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
@@ -29,7 +31,8 @@ export class Compiler {
         ['Check: Types', visitor(checkTypes)],
         // ['Check: Lifetime', checkLifetime],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
-        ['Instantiate', visitor(instantiate, new InstantiateState())]
+        ['Instantiate', visitor(instantiate, new InstantiateState())],
+        ['Evaluate Compile Time', visitor(evaluateCompileTime)],
     ];
 
     public async parseFile(source: string | Source): Promise<Module>
