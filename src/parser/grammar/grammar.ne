@@ -7,15 +7,13 @@
     # Expr/* - Syntax for expressions
     # Stmt/* - Syntax for statement
 
-# TODO: Rename DeclClass to DeclStruct
-# TODO: Rename PStmt* nodes to PExpr* nodes
 # TODO: Remove Stmt/Expr differentiation
 
 ## Abbreviations ###################################################################################
-    ## Dc - DeclClass
     ## Df - DeclFunction
     ## Dg - DeclGeneric
     ## Dp - DeclParameter
+    ## Ds - DeclStruct
     ## Dt - DeclTrait
     ## Dv - DeclVariable
     ## Eb - ExprIndexBracket
@@ -49,30 +47,8 @@
 ## Main ############################################################################################
     main -> NL:? (Stmt (StmtSep Stmt):* NL:?):? {%p.MainProcessor%}
 
-## Decl/Class ######################################################################################
-    DeclClass    -> DcKeyword DcName DcImplement:* DcGeneric:? DcAttribute:* DcBody:? {%p.PDeclStruct%}
-
-    # Examples:
-    #   class Foo impl ClassName #attribute {}
-
-    # Supports:
-    #   Attributes
-
-    # Required
-    DcKeyword       -> "struct" __
-    DcName          -> Identifier
-
-    # Optional After
-    DcImplement     -> N__ "impl" __ Type
-    DcGeneric       -> N__ DeclGeneric
-    DcAttribute     -> N__ Attribute
-    DcBody          -> N_ BODY[Stmt]
-
-    # Contexts
-    Stmt            -> DeclClass
-
 ## Decl/Enum #######################################################################################
-    DeclEnum -> DeKeyword DeName DeBody:? {%p.PDeclEnum%}
+    DeclEnum -> DeKeyword DeName DeAttribute:* DeBody:? {%p.PDeclEnum%}
 
     # Examples:
     #   trait Foo impl ClassName #attribute {}
@@ -86,6 +62,7 @@
 
     # Optional After
     DeBody          -> N_ BODY[Stmt]
+    DeAttribute     -> N__ Attribute
 
     # Contexts
     Stmt            -> DeclEnum
@@ -160,6 +137,28 @@
 
     # Context
     # Function declaration parameter's list (DeclFunction)
+
+## Decl/Struct #####################################################################################
+    DeclStruct    -> DsKeyword DsName DsImplement:* DsGeneric:? DsAttribute:* DsBody:? {%p.PDeclStruct%}
+
+    # Examples:
+    #   class Foo impl ClassName #attribute {}
+
+    # Supports:
+    #   Attributes
+
+    # Required
+    DsKeyword       -> "struct" __
+    DsName          -> Identifier
+
+    # Optional After
+    DsImplement     -> N__ "impl" __ Type
+    DsGeneric       -> N__ DeclGeneric
+    DsAttribute     -> N__ Attribute
+    DsBody          -> N_ BODY[Stmt]
+
+    # Contexts
+    Stmt            -> DeclStruct
 
 ## Decl/Trait ######################################################################################
     DeclTrait    -> DtKeyword DtName DtImplement:* DtGeneric:? DtAttribute:* DtBody:? {%p.PDeclTrait%}
