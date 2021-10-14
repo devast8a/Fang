@@ -9,7 +9,7 @@ CALL tsc
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo Compiling test.fang
-CALL node build\js\cli examples/foo.fang -o build/test.c
+CALL node build\js\cli examples/even-fibonacci.fang -o build/test.c
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo ================================================================================

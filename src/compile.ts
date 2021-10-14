@@ -3,17 +3,16 @@ import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
 import { AdditionalData, Location, parseAst } from './stages/AstGenerationStage';
-import { CompileError, Context, DeclFunction, DeclFunctionFlags, Expr, ExprConstant, Module, RootId } from './nodes';
+import { CompileError, Context, Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
 import { inferTypes } from './stages/inferTypes';
-import { checkLifetime } from './stages/checkLifetime';
 import { checkTypes } from './stages/checkTypes';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { Visitor } from './ast/visitor';
 import { instantiate, InstantiateState } from './stages/instantiate';
-import { VirtualMachine } from './interpret/interpret';
 import { evaluateCompileTime } from './stages/evaluateCompileTime';
+import { flatten } from './stages/flatten';
 
 function visitor(visitor: Visitor<null>): (context: Context) => Module
 function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
@@ -29,9 +28,9 @@ export class Compiler {
         ['Resolve Names', visitor(resolveNames)],
         ['Type Inference', visitor(inferTypes)],
         ['Check: Types', visitor(checkTypes)],
-        // ['Check: Lifetime', checkLifetime],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
+        ['Flatten', flatten],
         ['Evaluate Compile Time', visitor(evaluateCompileTime)],
     ];
 
@@ -89,10 +88,23 @@ export class Compiler {
 
     public static async compile(path: string) {
         const compiler = new Compiler();
-        const source = new Source(
-            path,
-            await Fs.promises.readFile(path, 'utf8')
-        );
+
+        let content = await Fs.promises.readFile(path, 'utf8');
+        content += `
+            # Manually declare builtin functions and types
+            #   This crap will be cleaned up eventually and be part of an automatically included prelude
+            struct u32
+            struct bool
+            struct str
+            fn infix+(left: u32, right: u32) -> u32
+            fn infix-(left: u32, right: u32) -> u32
+            fn infix%(left: u32, right: u32) -> u32
+            fn infix<(left: u32, right: u32) -> bool
+            fn infix<=(left: u32, right: u32) -> bool
+            fn infix==(left: u32, right: u32) -> bool
+            fn printf(s: str, d: u32)
+        `;
+        const source = new Source(path, content);
 
         return compiler.compile(source);
     }

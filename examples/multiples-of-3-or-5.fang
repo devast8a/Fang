@@ -1,0 +1,23 @@
+# Sum all numbers between 1 and 1000 that are a multiple or 3 and/or 5
+fn sum3or5() -> u32 {
+    mut num: u32 = 0
+    mut sum: u32 = 0
+
+    while (num < 1000) {
+        if (num % 3 == 0) {
+            sum = sum + num
+        } else if (num % 5 == 0) {
+            sum = sum + num
+        }
+
+        num = num + 1
+    }
+
+    return sum
+}
+
+fn main() -> u32 {
+    printf("%d\n", sum3or5())
+    printf("%d\n", sum3or5!())
+    return 0
+}

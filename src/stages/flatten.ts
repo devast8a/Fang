@@ -9,20 +9,30 @@ export function flatten(context: Context) {
         switch (decl.tag) {
             case Tag.DeclStruct:
             case Tag.DeclTrait:
-                continue;
+                break;
 
             case Tag.DeclFunction: {
                 const ctx = MutContext.fromContext(context.createChildContext(decl.children, id));
 
                 const output = new Array<ExprId>();
-                flattenExprs(ctx, output, decl.children.body, true);
 
-                continue;
+                for (let id of decl.children.body) {
+                    id = flattenExpr(ctx, output, id, true);
+                    output.push(id);
+                }
+
+                (decl.children as any).body = output;
+
+                break;
+            }
+                
+            default: {
+                throw new Error(`transformRemoveNesting>${Tag[decl.tag]}: Not implemented`);
             }
         }
-        
-        throw new Error(`transformRemoveNesting>${Tag[decl.tag]}: Not implemented`);
     }
+
+    return context.module;
 }
 
 function flattenExprs(context: MutContext, output: ExprId[], ids: ReadonlyArray<ExprId>, topLevel = false) {
@@ -30,9 +40,7 @@ function flattenExprs(context: MutContext, output: ExprId[], ids: ReadonlyArray<
 
     for (let id of ids) {
         id = flattenExpr(context, output, id, topLevel);
-
         results.push(id);
-        output.push(id);
     }
 
     return results;
@@ -43,12 +51,11 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
 
     switch (expr.tag) {
         case Tag.ExprCall: {
-            const mutated = Node.mutate(expr, {
+            context.updateExpr(id, Node.mutate(expr, {
                 args: flattenExprs(context, output, expr.args),
-            });
-            context.updateExpr(id, mutated);
+            }));
 
-            return topLevel ? id : extract(context, output, id, mutated);
+            return topLevel ? id : extract(context, output, id, expr);
         }
 
         case Tag.ExprConstant: {
@@ -57,7 +64,6 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
 
         case Tag.ExprCreate: {
             return id;
-            // return extract(context, output, expr);
         }
 
         case Tag.ExprDeclaration: {
@@ -72,9 +78,19 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
             return id;
         }
 
+        case Tag.ExprReturn: {
+            return id;
+        }
+
         case Tag.ExprSet: {
-            // expr.value = flatten(context, output, expr.value, topLevel);
-            // return topLevel ? expr : extract(context, output, expr);
+            context.updateExpr(id, Node.mutate(expr, {
+                value: flattenExpr(context, output, expr.value, topLevel)
+            }));
+
+            return id;
+        }
+            
+        case Tag.ExprWhile: {
             return id;
         }
     }
