@@ -2,7 +2,7 @@ import * as Fs from 'fs';
 import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
-import { AdditionalData, Location, parseAst } from './stages/AstGenerationStage';
+import { parseAst } from './stages/AstGenerationStage';
 import { CompileError, Context, Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
@@ -21,9 +21,6 @@ function visitor<State>(visitor: Visitor<State>, state?: State) {
 }
 
 export class Compiler {
-    private locations!: AdditionalData<Location>;
-    private source!: Source;
-
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Names', visitor(resolveNames)],
         ['Type Inference', visitor(inferTypes)],
@@ -48,11 +45,8 @@ export class Compiler {
         console.timeEnd(`${source.path} Parsing`);
 
         console.time(`${source.path} Ast Generation`);
-        const {children, locations} = parseAst(ast);
+        const {children} = parseAst(ast);
         console.timeEnd(`${source.path} Ast Generation`);
-
-        this.locations = locations;
-        this.source = source;
 
         console.timeEnd(`${source.path} Total`);
         console.groupEnd();
