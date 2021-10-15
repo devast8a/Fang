@@ -14,6 +14,17 @@ export function VisitType<State>(context: Context, node: Node, id: NodeId, state
         // case Tag.ExprConstant:  return visit.fieldNode(state, node, parent, id, control, 'type');
         case Tag.ExprConstant: return control.next(context, node, id, state);
 
+        case Tag.TypeGenericApply: {
+            const target = control.first(context, node.target, id, state);
+            const args = visit.array(context, node.args, state, control.first);
+
+            if (target !== node.target || args !== node.args) {
+                node = Node.mutate(node, { target, args });
+            }
+
+            return control.next(context, node, id, state);
+        }
+
         // Nodes without Type field
         case Tag.ExprCall:
         case Tag.ExprDeclaration:

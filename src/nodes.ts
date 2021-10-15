@@ -40,6 +40,7 @@ export type Ref =
     ;
 
 export type Type =
+    | TypeGenericApply
     | TypeGet
     | TypeInfer
     ;
@@ -72,6 +73,7 @@ export enum Tag {
     RefLocal,
     RefName,
 
+    TypeGenericApply,
     TypeGet,
     TypeInfer,
 }
@@ -363,6 +365,16 @@ export class RefName {
 
 // Types =======================================================================
 
+export class TypeGenericApply {
+    public readonly tag = Tag.TypeGenericApply;
+    public static readonly tag = Tag.TypeGenericApply;
+
+    public constructor(
+        public readonly target: Type,
+        public readonly args: ReadonlyArray<Type>,
+    ) { }
+}
+
 export class TypeGet {
     public readonly tag = Tag.TypeGet;
     public static readonly tag = Tag.TypeGet;
@@ -507,6 +519,7 @@ export namespace Node {
             case Tag.RefGlobalDecl:
             case Tag.RefLocal:
             case Tag.RefName:
+            case Tag.TypeGenericApply:
             case Tag.TypeGet:
             case Tag.TypeInfer:
                 return false;

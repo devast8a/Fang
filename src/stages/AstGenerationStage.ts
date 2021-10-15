@@ -393,8 +393,17 @@ function parseBody(state: State, ast: PNode): NodeId[] {
 function parseType(node: PNode): Nodes.Type {
     switch (node.tag) {
         case PTag.PExprIdentifier: {
+            // identifier
             const name = parseIdentifier(node.data[0]);
             return new Nodes.TypeGet(new Nodes.RefName(name));
+        }
+            
+        case PTag.PExprGenericApply: {
+            // identifier args
+            const target = parseType(node.data[0]);
+            const args = node.data[1].elements.map(parseType);
+
+            return new Nodes.TypeGenericApply(target, args);
         }
     }
     

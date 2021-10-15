@@ -481,9 +481,11 @@
 ## Types ###########################################################################################
     Type -> Expr
 
-    Atom -> Identifier GenericArguments
+    Atom -> Type GenericArguments                                       {%p.PExprGenericApply%}
     GenericArguments    -> PLUS["<", _, GenericArgument, COMMA, ">"]
     GenericArgument     -> Type
+
+    # Named argument support?
     GenericArgument     -> Identifier _ ":" _ Type
 
 ## Patterns ########################################################################################

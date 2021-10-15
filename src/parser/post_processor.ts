@@ -23,6 +23,7 @@ export enum PTag {
     PExprCall,
     PExprConstruct,
     PExprForEach,
+    PExprGenericApply,
     PExprIdentifier,
     PExprIf,
     PExprIndexDot,
@@ -69,6 +70,7 @@ export const PExprBinary         = tag(PTag.PExprBinary);
 export const PExprCall           = tag(PTag.PExprCall);
 export const PExprConstruct      = tag(PTag.PExprConstruct);
 export const PExprForEach        = tag(PTag.PExprForEach);
+export const PExprGenericApply   = tag(PTag.PExprGenericApply);
 export const PExprIdentifier     = tag(PTag.PExprIdentifier);
 export const PExprIf             = tag(PTag.PExprIf);
 export const PExprIndexDot       = tag(PTag.PExprIndexDot);

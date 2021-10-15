@@ -501,7 +501,7 @@ const grammar: Grammar = {
     {"name": "SwBody", "symbols": ["N_", "SwBody$macrocall$1"]},
     {"name": "Stmt", "symbols": ["StmtWhile"]},
     {"name": "Type", "symbols": ["Expr"]},
-    {"name": "Atom", "symbols": ["Identifier", "GenericArguments"]},
+    {"name": "Atom", "symbols": ["Type", "GenericArguments"], "postprocess": p.PExprGenericApply},
     {"name": "GenericArguments$macrocall$2", "symbols": [{"literal":"<"}]},
     {"name": "GenericArguments$macrocall$3", "symbols": ["_"]},
     {"name": "GenericArguments$macrocall$4", "symbols": ["GenericArgument"]},
