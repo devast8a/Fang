@@ -1,6 +1,33 @@
 import { Flags } from '../common/flags';
 import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase } from '../nodes';
 
+function isBuiltin(decl: Decl) {
+    if (decl.name.startsWith("infix") || decl.name.startsWith("prefix") || decl.name.startsWith("postfix")) {
+        return true;
+    }
+
+    switch (decl.name) {
+        case "Ptr":
+        case "Size":
+        case "bool":
+        case "malloc":
+        case "printf":
+        case "s16":
+        case "s32":
+        case "s64":
+        case "s8":
+        case "str":
+        case "u16":
+        case "u32":
+        case "u64":
+        case "u8":
+            return true;
+        
+        default:
+            return false;
+    }
+}
+
 export class TargetC {
     private output = new Array<string>();
     private indent = [''];
@@ -9,6 +36,7 @@ export class TargetC {
     public emitProgram(context: Context) {
         this.emit("#include <stdint.h>\n");
         this.emit("#include <stdio.h>\n");
+        this.emit("#include <stdlib.h>\n");
 
         const decls = context.module.children.decls;
 
@@ -18,6 +46,10 @@ export class TargetC {
             const decl = decls[id];
 
             if (decl.tag === Tag.DeclStruct) {
+                if (isBuiltin(decl)) {
+                    continue;
+                }
+
                 this.emit('struct ', decl.name, ';');
                 this.emitNewline();
             }
@@ -29,11 +61,7 @@ export class TargetC {
             const decl = decls[id];
 
             if (decl.tag === Tag.DeclFunction) {
-                if (decl.name.indexOf("infix") !== -1 || decl.name === "printf") {
-                    continue;
-                }
-
-                if (Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
+                if (isBuiltin(decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
                     continue;
                 }
 
@@ -55,11 +83,7 @@ export class TargetC {
     public emitDecl(context: Context, decl: Decl | Ref, id: DeclId) {
         switch (decl.tag) {
             case Tag.DeclFunction: {
-                if (decl.name.indexOf("infix") !== -1 || decl.name === "printf") {
-                    return;
-                }
-
-                if (Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
+                if (isBuiltin(decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
                     return;
                 }
 
@@ -75,6 +99,10 @@ export class TargetC {
             }
                 
             case Tag.DeclStruct: {
+                if (isBuiltin(decl)) {
+                    return;
+                }
+
                 const ctx = context.createChildContext(decl.children, id);
 
                 this.emitSeparator();
@@ -367,6 +395,13 @@ export class TargetC {
 
     public emitTypeName(context: Context, type: Type) {
         switch (type.tag) {
+            case Tag.TypeGenericApply: {
+                // Assume it's a Ptr<T>
+                this.emitTypeName(context, type.args[0]);
+                this.emit("*");
+                return;
+            }
+
             case Tag.TypeGet: {
                 const name = Ref.resolve(context, type.target).name;
                 
@@ -381,6 +416,9 @@ export class TargetC {
                     case "s16": this.emit("int16_t"); return;
                     case "s32": this.emit("int32_t"); return;
                     case "s64": this.emit("int64_t"); return;
+
+                    case "Ptr": this.emit("void*"); return;
+                    case "Size": this.emit("size_t"); return;
 
                     default: this.emit('struct ', name);
                 }

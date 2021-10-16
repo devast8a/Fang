@@ -90,6 +90,8 @@ export class Compiler {
             struct u32
             struct bool
             struct str
+            struct Ptr
+            struct Size
             fn infix+(left: u32, right: u32) -> u32
             fn infix-(left: u32, right: u32) -> u32
             fn infix%(left: u32, right: u32) -> u32
@@ -97,6 +99,7 @@ export class Compiler {
             fn infix<=(left: u32, right: u32) -> bool
             fn infix==(left: u32, right: u32) -> bool
             fn printf(s: str, d: u32)
+            fn malloc(size: Size) -> Ptr
         `;
         const source = new Source(path, content);
 
