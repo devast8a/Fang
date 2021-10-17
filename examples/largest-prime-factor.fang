@@ -1,22 +1,10 @@
-struct List {
+struct Foo {
     val ptr: Ptr<u32>
     val size: Size
 }
 
-fn createList(size: Size) -> List {
-    val list = List{malloc(size), size}
-    return list
-}
-
-fn generatePrimes() -> List {
-    # return list u32
-    
-    val list = createList(100)
-    list.ptr = (list.ptr + 1)
-}
-
 fn main() -> u32 {
-
+    val v0 = Foo{}
 
     return 0
 }

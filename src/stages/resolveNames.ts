@@ -43,7 +43,7 @@ function lookup(context: Context, name: string) {
 
     let currentId = context.parent;
     while (currentId !== RootId) {
-        const container = children.decls[currentId];
+        const container = children.nodes[currentId];
 
         if (!Node.hasChildren(container)) {
             throw new Error(`Unreachable: Found '${Tag[(container as any).tag]}' but expected a Node with a 'children' field.`);

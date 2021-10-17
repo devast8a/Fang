@@ -1,15 +1,14 @@
 import * as Nodes from '../nodes';
-import { Decl, ExprId, Node, NodeId, Ref, Tag } from '../nodes';
+import { Decl, ExprId, MutContext, Node, NodeId, Ref, RootId, Storage, Tag } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
 
 export function parseAst(ast: PNode[]) {
     const root = new Nodes.MutChildren([], [], [], new Map());
+    const module = new Nodes.MutModule(root);
 
-    const locations = AdditionalData.init<Location>();
-
-    const state = new State(root, root, locations);
+    const state = new MutContext([], module, root, RootId);
 
     const body = [];
     for (const node of ast) {
@@ -18,54 +17,14 @@ export function parseAst(ast: PNode[]) {
 
     return {
         children: state.finalize(body),
-        locations: locations,
     };
 }
 
-export class AdditionalData<T> {
-    public constructor(
-        private current: [Array<T>, Array<T>],
-        private data: Array<[Array<T>, Array<T>]>,
-    ) { }
-
-    public createChildState() {
-        const next: any = [[], []];
-        this.data.push(next);
-
-        return new AdditionalData(next, this.data);
-    }
-
-    public static init<T>(): AdditionalData<T> {
-        const current: any = [[], []];
-        return new AdditionalData(current, [current]);
-    }
-
-    public set(storage: Storage, id: NodeId, value: T) {
-        switch (storage) {
-            case Storage.ParentDecl: this.current[0][id] = value; break;
-            case Storage.ParentExpr: this.current[1][id] = value; break;
-            case Storage.RootDecl: this.data[0][0][id] = value; break;
-        }
-    }
-
-    public get(ref: Ref) {
-        // Assume ref has id and member
-        switch (ref.tag) {
-            case Tag.RefGlobalDecl: return this.data[ref.id + 1][0][ref.member];
-            case Tag.RefGlobalExpr: return this.data[ref.id + 1][1][ref.member];
-        }
-
-        throw new Error();
-    }
-}
-
-function parse(parent: State, node: PNode): NodeId {
+function parse(parent: MutContext, node: PNode): NodeId {
     switch (node.tag) {
         case PTag.PDeclFunction: {
-            return parent.declare(Storage.RootDecl, (id) => {
-                parent.locations.set(Storage.RootDecl, id, getLocation(node));
-
-                const children = parent.createChildState();
+            return parent.define(Storage.Module, (id) => {
+                const children = parent.createChildContext2(id);
 
                 // keyword name compileTime parameters returnType generic attributes body
                 const name = parseIdentifier(node.data[1][1]);
@@ -78,9 +37,7 @@ function parse(parent: State, node: PNode): NodeId {
             });
         }
         case PTag.PDeclParameter: {
-            return parent.declare(Storage.Parameter, (id) => {
-                parent.locations.set(Storage.RootDecl, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 // keyword name compileTime type attribute lifetime value
                 const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
                 const name  = parseIdentifier(node.data[1]);
@@ -92,10 +49,8 @@ function parse(parent: State, node: PNode): NodeId {
         }
 
         case PTag.PDeclStruct: {
-            return parent.declare(Storage.RootDecl, (id) => {
-                parent.locations.set(Storage.RootDecl, id, getLocation(node));
-
-                const children = parent.createChildState();
+            return parent.define(Storage.Module, (id) => {
+                const children = parent.createChildContext2(id);
 
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
@@ -107,10 +62,8 @@ function parse(parent: State, node: PNode): NodeId {
         }
 
         case PTag.PDeclTrait: {
-            return parent.declare(Storage.RootDecl, (id) => {
-                parent.locations.set(Storage.RootDecl, id, getLocation(node));
-
-                const children = parent.createChildState();
+            return parent.define(Storage.Module, (id) => {
+                const children = parent.createChildContext2(id);
 
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
@@ -122,9 +75,7 @@ function parse(parent: State, node: PNode): NodeId {
         }
 
         case PTag.PDeclVariable: {
-            return parent.declare(Storage.ParentDecl, (id) => {
-                parent.locations.set(Storage.ParentDecl, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 // keyword name compileTime type attribute value
                 const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
                 const name  = parseIdentifier(node.data[1]);
@@ -138,9 +89,7 @@ function parse(parent: State, node: PNode): NodeId {
         case PTag.PExprBinary: {
             switch (node.data.length) {
                 case 3: {
-                    return parent.declare(Storage.ParentExpr, (id) => {
-                        parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+                    return parent.define(Storage.Parent, (id) => {
                         // expression operator expression
                         const left = parse(parent, node.data[0]);
                         const symbol = parseOperator(node.data[1]);
@@ -155,9 +104,7 @@ function parse(parent: State, node: PNode): NodeId {
                 }
 
                 case 5: {
-                    return parent.declare(Storage.ParentExpr, (id) => {
-                        parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+                    return parent.define(Storage.Parent, (id) => {
                         // expression operator expression
                         const left = parse(parent, node.data[0]);
                         const symbol = parseOperator(node.data[2]);
@@ -176,9 +123,7 @@ function parse(parent: State, node: PNode): NodeId {
         }
 
         case PTag.PExprCall: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 // target compileTime arguments
                 const target = parseRef(parent, node.data[0]);
                 const compileTime = node.data[1] !== null;
@@ -189,9 +134,7 @@ function parse(parent: State, node: PNode): NodeId {
         }
 
         case PTag.PExprConstruct: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 // target compileTime arguments
                 const type = parseType(node.data[0]);
                 const args = node.data[2].elements.map((expr) => parse(parent, expr));
@@ -201,9 +144,7 @@ function parse(parent: State, node: PNode): NodeId {
         }
             
         case PTag.PExprIf: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 // keyword condition body elseif else
                 const firstCondition = parse(parent, node.data[1][2]);
                 const firstBody = parseBody(parent, node.data[2]);
@@ -213,16 +154,13 @@ function parse(parent: State, node: PNode): NodeId {
                 const cases = [];
                 
                 // First case
-                cases.push(parent.declare(Storage.ParentExpr, (id) => {
-                    parent.locations.set(Storage.ParentExpr, id, getLocation(node.data[2]));
+                cases.push(parent.define(Storage.Parent, (id) => {
                     return new Nodes.ExprIfCase(firstCondition, firstBody);
                 }));
 
                 // Other cases
                 for (const other of others) {
-                    cases.push(parent.declare(Storage.ParentExpr, (id) => {
-                        parent.locations.set(Storage.ParentExpr, id, getLocation(other));
-
+                    cases.push(parent.define(Storage.Parent, (id) => {
                         // keyword condition body
                         const condition = parse(parent, other[1][2]);
                         const body = parseBody(parent, other[2]);
@@ -233,8 +171,7 @@ function parse(parent: State, node: PNode): NodeId {
 
                 // Last case (else)
                 if (lastBody !== null) {
-                    cases.push(parent.declare(Storage.ParentExpr, (id) => {
-                        parent.locations.set(Storage.ParentExpr, id, getLocation(node.data[4]));
+                    cases.push(parent.define(Storage.Parent, (id) => {
                         return new Nodes.ExprIfCase(null, lastBody);
                     }));
                 }
@@ -245,9 +182,7 @@ function parse(parent: State, node: PNode): NodeId {
 
         case PTag.PExprIdentifier:
         case PTag.PExprIndexDot: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 // Delegates parsing to ExprRef
                 const target = parseRef(parent, node);
                 return new Nodes.ExprGet(target);
@@ -259,9 +194,7 @@ function parse(parent: State, node: PNode): NodeId {
         }
 
         case PTag.PExprReturn: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 // keyword value
                 const value = parseNull(parent, node.data[1]?.[1]);
 
@@ -270,9 +203,7 @@ function parse(parent: State, node: PNode): NodeId {
         }
             
         case PTag.PExprSet: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node))
-
+            return parent.define(Storage.Parent, (id) => {
                 // target operator value
                 const target = parseRef(parent, node.data[0]);
                 const value = parse(parent, node.data[2]);
@@ -282,9 +213,7 @@ function parse(parent: State, node: PNode): NodeId {
         }
 
         case PTag.PExprWhile: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 // keyword compileTime condition body
                 const condition = parse(parent, node.data[2][3]);
                 const body = parseBody(parent, node.data[3]);
@@ -294,36 +223,28 @@ function parse(parent: State, node: PNode): NodeId {
         }
 
         case PTag.PLiteralIntegerBin: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 const value = parseInt(node.data[0].value.slice(2).replace(/_/g, ''), 2);
                 return new Nodes.ExprConstant(null as any, value);
             });
         }
 
         case PTag.PLiteralIntegerDec: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 const value = parseInt(node.data[0].value.replace(/_/g, ''), 10);
                 return new Nodes.ExprConstant(null as any, value);
             });
         }
 
         case PTag.PLiteralIntegerHex: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 const value = parseInt(node.data[0].value.slice(2).replace(/_/g, ''), 16);
                 return new Nodes.ExprConstant(null as any, value);
             });
         }
 
         case PTag.PLiteralString: {
-            return parent.declare(Storage.ParentExpr, (id) => {
-                parent.locations.set(Storage.ParentExpr, id, getLocation(node));
-
+            return parent.define(Storage.Parent, (id) => {
                 const value = node.data[0].value.slice(1,-1).replace(/\\(.)/, (_,c) => {
                     switch (c) {
                         case '\\': return "\\";
@@ -341,7 +262,7 @@ function parse(parent: State, node: PNode): NodeId {
     throw new Error(`parse: No case for '${PTag[node.tag]}'`)
 }
 
-function parseRef(parent: State, node: PNode) {
+function parseRef(parent: MutContext, node: PNode) {
     switch (node.tag) {
         case PTag.PExprIdentifier: {
             // identifier
@@ -364,15 +285,15 @@ function parseRef(parent: State, node: PNode) {
     }
 }
 
-function parseNull(parent: State, node: PNode | null | undefined): NodeId | null {
+function parseNull(parent: MutContext, node: PNode | null | undefined): NodeId | null {
     return node === undefined || node === null ? null : parse(parent, node);
 }
 
-function parseBodyNull(parent: State, node: PNode): NodeId[] | null {
+function parseBodyNull(parent: MutContext, node: PNode): NodeId[] | null {
     return node === undefined || node === null ? null : parseBody(parent, node);
 }
 
-function parseBody(state: State, ast: PNode): NodeId[] {
+function parseBody(state: MutContext, ast: PNode): NodeId[] {
     switch (ast.length) {
         case 2: {
             // whitespace body
@@ -437,90 +358,6 @@ function parseOperator(node: PNode) {
         return node[0].value;
     } else {
         return node[0].value + node[1].value;
-    }
-}
-
-enum Storage {
-    ParentDecl,
-    ParentExpr,
-    RootDecl,
-    Parameter,
-}
-
-class State {
-    public constructor(
-        private readonly root: Nodes.MutChildren,
-        private readonly parent: Nodes.MutChildren,
-        public readonly locations: AdditionalData<Location>
-    ) { }
-
-    public declare(storage: Storage, declare: (id: NodeId, state: State) => Node): NodeId {
-        switch (storage) {
-            case Storage.ParentDecl: return this.declare_impl(declare, this.parent.decls, Nodes.RefLocal);
-            case Storage.ParentExpr: return this.declare_impl(declare, this.parent.exprs, null);
-            case Storage.RootDecl:   return this.declare_impl(declare, this.root.decls, Nodes.RefGlobal);
-            case Storage.Parameter:  return this.declare_impl(declare, this.parent.decls, null);
-            default: throw new Error('Unreachable: Unhandled case');
-        }
-    }
-
-    /**
-     * Implements storage logic for nodes
-     * - Some declarations must always be stored directly in the module (DeclFunction, DeclStruct, etc...)
-     * - Some declarations can be stored under other declarations (DeclVariable)
-     * - Expressions are stored in a separate expression array (and have separate ids to declarations)
-     * 
-     * Declarations create an additional reference expression `ExprDeclaration` that marks where the declaration
-     *  was declared.
-     * 
-     * @see State.declare
-     */
-    private declare_impl(
-        declare: (id: NodeId, state: State) => Node,
-        nodes: Node[],
-        Ref: {new(id: NodeId): any} | null,
-    ) {
-        const id = nodes.length;
-        nodes.push(null as any);
-        nodes[id] = declare(id, this);
-
-        const name = (nodes[id] as Decl).name;
-        if (name !== undefined) {
-            let mapping = this.parent.names.get(name);
-            if (mapping === undefined) {
-                mapping = [];
-                this.parent.names.set(name, mapping);
-            }
-            mapping.push(id);
-        }
-
-        if (Ref === null) {
-            return id;
-        }
-
-        // Must be a declaration at this point
-
-        const eid = this.parent.exprs.length;
-        this.parent.exprs.push(new Nodes.ExprDeclaration(new Ref(id)));
-
-        return eid;
-    }
-
-    public createChildState() {
-        return new State(
-            this.root,
-            new Nodes.MutChildren([], [], null as any, new Map()),
-            this.locations.createChildState(),
-        );
-    }
-
-    public finalize(body: ExprId[]) {
-        return new Nodes.Children(
-            this.parent.decls,
-            this.parent.exprs,
-            body,
-            this.parent.names,
-        );
     }
 }
 

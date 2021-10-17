@@ -5,17 +5,12 @@ export function VisitChildren<State>(context: Context, node: Node, id: NodeId, s
     const { first, next } = control;
 
     if (Node.hasChildren(node)) {
-        const children = node.children;
+        const childContext = context.createChildContext(node.children, id);
 
-        const childContext = context.createChildContext(children, id);
+        const nodes = node.children.nodes;
 
-        const decls = visit.array(childContext, children.decls, state, first);
-        const exprs = visit.array(childContext, children.exprs, state, first);
-
-        if (children.decls !== decls || children.exprs !== exprs) {
-            node = Node.mutate(node, {
-                children: new Children(decls, exprs, children.body, children.names)
-            });
+        for (let id = 0; id < nodes.length; id++) {
+            (nodes as any)[id] = first(childContext, nodes[id], id, state);
         }
     }
 

@@ -61,26 +61,26 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
         return memoizeValue;
     }
 
-    const decls = fn.children.decls.slice();
+    const nodes = fn.children.nodes.slice();
     const parameters = fn.parameters;
 
     for (let index = 0; index < parameters.length; index++) {
-        const parameter = Node.as(decls[parameters[index]], DeclVariable);
+        const parameter = Node.as(nodes[parameters[index]], DeclVariable);
 
         const type = isAbstractType(context, parameter.type) ?
             Expr.getReturnType(context, args[index]) :
             parameter.type;
         
-        decls[index] = Node.mutate(parameter, { type });
+        nodes[index] = Node.mutate(parameter, { type });
     }
 
     fn = Node.mutate(fn, {
         name: `${fn.name}_${context.module.children.decls.length}`,
-        children: new Children(decls, fn.children.exprs, fn.children.body, fn.children.names),
+        children: new Children(nodes, fn.children.body, fn.children.decls, fn.children.names),
         flags: Flags.unset(fn.flags, DeclFunctionFlags.Abstract),
     });
 
-    return context.declareGlobalDecl(fn);
+    return context._declareGlobalDecl(fn);
 }
 
 function generateId(context: Context, fn: DeclFunction, args: Expr[]) {

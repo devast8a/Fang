@@ -393,18 +393,18 @@ export class TypeInfer {
 
 export class Children {
     public constructor(
-        public readonly decls: readonly (Decl | RefDecl)[],
-        public readonly exprs: readonly Expr[],
+        public readonly nodes: readonly Node[],
         public readonly body: readonly ExprId[],
+        public readonly decls: readonly DeclId[],
         public readonly names: ReadonlyMap<string, readonly DeclId[]>,
     ) { }
 }
 
 export class MutChildren {
     public constructor(
-        public readonly decls: (Decl | RefDecl)[],
-        public readonly exprs: Expr[],
+        public readonly nodes: Node[],
         public readonly body: ExprId[],
+        public readonly decls: DeclId[],
         public readonly names: Map<string, DeclId[]>,
     ) { }
 }
@@ -450,30 +450,68 @@ export class MutContext {
     }
 
     /* Mutable specific members */
-    public updateExpr(id: ExprId, expr: Expr) {
-        this.container.exprs[id] = expr;
+    public _updateExpr(id: ExprId, expr: Expr) {
+        this.container.nodes[id] = expr;
     }
 
-    public declareLocalExpr(expr: Expr) {
-        const exprs = this.container.exprs;
-        const id = exprs.length;
-        exprs.push(expr);
-        return id;
+    public _declareGlobalDecl(decl: Decl): Ref {
+        throw new Error();
     }
 
-    public declareLocalDecl(decl: Decl) {
-        const decls = this.container.decls;
-        const id = decls.length;
-        decls.push(decl);
-        return new RefLocal(id);
+    public define(storage: Storage, definition: (id: NodeId) => Node): NodeId {
+        if (storage === Storage.Parent || this.container === this.module.children) {
+            // Allocate in parent
+            const { nodes } = this.container;
+            const id = nodes.length;
+            nodes.push(null as any);
+            const node = nodes[id] = definition(id);
+
+            // Declare in parent
+            const name = Node.getName(node);
+            if (name !== undefined) {
+                const { decls, names } = this.container;
+                decls.push(id);
+                names.set(name, [id]);
+            }
+
+            return id;
+        } else {
+            // Allocate in module
+            const moduleNodes = this.module.children.nodes;
+            const id = moduleNodes.length;
+            moduleNodes.push(null as any);
+            const node = moduleNodes[id] = definition(id);
+
+            // Allocate ExprDeclaration in parent
+            const { nodes } = this.container;
+            const localId = nodes.length;
+            nodes.push(new ExprDeclaration(new RefGlobal(id)));
+
+            // Declare in parent
+            const name = Node.getName(node);
+            if (name !== undefined) {
+                const { decls, names } = this.container;
+                decls.push(localId);
+                names.set(name, [localId]);
+            }
+
+            return localId;
+        }
     }
 
-    public declareGlobalDecl(decl: Decl) {
-        const decls = this.module.children.decls;
-        const id = decls.length;
-        decls.push(decl);
-        return new RefGlobal(id);
+    public createChildContext2(parent: DeclId): MutContext {
+        return new MutContext(this.errors, this.module, new MutChildren([], [], [], new Map()), parent);
     }
+    public finalize(body: NodeId[]) {
+        return new Children(this.container.nodes, body, this.container.decls, this.container.names);
+    }
+
+    /* Finalize */
+}
+
+export enum Storage {
+    Parent,
+    Module,
 }
 
 export interface CompileError {
@@ -497,6 +535,10 @@ export namespace Node {
         }
 
         return decl.children;
+    }
+
+    export function getName(node: Node): string | undefined {
+        return (node as any).name;
     }
 
     type HasChildren = Module | DeclFunction | DeclStruct | DeclTrait;
@@ -548,7 +590,7 @@ export namespace Decl {
 
 export namespace Expr {
     export function get(context: Context, id: ExprId) {
-        return context.container.exprs[id];
+        return context.container.nodes[id] as Expr;
     }
 
     export function getReturnType(context: Context, expr: Expr): Type {
@@ -570,15 +612,7 @@ export namespace Expr {
 export namespace Ref {
     export function resolve(context: Context, ref: Ref): Decl {
         switch (ref.tag) {
-            //case Tag.RefFieldId:        return ;
-            case Tag.RefGlobal:         return context.module.children.decls[ref.id] as Decl;
-            case Tag.RefGlobalDecl:   return Node.getChildren(context.module.children.decls[ref.id]).decls[ref.member] as Decl;
-            case Tag.RefLocal:          return context.container.decls[ref.id] as Decl;
-
-            case Tag.RefFieldName:
-            case Tag.RefName: {
-                throw new Error(`'${Tag[ref.tag]}' can not be handled by Ref.resolve. Instead it must be resolved by resolveNames first.`);
-            }
+            case Tag.RefGlobal: return context.module.children.nodes[ref.id] as Decl;
         }
 
         throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);

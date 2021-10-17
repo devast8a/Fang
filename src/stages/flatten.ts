@@ -1,10 +1,10 @@
 import { Context, DeclVariable, DeclVariableFlags, Expr, ExprDeclaration, ExprGet, ExprId, MutContext, Node, RefLocal, Tag } from '../nodes';
 
 export function flatten(context: Context) {
-    const decls = context.module.children.decls;
+    const {decls, nodes} = context.module.children;
 
-    for (let id = 0; id < decls.length; id++) {
-        const decl = decls[id];
+    for (const id of decls) {
+        const decl = nodes[id];
 
         switch (decl.tag) {
             case Tag.DeclStruct:
@@ -47,11 +47,15 @@ function flattenExprs(context: MutContext, output: ExprId[], ids: ReadonlyArray<
 }
 
 function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel = false): ExprId {
-    const expr = Expr.get(context, id);
+    const expr = Expr.get(context, id) as Node;
 
     switch (expr.tag) {
+        case Tag.DeclVariable: {
+            return id;
+        }
+
         case Tag.ExprCall: {
-            context.updateExpr(id, Node.mutate(expr, {
+            context._updateExpr(id, Node.mutate(expr, {
                 args: flattenExprs(context, output, expr.args),
             }));
 
@@ -83,7 +87,7 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
         }
 
         case Tag.ExprSet: {
-            context.updateExpr(id, Node.mutate(expr, {
+            context._updateExpr(id, Node.mutate(expr, {
                 value: flattenExpr(context, output, expr.value, topLevel)
             }));
 
@@ -99,7 +103,7 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
 }
 
 function extract(context: MutContext, output: ExprId[], id: ExprId, expr: Expr): ExprId {
-    const {decls, exprs} = context.container;
+    const {nodes, decls} = context.container;
 
     const variableId = decls.length;
     const variable = new DeclVariable(
@@ -108,15 +112,15 @@ function extract(context: MutContext, output: ExprId[], id: ExprId, expr: Expr):
         id,
         DeclVariableFlags.None
     );
-    decls.push(variable);
+    nodes.push(variable);
     
-    const declId = exprs.length;
+    const declId = nodes.length;
     const decl = new ExprDeclaration(new RefLocal(variableId));
-    exprs.push(decl);
+    nodes.push(decl);
 
-    const getId = exprs.length;
+    const getId = nodes.length;
     const get = new ExprGet(new RefLocal(variableId))
-    exprs.push(get);
+    nodes.push(get);
 
     output.push(declId);
     return getId;

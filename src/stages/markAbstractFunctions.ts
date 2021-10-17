@@ -6,7 +6,7 @@ import { Context, DeclFunctionFlags, DeclVariable, Node, Ref, Tag, Type } from '
 export const markAbstractFunctions = createVisitor(VisitDecls, (context, decl) => {
     if (decl.tag === Tag.DeclFunction) {
         // TODO: Create a cleaner way to query parameters
-        if (decl.parameters.some(parameter => isAbstractType(context, Node.as(decl.children.decls[parameter], DeclVariable).type))) {
+        if (decl.parameters.some(parameter => isAbstractType(context, Node.as(decl.children.nodes[parameter], DeclVariable).type))) {
             return Node.mutate(decl, {
                 flags: Flags.set(decl.flags, DeclFunctionFlags.Abstract)
             });

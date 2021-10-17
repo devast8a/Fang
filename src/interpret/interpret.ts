@@ -4,9 +4,8 @@ export type VMFunction = number;
 
 export class Frame {
     public constructor(
-        public globals: ReadonlyArray<Decl | Ref>,
-        public decls: ReadonlyArray<Decl | Ref>,
-        public exprs: ReadonlyArray<Expr>,
+        public root: ReadonlyArray<Node>,
+        public nodes: ReadonlyArray<Node>,
         public locals: Array<any>,
     ) { }
 
@@ -29,14 +28,13 @@ export class VirtualMachine {
     }
 
     public call(id: VMFunction) {
-        const fn = Node.as(this.module.children.decls[id], DeclFunction);
+        const fn = Node.as(this.module.children.nodes[id], DeclFunction);
 
         // Note: decls.length is greater than the number of locals we need to support a nested class/function
         //  declaration is still marked as a decl but won't need a slot on the stack.
         const frame = new Frame(
-            this.module.children.decls,
-            fn.children.decls,
-            fn.children.exprs,
+            this.module.children.nodes,
+            fn.children.nodes,
             new Array(fn.children.decls),
         );
 
@@ -58,12 +56,12 @@ function evaluateBody(context: Frame, ids: ReadonlyArray<ExprId>) {
 }
 
 function evaluate(context: Frame, id: ExprId): any {
-    const expr = context.exprs[id];
-    const { globals, exprs, decls, locals } = context;
+    const expr = context.nodes[id];
+    const { root, nodes, locals } = context;
 
     switch (expr.tag) {
         case Tag.ExprCall: {
-            const target = globals[(expr.target as RefGlobal).id] as DeclFunction;
+            const target = root[(expr.target as RefGlobal).id] as DeclFunction;
             switch (target.name) {
                 case 'infix+': return evaluate(context, expr.args[0]) + evaluate(context, expr.args[1]);
                 case 'infix<': return evaluate(context, expr.args[0]) < evaluate(context, expr.args[1]);
@@ -79,8 +77,8 @@ function evaluate(context: Frame, id: ExprId): any {
 
         case Tag.ExprDeclaration: {
             const target = (expr.target as RefLocal).id;
-            const variable = Node.as(decls[target], DeclVariable);
-            const value = Node.as(exprs[variable.value!], ExprConstant).value;
+            const variable = Node.as(nodes[target], DeclVariable);
+            const value = Node.as(nodes[variable.value!], ExprConstant).value;
             locals[target] = value;
             return null;
         }
@@ -92,7 +90,7 @@ function evaluate(context: Frame, id: ExprId): any {
 
         case Tag.ExprIf: {
             for (const id of expr.cases) {
-                const { condition, body } = exprs[id] as ExprIfCase;
+                const { condition, body } = nodes[id] as ExprIfCase;
 
                 if (condition === null || evaluate(context, condition)) {
                     evaluateBody(context, body);

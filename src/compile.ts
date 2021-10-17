@@ -22,7 +22,7 @@ function visitor<State>(visitor: Visitor<State>, state?: State) {
 export class Compiler {
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Names', visitor(resolveNames)],
-        ['Check: Types', visitor(checkTypes)],
+        ['Check Types', visitor(checkTypes)],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
         ['Flatten', flatten],

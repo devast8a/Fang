@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children } from '../nodes';
 
 function isBuiltin(decl: Decl) {
     if (decl.name.startsWith("infix") || decl.name.startsWith("prefix") || decl.name.startsWith("postfix")) {
@@ -38,12 +38,12 @@ export class TargetC {
         this.emit("#include <stdio.h>\n");
         this.emit("#include <stdlib.h>\n");
 
-        const decls = context.module.children.decls;
+        const {decls, nodes} = context.module.children;
 
         // Forward declare structures
         this.emitSeparator();
-        for (let id = 0; id < decls.length; id++) {
-            const decl = decls[id];
+        for (const id of decls) {
+            const decl = nodes[id];
 
             if (decl.tag === Tag.DeclStruct) {
                 if (isBuiltin(decl)) {
@@ -57,8 +57,8 @@ export class TargetC {
 
         // Forward declare functions
         this.emitSeparator();
-        for (let id = 0; id < decls.length; id++) {
-            const decl = decls[id];
+        for (const id of decls) {
+            const decl = nodes[id];
 
             if (decl.tag === Tag.DeclFunction) {
                 if (isBuiltin(decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
@@ -75,8 +75,10 @@ export class TargetC {
             }
         }
 
-        for (let id = 0; id < decls.length; id++) {
-            this.emitDecl(context, decls[id] as Decl, id);
+        for (const id of decls) {
+            const decl = nodes[id];
+
+            this.emitDecl(context, decl as Decl, id);
         }
     }
 
@@ -107,7 +109,7 @@ export class TargetC {
 
                 this.emitSeparator();
                 this.emit("struct ", decl.name, " ");
-                this.emitDecls(ctx, decl.children.decls);
+                this.emitDecls(ctx, decl.children);
                 this.emit(';');
                 return;
             }
@@ -127,10 +129,20 @@ export class TargetC {
         throw new Error(`Unreachable: Unhandled case '${Tag[(decl as any).tag]}'`);
     }
 
-    public emitExpr(context: Context, id: ExprId, expr?: Expr) {
-        expr = expr ?? Expr.get(context, id);
+    public emitExpr(context: Context, id: ExprId, expr?: Node) {
+        expr = expr ?? Expr.get(context, id) as Node;
 
         switch (expr.tag) {
+            case Tag.DeclVariable: {
+                this.emitTypeName(context, expr.type);
+                this.emit(" ", expr.name);
+                if (expr.value !== null) {
+                    this.emit(" = ");
+                    this.emitExpr(context, expr.value);
+                }
+                return;
+            }
+
             case Tag.ExprCall: {
                 const fn = Node.as(Ref.resolve(context, expr.target), DeclFunction);
 
@@ -174,20 +186,6 @@ export class TargetC {
             }
 
             case Tag.ExprDeclaration: {
-                // Depends on the kind of declaration
-                const decl = Ref.resolve(context, expr.target);
-
-                switch (decl.tag) {
-                    case Tag.DeclVariable: {
-                        this.emitTypeName(context, decl.type);
-                        this.emit(" ", decl.name);
-                        if (decl.value !== null) {
-                            this.emit(" = ");
-                            this.emitExpr(context, decl.value);
-                        }
-                        return;
-                    }
-                }
                 throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}' for ExprDeclaration`);
             }
                 
@@ -324,7 +322,7 @@ export class TargetC {
             const arg = Expr.get(context, argId);
 
             const paramId = fn.parameters[index];
-            const param = Node.as(fn.children.decls[paramId], DeclVariable);
+            const param = Node.as(fn.children.nodes[paramId], DeclVariable);
 
             switch (arg.tag) {
                 case Tag.ExprConstant: {
@@ -375,7 +373,7 @@ export class TargetC {
                 first = false;
             }
 
-            const parameter = Node.as(context.container.decls[parameterId], DeclVariable);
+            const parameter = Node.as(context.container.nodes[parameterId], DeclVariable);
 
             this.emitTypeName(context, parameter.type);
 
@@ -441,12 +439,14 @@ export class TargetC {
         this.emit("\n", this.indentCurrent);
     }
 
-    public emitDecls(context: Context, decls: ReadonlyArray<Decl | Ref>) {
+    public emitDecls(context: Context, children: Children) {
+        const {decls, nodes} = children;
+
         this.pushIndent();
         this.emit("{");
-        for (let id = 0; id < decls.length; id++) {
+        for (const id of decls) {
             this.emitNewline();
-            this.emitDecl(context, decls[id], id);
+            this.emitDecl(context, nodes[id] as Decl, id);
             this.emit(";");
         }
         this.popIndent();
