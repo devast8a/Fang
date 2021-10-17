@@ -2,7 +2,39 @@ import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
 import { VisitRefDecl } from '../ast/VisitRefDecl';
 import { VisitType } from '../ast/VisitType';
-import { Context, Node, RefGlobal, RefGlobalDecl, RefLocal, RootId, Tag } from '../nodes';
+import { Context, Expr, Node, RefGlobal, RefGlobalDecl, RefLocal, RootId, Tag } from '../nodes';
+
+export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl, (context, node, id, state, {first}) => {
+    switch (node.tag) {
+        case Tag.RefName: {
+            const ref = lookup(context, node.name);
+
+            if (ref === undefined) {
+                throw new Error();
+            }
+
+            return ref;
+        }
+            
+        case Tag.DeclVariable: {
+            if (node.type.tag !== Tag.TypeInfer) {
+                return node;
+            }
+
+            if (node.value === null) {
+                throw new Error("Variable must have a type or a value or both.");
+            }
+
+            const value_ = Expr.get(context, node.value);
+            const value = first(context, value_, node.value, state);
+            const type = Expr.getReturnType(context, value);
+            return Node.mutate(node, { type });
+        }
+            
+    }
+
+    return node;
+});
 
 function lookup(context: Context, name: string) {
     // TODO: Support caching
@@ -40,15 +72,3 @@ function lookup(context: Context, name: string) {
 
     return new RefGlobal(ids[0]);
 }
-
-export const resolveNames = createVisitor<null>(VisitChildren, VisitType, VisitRefDecl, (context, node) => {
-    if (node.tag === Tag.RefName) {
-        const ref = lookup(context, node.name);
-
-        if (ref !== undefined) {
-            return ref;
-        }
-    }
-
-    return node;
-});

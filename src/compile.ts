@@ -6,7 +6,6 @@ import { parseAst } from './stages/AstGenerationStage';
 import { CompileError, Context, Module, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
-import { inferTypes } from './stages/inferTypes';
 import { checkTypes } from './stages/checkTypes';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { Visitor } from './ast/visitor';
@@ -23,7 +22,6 @@ function visitor<State>(visitor: Visitor<State>, state?: State) {
 export class Compiler {
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Names', visitor(resolveNames)],
-        ['Type Inference', visitor(inferTypes)],
         ['Check: Types', visitor(checkTypes)],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
