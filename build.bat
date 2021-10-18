@@ -8,18 +8,20 @@ echo Compiling compiler
 CALL tsc
 if %errorlevel% neq 0 exit /b %errorlevel%
 
-echo Compiling test.fang
-CALL node build\js\cli examples/multiples-of-3-or-5.fang -o build/test.c
-if %errorlevel% neq 0 exit /b %errorlevel%
+CALL node build\js\test
 
-echo ================================================================================
-type build\test.c
-echo ================================================================================
-
-echo Running C compiler
-CALL cc build\test.c -o build\test.exe
-if %errorlevel% neq 0 exit /b %errorlevel%
-
-echo Running test.exe
-build\test.exe
-if %errorlevel% neq 0 exit /b %errorlevel%
+REM echo Compiling test.fang
+REM CALL node build\js\cli examples/multiples-of-3-or-5.fang -o build/test.c
+REM if %errorlevel% neq 0 exit /b %errorlevel%
+REM 
+REM echo ================================================================================
+REM type build\test.c
+REM echo ================================================================================
+REM 
+REM echo Running C compiler
+REM CALL cc build\test.c -o build\test.exe
+REM if %errorlevel% neq 0 exit /b %errorlevel%
+REM 
+REM echo Running test.exe
+REM build\test.exe
+REM if %errorlevel% neq 0 exit /b %errorlevel%
