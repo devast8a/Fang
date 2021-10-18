@@ -10,7 +10,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
             const ref = lookup(context, node.name);
 
             if (ref === undefined) {
-                throw new Error();
+                throw new Error(`Can not find symbol with name ${node.name}`);
             }
 
             return ref;

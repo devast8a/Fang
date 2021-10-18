@@ -1,7 +1,7 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor, VisitorControl } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { Children, Context, DeclFunction, DeclFunctionFlags, DeclVariable, Expr, ExprId, MutContext, Node, Ref, RefGlobalDecl, Tag } from '../nodes';
+import { Children, Context, DeclFunction, DeclFunctionFlags, DeclVariable, Expr, ExprId, MutContext, Node, Ref, RefGlobalDecl, Storage, Tag } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
 export class InstantiateState {
@@ -80,7 +80,7 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
         flags: Flags.unset(fn.flags, DeclFunctionFlags.Abstract),
     });
 
-    return context._declareGlobalDecl(fn);
+    return context.root.declare(fn);
 }
 
 function generateId(context: Context, fn: DeclFunction, args: Expr[]) {

@@ -431,18 +431,39 @@ export class Context {
 
 export class MutContext {
     public constructor(
-        public errors: CompileError[],
+        public readonly root: MutContext,
+        public readonly errors: CompileError[],
         public readonly module: MutModule,
         public readonly container: MutChildren,
         public readonly parent: DeclId,
     ) { }
 
     public static fromContext(context: Context) {
-        return new MutContext(context.errors, context.module as any, context.container as any, context.parent);
+        const root = new MutContext(
+            null as any,
+            context.errors,
+            context.module as any,
+            context.module.children as any,
+            RootId
+        );
+
+        return new MutContext(
+            root,
+            context.errors,
+            context.module as any,
+            context.container as any,
+            context.parent
+        );
     }
 
     public createChildContext(container: MutChildren, parent: DeclId): MutContext {
-        return new MutContext(this.errors, this.module, container, parent);
+        return new MutContext(
+            this.root,
+            this.errors,
+            this.module,
+            container,
+            parent
+        );
     }
 
     public error(error: CompileError) {
@@ -452,10 +473,6 @@ export class MutContext {
     /* Mutable specific members */
     public _updateExpr(id: ExprId, expr: Expr) {
         this.container.nodes[id] = expr;
-    }
-
-    public _declareGlobalDecl(decl: Decl): Ref {
-        throw new Error();
     }
 
     public define(storage: Storage, definition: (id: NodeId) => Node): NodeId {
@@ -499,8 +516,25 @@ export class MutContext {
         }
     }
 
+    public declare(node: Node): RefGlobalDecl {
+        // Allocate in parent
+        const { nodes } = this.container;
+        const id = nodes.length;
+        nodes.push(node);
+
+        // Declare in parent
+        const name = Node.getName(node);
+        if (name !== undefined) {
+            const { decls, names } = this.container;
+            decls.push(id);
+            names.set(name, [id]);
+        }
+
+        return new RefGlobalDecl(this.parent, id);
+    }
+
     public createChildContext2(parent: DeclId): MutContext {
-        return new MutContext(this.errors, this.module, new MutChildren([], [], [], new Map()), parent);
+        return new MutContext(this.root, this.errors, this.module, new MutChildren([], [], [], new Map()), parent);
     }
     public finalize(body: NodeId[]) {
         return new Children(this.container.nodes, body, this.container.decls, this.container.names);
@@ -612,8 +646,14 @@ export namespace Expr {
 export namespace Ref {
     export function resolve(context: Context, ref: Ref): Decl {
         switch (ref.tag) {
-            case Tag.RefGlobal: return context.module.children.nodes[ref.id] as Decl;
-            case Tag.RefLocal : return context.container.nodes[ref.id] as Decl;
+            case Tag.RefGlobal:     return context.module.children.nodes[ref.id] as Decl;
+            case Tag.RefLocal:      return context.container.nodes[ref.id] as Decl;
+            case Tag.RefGlobalDecl: {
+                if (ref.id === RootId) {
+                    return context.module.children.nodes[ref.member] as Decl;
+                }
+                return Node.getChildren(context.module.children.nodes[ref.id] as Decl).nodes[ref.member] as Decl;
+            }
         }
 
         throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);

@@ -9,8 +9,12 @@ export function VisitDecls<State>(context: Context, node: Node, id: NodeId, stat
         const nodes = children.nodes;
 
         for (const decl of children.decls) {
-            // TODO: Handle mutation
-            first(context, nodes[decl], decl, state);
+            const previous = nodes[decl];
+            const updated = first(context, previous, decl, state);
+
+            if (previous !== updated) {
+                (nodes as any)[decl] = updated;
+            }
         }
     }
 

@@ -8,7 +8,7 @@ export function parseAst(ast: PNode[]) {
     const root = new Nodes.MutChildren([], [], [], new Map());
     const module = new Nodes.MutModule(root);
 
-    const state = new MutContext([], module, root, RootId);
+    const state = new MutContext(undefined as any, [], module, root, RootId);
 
     const body = [];
     for (const node of ast) {
