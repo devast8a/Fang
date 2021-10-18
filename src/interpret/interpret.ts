@@ -35,7 +35,7 @@ export class VirtualMachine {
         const frame = new Frame(
             this.module.children.nodes,
             fn.children.nodes,
-            new Array(fn.children.decls),
+            new Array(fn.children.nodes.length),
         );
 
         // eslint-disable-next-line no-empty
@@ -60,6 +60,12 @@ function evaluate(context: Frame, id: ExprId): any {
     const { root, nodes, locals } = context;
 
     switch (expr.tag) {
+        case Tag.DeclVariable: {
+            const value = Node.as(nodes[expr.value!], ExprConstant).value;
+            locals[id] = value;
+            return null;
+        }
+
         case Tag.ExprCall: {
             const target = root[(expr.target as RefGlobal).id] as DeclFunction;
             switch (target.name) {

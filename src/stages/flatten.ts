@@ -103,9 +103,9 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
 }
 
 function extract(context: MutContext, output: ExprId[], id: ExprId, expr: Expr): ExprId {
-    const {nodes, decls} = context.container;
+    const {nodes} = context.container;
 
-    const variableId = decls.length;
+    const variableId = nodes.length;
     const variable = new DeclVariable(
         `FZ_${variableId}`,
         Expr.getReturnType(context, expr),
@@ -114,14 +114,10 @@ function extract(context: MutContext, output: ExprId[], id: ExprId, expr: Expr):
     );
     nodes.push(variable);
     
-    const declId = nodes.length;
-    const decl = new ExprDeclaration(new RefLocal(variableId));
-    nodes.push(decl);
-
     const getId = nodes.length;
     const get = new ExprGet(new RefLocal(variableId))
     nodes.push(get);
 
-    output.push(declId);
+    output.push(variableId);
     return getId;
 }

@@ -613,6 +613,7 @@ export namespace Ref {
     export function resolve(context: Context, ref: Ref): Decl {
         switch (ref.tag) {
             case Tag.RefGlobal: return context.module.children.nodes[ref.id] as Decl;
+            case Tag.RefLocal : return context.container.nodes[ref.id] as Decl;
         }
 
         throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
