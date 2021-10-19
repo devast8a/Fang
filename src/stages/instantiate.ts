@@ -1,35 +1,8 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor, VisitorControl } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { Children, Context, DeclFunction, DeclFunctionFlags, DeclVariable, Expr, ExprId, MutContext, Node, Ref, RefGlobalDecl, Storage, Tag } from '../nodes';
+import { Children, Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutContext, Node, Ref, RefFieldId, RefGlobalDecl, RefLocal, Storage, Tag, Type, TypeGet } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
-
-export class InstantiateState {
-    private mapping = new Map<string, RefGlobalDecl>();
-
-    public set(key: string, ref: RefGlobalDecl) {
-        return this.mapping.set(key, ref);
-    }
-
-    public get(key: string): RefGlobalDecl | null {
-        return this.mapping.get(key) ?? null;
-    }
-}
-
-function FilterAbstractFunctions<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>) {
-    const {next} = control;
-
-    if (node.tag !== Tag.DeclFunction) {
-        return next(context, node, id, state);
-    }
-
-    if (!Flags.has(node.flags, DeclFunctionFlags.Abstract)) {
-        return next(context, node, id, state);
-    }
-
-    // Don't pass through to the rest of the visitors
-    return node;
-}
 
 export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, (context, expr, id, state) => {
     switch (expr.tag) {
@@ -50,20 +23,29 @@ export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctio
     return expr;
 });
 
+export class InstantiateState {
+    private mapping = new Map<string, RefGlobalDecl>();
+
+    public set(key: string, ref: RefGlobalDecl) {
+        return this.mapping.set(key, ref);
+    }
+
+    public get(key: string): RefGlobalDecl | null {
+        return this.mapping.get(key) ?? null;
+    }
+}
+
 function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFunction, argIds: ReadonlyArray<ExprId>) {
     const args = argIds.map(argId => Expr.get(context, argId));
 
-    // Memoization
-    const memoizeKey   = generateId(context, fn, args);
-    const memoizeValue = state.get(memoizeKey);
-
-    if (memoizeValue !== null) {
-        return memoizeValue;
-    }
+    // TODO: Support memoization
 
     const nodes = fn.children.nodes.slice();
     const parameters = fn.parameters;
 
+    const t = Expr.getReturnType(context, args[0]);
+
+    // Rewrite parameters
     for (let index = 0; index < parameters.length; index++) {
         const parameter = Node.as(nodes[parameters[index]], DeclVariable);
 
@@ -72,6 +54,27 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
             parameter.type;
         
         nodes[index] = Node.mutate(parameter, { type });
+    }
+
+    // Rewrite body
+    for (let index = 0; index < nodes.length; index++) {
+        const node = nodes[index];
+
+        switch (node.tag) {
+            case Tag.ExprCall: {
+                const ref = node.target as RefFieldId;
+
+                const oldType = context.module.children.nodes[ref.targetType] as DeclStruct;
+                const fieldName = Ref.resolve(context, (oldType.children.nodes[ref.field] as ExprDeclaration).target).name;
+                const newTypeId = (t as TypeGet).target as RefLocal;
+                const newType = Ref.resolve(context, newTypeId) as DeclStruct;
+                const newFieldId = newType.children.names.get(fieldName)![0];
+                
+                nodes[index] = Node.mutate(node, {
+                    target: new RefFieldId(ref.target, newTypeId.id, newFieldId),
+                });
+            }
+        }
     }
 
     fn = Node.mutate(fn, {
@@ -83,12 +86,17 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
     return context.root.declare(fn);
 }
 
-function generateId(context: Context, fn: DeclFunction, args: Expr[]) {
-    const types = args.map(arg => {
-        // const type = Expr.getReturnType(context, arg);
+function FilterAbstractFunctions<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>) {
+    const {next} = control;
 
-        return 0;
-    });
+    if (node.tag !== Tag.DeclFunction) {
+        return next(context, node, id, state);
+    }
 
-    return fn.name + '$' + types.join("$");
+    if (!Flags.has(node.flags, DeclFunctionFlags.Abstract)) {
+        return next(context, node, id, state);
+    }
+
+    // Don't pass through to the rest of the visitors
+    return node;
 }

@@ -1,27 +1,27 @@
 trait Foo {
-    fn foo() -> u32
+    fn func() -> u32
 }
 
 struct Bar impl Foo {
-    fn foo() -> u32 {
+    fn func() -> u32 {
         return 0
     }
 }
 
 struct Qux impl Foo {
-    fn foo() -> u32 {
+    fn func() -> u32 {
         return 10
     }
 }
 
-fn test(foo: Foo) -> u32 {
-    return foo.foo()
+fn useFoo(foo: Foo) -> u32 {
+    return foo.func()
 }
 
 fn main() -> u32 {
     val bar = Bar{}
     val qux = Qux{}
 
-    test(bar)
-    test(qux)
+    useFoo(bar)
+    useFoo(qux)
 }

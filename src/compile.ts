@@ -25,8 +25,8 @@ export class Compiler {
         ['Resolve Names', visitor(resolveNames)],
         ['Check Types', visitor(checkTypes)],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
-        ['Mangle Names', visitor(mangleNames)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
+        ['Mangle Names', visitor(mangleNames)],
         ['Flatten', flatten],
         ['Evaluate Compile Time', visitor(evaluateCompileTime)],
     ];
