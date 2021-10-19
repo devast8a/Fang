@@ -67,7 +67,7 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
         }
 
         case Tag.ExprCreate: {
-            return id;
+            return extract(context, output, id, expr);
         }
 
         case Tag.ExprDeclaration: {
@@ -83,6 +83,12 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
         }
 
         case Tag.ExprReturn: {
+            if (expr.value !== null) {
+                context._updateExpr(id, Node.mutate(expr, {
+                    value: flattenExpr(context, output, expr.value, topLevel)
+                }));
+            }
+
             return id;
         }
 
