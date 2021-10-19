@@ -31,7 +31,6 @@ function isBuiltin(decl: Decl) {
 
 export const mangleNames = createVisitor(VisitDecls, (context, decl) => {
     if (decl.tag === Tag.DeclFunction && !isBuiltin(decl)) {
-        console.log(decl);
         return Node.mutate(decl, {
             name: decl.name + (context.parent + 1),
         });
