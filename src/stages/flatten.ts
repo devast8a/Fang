@@ -107,6 +107,7 @@ function extract(context: MutContext, output: ExprId[], id: ExprId, expr: Expr):
 
     const variableId = nodes.length;
     const variable = new DeclVariable(
+        context.parent,
         `FZ_${variableId}`,
         Expr.getReturnType(context, expr),
         id,

@@ -33,7 +33,7 @@ function parse(parent: MutContext, node: PNode): NodeId {
                 const attributes = node.data[6].map(attribute => parse(parent, attribute[1][1]));
                 const body = parseBodyNull(children, node.data[7]) ?? [];
 
-                return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body), Nodes.DeclFunctionFlags.None);
+                return new Nodes.DeclFunction(parent.parent, name, returnType, parameters, children.finalize(body), Nodes.DeclFunctionFlags.None);
             });
         }
         case PTag.PDeclParameter: {
@@ -44,7 +44,7 @@ function parse(parent: MutContext, node: PNode): NodeId {
                 const type  = parseTypeNull(node.data[3]?.[3]);
                 const value = parseNull(parent, node.data[6]?.[3]);
 
-                return new Nodes.DeclVariable(name, type, value, flags);
+                return new Nodes.DeclVariable(parent.parent, name, type, value, flags);
             });
         }
 
@@ -57,7 +57,7 @@ function parse(parent: MutContext, node: PNode): NodeId {
                 const superTypes = node.data[2]?.map(x => parseType(x[3]));
                 const body = parseBodyNull(children, node.data[5]) ?? [];
 
-                return new Nodes.DeclStruct(name, superTypes, children.finalize(body));
+                return new Nodes.DeclStruct(parent.parent, name, superTypes, children.finalize(body));
             });
         }
 
@@ -70,7 +70,7 @@ function parse(parent: MutContext, node: PNode): NodeId {
                 const superTypes = node.data[2]?.map(x => parseType(x[3]));
                 const body = parseBodyNull(children, node.data[5]) ?? [];
 
-                return new Nodes.DeclTrait(name, superTypes, children.finalize(body));
+                return new Nodes.DeclTrait(parent.parent, name, superTypes, children.finalize(body));
             });
         }
 
@@ -82,7 +82,7 @@ function parse(parent: MutContext, node: PNode): NodeId {
                 const type  = parseTypeNull(node.data[3]?.[3]);
                 const value = parseNull(parent, node.data[5]?.[3]);
 
-                return new Nodes.DeclVariable(name, type, value, flags);
+                return new Nodes.DeclVariable(parent.parent, name, type, value, flags);
             });
         }
 

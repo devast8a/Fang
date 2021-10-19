@@ -106,6 +106,10 @@ export type NodeId = number;
 export type RefDecl = Ref;
 export type RefExpr = number;
 
+
+export type Global<T> = number;
+export type Local<T> = number;
+
 // Module ======================================================================
 
 export class Module {
@@ -133,6 +137,7 @@ export class DeclFunction {
     public static readonly tag = Tag.DeclFunction;
 
     public constructor(
+        public readonly parent: Global<Decl | Module>,
         public readonly name: string,
         public readonly returnType: Type,
         public readonly parameters: DeclId[],   // Indexes into children.decls
@@ -150,6 +155,7 @@ export class DeclStruct {
     public static readonly tag = Tag.DeclStruct;
 
     public constructor(
+        public readonly parent: Global<Decl | Module>,
         public readonly name: string,
         public readonly superTypes: readonly Type[],
         public readonly children: Children,
@@ -161,6 +167,7 @@ export class DeclTrait {
     public static readonly tag = Tag.DeclTrait;
 
     public constructor(
+        public readonly parent: Global<Decl | Module>,
         public readonly name: string,
         public readonly superTypes: readonly Type[],
         public readonly children: Children,
@@ -172,6 +179,7 @@ export class DeclVariable {
     public static readonly tag = Tag.DeclVariable;
 
     public constructor(
+        public readonly parent: Global<Decl | Module>,
         public readonly name: string,
         public readonly type: Type,
         public readonly value: RefExpr | null,
