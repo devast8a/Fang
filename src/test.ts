@@ -16,7 +16,6 @@ async function run(directory: string) {
             console.group(file);
             try {
                 const result = await Compiler.compile(full);
-                console.log(result);
             }
             catch (e) {
                 console.error(e);

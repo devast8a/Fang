@@ -75,14 +75,13 @@ export class TargetC {
             }
         }
 
-        for (const id of decls) {
+        for (let id = 0; id < nodes.length; id++) {
             const decl = nodes[id];
-
             this.emitDecl(context, decl as Decl, id);
         }
     }
 
-    public emitDecl(context: Context, decl: Decl | Ref, id: DeclId) {
+    public emitDecl(context: Context, decl: Node, id: DeclId) {
         switch (decl.tag) {
             case Tag.DeclFunction: {
                 if (isBuiltin(decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
@@ -122,6 +121,10 @@ export class TargetC {
             case Tag.DeclVariable: {
                 this.emitTypeName(context, decl.type); // TODO: Keep track of parent
                 this.emit(" ", decl.name);
+                return;
+            }
+                
+            case Tag.ExprDeclaration: {
                 return;
             }
         }

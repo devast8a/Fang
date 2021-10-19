@@ -302,6 +302,7 @@ export class RefFieldId {
 
     public constructor(
         public readonly target: RefExpr,
+        public readonly targetType: DeclId,
         public readonly field: DeclId,
     ) { }
 }
@@ -653,6 +654,19 @@ export namespace Ref {
                     return context.module.children.nodes[ref.member] as Decl;
                 }
                 return Node.getChildren(context.module.children.nodes[ref.id] as Decl).nodes[ref.member] as Decl;
+            }
+
+            case Tag.RefFieldId: {
+                const struct = context.module.children.nodes[ref.targetType] as Decl;
+                const children = Node.getChildren(struct);
+                const field = children.nodes[ref.field];
+
+                // TODO: Remove nested lookups
+                if (field.tag === Tag.ExprDeclaration) {
+                    return resolve(context, field.target);
+                }
+
+                return field as Decl;
             }
         }
 

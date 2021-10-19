@@ -1,4 +1,4 @@
-trait IFoo { }
+trait IFoo {}
 
 struct Bar impl IFoo {}
 struct Qux impl IFoo {}

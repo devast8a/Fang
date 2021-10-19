@@ -2,7 +2,7 @@ import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
 import { VisitRefDecl } from '../ast/VisitRefDecl';
 import { VisitType } from '../ast/VisitType';
-import { Context, Expr, Node, RefGlobal, RefGlobalDecl, RefLocal, RootId, Tag } from '../nodes';
+import { Context, Expr, Node, Ref, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, RootId, Tag } from '../nodes';
 
 export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl, (context, node, id, state, {first}) => {
     switch (node.tag) {
@@ -14,6 +14,23 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
             }
 
             return ref;
+        }
+            
+        case Tag.RefFieldName: {
+            // TODO: Properly complete a lookup
+            const targetTypeRef = lookup(context, "Foo")!;
+            const targetType = Ref.resolve(context, targetTypeRef);
+            const children = Node.getChildren(targetType);
+
+            const id = children.names.get(node.field);
+
+            if (id === undefined) {
+                throw new Error(`Can not find field with name ${node.field}`);
+            }
+
+            console.log(targetTypeRef);
+
+            return new RefFieldId(node.target, targetTypeRef.id, id[0]);
         }
             
         case Tag.DeclVariable: {

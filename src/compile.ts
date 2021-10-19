@@ -12,6 +12,7 @@ import { Visitor } from './ast/visitor';
 import { instantiate, InstantiateState } from './stages/instantiate';
 import { evaluateCompileTime } from './stages/evaluateCompileTime';
 import { flatten } from './stages/flatten';
+import { mangleNames } from './stages/mangleNames';
 
 function visitor(visitor: Visitor<null>): (context: Context) => Module
 function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
@@ -24,6 +25,7 @@ export class Compiler {
         ['Resolve Names', visitor(resolveNames)],
         ['Check Types', visitor(checkTypes)],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
+        ['Mangle Names', visitor(mangleNames)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
         ['Flatten', flatten],
         ['Evaluate Compile Time', visitor(evaluateCompileTime)],
@@ -34,9 +36,21 @@ export class Compiler {
         if (!(source instanceof Source)) {
             source = new Source(source, await Fs.promises.readFile(source, "utf8"));
         }
+        
+        console.group(`Parsing ${source.path}`);
+        console.time(`${source.path} Total`);
 
+        console.time(`${source.path} Parsing`);
         const ast = parseSource(source);
+        console.timeEnd(`${source.path} Parsing`);
+
+        console.time(`${source.path} Ast Generation`);
         const {children} = parseAst(ast);
+        console.timeEnd(`${source.path} Ast Generation`);
+
+        console.timeEnd(`${source.path} Total`);
+        console.groupEnd();
+
         return new Module(children);
     }
 
@@ -49,14 +63,18 @@ export class Compiler {
         let id = 0;
         Fs.writeFileSync(`build/output/${id++}-Initial.txt`, serialize(module));
         for (const [name, fn] of this.stages) {
+            console.time(name);
             module = fn(new Context(errors, module, module.children, RootId));
+            console.timeEnd(name);
 
             Fs.writeFileSync(`build/output/${id++}-${name}.txt`, serialize(module));
         }
 
+        console.time("Code Generation");
         const target = new TargetC();
         target.emitProgram(new Context(errors, module, module.children, RootId));
         const code = target.toString();
+        console.timeEnd("Code Generation");
         Fs.writeFileSync(`build/output/${id++}-Code Generation.txt`, code);
 
         return code;
