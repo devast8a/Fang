@@ -11,6 +11,7 @@ function isBuiltin(decl: Decl) {
         case "Size":
         case "bool":
         case "malloc":
+        case "realloc":
         case "printf":
         case "s16":
         case "s32":
@@ -154,8 +155,15 @@ export class TargetC {
                     this.emit(' ', fn.name.slice(5), ' ');
                     this.emitExpr(context, expr.args[1]);
                 } else {
+                    // TODO: Implement this as an earlier compiler pass
+                    // Implements self/this parameters, pushing the object as the first parameter when calling a method.
+                    let args = expr.args;
+                    if (expr.target.tag === Tag.RefFieldId) {
+                        args = [expr.target.target].concat(args);
+                    }
+
                     this.emit(fn.name, '(',);
-                    this.emitArguments(context, fn, expr.args);
+                    this.emitArguments(context, fn, args);
                     this.emit(')');
                 }
                 return;
@@ -197,13 +205,10 @@ export class TargetC {
 
                 switch (targetRef.tag) {
                     case Tag.RefFieldId: {
-                        throw new Error(`Not implemented yet`);
-                    }
-
-                    case Tag.RefFieldName: {
                         this.emitExpr(context, targetRef.target);
-                        // TODO: Need to check if local is a pointer
-                        this.emit('.', targetRef.field);
+                        this.emit('->');
+                        const field = Node.as(Ref.resolve(context, targetRef), DeclVariable);
+                        this.emit(field.name);
                         return;
                     }
 
@@ -215,8 +220,9 @@ export class TargetC {
                         return;
                     }
 
+                    case Tag.RefFieldName:
                     case Tag.RefName: {
-                        throw new Error(`'${Tag[targetRef.tag]}' (for the identifier '${targetRef.name}') should have been resolved during name resolution.`);
+                        throw new Error(`'${Tag[targetRef.tag]}' should have been resolved during name resolution.`);
                     }
                         
                         
@@ -269,13 +275,10 @@ export class TargetC {
 
                 switch (targetRef.tag) {
                     case Tag.RefFieldId: {
-                        throw new Error(`Not implemented yet`);
-                    }
-
-                    case Tag.RefFieldName: {
                         this.emitExpr(context, targetRef.target);
-                        // TODO: Need to check if local is a pointer
-                        this.emit('.', targetRef.field, ' = ');
+                        this.emit('->');
+                        const field = Node.as(Ref.resolve(context, targetRef), DeclVariable);
+                        this.emit(field.name, ' = ');
                         this.emitExpr(context, expr.value);
                         return;
                     }
@@ -289,8 +292,9 @@ export class TargetC {
                         return;
                     }
 
+                    case Tag.RefFieldName:
                     case Tag.RefName: {
-                        throw new Error(`'${Tag[targetRef.tag]}' (for the identifier '${targetRef.name}') should have been resolved during name resolution.`);
+                        throw new Error(`'${Tag[targetRef.tag]}' should have been resolved during name resolution.`);
                     }
                         
                         
@@ -342,18 +346,19 @@ export class TargetC {
                     const parameterIsPtr = Flags.has(param.flags, DeclVariableFlags.Mutable);
 
                     // Match pointer-ness of the parameter and the argument
-                    if (parameterIsPtr) {
-                        if (argumentIsPtr) {
-                            this.emit(local.name);
-                        } else {
-                            this.emit("&", local.name);
+                    if (arg.target.tag === Tag.RefFieldId) {
+                        if (parameterIsPtr) {
+                            this.emit("&");
                         }
+
+                        this.emitExpr(context, arg.target.target);
+                        this.emit(argumentIsPtr ? '->' : ".");
+                        this.emit(local.name);
                     } else {
-                        if (argumentIsPtr) {
-                            this.emit("*", local.name);
-                        } else {
-                            this.emit(local.name);
+                        if (parameterIsPtr !== argumentIsPtr) {
+                            this.emit(parameterIsPtr ? "&" : "*");
                         }
+                        this.emit(local.name);
                     }
 
                     break;
