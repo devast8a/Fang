@@ -24,8 +24,6 @@ export const mangleNames = createVisitor(VisitChildren, (context, decl) => {
 function getPathTo(context: Context, decl: Decl) {
     const path = [];
 
-    console.log(decl.parent);
-
     let parent = decl.parent;
     const nodes = context.module.children.nodes;
     while (parent !== RootId) {
