@@ -135,7 +135,7 @@ const grammar: Grammar = {
     {"name": "DfBody$macrocall$1$macrocall$1", "symbols": ["DfBody$macrocall$1$macrocall$2", "DfBody$macrocall$1$macrocall$3", "DfBody$macrocall$1$macrocall$1$ebnf$1", "DfBody$macrocall$1$macrocall$6"], "postprocess": p.ListProcessor},
     {"name": "DfBody$macrocall$1", "symbols": ["DfBody$macrocall$1$macrocall$1"]},
     {"name": "DfBody", "symbols": ["N_", "DfBody$macrocall$1"]},
-    {"name": "DfBody", "symbols": ["__", {"literal":"=>"}, "_", "Expr"]},
+    {"name": "DfBody", "symbols": ["__", {"literal":"=>"}, "N_", "Expr"]},
     {"name": "Stmt", "symbols": ["DeclFunction"]},
     {"name": "Expr", "symbols": ["DeclFunction"]},
     {"name": "DeclGeneric$ebnf$1", "symbols": []},

@@ -302,7 +302,13 @@ function parseBody(state: MutContext, ast: PNode): NodeId[] {
 
         case 4: {
             // whitespace => whitespace expression
-            throw new Error('Not implemented yet');
+            const expr = parse(state, ast[3]);
+
+            const nodes = state.container.nodes;
+            const id = nodes.length;
+            nodes.push(state.declare(new Nodes.ExprReturn(expr)));
+
+            return [id];
         }
             
         default: {

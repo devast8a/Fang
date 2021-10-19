@@ -88,7 +88,7 @@
     DfGeneric       -> N__ DeclGeneric
     DfAttribute     -> N__ Attribute
     DfBody          -> N_ BODY[Stmt]
-    DfBody          -> __ "=>" _ Expr
+    DfBody          -> __ "=>" N_ Expr
 
     # Contexts
     Stmt            -> DeclFunction
