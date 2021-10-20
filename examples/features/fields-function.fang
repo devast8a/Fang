@@ -1,27 +1,10 @@
-trait Foo {
-    fn func() -> u32
-}
-
-struct Bar impl Foo {
-    fn func() -> u32 {
+struct Foo {
+    fn func(self) -> u32 {
         return 0
     }
 }
 
-struct Qux impl Foo {
-    fn func() -> u32 {
-        return 10
-    }
-}
-
-fn useFoo(foo: Foo) -> u32 {
-    return foo.func()
-}
-
 fn main() -> u32 {
-    val bar = Bar{}
-    val qux = Qux{}
-
-    useFoo(bar)
-    useFoo(qux)
+    val foo = Foo{}
+    return foo.func()
 }
