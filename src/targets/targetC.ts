@@ -12,6 +12,7 @@ function isBuiltin(decl: Decl) {
         case "bool":
         case "malloc":
         case "realloc":
+        case "deref_ptr":
         case "printf":
         case "s16":
         case "s32":
@@ -154,6 +155,17 @@ export class TargetC {
                     this.emitExpr(context, expr.args[0]);
                     this.emit(' ', fn.name.slice(5), ' ');
                     this.emitExpr(context, expr.args[1]);
+                } else if (fn.name === 'deref_ptr') {
+                    this.emitExpr(context, expr.args[0]);
+                    this.emit('[(')
+                    this.emitExpr(context, expr.args[1]);
+                    this.emit(') / 4');
+                    this.emit(']')
+
+                    if (expr.args.length === 3) {
+                        this.emit(' = ');
+                        this.emitExpr(context, expr.args[2]);
+                    }
                 } else {
                     // TODO: Implement this as an earlier compiler pass
                     // Implements self/this parameters, pushing the object as the first parameter when calling a method.
@@ -423,7 +435,7 @@ export class TargetC {
                     case "s32": this.emit("int32_t"); return;
                     case "s64": this.emit("int64_t"); return;
 
-                    case "Ptr": this.emit("void*"); return;
+                    case "Ptr": this.emit("uint32_t*"); return;
                     case "Size": this.emit("size_t"); return;
 
                     default: this.emit('struct ', name);

@@ -100,6 +100,8 @@ export class Compiler {
             fn infix==(left: u32, right: u32) -> bool
             fn printf(s: str, d: u32)
             fn malloc(size: Size) -> Ptr
+            fn realloc(ptr: Ptr, size: Size) -> Ptr
+            fn deref_ptr(ptr: Ptr, index: Size) -> u32
         `;
         const source = new Source(path, content);
 
