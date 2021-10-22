@@ -1,7 +1,7 @@
 import { VisitDecls } from '../ast/VisitDecls';
 import { createVisitor } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { Context, DeclFunctionFlags, DeclVariable, Node, Ref, Tag, Type } from '../nodes';
+import { Context, DeclFunctionFlags, DeclVariable, Node, Tag, Type } from '../nodes';
 
 export const markAbstractFunctions = createVisitor(VisitDecls, (context, decl) => {
     if (decl.tag === Tag.DeclFunction) {
@@ -18,7 +18,7 @@ export const markAbstractFunctions = createVisitor(VisitDecls, (context, decl) =
 
 export function isAbstractType(context: Context, type: Type): unknown {
     switch (type.tag) {
-        case Tag.TypeGet: return Ref.resolve(context, type.target).tag === Tag.DeclTrait;
+        case Tag.TypeGet: return context.get(type.target).tag === Tag.DeclTrait;
     }
 
     throw new Error(`'${Tag[type.tag]}' unsupported`);

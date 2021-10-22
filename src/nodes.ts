@@ -39,6 +39,8 @@ export type Ref =
     | RefName
     ;
 
+export type RefLocalId<T extends Node = Node> = number;
+
 export type Type =
     | TypeGenericApply
     | TypeGet
@@ -83,32 +85,12 @@ export const BadId = -2;
 
 export type NodeType<T> = Constructor<T> & { tag: Tag };
 
-/*
-    These aliases are intended to ease refactoring and improve readability rather than hide implementation details.
-
-    DeclId, ExprId, NodeId
-    - These identify Decl, Expr, and Nodes for a particular instance of Context.
-    - Only use NodeId if you don't know if the id refers to a Decl or an Expr.
-    - Prefer to use these throughout the compiler over Ref, but don't store them or pass them around in a way that the
-        context could change and make the identifier invalid.
-    - Avoid these as a field of a Node and instead use RefDecl and RefExpr instead. The only exception to this is if the Node has
-        children and the target is always one of those children (DeclFunction's parameters for example).
-
-    RefDecl, RefExpr
-    - These identify Decl and Expr within a particular module and are not sensitive to the context.
-    - Prefer to use these as 
-    - Avoid these throughout the compiler and instead use DeclId, ExprId, NodeId.
-*/
 export type DeclId = number;
 export type ExprId = number;
 export type NodeId = number;
 
-export type RefDecl = Ref;
-export type RefExpr = number;
-
-
-export type Global<T> = number;
-export type Local<T> = number;
+/** Deprecated */
+export type _Global<T> = number;
 
 // Module ======================================================================
 
@@ -137,7 +119,7 @@ export class DeclFunction {
     public static readonly tag = Tag.DeclFunction;
 
     public constructor(
-        public readonly parent: Global<Decl | Module>,
+        public readonly parent: _Global<Decl | Module>,
         public readonly name: string,
         public readonly returnType: Type,
         public readonly parameters: DeclId[],   // Indexes into children.decls
@@ -155,7 +137,7 @@ export class DeclStruct {
     public static readonly tag = Tag.DeclStruct;
 
     public constructor(
-        public readonly parent: Global<Decl | Module>,
+        public readonly parent: _Global<Decl | Module>,
         public readonly name: string,
         public readonly superTypes: readonly Type[],
         public readonly children: Children,
@@ -167,7 +149,7 @@ export class DeclTrait {
     public static readonly tag = Tag.DeclTrait;
 
     public constructor(
-        public readonly parent: Global<Decl | Module>,
+        public readonly parent: _Global<Decl | Module>,
         public readonly name: string,
         public readonly superTypes: readonly Type[],
         public readonly children: Children,
@@ -179,10 +161,10 @@ export class DeclVariable {
     public static readonly tag = Tag.DeclVariable;
 
     public constructor(
-        public readonly parent: Global<Decl | Module>,
+        public readonly parent: _Global<Decl | Module>,
         public readonly name: string,
         public readonly type: Type,
-        public readonly value: RefExpr | null,
+        public readonly value: RefLocalId | null,
         public readonly flags: DeclVariableFlags,
     ) { }
 }
@@ -199,8 +181,8 @@ export class ExprCall {
     public static readonly tag = Tag.ExprCall;
 
     public constructor(
-        public readonly target: RefDecl,
-        public readonly args: readonly RefExpr[],
+        public readonly target: Ref,
+        public readonly args: readonly RefLocalId[],
         public readonly compileTime: boolean,
     ) { }
 }
@@ -221,7 +203,7 @@ export class ExprCreate {
 
     public constructor(
         public readonly type: Type,
-        public readonly args: readonly RefExpr[],
+        public readonly args: readonly RefLocalId[],
     ) { }
 }
 
@@ -230,7 +212,7 @@ export class ExprDeclaration {
     public static readonly tag = Tag.ExprDeclaration;
 
     public constructor(
-        public readonly target: RefDecl,
+        public readonly target: Ref,
     ) { }
 }
 
@@ -240,7 +222,7 @@ export class ExprDestroy {
     public static readonly tag = Tag.ExprDestroy;
 
     public constructor(
-        public readonly target: RefDecl,
+        public readonly target: Ref,
     ) { }
 }
 
@@ -249,7 +231,7 @@ export class ExprGet {
     public static readonly tag = Tag.ExprGet;
 
     public constructor(
-        public readonly target: RefDecl,
+        public readonly target: Ref,
     ) { }
 }
 
@@ -258,7 +240,7 @@ export class ExprIf {
     public static readonly tag = Tag.ExprIf;
 
     public constructor(
-        public readonly cases: readonly RefExpr[],
+        public readonly cases: readonly RefLocalId[],
     ) { }
 }
 
@@ -268,8 +250,8 @@ export class ExprIfCase {
 
     public constructor(
         // TODO: Don't use null to signal else cases. It causes us to check for the null everywhere.
-        public readonly condition: RefExpr | null,
-        public readonly body: readonly RefExpr[],
+        public readonly condition: RefLocalId | null,
+        public readonly body: readonly RefLocalId[],
     ) { }
 }
 
@@ -278,7 +260,7 @@ export class ExprReturn {
     public static readonly tag = Tag.ExprReturn;
 
     public constructor(
-        public readonly value: RefExpr | null,
+        public readonly value: RefLocalId | null,
     ) { }
 }
 
@@ -287,8 +269,8 @@ export class ExprSet {
     public static readonly tag = Tag.ExprSet;
 
     public constructor(
-        public readonly target: RefDecl,
-        public readonly value: RefExpr,
+        public readonly target: Ref,
+        public readonly value: RefLocalId,
     ) { }
 }
 
@@ -297,8 +279,8 @@ export class ExprWhile {
     public static readonly tag = Tag.ExprWhile;
 
     public constructor(
-        public readonly condition: RefExpr,
-        public readonly body: readonly RefExpr[],
+        public readonly condition: RefLocalId,
+        public readonly body: readonly RefLocalId[],
     ) { }
 }
 
@@ -309,7 +291,7 @@ export class RefFieldId {
     public static readonly tag = Tag.RefFieldId;
 
     public constructor(
-        public readonly target: RefExpr,
+        public readonly target: RefLocalId,
         public readonly targetType: DeclId,
         public readonly field: DeclId,
     ) { }
@@ -320,7 +302,7 @@ export class RefFieldName {
     public static readonly tag = Tag.RefFieldName;
 
     public constructor(
-        public readonly target: RefExpr,
+        public readonly target: RefLocalId,
         public readonly field: string,
     ) { }
 }
@@ -389,7 +371,7 @@ export class TypeGet {
     public static readonly tag = Tag.TypeGet;
 
     public constructor(
-        public readonly target: RefDecl,
+        public readonly target: Ref,
     ) { }
 }
 
@@ -402,20 +384,22 @@ export class TypeInfer {
 
 export class Children {
     public constructor(
-        public readonly nodes: readonly Node[],
-        public readonly body: readonly ExprId[],
-        public readonly decls: readonly DeclId[],
-        public readonly names: ReadonlyMap<string, readonly DeclId[]>,
+        public readonly nodes:  ReadonlyArray<Node>,
+        public readonly body:   ReadonlyArray<ExprId>,
+        public readonly decls:  ReadonlyArray<DeclId>,
+        public readonly names:  ReadonlyMap<string, readonly DeclId[]>,
     ) { }
 }
 
-export class MutChildren {
+export class MutChildren extends Children {
     public constructor(
-        public readonly nodes: Node[],
-        public readonly body: ExprId[],
-        public readonly decls: DeclId[],
+        public readonly nodes: Array<Node>,
+        public readonly body:  Array<ExprId>,
+        public readonly decls: Array<DeclId>,
         public readonly names: Map<string, DeclId[]>,
-    ) { }
+    ) {
+        super(nodes, body, decls, names);
+    }
 }
 
 // Context =====================================================================
@@ -423,7 +407,7 @@ export class MutChildren {
 // TODO: Support adding new nodes
 export class Context {
     public constructor(
-        public errors: CompileError[],
+        public readonly errors: CompileError[],
         public readonly module: Module,
         public readonly container: Children,
         public readonly parent: DeclId,
@@ -436,16 +420,59 @@ export class Context {
     public error(error: CompileError) {
         this.errors.push(error);
     }
+
+    public get<T extends Node>(ref: Ref | RefLocalId<T>): T {
+        if (typeof (ref) === 'number') {
+            return this.container.nodes[ref] as T;
+        }
+
+        switch (ref.tag) {
+            case Tag.RefGlobal: {
+                return this.module.children.nodes[ref.id] as T;
+            }
+
+            case Tag.RefLocal: {
+                return this.container.nodes[ref.id] as T;
+            }
+
+            case Tag.RefGlobalDecl: {
+                if (ref.id === RootId) {
+                    return this.module.children.nodes[ref.member] as T;
+                }
+
+                const parent = this.module.children.nodes[ref.id] as Decl;
+                const children = Node.getChildren(parent);
+                return children.nodes[ref.member] as T;
+            }
+
+            case Tag.RefFieldId: {
+                const struct = this.module.children.nodes[ref.targetType] as Decl;
+                const children = Node.getChildren(struct);
+                const field = children.nodes[ref.field];
+
+                // TODO: Remove nested lookups
+                if (field.tag === Tag.ExprDeclaration) {
+                    return this.get(field.target);
+                }
+
+                return field as T;
+            }
+        }
+
+        throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
+    }
 }
 
-export class MutContext {
+export class MutContext extends Context {
     public constructor(
         public readonly root: MutContext,
         public readonly errors: CompileError[],
         public readonly module: MutModule,
         public readonly container: MutChildren,
         public readonly parent: DeclId,
-    ) { }
+    ) {
+        super(errors, module, container, parent);
+    }
 
     public static fromContext(context: Context) {
         const root = new MutContext(
@@ -473,10 +500,6 @@ export class MutContext {
             container,
             parent
         );
-    }
-
-    public error(error: CompileError) {
-        this.errors.push(error);
     }
 
     /* Mutable specific members */
@@ -638,10 +661,10 @@ export namespace Expr {
 
     export function getReturnType(context: Context, expr: Expr): Type {
         switch (expr.tag) {
-            case Tag.ExprCall:        return Node.as(Ref.resolve(context, expr.target), DeclFunction).returnType;
+            case Tag.ExprCall:        return Node.as(context.get(expr.target), DeclFunction).returnType;
             case Tag.ExprConstant:    return expr.type;
             case Tag.ExprCreate:      return expr.type;
-            case Tag.ExprGet:         return Node.as(Ref.resolve(context, expr.target), DeclVariable).type;
+            case Tag.ExprGet:         return Node.as(context.get(expr.target), DeclVariable).type;
         }
 
         throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
@@ -649,36 +672,6 @@ export namespace Expr {
 
     export function idToRef(context: Context, id: ExprId) {
         return new RefGlobalExpr(context.parent, id);
-    }
-}
-
-export namespace Ref {
-    export function resolve(context: Context, ref: Ref): Decl {
-        switch (ref.tag) {
-            case Tag.RefGlobal:     return context.module.children.nodes[ref.id] as Decl;
-            case Tag.RefLocal:      return context.container.nodes[ref.id] as Decl;
-            case Tag.RefGlobalDecl: {
-                if (ref.id === RootId) {
-                    return context.module.children.nodes[ref.member] as Decl;
-                }
-                return Node.getChildren(context.module.children.nodes[ref.id] as Decl).nodes[ref.member] as Decl;
-            }
-
-            case Tag.RefFieldId: {
-                const struct = context.module.children.nodes[ref.targetType] as Decl;
-                const children = Node.getChildren(struct);
-                const field = children.nodes[ref.field];
-
-                // TODO: Remove nested lookups
-                if (field.tag === Tag.ExprDeclaration) {
-                    return resolve(context, field.target);
-                }
-
-                return field as Decl;
-            }
-        }
-
-        throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
     }
 }
 

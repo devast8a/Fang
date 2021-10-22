@@ -1,13 +1,13 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor, VisitorControl } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { Children, Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutContext, Node, Ref, RefFieldId, RefGlobalDecl, RefLocal, Storage, Tag, Type, TypeGet } from '../nodes';
+import { Children, Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutContext, Node, RefFieldId, RefGlobalDecl, RefLocal, Tag, TypeGet } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
 export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, (context, expr, id, state) => {
     switch (expr.tag) {
         case Tag.ExprCall: {
-            const target = Node.as(Ref.resolve(context, expr.target), DeclFunction);
+            const target = Node.as(context.get(expr.target), DeclFunction);
 
             // Non-generic functions do not need instantiation
             if (!Flags.has(target.flags, DeclFunctionFlags.Abstract)) {
@@ -65,9 +65,9 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
                 const ref = node.target as RefFieldId;
 
                 const oldType = context.module.children.nodes[ref.targetType] as DeclStruct;
-                const fieldName = Ref.resolve(context, (oldType.children.nodes[ref.field] as ExprDeclaration).target).name;
+                const fieldName = (context.get((oldType.children.nodes[ref.field] as ExprDeclaration).target) as Decl).name;
                 const newTypeId = (t as TypeGet).target as RefLocal;
-                const newType = Ref.resolve(context, newTypeId) as DeclStruct;
+                const newType = context.get(newTypeId) as DeclStruct;
                 const newFieldId = newType.children.names.get(fieldName)![0];
                 
                 nodes[index] = Node.mutate(node, {

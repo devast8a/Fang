@@ -149,7 +149,7 @@ export class TargetC {
             }
 
             case Tag.ExprCall: {
-                const fn = Node.as(Ref.resolve(context, expr.target), DeclFunction);
+                const fn = Node.as(context.get(expr.target), DeclFunction);
 
                 if (fn.name.startsWith('infix')) {
                     this.emitExpr(context, expr.args[0]);
@@ -219,7 +219,7 @@ export class TargetC {
                     case Tag.RefFieldId: {
                         this.emitExpr(context, targetRef.target);
                         this.emit('->');
-                        const field = Node.as(Ref.resolve(context, targetRef), DeclVariable);
+                        const field = Node.as(context.get(targetRef), DeclVariable);
                         this.emit(field.name);
                         return;
                     }
@@ -227,7 +227,7 @@ export class TargetC {
                     case Tag.RefLocal:
                     case Tag.RefGlobal:
                     case Tag.RefGlobalDecl: {
-                        const target = Ref.resolve(context, targetRef);
+                        const target = context.get(targetRef) as Decl;
                         this.emit(target.name);
                         return;
                     }
@@ -289,7 +289,7 @@ export class TargetC {
                     case Tag.RefFieldId: {
                         this.emitExpr(context, targetRef.target);
                         this.emit('->');
-                        const field = Node.as(Ref.resolve(context, targetRef), DeclVariable);
+                        const field = Node.as(context.get(targetRef), DeclVariable);
                         this.emit(field.name, ' = ');
                         this.emitExpr(context, expr.value);
                         return;
@@ -298,7 +298,7 @@ export class TargetC {
                     case Tag.RefLocal:
                     case Tag.RefGlobal:
                     case Tag.RefGlobalDecl: {
-                        const target = Ref.resolve(context, targetRef);
+                        const target = context.get(targetRef) as Decl;
                         this.emit(target.name, ' = ');
                         this.emitExpr(context, expr.value);
                         return;
@@ -350,7 +350,7 @@ export class TargetC {
                 }
 
                 case Tag.ExprGet: {
-                    const local = Node.as(Ref.resolve(context, arg.target), DeclVariable);
+                    const local = Node.as(context.get(arg.target), DeclVariable);
 
                     // TODO: argumentIsPtr is wrong for locals, needs a parameter flag
                     // TODO: Switch to pointers for large objects
@@ -421,7 +421,7 @@ export class TargetC {
             }
 
             case Tag.TypeGet: {
-                const name = Ref.resolve(context, type.target).name;
+                const name = (context.get(type.target) as Decl).name;
                 
                 // TODO: Implement FFI system to allow aliasing underlying target identifiers
                 switch (name) {

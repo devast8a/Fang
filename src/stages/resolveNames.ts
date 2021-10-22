@@ -2,7 +2,7 @@ import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
 import { VisitRefDecl } from '../ast/VisitRefDecl';
 import { VisitType } from '../ast/VisitType';
-import { Context, Decl, Expr, Node, Ref, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, RefName, RootId, Tag, TypeGet } from '../nodes';
+import { Context, Decl, Expr, Node, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, RootId, Tag, TypeGet } from '../nodes';
 
 export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl, (context, node, id, state, {first}) => {
     switch (node.tag) {
@@ -19,7 +19,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
         case Tag.RefFieldName: {
             const target = first(context, Expr.get(context, node.target), node.target, state);
             const typeRef = (Expr.getReturnType(context, target) as TypeGet).target as RefGlobal;
-            const type = Ref.resolve(context, typeRef);
+            const type = context.get(typeRef) as Decl;
             const children = Node.getChildren(type);
 
             const id = children.names.get(node.field);
