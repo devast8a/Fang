@@ -241,7 +241,7 @@ export class ExprIf {
     public static readonly tag = Tag.ExprIf;
 
     public constructor(
-        public readonly cases: readonly RefLocalId[],
+        public readonly cases: readonly RefLocalId<ExprIfCase>[],
     ) { }
 }
 
@@ -656,11 +656,7 @@ export namespace Decl {
 }
 
 export namespace Expr {
-    export function get(context: Context, id: ExprId) {
-        return context.container.nodes[id] as Expr;
-    }
-
-    export function getReturnType(context: Context, expr: Expr): Type {
+    export function getReturnType(context: Context, expr: Node): Type {
         switch (expr.tag) {
             case Tag.ExprCall:        return context.get(expr.target).returnType;
             case Tag.ExprConstant:    return expr.type;

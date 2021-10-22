@@ -135,7 +135,7 @@ export class TargetC {
     }
 
     public emitExpr(context: Context, id: ExprId, expr?: Node) {
-        expr = expr ?? Expr.get(context, id) as Node;
+        expr = expr ?? context.get(id);
 
         switch (expr.tag) {
             case Tag.DeclVariable: {
@@ -246,7 +246,7 @@ export class TargetC {
                 
             case Tag.ExprIf: {
                 // First case
-                const first = Expr.get(context, expr.cases[0]) as ExprIfCase;
+                const first = context.get(expr.cases[0]) as ExprIfCase;
 
                 this.emit('if (');
                 this.emitExpr(context, first.condition!);
@@ -255,7 +255,7 @@ export class TargetC {
 
                 // Other cases
                 for (let i = 1; i < expr.cases.length; i++) {
-                    const other = Node.as(Expr.get(context, expr.cases[i]), ExprIfCase);
+                    const other = context.get(expr.cases[i]) as ExprIfCase;
 
                     if (other.condition === null) {
                         // Last case (else)
@@ -338,7 +338,7 @@ export class TargetC {
             }
 
             const argId = args[index];
-            const arg = Expr.get(context, argId);
+            const arg = context.get(argId);
 
             const paramId = fn.parameters[index];
             const param = Node.as(fn.children.nodes[paramId], DeclVariable);

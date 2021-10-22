@@ -17,7 +17,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
         }
             
         case Tag.RefFieldName: {
-            const target = first(context, Expr.get(context, node.target), node.target, state);
+            const target = first(context, context.get(node.target), node.target, state);
             const typeRef = (Expr.getReturnType(context, target) as TypeGet).target as RefGlobal;
             const type = context.get(typeRef) as Decl;
             const children = Node.getChildren(type);
@@ -46,7 +46,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
                 throw new Error("Variable must have a type or a value or both.");
             }
 
-            const value_ = Expr.get(context, node.value);
+            const value_ = context.get(node.value);
             const value = first(context, value_, node.value, state);
             const type = Expr.getReturnType(context, value);
             return Node.mutate(node, { type });

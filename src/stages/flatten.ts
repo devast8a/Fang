@@ -1,4 +1,4 @@
-import { Context, DeclVariable, DeclVariableFlags, Expr, ExprDeclaration, ExprGet, ExprId, MutContext, Node, RefLocal, Tag } from '../nodes';
+import { Context, DeclVariable, DeclVariableFlags, Expr, ExprGet, ExprId, MutContext, Node, RefLocal, Tag } from '../nodes';
 
 export function flatten(context: Context) {
     const {decls, nodes} = context.module.children;
@@ -47,7 +47,7 @@ function flattenExprs(context: MutContext, output: ExprId[], ids: ReadonlyArray<
 }
 
 function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel = false): ExprId {
-    const expr = Expr.get(context, id) as Node;
+    const expr = context.get(id);
 
     switch (expr.tag) {
         case Tag.DeclVariable: {

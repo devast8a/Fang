@@ -6,7 +6,7 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id, state
     switch (node.tag) {
         case Tag.DeclVariable: {
             if (node.value !== null) {
-                const source = Expr.get(context, node.value)
+                const source = context.get(node.value)
                 const sourceType = Expr.getReturnType(context, source);
 
                 if (!Type.canAssignTo(sourceType, node.type)) {

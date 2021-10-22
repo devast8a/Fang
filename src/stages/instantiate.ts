@@ -36,7 +36,7 @@ export class InstantiateState {
 }
 
 function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFunction, argIds: ReadonlyArray<ExprId>) {
-    const args = argIds.map(argId => Expr.get(context, argId));
+    const args = argIds.map(argId => context.get(argId));
 
     // TODO: Support memoization
 
