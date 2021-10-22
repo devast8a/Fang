@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Ref, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children } from '../nodes';
 
 function isBuiltin(decl: Decl) {
     if (decl.name.startsWith("infix") || decl.name.startsWith("prefix") || decl.name.startsWith("postfix")) {
@@ -149,7 +149,7 @@ export class TargetC {
             }
 
             case Tag.ExprCall: {
-                const fn = Node.as(context.get(expr.target), DeclFunction);
+                const fn = context.get(expr.target);
 
                 if (fn.name.startsWith('infix')) {
                     this.emitExpr(context, expr.args[0]);

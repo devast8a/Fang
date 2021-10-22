@@ -5,7 +5,7 @@ export type Node =
     | Decl
     | Expr
     | Type
-    | Ref
+    | Ref<any>
     ;
 
 export type Decl =
@@ -29,17 +29,18 @@ export type Expr =
     | ExprWhile
     ;
 
-export type Ref =
-    | RefFieldId
-    | RefFieldName
-    | RefGlobal
-    | RefGlobalDecl
-    | RefGlobalExpr
-    | RefLocal
-    | RefName
+export type Ref<T extends Node = Node> =
+    | RefFieldId<T>
+    | RefFieldName<T>
+    | RefGlobal<T>
+    | RefGlobalDecl<T>
+    | RefGlobalExpr<T>
+    | RefLocal<T>
+    | RefName<T>
     ;
 
 export type RefLocalId<T extends Node = Node> = number;
+export type RefAny<T extends Node = Node> = Ref<T> | RefLocalId<T>;
 
 export type Type =
     | TypeGenericApply
@@ -181,7 +182,7 @@ export class ExprCall {
     public static readonly tag = Tag.ExprCall;
 
     public constructor(
-        public readonly target: Ref,
+        public readonly target: Ref<DeclFunction>,
         public readonly args: readonly RefLocalId[],
         public readonly compileTime: boolean,
     ) { }
@@ -212,7 +213,7 @@ export class ExprDeclaration {
     public static readonly tag = Tag.ExprDeclaration;
 
     public constructor(
-        public readonly target: Ref,
+        public readonly target: Ref<Decl>,
     ) { }
 }
 
@@ -222,7 +223,7 @@ export class ExprDestroy {
     public static readonly tag = Tag.ExprDestroy;
 
     public constructor(
-        public readonly target: Ref,
+        public readonly target: Ref<DeclVariable>,
     ) { }
 }
 
@@ -286,7 +287,7 @@ export class ExprWhile {
 
 // References ==================================================================
 
-export class RefFieldId {
+export class RefFieldId<T extends Node = Node> {
     public readonly tag = Tag.RefFieldId;
     public static readonly tag = Tag.RefFieldId;
 
@@ -297,7 +298,7 @@ export class RefFieldId {
     ) { }
 }
 
-export class RefFieldName {
+export class RefFieldName<T extends Node = Node> {
     public readonly tag = Tag.RefFieldName;
     public static readonly tag = Tag.RefFieldName;
 
@@ -307,7 +308,7 @@ export class RefFieldName {
     ) { }
 }
 
-export class RefGlobal {
+export class RefGlobal<T extends Node = Node> {
     public readonly tag = Tag.RefGlobal;
     public static readonly tag = Tag.RefGlobal;
 
@@ -316,7 +317,7 @@ export class RefGlobal {
     ) { }
 }
 
-export class RefGlobalDecl {
+export class RefGlobalDecl<T extends Node = Node> {
     public readonly tag = Tag.RefGlobalDecl;
     public static readonly tag = Tag.RefGlobalDecl;
 
@@ -326,7 +327,7 @@ export class RefGlobalDecl {
     ) { }
 }
 
-export class RefGlobalExpr {
+export class RefGlobalExpr<T extends Node = Node> {
     public readonly tag = Tag.RefGlobalExpr;
     public static readonly tag = Tag.RefGlobalExpr;
 
@@ -336,7 +337,7 @@ export class RefGlobalExpr {
     ) { }
 }
 
-export class RefLocal {
+export class RefLocal<T extends Node = Node> {
     public readonly tag = Tag.RefLocal;
     public static readonly tag = Tag.RefLocal;
 
@@ -345,7 +346,7 @@ export class RefLocal {
     ) { }
 }
 
-export class RefName {
+export class RefName<T extends Node = Node> {
     public readonly tag = Tag.RefName;
     public static readonly tag = Tag.RefName;
 
@@ -421,7 +422,7 @@ export class Context {
         this.errors.push(error);
     }
 
-    public get<T extends Node>(ref: Ref | RefLocalId<T>): T {
+    public get<T extends Node>(ref: RefAny<T>): T {
         if (typeof (ref) === 'number') {
             return this.container.nodes[ref] as T;
         }
@@ -452,7 +453,7 @@ export class Context {
 
                 // TODO: Remove nested lookups
                 if (field.tag === Tag.ExprDeclaration) {
-                    return this.get(field.target);
+                    return this.get(field.target) as T;
                 }
 
                 return field as T;
@@ -661,7 +662,7 @@ export namespace Expr {
 
     export function getReturnType(context: Context, expr: Expr): Type {
         switch (expr.tag) {
-            case Tag.ExprCall:        return Node.as(context.get(expr.target), DeclFunction).returnType;
+            case Tag.ExprCall:        return context.get(expr.target).returnType;
             case Tag.ExprConstant:    return expr.type;
             case Tag.ExprCreate:      return expr.type;
             case Tag.ExprGet:         return Node.as(context.get(expr.target), DeclVariable).type;
