@@ -14,6 +14,7 @@ import { evaluateCompileTime } from './stages/evaluateCompileTime';
 import { flatten } from './stages/flatten';
 import { mangleNames } from './stages/mangleNames';
 import chalk from 'chalk';
+import { checkLifetime } from './stages/checkLifetime';
 
 function visitor(visitor: Visitor<null>): (context: Context) => Module
 function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
@@ -25,6 +26,7 @@ export class Compiler {
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Names', visitor(resolveNames)],
         ['Check Types', visitor(checkTypes)],
+        ['Check Lifetime', checkLifetime],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
         ['Mangle Names', visitor(mangleNames)],
