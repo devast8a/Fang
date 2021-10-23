@@ -58,13 +58,11 @@ export class Compiler {
     {
         let module = await this.parseFile(source);
 
-        const errors = new Array<CompileError>();
-
         let id = 0;
         Fs.writeFileSync(`build/output/${id++}-Initial.txt`, serialize(module));
         for (const [name, fn] of this.stages) {
             console.time(name);
-            module = fn(new Context(errors, module, module.children, RootId));
+            module = fn(Context.fromModule(module));
             console.timeEnd(name);
 
             Fs.writeFileSync(`build/output/${id++}-${name}.txt`, serialize(module));
@@ -72,7 +70,7 @@ export class Compiler {
 
         console.time("Code Generation");
         const target = new TargetC();
-        target.emitProgram(new Context(errors, module, module.children, RootId));
+        target.emitProgram(Context.fromModule(module));
         const code = target.toString();
         console.timeEnd("Code Generation");
         Fs.writeFileSync(`build/output/${id++}-Code Generation.txt`, code);

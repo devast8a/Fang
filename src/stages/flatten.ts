@@ -55,7 +55,7 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
         }
 
         case Tag.ExprCall: {
-            context._updateExpr(id, Node.mutate(expr, {
+            context.update(id, Node.mutate(expr, {
                 args: flattenExprs(context, output, expr.args),
             }));
 
@@ -84,7 +84,7 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
 
         case Tag.ExprReturn: {
             if (expr.value !== null) {
-                context._updateExpr(id, Node.mutate(expr, {
+                context.update(id, Node.mutate(expr, {
                     value: flattenExpr(context, output, expr.value, topLevel)
                 }));
             }
@@ -93,7 +93,7 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
         }
 
         case Tag.ExprSet: {
-            context._updateExpr(id, Node.mutate(expr, {
+            context.update(id, Node.mutate(expr, {
                 value: flattenExpr(context, output, expr.value, topLevel)
             }));
 
@@ -109,21 +109,13 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
 }
 
 function extract(context: MutContext, output: ExprId[], id: ExprId, expr: Expr): ExprId {
-    const {nodes} = context.container;
-
-    const variableId = nodes.length;
-    const variable = new DeclVariable(
-        `FZ_${variableId}`,
+    const v = context.add((v) => new DeclVariable(
+        `T${v}`,
         Expr.getReturnType(context, expr),
         id,
         DeclVariableFlags.None
-    );
-    nodes.push(variable);
-    
-    const getId = nodes.length;
-    const get = new ExprGet(new RefLocal(variableId))
-    nodes.push(get);
+    ));
+    output.push(v);
 
-    output.push(variableId);
-    return getId;
+    return context.add(new ExprGet(new RefLocal(v)));
 }

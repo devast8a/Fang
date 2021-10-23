@@ -1,5 +1,5 @@
-import { Children, Context, Node, NodeId } from '../nodes';
-import { visit, VisitorControl } from './visitor';
+import { Context, Node, NodeId } from '../nodes';
+import { VisitorControl } from './visitor';
 
 export function VisitChildren<State>(context: Context, node: Node, id: NodeId, state: State, control: VisitorControl<State>): Node {
     const { first, next } = control;

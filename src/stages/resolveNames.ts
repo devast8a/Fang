@@ -39,8 +39,8 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
             if (node.value === null) {
                 // TODO: Enforce that self has type Self
                 if (node.name === 'self') {
-                    // const parent = (context.module.children.nodes[context.parent] as Decl).parent;
-                    // return Node.mutate(node, { type: new TypeGet(new RefGlobal(parent)) });
+                    const parent = context.container.parent;
+                    return Node.mutate(node, { type: new TypeGet(parent) });
                 }
 
                 throw new Error("Variable must have a type or a value or both.");

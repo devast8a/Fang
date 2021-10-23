@@ -1,7 +1,7 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor, VisitorControl } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { Children, Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutChildren, MutContext, Node, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, TypeGet } from '../nodes';
+import { Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutContext, Node, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, TypeGet } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
 export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, (context, expr, id, state) => {
@@ -77,12 +77,9 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
         }
     }
 
-    // TODO: This is in preparation for a move that removes Context and renames Children to Context
-    const ctx = context.container;
-
-    const id = ctx.root.add((id) => {
+    const id = context.add((id) => {
         // TODO: Copy body, decls, names rather than referencing
-        const children = MutChildren.createAndSet(ctx, id, {
+        const children = MutContext.createAndSet(context, id, {
             nodes: nodes,
             body:  fn.children.body as any,
             decls: fn.children.decls as any,
@@ -91,12 +88,12 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
 
         return Node.mutate(fn, {
             name: `${fn.name}_${context.module.children.decls.length}`,
-            children: children,
+            children: children.finalize(fn.children.body),
             flags: Flags.unset(fn.flags, DeclFunctionFlags.Abstract),
         });
     });
 
-    return new RefGlobal(ctx.root.declare(id));
+    return new RefGlobal(context.root.declare(id));
 }
 
 function FilterAbstractFunctions<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>) {

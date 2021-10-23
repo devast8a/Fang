@@ -1,11 +1,11 @@
 import * as Nodes from '../nodes';
-import { MutChildren, NodeId, Ref } from '../nodes';
+import { MutChildren, MutContext, NodeId, Ref } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
 
 export function parseAst(ast: PNode[]) {
-    const root = MutChildren.createRoot();
+    const root = MutContext.createRoot();
 
     const body = [];
     for (const node of ast) {
@@ -17,11 +17,11 @@ export function parseAst(ast: PNode[]) {
     };
 }
 
-function parse(parent: MutChildren, node: PNode): NodeId {
+function parse(parent: MutContext, node: PNode): NodeId {
     switch (node.tag) {
         case PTag.PDeclFunction: {
             const id = parent.root.add((id) => {
-                const children = MutChildren.create(parent, id);
+                const children = MutContext.create(parent, id);
 
                 // keyword name compileTime parameters returnType generic attributes body
                 const name = parseIdentifier(node.data[1][1]);
@@ -49,7 +49,7 @@ function parse(parent: MutChildren, node: PNode): NodeId {
 
         case PTag.PDeclStruct: {
             const id = parent.root.add((id) => {
-                const children = MutChildren.create(parent, id);
+                const children = MutContext.create(parent, id);
 
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
@@ -64,7 +64,7 @@ function parse(parent: MutChildren, node: PNode): NodeId {
 
         case PTag.PDeclTrait: {
             const id = parent.root.add((id) => {
-                const children = MutChildren.create(parent, id);
+                const children = MutContext.create(parent, id);
 
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
@@ -265,7 +265,7 @@ function parse(parent: MutChildren, node: PNode): NodeId {
     throw new Error(`parse: No case for '${PTag[node.tag]}'`)
 }
 
-function parseRef(parent: MutChildren, node: PNode) {
+function parseRef(parent: MutContext, node: PNode) {
     switch (node.tag) {
         case PTag.PExprIdentifier: {
             // identifier
@@ -288,15 +288,15 @@ function parseRef(parent: MutChildren, node: PNode) {
     }
 }
 
-function parseNull(parent: MutChildren, node: PNode | null | undefined): NodeId | null {
+function parseNull(parent: MutContext, node: PNode | null | undefined): NodeId | null {
     return node === undefined || node === null ? null : parse(parent, node);
 }
 
-function parseBodyNull(parent: MutChildren, node: PNode): NodeId[] | null {
+function parseBodyNull(parent: MutContext, node: PNode): NodeId[] | null {
     return node === undefined || node === null ? null : parseBody(parent, node);
 }
 
-function parseBody(state: MutChildren, ast: PNode): NodeId[] {
+function parseBody(state: MutContext, ast: PNode): NodeId[] {
     switch (ast.length) {
         case 2: {
             // whitespace body
