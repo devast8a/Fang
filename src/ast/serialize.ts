@@ -1,4 +1,4 @@
-import { DeclFunctionFlags, DeclVariableFlags, Node, Tag } from '../nodes';
+import { Children, DeclFunctionFlags, DeclVariableFlags, Node, Tag } from '../nodes';
 
 export function serialize(node: Node) {
     function convert(this: any, key: string, value: any) {
@@ -21,6 +21,16 @@ export function serialize(node: Node) {
                 case Tag.DeclVariable: return convertFlags("DeclVariableFlags", DeclVariableFlags, value);
                 case Tag.DeclFunction: return convertFlags("DeclFunctionFlags", DeclFunctionFlags, value);
                 default: throw new Error('Not implemented yet');
+            }
+        }
+
+        if (value instanceof Children) {
+            return {
+                parent: value.parent,
+                nodes:  value.nodes,
+                body:   value.body,
+                decls:  value.decls,
+                names:  value.names,
             }
         }
 

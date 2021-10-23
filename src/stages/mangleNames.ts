@@ -5,36 +5,21 @@ import { Context, Decl, Node, Tag, RootId } from '../nodes';
 export const mangleNames = createVisitor(VisitChildren, (context, decl) => {
     // TODO: Cache results
     if (decl.tag === Tag.DeclFunction && !isBuiltin(decl)) {
-        const path = getPathTo(context, decl);
+        // const path = getPathTo(context, decl);
 
-        if (path.length === 0) {
-            return decl;
-        }
+        // if (path.length === 0) {
+        //     return decl;
+        // }
 
-        const prefix = path.reverse().map(elem => elem.name).join('_');
+        // const prefix = path.reverse().map(elem => elem.name).join('_');
 
-        return Node.mutate(decl, {
-            name: `${prefix}_${decl.name}`,
-        });
+        // return Node.mutate(decl, {
+        //     name: `${prefix}_${decl.name}`,
+        // });
     }
 
     return decl;
 });
-
-function getPathTo(context: Context, decl: Decl) {
-    const path = [];
-
-    let parent = decl.parent;
-    const nodes = context.module.children.nodes;
-    while (parent !== RootId) {
-        const decl = nodes[parent] as Decl;
-        parent = decl.parent;
-
-        path.push(decl);
-    }
-
-    return path;
-}
 
 function isBuiltin(decl: Decl) {
     if (decl.name.startsWith("infix") || decl.name.startsWith("prefix") || decl.name.startsWith("postfix")) {

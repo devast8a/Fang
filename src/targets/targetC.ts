@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, Expr, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children } from '../nodes';
 
 function isBuiltin(decl: Decl) {
     if (decl.name.startsWith("infix") || decl.name.startsWith("prefix") || decl.name.startsWith("postfix")) {

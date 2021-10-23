@@ -1,5 +1,5 @@
 struct Foo {
-    fn func(self) -> u32 {
+    fn func(self: Foo) -> u32 {
         return 0
     }
 }

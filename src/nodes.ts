@@ -104,13 +104,15 @@ export class Module {
     ) { }
 }
 
-export class MutModule {
+export class MutModule extends Module {
     public readonly tag = Tag.Module;
     public static readonly tag = Tag.Module;
 
     public constructor(
         public readonly children: MutChildren,
-    ) { }
+    ) {
+        super(children);
+    }
 }
 
 // Declarations ================================================================
@@ -120,7 +122,6 @@ export class DeclFunction {
     public static readonly tag = Tag.DeclFunction;
 
     public constructor(
-        public readonly parent: _Global<Decl | Module>,
         public readonly name: string,
         public readonly returnType: Type,
         public readonly parameters: DeclId[],   // Indexes into children.decls
@@ -138,7 +139,6 @@ export class DeclStruct {
     public static readonly tag = Tag.DeclStruct;
 
     public constructor(
-        public readonly parent: _Global<Decl | Module>,
         public readonly name: string,
         public readonly superTypes: readonly Type[],
         public readonly children: Children,
@@ -150,7 +150,6 @@ export class DeclTrait {
     public static readonly tag = Tag.DeclTrait;
 
     public constructor(
-        public readonly parent: _Global<Decl | Module>,
         public readonly name: string,
         public readonly superTypes: readonly Type[],
         public readonly children: Children,
@@ -162,7 +161,6 @@ export class DeclVariable {
     public static readonly tag = Tag.DeclVariable;
 
     public constructor(
-        public readonly parent: _Global<Decl | Module>,
         public readonly name: string,
         public readonly type: Type,
         public readonly value: RefLocalId | null,
@@ -384,24 +382,166 @@ export class TypeInfer {
 // Children ====================================================================
 
 export class Children {
-    public constructor(
+    protected constructor(
+        public readonly root:   Children,
+        public readonly self:   RefGlobal<Decl>,
+        public readonly parent: RefGlobal<Decl>,
         public readonly nodes:  ReadonlyArray<Node>,
         public readonly body:   ReadonlyArray<ExprId>,
         public readonly decls:  ReadonlyArray<DeclId>,
         public readonly names:  ReadonlyMap<string, readonly DeclId[]>,
     ) { }
+
+    public get<T extends Node>(ref: RefAny<T>): T {
+        if (typeof (ref) === 'number') {
+            return this.nodes[ref] as T;
+        }
+
+        switch (ref.tag) {
+            case Tag.RefGlobal: {
+                return this.root.nodes[ref.id] as T;
+            }
+
+            case Tag.RefLocal: {
+                return this.nodes[ref.id] as T;
+            }
+
+            case Tag.RefGlobalDecl: {
+                if (ref.id === RootId) {
+                    return this.root.nodes[ref.member] as T;
+                }
+
+                const parent = this.root.nodes[ref.id] as Decl;
+                const children = Node.getChildren(parent);
+                return children.nodes[ref.member] as T;
+            }
+
+            case Tag.RefFieldId: {
+                const struct = this.root.nodes[ref.targetType] as Decl;
+                const children = Node.getChildren(struct);
+                const field = children.nodes[ref.field];
+
+                // TODO: Remove nested lookups
+                if (field.tag === Tag.ExprDeclaration) {
+                    return this.get(field.target) as T;
+                }
+
+                return field as T;
+            }
+        }
+
+        throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
+    }
 }
 
 export class MutChildren extends Children {
-    public constructor(
-        public readonly nodes: Array<Node>,
-        public readonly body:  Array<ExprId>,
-        public readonly decls: Array<DeclId>,
-        public readonly names: Map<string, DeclId[]>,
+    protected constructor(
+        public readonly root:   MutChildren,
+        public readonly self:   RefGlobal<Decl>,
+        public readonly parent: RefGlobal<Decl>,
+        public readonly nodes:  Array<Node>,
+        public readonly body:   Array<ExprId>,
+        public readonly decls:  Array<DeclId>,
+        public readonly names:  Map<string, DeclId[]>,
     ) {
-        super(nodes, body, decls, names);
+        super(root, self, parent, nodes, body, decls, names);
+    }
+
+    public add<T extends Node>(definition: NodeDefinition<T>): RefLocalId<T>
+    {
+        const nodes = this.nodes;
+
+        const id = nodes.length;
+        const ref = Ref.fromIndex(id);
+
+        if (typeof (definition) === 'function') {
+            nodes.push(null as any);
+            nodes[id] = definition(ref);
+        } else {
+            nodes[id] = definition;
+        }
+
+        return ref;
+    }
+
+    public declare<T extends Decl>(ref: RefLocalId<T> | RefGlobalDecl<T>): RefLocalId<T> {
+        const node = this.get(ref);
+
+        if (Ref.isLocal(ref)) {
+            this.decls.push(ref);
+            this.names.set(node.name, [ref])
+
+            return ref;
+        }
+
+        // Global reference to a local node
+        if (ref.id === this.self.id) {
+            const id = ref.member;
+
+            this.decls.push(id);
+            this.names.set(node.name, [id])
+
+            return Ref.fromIndex(id);
+        }
+
+        // Truly global reference
+        const decl = this.add(new ExprDeclaration(ref));
+
+        this.decls.push(decl);
+        this.names.set(node.name, [decl]);
+
+        return decl;
+    }
+
+    public finalize(body: RefLocalId[]) {
+        (this as any).body = body;
+        return this as Children;
+    }
+
+    public static create(parent: MutChildren, self: RefLocalId) {
+        return new MutChildren(
+            parent.root,
+            new RefGlobal(Ref.toIndex(self)),
+            parent.self,
+            [],
+            [],
+            [],
+            new Map(),
+        );
+    }
+
+    public static createAndSet(parent: MutChildren, self: RefLocalId, fields: Partial<MutChildren>) {
+        return new MutChildren(
+            parent.root,
+            new RefGlobal(Ref.toIndex(self)),
+            parent.self,
+            fields.nodes ?? [],
+            fields.body ?? [],
+            fields.decls ?? [],
+            fields.names ?? new Map(),
+        );
+    }
+
+    public static createRoot() {
+        const root = new MutChildren(
+            undefined as any,
+            new RefGlobal(RootId),
+            new RefGlobal(RootId),
+            [],
+            [],
+            [],
+            new Map(),
+        );
+
+        (root as any).root = root;
+
+        return root;
     }
 }
+
+export type NodeDefinition<T extends Node> =
+    | ((id: RefLocalId) => T)
+    | T;
 
 // Context =====================================================================
 
@@ -508,71 +648,6 @@ export class MutContext extends Context {
         this.container.nodes[id] = expr;
     }
 
-    public define(storage: Storage, definition: (id: NodeId) => Node): NodeId {
-        if (storage === Storage.Parent || this.container === this.module.children) {
-            // Allocate in parent
-            const { nodes } = this.container;
-            const id = nodes.length;
-            nodes.push(null as any);
-            const node = nodes[id] = definition(id);
-
-            // Declare in parent
-            const name = Node.getName(node);
-            if (name !== undefined) {
-                const { decls, names } = this.container;
-                decls.push(id);
-                names.set(name, [id]);
-            }
-
-            return id;
-        } else {
-            // Allocate in module
-            const moduleNodes = this.module.children.nodes;
-            const id = moduleNodes.length;
-            moduleNodes.push(null as any);
-            const node = moduleNodes[id] = definition(id);
-
-            // Allocate ExprDeclaration in parent
-            const { nodes } = this.container;
-            const localId = nodes.length;
-            nodes.push(new ExprDeclaration(new RefGlobal(id)));
-
-            // Declare in parent
-            const name = Node.getName(node);
-            if (name !== undefined) {
-                const { decls, names } = this.container;
-                decls.push(localId);
-                names.set(name, [localId]);
-            }
-
-            return localId;
-        }
-    }
-
-    public declare(node: Node): RefGlobalDecl {
-        // Allocate in parent
-        const { nodes } = this.container;
-        const id = nodes.length;
-        nodes.push(node);
-
-        // Declare in parent
-        const name = Node.getName(node);
-        if (name !== undefined) {
-            const { decls, names } = this.container;
-            decls.push(id);
-            names.set(name, [id]);
-        }
-
-        return new RefGlobalDecl(this.parent, id);
-    }
-
-    public createChildContext2(parent: DeclId): MutContext {
-        return new MutContext(this.root, this.errors, this.module, new MutChildren([], [], [], new Map()), parent);
-    }
-    public finalize(body: NodeId[]) {
-        return new Children(this.container.nodes, body, this.container.decls, this.container.names);
-    }
-
     /* Finalize */
 }
 
@@ -675,5 +750,26 @@ export namespace Expr {
 export namespace Type {
     export function canAssignTo(source: Type, target: Type): boolean {
         return false;
+    }
+}
+
+export namespace Ref {
+    export function isLocal<T extends Node>(ref: RefAny<T>): ref is RefLocalId<T> {
+        return typeof (ref as any) === 'number';
+    }
+
+    export function fromIndex(id: number): RefLocalId {
+        return (id as any) as RefLocalId;
+    }
+
+    export function toIndex(local: RefLocalId): number {
+        return (local as any) as RefLocalId;
+    }
+
+    export function localToGlobal<T extends Node>(children: Children, ref: RefLocalId<T>): RefGlobalDecl<T> {
+        return new RefGlobalDecl(
+            children.self.id,
+            Ref.toIndex(ref),
+        );
     }
 }

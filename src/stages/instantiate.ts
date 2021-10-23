@@ -1,7 +1,7 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor, VisitorControl } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { Children, Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutContext, Node, RefFieldId, RefGlobalDecl, RefLocal, Tag, TypeGet } from '../nodes';
+import { Children, Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutChildren, MutContext, Node, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, TypeGet } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
 export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, (context, expr, id, state) => {
@@ -77,13 +77,26 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
         }
     }
 
-    fn = Node.mutate(fn, {
-        name: `${fn.name}_${context.module.children.decls.length}`,
-        children: new Children(nodes, fn.children.body, fn.children.decls, fn.children.names),
-        flags: Flags.unset(fn.flags, DeclFunctionFlags.Abstract),
+    // TODO: This is in preparation for a move that removes Context and renames Children to Context
+    const ctx = context.container;
+
+    const id = ctx.root.add((id) => {
+        // TODO: Copy body, decls, names rather than referencing
+        const children = MutChildren.createAndSet(ctx, id, {
+            nodes: nodes,
+            body:  fn.children.body as any,
+            decls: fn.children.decls as any,
+            names: fn.children.names as any,
+        });
+
+        return Node.mutate(fn, {
+            name: `${fn.name}_${context.module.children.decls.length}`,
+            children: children,
+            flags: Flags.unset(fn.flags, DeclFunctionFlags.Abstract),
+        });
     });
 
-    return context.root.declare(fn);
+    return new RefGlobal(ctx.root.declare(id));
 }
 
 function FilterAbstractFunctions<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>) {
