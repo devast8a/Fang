@@ -1,11 +1,12 @@
+import { Compiler } from '../compile';
 import * as Nodes from '../nodes';
-import { MutChildren, MutContext, NodeId, Ref } from '../nodes';
+import { MutContext, NodeId, Ref } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
 
-export function parseAst(ast: PNode[]) {
-    const root = MutContext.createRoot();
+export function parseAst(compiler: Compiler, ast: PNode[]) {
+    const root = MutContext.createRoot(compiler);
 
     const body = [];
     for (const node of ast) {

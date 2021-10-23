@@ -1,3 +1,4 @@
+import { Compiler } from '.';
 import { Constructor } from './common/constructor';
 
 export type Node =
@@ -412,9 +413,8 @@ export type NodeDefinition<T extends Node> =
 // Context =====================================================================
 
 export class Context {
-    /** @deprecated */ public readonly errors = new Array<CompileError>();
-
     protected constructor(
+        public readonly compiler: Compiler,
         public readonly root: Context,
         public readonly container: Children,
 
@@ -423,7 +423,7 @@ export class Context {
     ) { }
 
     public error(error: CompileError) {
-        this.errors.push(error);
+        this.compiler.error(error);
     }
 
     public get<T extends Node>(ref: RefAny<T>): T {
@@ -467,27 +467,28 @@ export class Context {
         throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
     }
 
-    public static fromModule(module: Module) {
-        const root = new Context(null as any, module.children, Ref.fromIndex(RootId), module);
+    public static fromModule(compiler: Compiler, module: Module) {
+        const root = new Context(compiler, null as any, module.children, Ref.fromIndex(RootId), module);
         (root as any).root = root;
         return root;
     }
 
     /** @deprecated */
     public createChildContext(container: Children, id: DeclId) {
-        return new Context(this.root, container, id, this.module);
+        return new Context(this.compiler, this.root, container, id, this.module);
     }
 }
 
 export class MutContext extends Context {
     protected constructor(
+        public readonly compiler: Compiler,
         public readonly root: MutContext,
         public readonly container: MutChildren,
 
         /** @deprecated */ public readonly parent: DeclId,
         /** @deprecated */ public readonly module: MutModule,
     ) {
-        super(root, container, parent, module);
+        super(compiler, root, container, parent, module);
     }
 
     public add<T extends Node>(definition: NodeDefinition<T>): RefLocalId<T>
@@ -559,10 +560,10 @@ export class MutContext extends Context {
             fields.names ?? new Map(),
         );
 
-        return new MutContext(parent.root, container, Ref.toIndex(self), parent.module);
+        return new MutContext(parent.compiler, parent.root, container, Ref.toIndex(self), parent.module);
     }
 
-    public static createRoot() {
+    public static createRoot(compiler: Compiler) {
         const container = new MutChildren(
             new RefGlobal(RootId),
             new RefGlobal(RootId),
@@ -576,21 +577,19 @@ export class MutContext extends Context {
             container
         );
 
-        const root = new MutContext(null as any, container, Ref.fromIndex(RootId), module);
-        (root as any).root = root;
-        return root;
+        return MutContext.fromModule(compiler, module);
     }
 
-    public static fromModule(module: MutModule) {
-        const root = new MutContext(null as any, module.children, Ref.fromIndex(RootId), module);
+    public static fromModule(compiler: Compiler, module: MutModule) {
+        const root = new MutContext(compiler, undefined as any, module.children, Ref.fromIndex(RootId), module);
         (root as any).root = root;
         return root;
     }
 
     /** @deprecated */
     public static fromContext(context: Context) {
-        const root = MutContext.fromModule(context.module as MutModule);
-        return new MutContext(root, context.container as MutChildren, context.parent, context.module as MutModule);
+        const root = MutContext.fromModule(context.compiler, context.module as MutModule);
+        return new MutContext(context.compiler, root, context.container as MutChildren, context.parent, context.module as MutModule);
     }
 }
 
@@ -675,12 +674,6 @@ export namespace Expr {
     }
 }
 
-export namespace Type {
-    export function canAssignTo(source: Type, target: Type): boolean {
-        return false;
-    }
-}
-
 export namespace Ref {
     export function isLocal<T extends Node>(ref: RefAny<T>): ref is RefLocalId<T> {
         return typeof (ref as any) === 'number';
@@ -699,5 +692,28 @@ export namespace Ref {
             context.container.self.id,
             Ref.toIndex(ref),
         );
+    }
+}
+
+export namespace Type {
+    export function canAssignTo(context: Context, source: Type, target: Type): boolean {
+        return Type.isChildType(context, source, target);
+    }
+
+    export function isChildType(context: Context, child: Type, parent: Type): boolean {
+        const childDecl = context.get((child as TypeGet).target);
+        const parentDecl = context.get((parent as TypeGet).target);
+
+        if (childDecl === parentDecl) {
+            return true;
+        }
+
+        switch (childDecl.tag) {
+            case Tag.DeclFunction: throw new Error('Not implemented yet');
+            case Tag.DeclStruct: return childDecl.superTypes.some(child => isChildType(context, child, parent));
+            case Tag.DeclTrait: return false;
+        }
+
+        throw new Error(`Unreachable: Unhandled case '${Tag[(child as any).tag]}'`);
     }
 }

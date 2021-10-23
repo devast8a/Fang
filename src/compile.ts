@@ -13,6 +13,7 @@ import { instantiate, InstantiateState } from './stages/instantiate';
 import { evaluateCompileTime } from './stages/evaluateCompileTime';
 import { flatten } from './stages/flatten';
 import { mangleNames } from './stages/mangleNames';
+import chalk from 'chalk';
 
 function visitor(visitor: Visitor<null>): (context: Context) => Module
 function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
@@ -31,6 +32,17 @@ export class Compiler {
         ['Evaluate Compile Time', visitor(evaluateCompileTime)],
     ];
 
+    private stop = false;
+
+    public error(error: CompileError) {
+        this.stop = true;
+
+        const symbol = chalk.bgRedBright.whiteBright(` ! `);
+        const name = (error as any).constructor.name;
+
+        console.error(`${symbol} ${name}`);
+    }
+
     public async parseFile(source: string | Source): Promise<Module>
     {
         if (!(source instanceof Source)) {
@@ -45,7 +57,7 @@ export class Compiler {
         console.timeEnd(`${source.path} Parsing`);
 
         console.time(`${source.path} Ast Generation`);
-        const {children} = parseAst(ast);
+        const {children} = parseAst(this, ast);
         console.timeEnd(`${source.path} Ast Generation`);
 
         console.timeEnd(`${source.path} Total`);
@@ -62,15 +74,20 @@ export class Compiler {
         Fs.writeFileSync(`build/output/${id++}-Initial.txt`, serialize(module));
         for (const [name, fn] of this.stages) {
             console.time(name);
-            module = fn(Context.fromModule(module));
+            module = fn(Context.fromModule(this, module));
             console.timeEnd(name);
 
             Fs.writeFileSync(`build/output/${id++}-${name}.txt`, serialize(module));
+
+            // A condition has been raised that requires compilation to stop (typically an error has ben raised)
+            if (this.stop) {
+                return "";
+            }
         }
 
         console.time("Code Generation");
         const target = new TargetC();
-        target.emitProgram(Context.fromModule(module));
+        target.emitProgram(Context.fromModule(this, module));
         const code = target.toString();
         console.timeEnd("Code Generation");
         Fs.writeFileSync(`build/output/${id++}-Code Generation.txt`, code);
