@@ -1,4 +1,5 @@
 import { Flags } from '../common/flags';
+import { Lifetime } from '../errors';
 import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny } from '../nodes';
 
 /**
@@ -39,9 +40,9 @@ export function checkLifetime(context: Context) {
             const ctx = context.createChildContext(node.children, id);
             const state = parent.copyState();
 
-            //for (let i = 0; i < node.parameters.length; i++) {
-            //    state.assign(i);
-            //}
+            for (let i = 0; i < node.parameters.length; i++) {
+                state.assign(context, refToPath(node.parameters[i]));
+            }
 
             checkLifetimeNodes(ctx, node.children.body, state);
         }
@@ -57,7 +58,7 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         case Tag.DeclVariable: {
             if (node.value !== null) {
                 checkLifetimeNode(context, node.value, state);
-                state.assign(refToPath(id));
+                state.assign(context, refToPath(id));
             }
             return;
         }
@@ -77,15 +78,20 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
                         const path = refToPath(arg.target);
 
                         if (Flags.has(param.flags, DeclVariableFlags.Mutable)) {
-                            state.write(path, group);
+                            state.write(context, path, group);
                         } else {
-                            state.read(path, group);
+                            state.read(context, path, group);
                         }
                         return;
                     }
                         
                     case Tag.ExprCall: {
                         // TODO: Pull in lifetime constraints from the nested call
+                        return;
+                    }
+                        
+                    case Tag.ExprConstant: {
+                        // No analysis required
                         return;
                     }
                         
@@ -110,18 +116,18 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         }
             
         case Tag.ExprDestroy: {
-            state.delete(refToPath(node.target));
+            state.delete(context, refToPath(node.target));
             return;
         }
 
         case Tag.ExprGet: {
-            state.read(refToPath(node.target));
+            state.read(context, refToPath(node.target));
             return;
         }
 
         case Tag.ExprSet: {
             checkLifetimeNode(context, node.value, state);
-            state.assign(refToPath(node.target));
+            state.assign(context, refToPath(node.target));
             return;
         }
 
@@ -183,7 +189,7 @@ class ProgramState {
         // TODO: Need to lookup in ancestors
         // TODO: Support references
         for (const [path, o] of other.variables) {
-            const t = this.lookupOrCreate(path);
+            const t = this.lookup(path);
 
             if (t.status !== o.status) {
                 t.status = Status.Dynamic
@@ -200,60 +206,63 @@ class ProgramState {
 
     /** Create a reference between a source variable and a destination variable. */
     public ref(src: Path, dst: Path) {
-        const srcState = this.lookupOrCreate(src);
-        const dstState = this.lookupOrCreate(dst);
+        const srcState = this.lookup(src);
+        const dstState = this.lookup(dst);
 
         srcState.referTo.add(dst);
         dstState.referBy.add(src);
     }
 
     /** Read a variable. Variable must be alive. No invalidation. */
-    public read(path: Path, group?: GroupedAccess) {
-        if (path === 'FIELD') {
-            return;
-        }
-
+    public read(context: Context, path: Path, group?: GroupedAccess) {
         const state = this.lookup(path);
 
-        if (state === null || state.status !== Status.Alive) {
-            throw new Error(`Lifetime error`);
+        if (state.status !== Status.Alive) {
+            context.error(new Lifetime.NotAliveError());
         }
 
         // No other access in the group should write to the variable
         if (group !== undefined) {
             if (group.writes.has(path)) {
-                throw new Error(`Lifetime error`);
+                context.error(new Lifetime.ReadWriteError());
             }
 
             for (const ref of state.referBy) {
                 if (group.writes.has(ref)) {
-                    throw new Error(`Lifetime error`);
+                    context.error(new Lifetime.ReadWriteError());
                 }
 
                 group.reads.add(ref);
             }
-
             group.reads.add(path);
         }
     }
 
     /** Used for non-assignment mutation. Variable must be alive. */
-    public write(path: Path, group?: GroupedAccess) {
+    public write(context: Context, path: Path, group?: GroupedAccess) {
         const state = this.lookup(path);
 
-        if (state === null || state.status !== Status.Alive) {
-            throw new Error(`Lifetime error`);
+        if (state.status !== Status.Alive) {
+            context.error(new Lifetime.NotAliveError());
         }
 
         // No other access in the group should read from or write to the variable
         if (group !== undefined) {
-            if (group.reads.has(path) || group.writes.has(path)) {
-                throw new Error(`Lifetime error`);
+            if (group.reads.has(path)) {
+                context.error(new Lifetime.ReadWriteError());
+            }
+
+            if (group.writes.has(path)) {
+                context.error(new Lifetime.WriteWriteError());
             }
 
             for (const ref of state.referBy) {
-                if (group.reads.has(ref) || group.writes.has(ref)) {
-                    throw new Error(`Lifetime error`);
+                if (group.reads.has(ref)) {
+                    context.error(new Lifetime.ReadWriteError());
+                }
+
+                if (group.writes.has(ref)) {
+                    context.error(new Lifetime.WriteWriteError());
                 }
 
                 group.writes.add(ref);
@@ -264,42 +273,42 @@ class ProgramState {
     }
 
     /** Used for assignment. Variable must be alive or dead. Destroys existing values. */
-    public assign(path: Path) {
+    public assign(context: Context, path: Path) {
         // TODO: Check if a deletion needs to happen
-        const state = this.lookupOrCreate(path);
+        const state = this.lookup(path);
 
-        this.killRefBy(path, state);
+        this.killRefBy(context, path, state);
 
         state.status = Status.Alive;
         this.variables.set(path, state);
     }
 
     /** Destroy a value in a variable. Variable must be alive. */
-    public delete(path: Path) {
+    public delete(context: Context, path: Path) {
         const state = this.lookup(path);
 
-        if (state === null || state.status !== Status.Alive) {
-            throw new Error(`Lifetime error`);
+        if (state.status !== Status.Alive) {
+            context.error(new Lifetime.NotAliveError());
         } else {
-            this.killRefBy(path, state);
+            this.killRefBy(context, path, state);
             state.status = Status.Dead;
         }
     }
 
     /** Move a value from a variable. Variable must be alive. */
-    public move(path: Path) {
+    public move(context: Context, path: Path) {
         const state = this.lookup(path);
 
-        if (state === null || state.status !== Status.Alive) {
-            throw new Error(`Lifetime error`);
+        if (state.status !== Status.Alive) {
+            context.error(new Lifetime.NotAliveError());
         } else {
-            this.killRefBy(path, state);
+            this.killRefBy(context, path, state);
             state.status = Status.Dead;
         }
     }
 
     /** Kill all the variables that reference the current variable */
-    private killRefBy(path: Path, state: VariableState) {
+    private killRefBy(context: Context, path: Path, state: VariableState) {
         for (const ref of state.referBy) {
             const refState = this.lookup(ref);
 
@@ -313,10 +322,10 @@ class ProgramState {
         }
     }
 
-    /** Return the state linked with a variable. Returns null if no state has been linked. */
-    private lookup(path: Path): VariableState | null {
+    /** Return the state linked with a variable. */
+    private lookup(path: Path): VariableState {
         // Lookup in this
-        const state = this.variables.get(path);
+        let state = this.variables.get(path);
         if (state !== undefined) {
             return state;
         }
@@ -341,19 +350,9 @@ class ProgramState {
             current = current.parent;
         }
 
-        // Lookup failed
-        return null
-    }
-
-    /** Return the state linked to a variable. If no state has been linked, create new state and linked it. */
-    private lookupOrCreate(path: Path): VariableState {
-        let state = this.lookup(path);
-
-        if (state === null) {
-            state = new VariableState(Status.Dead);
-            this.variables.set(path, state);
-        }
-
+        // Insert new state
+        state = new VariableState(Status.Dead);
+        this.variables.set(path, state);
         return state;
     }
 }

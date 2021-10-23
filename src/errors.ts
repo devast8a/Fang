@@ -48,3 +48,9 @@ export class ValueOrTypeError {
         public variable: RefAny,
     ) { }
 }
+
+export namespace Lifetime {
+    export class NotAliveError { }
+    export class ReadWriteError { }
+    export class WriteWriteError { }
+}
