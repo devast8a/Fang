@@ -9,10 +9,7 @@ export function VisitType<State>(context: Context, node: Node, id: NodeId, state
         case Tag.DeclTrait:     return visit.fieldArray(context, node, id, state, control, 'superTypes');
         case Tag.DeclVariable:  return visit.fieldNode(context, node, id, state, control, 'type');
         case Tag.ExprCreate:    return visit.fieldNode(context, node, id, state, control, 'type');
-
-        // TODO: Waiting for builtin support again
-        // case Tag.ExprConstant:  return visit.fieldNode(state, node, parent, id, control, 'type');
-        case Tag.ExprConstant: return control.next(context, node, id, state);
+        case Tag.ExprConstant:  return visit.fieldNode(context, node, id, state, control, 'type');
 
         case Tag.TypeGenericApply: {
             const target = control.first(context, node.target, id, state);

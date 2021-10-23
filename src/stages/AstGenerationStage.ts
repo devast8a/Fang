@@ -229,21 +229,21 @@ function parse(parent: MutContext, node: PNode): NodeId {
         case PTag.PLiteralIntegerBin: {
             return parent.add((id) => {
                 const value = parseInt(node.data[0].value.slice(2).replace(/_/g, ''), 2);
-                return new Nodes.ExprConstant(null as any, value);
+                return new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName('u32')), value);
             });
         }
 
         case PTag.PLiteralIntegerDec: {
             return parent.add((id) => {
                 const value = parseInt(node.data[0].value.replace(/_/g, ''), 10);
-                return new Nodes.ExprConstant(null as any, value);
+                return new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName('u32')), value);
             });
         }
 
         case PTag.PLiteralIntegerHex: {
             return parent.add((id) => {
                 const value = parseInt(node.data[0].value.slice(2).replace(/_/g, ''), 16);
-                return new Nodes.ExprConstant(null as any, value);
+                return new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName('u32')), value);
             });
         }
 
@@ -258,7 +258,7 @@ function parse(parent: MutContext, node: PNode): NodeId {
                     }
                 });
 
-                return new Nodes.ExprConstant(null as any, value);
+                return new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName('str')), value);
             });
         }
     }
