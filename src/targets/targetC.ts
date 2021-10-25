@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId } from '../nodes';
 
 function isBuiltin(decl: Decl) {
     if (decl.name.startsWith("infix") || decl.name.startsWith("prefix") || decl.name.startsWith("postfix")) {
@@ -383,7 +383,7 @@ export class TargetC {
         }
     }
 
-    public emitParameters(context: Context, parameters: DeclId[]) {
+    public emitParameters(context: Context, parameters: ReadonlyArray<RefLocalId<DeclVariable>>) {
         let first = true;
 
         for (const parameterId of parameters) {
@@ -393,7 +393,7 @@ export class TargetC {
                 first = false;
             }
 
-            const parameter = Node.as(context.container.nodes[parameterId], DeclVariable);
+            const parameter = context.get(parameterId) as DeclVariable;
 
             this.emitTypeName(context, parameter.type);
 

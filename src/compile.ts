@@ -104,17 +104,25 @@ export class Compiler {
         content += `
             # Manually declare builtin functions and types
             #   This crap will be cleaned up eventually and be part of an automatically included prelude
+            fn alias() -> void
+
             struct u32
             struct bool
             struct str
             struct Ptr
             struct Size
+            struct void
+
             fn infix+(left: u32, right: u32) -> u32
             fn infix-(left: u32, right: u32) -> u32
             fn infix%(left: u32, right: u32) -> u32
+
+            fn infix>(left: u32, right: u32) -> bool
+            fn infix>=(left: u32, right: u32) -> bool
             fn infix<(left: u32, right: u32) -> bool
             fn infix<=(left: u32, right: u32) -> bool
             fn infix==(left: u32, right: u32) -> bool
+
             fn printf(s: str, d: u32)
             fn malloc(size: Size) -> Ptr
             fn realloc(ptr: Ptr, size: Size) -> Ptr

@@ -1,6 +1,6 @@
 import { Flags } from '../common/flags';
 import { Lifetime } from '../errors';
-import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny } from '../nodes';
+import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, ExprCall, ExprGet } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -11,7 +11,7 @@ import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAn
  * - Utilities
  * 
  * Language Semantics maps the semantics of the FANG language to
- *  a simpler set of verbs that are defined by Lifetime Implementation.
+ *  a simpler set of verbs that are defined by 'Lifetime Implementation'.
  * 
  * Language Semantics defines:
  * - when a variable is read, written, assigned, destroyed, or moved.
@@ -28,6 +28,8 @@ import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAn
 
 /** Language Semantics *********************************************************/
 
+let global_context!: Context;
+
 export function checkLifetime(context: Context) {
     const parent = new ProgramState(null, new Map());
 
@@ -39,6 +41,8 @@ export function checkLifetime(context: Context) {
         if (node.tag === Tag.DeclFunction) {
             const ctx = context.createChildContext(node.children, id);
             const state = parent.copyState();
+
+            global_context = ctx;
 
             for (let i = 0; i < node.parameters.length; i++) {
                 state.assign(context, refToPath(node.parameters[i]));
@@ -64,11 +68,10 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         }
 
         case Tag.ExprCall: {
-            checkLifetimeNodes(context, node.args, state);
-
             const fn = context.get(node.target);
-            const group = new GroupedAccess();
 
+            // Apply constraints to arguments
+            const group = new GroupedAccess();
             for (let index = 0; index < node.args.length; index++) {
                 const param = Node.as(fn.children.nodes[fn.parameters[index]], DeclVariable);
                 const arg = context.get(node.args[index]);
@@ -82,23 +85,31 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
                         } else {
                             state.read(context, path, group);
                         }
-                        return;
+                        break;
                     }
                         
                     case Tag.ExprCall: {
-                        // TODO: Pull in lifetime constraints from the nested call
-                        return;
+                        // TODO: Support nested calls
+                        break;
                     }
                         
                     case Tag.ExprConstant: {
                         // No analysis required
-                        return;
+                        break;
                     }
                         
                     default: {
                         throw new Error(`Unreachable: Unhandled case '${Tag[(arg as any).tag]}'`);
                     }
                 }
+            }
+
+            // Apply any lifetime constraints from `fn`
+            if (fn.attributes.length > 0) {
+                state.ref(
+                    refToPath((context.get(node.args[0]) as ExprGet).target),
+                    refToPath((context.get(node.args[1]) as ExprGet).target),
+                );
             }
 
             return;
@@ -112,6 +123,10 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
 
         case Tag.ExprConstant: {
             // No analysis required
+            return;
+        }
+            
+        case Tag.ExprDeclaration: {
             return;
         }
             
@@ -307,6 +322,27 @@ class ProgramState {
         }
     }
 
+    public toString() {
+        const variables = Array.from(this.variables.entries());
+
+        const names = new Map(variables.map(([id]) => {
+            const node = global_context.get(parseInt(id as string));
+            return [id, (node as DeclVariable).name ?? `Unknown-${id}`];
+        }));
+
+        return variables.map(([id, state]) => {
+            const name = names.get(id);
+            const status = Status[state.status];
+            const refs = Array.from(state.referTo).map(path => names.get(path));
+
+            if (refs.length > 0) {
+                return `${name}: ${status} => {${refs.join(", ")}}`
+            } else {
+                return `${name}: ${status}`
+            }
+        }).join(', ');
+    }
+
     /** Kill all the variables that reference the current variable */
     private killRefBy(context: Context, path: Path, state: VariableState) {
         for (const ref of state.referBy) {
@@ -367,7 +403,7 @@ function refToPath(ref: RefAny): Path {
     switch (ref.tag) {
         case Tag.RefGlobal:       return `global.${ref.id}`;
         case Tag.RefGlobalDecl:   return `global.${ref.id}.${ref.member}`;
-        case Tag.RefLocal:        return ref.id;
+        case Tag.RefLocal:        return ref.id.toString();
     }
 
     throw new Error('Unreachable');

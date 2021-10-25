@@ -125,8 +125,9 @@ export class DeclFunction {
     public constructor(
         public readonly name: string,
         public readonly returnType: Type,
-        public readonly parameters: DeclId[],   // Indexes into children.decls
+        public readonly parameters: ReadonlyArray<RefLocalId<DeclVariable>>,
         public readonly children: Children,
+        public readonly attributes: ReadonlyArray<RefLocalId>,
         public readonly flags: DeclFunctionFlags,
     ) { }
 }

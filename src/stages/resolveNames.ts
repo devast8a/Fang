@@ -12,6 +12,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
             const ref = lookup(context, node.name);
 
             if (ref === undefined) {
+                console.log(node.name);
                 context.error(new CantFindSymbolError());
                 return node;
             }
