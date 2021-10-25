@@ -23,6 +23,7 @@ export function VisitType<State>(context: Context, node: Node, id: NodeId, state
         }
 
         // Nodes without Type field
+        case Tag.DeclGenericParameter:
         case Tag.ExprCall:
         case Tag.ExprDeclaration:
         case Tag.ExprDestroy:

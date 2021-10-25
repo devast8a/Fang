@@ -1,14 +1,16 @@
 import { Flags } from '../common/flags';
 import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId } from '../nodes';
 
-function isBuiltin(decl: Decl) {
+export function isBuiltin(decl: Decl) {
     if (decl.name.startsWith("infix") || decl.name.startsWith("prefix") || decl.name.startsWith("postfix")) {
         return true;
     }
 
     switch (decl.name) {
+        case "alias":
         case "Ptr":
         case "Size":
+        case "void":
         case "bool":
         case "malloc":
         case "realloc":
@@ -44,11 +46,11 @@ export class TargetC {
 
         // Forward declare structures
         this.emitSeparator();
-        for (const id of decls) {
+        for (let id = 0; id < nodes.length; id++) {
             const decl = nodes[id];
 
             if (decl.tag === Tag.DeclStruct) {
-                if (isBuiltin(decl)) {
+                if (isBuiltin(decl) || decl.generics !== null) {
                     continue;
                 }
 
@@ -101,8 +103,13 @@ export class TargetC {
                 return;
             }
                 
+            case Tag.DeclGenericParameter: {
+                // TODO: Why is this triggered
+                return;
+            }
+                
             case Tag.DeclStruct: {
-                if (isBuiltin(decl)) {
+                if (isBuiltin(decl) || decl.generics !== null) {
                     return;
                 }
 
@@ -465,6 +472,10 @@ export class TargetC {
         this.pushIndent();
         this.emit("{");
         for (const id of decls) {
+            if (context.get(id).tag === Tag.DeclGenericParameter) {
+                continue;
+            }
+
             this.emitNewline();
             this.emitDecl(context, nodes[id] as Decl, id);
             this.emit(";");

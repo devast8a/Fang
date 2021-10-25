@@ -11,6 +11,7 @@ export type Node =
 
 export type Decl =
     | DeclFunction
+    | DeclGenericParameter
     | DeclStruct
     | DeclTrait
     | DeclVariable
@@ -53,6 +54,7 @@ export enum Tag {
     Module,
 
     DeclFunction,
+    DeclGenericParameter,
     DeclStruct,
     DeclTrait,
     DeclVariable,
@@ -136,14 +138,32 @@ export enum DeclFunctionFlags {
     Abstract  = 1 << 0,
 }
 
+export class GenericData {
+    public constructor(
+        public readonly parameters: ReadonlyArray<RefLocalId<DeclGenericParameter>>,
+    ) { }
+}
+
+export class DeclGenericParameter {
+    public readonly tag = Tag.DeclGenericParameter;
+    public static readonly tag = Tag.DeclGenericParameter;
+
+    public constructor(
+        public readonly name: string,
+    ) { }
+}
+
 export class DeclStruct {
     public readonly tag = Tag.DeclStruct;
     public static readonly tag = Tag.DeclStruct;
 
     public constructor(
         public readonly name: string,
+
         public readonly superTypes: readonly Type[],
         public readonly children: Children,
+
+        public readonly generics: GenericData | null,
     ) { }
 }
 
@@ -624,6 +644,7 @@ export namespace Node {
     type HasChildren = Module | DeclFunction | DeclStruct | DeclTrait;
     export function hasChildren(node: Node): node is HasChildren {
         switch (node.tag) {
+            case Tag.DeclGenericParameter:
             case Tag.DeclVariable:
             case Tag.ExprCall:
             case Tag.ExprConstant:

@@ -13,6 +13,7 @@ export function VisitRefDecl<State>(context: Context, node: Node, id: NodeId, st
             return visit.fieldNode(context, node, id, state, control, 'target');
 
         // Nodes without DeclRef member
+        case Tag.DeclGenericParameter:
         case Tag.Module:
         case Tag.DeclFunction:
         case Tag.DeclStruct:

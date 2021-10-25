@@ -1,0 +1,8 @@
+struct Foo generic<Type> {
+    val value: Type
+}
+
+fn foo() -> u32 {
+    val x: Foo<u32>
+    val y: Foo<Size>
+}

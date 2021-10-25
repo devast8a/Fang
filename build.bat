@@ -11,7 +11,7 @@ if %errorlevel% neq 0 exit /b %errorlevel%
 REM CALL node build\js\test
 
 echo Compiling test.fang
-CALL node build\js\cli examples/features/fields-function.fang -o build/test.c
+CALL node build\js\cli examples/test.fang -o build/test.c
 if %errorlevel% neq 0 exit /b %errorlevel%
 
 echo ================================================================================

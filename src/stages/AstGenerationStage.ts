@@ -1,6 +1,6 @@
 import { Compiler } from '../compile';
 import * as Nodes from '../nodes';
-import { MutContext, NodeId, Ref } from '../nodes';
+import { GenericData, MutContext, NodeId, Ref } from '../nodes';
 import { PNode, PTag } from '../parser/post_processor';
 
 const InferType = new Nodes.TypeInfer();
@@ -55,9 +55,10 @@ function parse(parent: MutContext, node: PNode): NodeId {
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
                 const superTypes = node.data[2]?.map(x => parseType(x[3]));
+                const generics = parseGenericDeclNull(children, node.data[3]?.[1]);
                 const body = parseBodyNull(children, node.data[5]) ?? [];
 
-                return new Nodes.DeclStruct(name, superTypes, children.finalize(body));
+                return new Nodes.DeclStruct(name, superTypes, children.finalize(body), generics);
             });
 
             return parent.declare(Ref.localToGlobal(parent.root, id));
@@ -352,11 +353,12 @@ function convertVariableKeyword(keyword: string | undefined) {
 }
 
 function parseIdentifier(node: PNode) {
+    // @see grammar.ne/Identifier
     return node.value;
 }
 
 function parseOperator(node: PNode) {
-    // @see grammar.ne: OperatorSpaced
+    // @see grammar.ne/OperatorSpaced
     if (node.length === 1) {
         return node[0].value;
     } else if (node[1] === null) {
@@ -365,6 +367,21 @@ function parseOperator(node: PNode) {
     } else {
         return node[0].value + node[1].value;
     }
+}
+
+function parseGenericDeclNull(children: MutContext, ast: PNode | null | undefined) {
+    return ast === null || ast === undefined ? null : parseGenericDecl(children, ast);
+}
+
+function parseGenericDecl(children: MutContext, ast: PNode): GenericData {
+    // keyword parameters where-clauses
+    const parameters = ast[1].elements.map(parseIdentifier);
+
+    return new GenericData(parameters.map(parameter => {
+        const id = children.add(new Nodes.DeclGenericParameter(parameter));
+        children.declare(id);
+        return id;
+    }));
 }
 
 export interface Position {

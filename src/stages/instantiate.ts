@@ -1,30 +1,54 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor, VisitorControl } from '../ast/visitor';
+import { VisitType } from '../ast/VisitType';
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutContext, Node, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, TypeGet } from '../nodes';
+import { Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutContext, Node, Ref, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, Type, TypeGet } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
-export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, (context, expr, id, state) => {
-    switch (expr.tag) {
+export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, VisitType, (context, node, id, state) => {
+    switch (node.tag) {
         case Tag.ExprCall: {
-            const target = Node.as(context.get(expr.target), DeclFunction);
+            const target = context.get(node.target);
 
             // Non-generic functions do not need instantiation
             if (!Flags.has(target.flags, DeclFunctionFlags.Abstract)) {
-                return expr;
+                return node;
             }
 
-            return Node.mutate(expr, {
-                target: instantiateFn(MutContext.fromContext(context), state, target, expr.args)
+            return Node.mutate(node, {
+                target: instantiateFn(MutContext.fromContext(context), state, target, node.args)
             });
+        }
+            
+        case Tag.TypeGenericApply: {
+            const target = context.get(Node.as(node.target, TypeGet).target);
+
+            const instantiated = instantiateType(MutContext.fromContext(context), state, target as DeclStruct, node.args);
+
+            return new TypeGet(instantiated);
+        }
+            
+        case Tag.TypeGet: {
+            const ref = node.target;
+
+            if (ref.tag === Tag.RefLocal) {
+                const type = state.replaceMap.get(`${context.parent}.${ref.id}`);
+
+                if (type !== undefined) {
+                    return type;
+                }
+            }
+
+            return node;
         }
     }
 
-    return expr;
+    return node;
 });
 
 export class InstantiateState {
     private mapping = new Map<string, RefGlobalDecl>();
+    public replaceMap = new Map<string, Type>();
 
     public set(key: string, ref: RefGlobalDecl) {
         return this.mapping.set(key, ref);
@@ -33,6 +57,27 @@ export class InstantiateState {
     public get(key: string): RefGlobalDecl | null {
         return this.mapping.get(key) ?? null;
     }
+
+    public replace(previous: string, next: Type) {
+        this.replaceMap.set(previous, next);
+    }
+}
+
+function instantiateType(context: MutContext, state: InstantiateState, struct: DeclStruct, args: ReadonlyArray<Type>): RefGlobalDecl {
+    const id = context.root.add((id) => {
+        const children = MutContext.createAndSet(context, id, {
+            nodes: struct.children.nodes.slice(),
+            decls: struct.children.decls.slice(),
+        });
+
+        const s = new DeclStruct(`${struct.name}_${id}`, [], children.finalize([]), null);
+
+        state.replace(`${id}.0`, args[0]);
+
+        return instantiate(context, s, id, state);
+    });
+
+    return Ref.localToGlobal(context.root, id);
 }
 
 function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFunction, argIds: ReadonlyArray<ExprId>) {
