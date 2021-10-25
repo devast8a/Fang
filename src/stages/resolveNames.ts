@@ -42,7 +42,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
                 return node;
             }
 
-            // Variable has a value assigned to it - implicitly take the type of the variable
+            // Variable has a value assigned to it, implicitly take the type of the variable
             if (node.value !== null) {
                 const value_ = context.get(node.value);
                 const value = first(context, value_, node.value, state);
@@ -50,7 +50,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
                 return Node.mutate(node, { type });
             }
 
-            // The variable name 'self' is special. It is given the type the enclosing Struct or Trait.
+            // The variable name 'self' is special, give it the type of the enclosing Struct or Trait.
             if (node.name === 'self') {
                 const parent = context.container.parent;
                 return Node.mutate(node, { type: new TypeGet(parent) });
