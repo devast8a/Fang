@@ -1,8 +1,8 @@
-struct Foo generic<Type> {
-    val value: Type
+struct Foo generic<T1, T2> {
+    val v1: T1
+    val v2: T2
 }
 
 fn foo() -> u32 {
-    val x: Foo<u32>
-    val y: Foo<Size>
+    val foo: Foo<u32, Size>
 }

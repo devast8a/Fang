@@ -72,7 +72,10 @@ function instantiateType(context: MutContext, state: InstantiateState, struct: D
 
         const s = new DeclStruct(`${struct.name}_${id}`, [], children.finalize([]), null);
 
-        state.replace(`${id}.0`, args[0]);
+        const parameters = struct.generics!.parameters;
+        for (let index = 0; index < parameters.length; index++) {
+            state.replace(`${id}.${parameters[index]}`, args[index]);
+        }
 
         return instantiate(context, s, id, state);
     });
