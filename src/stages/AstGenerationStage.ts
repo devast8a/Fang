@@ -195,7 +195,15 @@ function parse(parent: MutContext, node: PNode): NodeId {
         }
 
         case PTag.PExprMacroCall: {
-            throw new Error('Not implemented yet');
+            return parent.add((id) => {
+                // target compileTime argument
+                const name = parseIdentifier(node.data[0]);
+                const target = new Nodes.RefName(name);
+
+                const argument = parse(parent, node.data[2]?.[1]);
+
+                return new Nodes.ExprCall(target, [argument], true);
+            });
         }
 
         case PTag.PExprReturn: {
@@ -285,7 +293,7 @@ function parseRef(parent: MutContext, node: PNode) {
         }
             
         default: {
-            throw new Error('Unreachable: Unhandled case');
+            throw new Error(`Unreachable: Unhandled case ${node.tag}`);
         }
     }
 }

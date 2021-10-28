@@ -15,6 +15,7 @@ import { flatten } from './stages/flatten';
 import { mangleNames } from './stages/mangleNames';
 import chalk from 'chalk';
 import { checkLifetime } from './stages/checkLifetime';
+import { resolveImports } from './stages/resolveImports';
 
 function visitor(visitor: Visitor<null>): (context: Context) => Module
 function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
@@ -24,6 +25,7 @@ function visitor<State>(visitor: Visitor<State>, state?: State) {
 
 export class Compiler {
     private stages: [string, (context: Context) => Module][] = [
+        ['Resolve Imports', visitor(resolveImports)],
         ['Resolve Names', visitor(resolveNames)],
         ['Check Types', visitor(checkTypes)],
         ['Check Lifetime', checkLifetime],
