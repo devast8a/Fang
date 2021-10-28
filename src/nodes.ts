@@ -36,7 +36,6 @@ export type Ref<T extends Node = Node> =
     | RefFieldName<T>
     | RefGlobal<T>
     | RefGlobalDecl<T>
-    | RefGlobalExpr<T>
     | RefLocal<T>
     | RefName<T>
     ;
@@ -75,7 +74,6 @@ export enum Tag {
     RefFieldName,
     RefGlobal,
     RefGlobalDecl,
-    RefGlobalExpr,
     RefLocal,
     RefName,
 
@@ -344,16 +342,6 @@ export class RefGlobalDecl<T extends Node = Node> {
     public constructor(
         public readonly id: DeclId,
         public readonly member: DeclId,
-    ) { }
-}
-
-export class RefGlobalExpr<T extends Node = Node> {
-    public readonly tag = Tag.RefGlobalExpr;
-    public static readonly tag = Tag.RefGlobalExpr;
-
-    public constructor(
-        public readonly id: DeclId,
-        public readonly member: ExprId,
     ) { }
 }
 
