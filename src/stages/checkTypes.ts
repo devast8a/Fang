@@ -18,17 +18,17 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id) => {
             return node;
         }
             
-        case Tag.ExprSet: {
-            const source = context.get(node.value);
-            const sourceType = Expr.getReturnType(context, source);
-            const target = context.get(node.target) as DeclVariable;
+        // case Tag.ExprSet: {
+        //     const source = context.get(node.value);
+        //     const sourceType = Expr.getReturnType(context, source);
+        //     const target = context.get(node.target) as DeclVariable;
 
-            if (!Type.canAssignTo(context, sourceType, target.type)) {
-                context.error(new IncorrectTypeError(context, node.value, sourceType, node.target, target.type, id));
-            }
+        //     if (!Type.canAssignTo(context, sourceType, target.type)) {
+        //         context.error(new IncorrectTypeError(context, node.value, sourceType, node.target, target.type, id));
+        //     }
 
-            return node;
-        }
+        //     return node;
+        // }
     }
 
     return node;

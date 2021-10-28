@@ -1,6 +1,6 @@
 import { Flags } from '../common/flags';
 import { Lifetime } from '../errors';
-import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, ExprCall, ExprGet } from '../nodes';
+import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, ExprCall, ExprGet, unreachable } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -406,5 +406,5 @@ function refToPath(ref: RefAny): Path {
         case Tag.RefLocal:        return ref.id.toString();
     }
 
-    throw new Error('Unreachable');
+    throw unreachable(ref);
 }

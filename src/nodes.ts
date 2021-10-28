@@ -7,6 +7,7 @@ export type Node =
     | Expr
     | Type
     | Ref<any>
+    | NodeFree
     ;
 
 export type Decl =
@@ -80,6 +81,8 @@ export enum Tag {
     TypeGenericApply,
     TypeGet,
     TypeInfer,
+    
+    NodeFree,
 }
 
 export const RootId = -1;
@@ -389,6 +392,13 @@ export class TypeInfer {
     public static readonly tag = Tag.TypeInfer;
 }
 
+// Special =====================================================================
+
+export class NodeFree {
+    public readonly tag = Tag.NodeFree;
+    public static readonly tag = Tag.NodeFree;
+}
+
 // Children ====================================================================
 
 export class Children {
@@ -473,7 +483,7 @@ export class Context {
             }
         }
 
-        throw new Error(`Unreachable: Unhandled case '${Tag[(ref as any).tag]}'`);
+        throw unreachable(ref);
     }
 
     public static fromModule(compiler: Compiler, module: Module) {
@@ -653,6 +663,7 @@ export namespace Node {
             case Tag.TypeGenericApply:
             case Tag.TypeGet:
             case Tag.TypeInfer:
+            case Tag.NodeFree:
                 return false;
 
             case Tag.Module:
@@ -662,7 +673,7 @@ export namespace Node {
                 return true;
         }
 
-        throw new Error(`Unreachable: Unhandled case '${Tag[(node as any)?.tag]}'`);
+        throw unreachable(node);
     }
 
     export function mutate<T extends Node>(node: T, fields: Partial<T>): T {
@@ -680,7 +691,7 @@ export namespace Expr {
             case Tag.ExprGet:         return Node.as(context.get(expr.target), DeclVariable).type;
         }
 
-        throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
+        throw unreachable(expr);
     }
 }
 
@@ -724,6 +735,10 @@ export namespace Type {
             case Tag.DeclTrait: return false;
         }
 
-        throw new Error(`Unreachable: Unhandled case '${Tag[(child as any).tag]}'`);
+        throw unreachable(child);
     }
+}
+
+export function unreachable(node: any) {
+    return new Error(`Unreachable: Unhandled case '${Tag[node.tag]}'`);
 }

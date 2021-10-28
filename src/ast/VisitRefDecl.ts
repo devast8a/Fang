@@ -33,6 +33,7 @@ export function VisitRefDecl<State>(context: Context, node: Node, id: NodeId, st
         case Tag.RefName:
         case Tag.TypeGenericApply:
         case Tag.TypeInfer:
+        case Tag.NodeFree:
             return control.next(context, node, id, state);
     }
 

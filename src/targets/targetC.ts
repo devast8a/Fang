@@ -136,6 +136,10 @@ export class TargetC {
             case Tag.ExprDeclaration: {
                 return;
             }
+                
+            case Tag.NodeFree: {
+                return;
+            }
         }
 
         throw new Error(`Unreachable: Unhandled case '${Tag[(decl as any).tag]}'`);

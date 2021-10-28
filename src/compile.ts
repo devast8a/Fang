@@ -3,7 +3,7 @@ import { Source } from './common/source';
 import { serialize } from './ast/serialize';
 import { parseSource } from './stages/ParseStage';
 import { parseAst } from './stages/AstGenerationStage';
-import { CompileError, Context, Module, RootId } from './nodes';
+import { CompileError, Context, Module, MutContext, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
 import { checkTypes } from './stages/checkTypes';
@@ -60,14 +60,39 @@ export class Compiler {
         const ast = parseSource(source);
         console.timeEnd(`${source.path} Parsing`);
 
+        const root = MutContext.createRoot(this);
+
         console.time(`${source.path} Ast Generation`);
-        const {children} = parseAst(this, ast);
+        const body = parseAst(root, ast);
         console.timeEnd(`${source.path} Ast Generation`);
 
         console.timeEnd(`${source.path} Total`);
         console.groupEnd();
 
-        return new Module(children);
+        return new Module(root.finalize(body));
+    }
+
+    public parseFileSync(context: MutContext, source: string | Source)
+    {
+        if (!(source instanceof Source)) {
+            source = new Source(source, Fs.readFileSync(source, "utf8"));
+        }
+        
+        console.group(`Parsing ${source.path}`);
+        console.time(`${source.path} Total`);
+
+        console.time(`${source.path} Parsing`);
+        const ast = parseSource(source);
+        console.timeEnd(`${source.path} Parsing`);
+
+        console.time(`${source.path} Ast Generation`);
+        const body = parseAst(context, ast);
+        console.timeEnd(`${source.path} Ast Generation`);
+
+        console.timeEnd(`${source.path} Total`);
+        console.groupEnd();
+
+        return body;
     }
 
     public async compile(source: string | Source): Promise<string>

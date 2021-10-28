@@ -42,6 +42,7 @@ export function VisitType<State>(context: Context, node: Node, id: NodeId, state
         case Tag.RefName:
         case Tag.TypeGet:
         case Tag.TypeInfer:
+        case Tag.NodeFree:
             return control.next(context, node, id, state);
     }
 

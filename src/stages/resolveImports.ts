@@ -1,6 +1,6 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
-import { Context, ExprConstant, Node, RefName, Tag, TypeGet } from '../nodes';
+import { Context, MutContext, Node, NodeFree, Tag } from '../nodes';
 
 export const resolveImports = createVisitor(VisitChildren, (context, node, id, state) => {
     switch (node.tag) {
@@ -24,9 +24,8 @@ export const resolveImports = createVisitor(VisitChildren, (context, node, id, s
 });
 
 function macroImport(context: Context, argId: number): Node {
-    const arg = context.get(argId);
+    context.compiler.parseFileSync(MutContext.fromContext(context), "./examples/foo.fang");
 
-    console.log(arg);
-    
-    return new ExprConstant(new TypeGet(new RefName("u32")), 1)
+    (context.container.nodes as any)[argId] = new NodeFree();
+    return new NodeFree();
 }
