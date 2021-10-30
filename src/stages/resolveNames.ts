@@ -25,7 +25,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
             const target = first(context, context.get(node.target), node.target, state);
             const typeRef = (Expr.getReturnType(context, target) as TypeGet).target as RefGlobal;
             const type = context.get(typeRef) as Decl;
-            const children = Node.getChildren(type);
+            const children = Node.getChildren(type)!;
             const id = children.names.get(node.field);
 
             if (id === undefined) {

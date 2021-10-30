@@ -1,6 +1,6 @@
 import { Flags } from '../common/flags';
 import { Lifetime } from '../errors';
-import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, ExprCall, ExprGet, unreachable } from '../nodes';
+import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, ExprCall, ExprGet, unreachable, RootId, Expr, TypeGet } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -28,8 +28,6 @@ import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAn
 
 /** Language Semantics *********************************************************/
 
-let global_context!: Context;
-
 export function checkLifetime(context: Context) {
     const parent = new ProgramState(null, new Map());
 
@@ -42,10 +40,8 @@ export function checkLifetime(context: Context) {
             const ctx = context.createChildContext(node.children, id);
             const state = parent.copyState();
 
-            global_context = ctx;
-
             for (let i = 0; i < node.parameters.length; i++) {
-                state.assign(context, refToPath(node.parameters[i]));
+                state.assign(context, refToPath(context, node.parameters[i]));
             }
 
             checkLifetimeNodes(ctx, node.children.body, state);
@@ -62,7 +58,7 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         case Tag.DeclVariable: {
             if (node.value !== null) {
                 checkLifetimeNode(context, node.value, state);
-                state.assign(context, refToPath(id));
+                state.assign(context, refToPath(context, id));
             }
             return;
         }
@@ -78,7 +74,7 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
 
                 switch (arg.tag) {
                     case Tag.ExprGet: {
-                        const path = refToPath(arg.target);
+                        const path = refToPath(context, arg.target);
 
                         if (Flags.has(param.flags, DeclVariableFlags.Mutable)) {
                             state.write(context, path, group);
@@ -106,10 +102,10 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
 
             // Apply any lifetime constraints from `fn`
             if (fn.attributes.length > 0) {
-                state.ref(
-                    refToPath((context.get(node.args[0]) as ExprGet).target),
-                    refToPath((context.get(node.args[1]) as ExprGet).target),
-                );
+                //state.ref(
+                //    refToPath(context, (context.get(node.args[0]) as ExprGet).target),
+                //    refToPath(context, (context.get(node.args[1]) as ExprGet).target),
+                //);
             }
 
             return;
@@ -131,18 +127,18 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         }
             
         case Tag.ExprDestroy: {
-            state.delete(context, refToPath(node.target));
+            state.delete(context, refToPath(context, node.target));
             return;
         }
 
         case Tag.ExprGet: {
-            state.read(context, refToPath(node.target));
+            state.read(context, refToPath(context, node.target));
             return;
         }
 
         case Tag.ExprSet: {
             checkLifetimeNode(context, node.value, state);
-            state.assign(context, refToPath(node.target));
+            state.assign(context, refToPath(context, node.target));
             return;
         }
 
@@ -171,27 +167,29 @@ enum Status {
     Dynamic,            /** The variable may or may not have some value at a given point (ie. It depends on runtime information) */
 }
 
-type Path = number | string;
+type Path = number[];
+type PathKey = string;
 
 /** Used to track simultaneous access to a group of variables. See: ExprCallStatic as an example. */
 class GroupedAccess {
-    public reads  = new Set<Path>();
-    public writes = new Set<Path>();
+    public reads  = new Map<PathKey, Path>();
+    public writes = new Map<PathKey, Path>();
 }
 
 /** Tracks the state of one specific variable */
 class VariableState {
     public constructor(
+        public readonly path: Path,
         public status: Status,
-        public referTo = new Set<Path>(),
-        public referBy = new Set<Path>(),
+        public readonly referTo = new Set<PathKey>(),
+        public readonly referBy = new Set<PathKey>(),
     ) {}
 }
 
 class ProgramState {
     public constructor(
         public parent: ProgramState | null,
-        public variables: Map<Path, VariableState>,
+        public variables: Map<PathKey, VariableState>,
     ) {}
 
     /** Create a copy of the current state. Do -NOT- modify the original while copy is alive. */
@@ -203,30 +201,30 @@ class ProgramState {
     public mergeState(other: ProgramState) {
         // TODO: Need to lookup in ancestors
         // TODO: Support references
-        for (const [path, o] of other.variables) {
-            const t = this.lookup(path);
+        //for (const [path, o] of other.variables) {
+        //    const t = this.lookup(path);
 
-            if (t.status !== o.status) {
-                t.status = Status.Dynamic
-            }
+        //    if (t.status !== o.status) {
+        //        t.status = Status.Dynamic
+        //    }
 
-            // Merge references together
-            for (const ref of o.referTo) {
-                if (!t.referTo.has(ref)) {
-                    this.ref(path, ref);
-                }
-            }
-        }
+        //    // Merge references together
+        //    for (const ref of o.referTo) {
+        //        if (!t.referTo.has(ref)) {
+        //            this.ref(path, ref);
+        //        }
+        //    }
+        //}
     }
 
     /** Create a reference between a source variable and a destination variable. */
-    public ref(src: Path, dst: Path) {
-        const srcState = this.lookup(src);
-        const dstState = this.lookup(dst);
+    //public ref(src: Path, dst: Path) {
+    //    const srcState = this.lookup(src);
+    //    const dstState = this.lookup(dst);
 
-        srcState.referTo.add(dst);
-        dstState.referBy.add(src);
-    }
+    //    srcState.referTo.add(dst);
+    //    dstState.referBy.add(src);
+    //}
 
     /** Read a variable. Variable must be alive. No invalidation. */
     public read(context: Context, path: Path, group?: GroupedAccess) {
@@ -234,22 +232,6 @@ class ProgramState {
 
         if (state.status !== Status.Alive) {
             context.error(new Lifetime.NotAliveError());
-        }
-
-        // No other access in the group should write to the variable
-        if (group !== undefined) {
-            if (group.writes.has(path)) {
-                context.error(new Lifetime.ReadWriteError());
-            }
-
-            for (const ref of state.referBy) {
-                if (group.writes.has(ref)) {
-                    context.error(new Lifetime.ReadWriteError());
-                }
-
-                group.reads.add(ref);
-            }
-            group.reads.add(path);
         }
     }
 
@@ -260,31 +242,6 @@ class ProgramState {
         if (state.status !== Status.Alive) {
             context.error(new Lifetime.NotAliveError());
         }
-
-        // No other access in the group should read from or write to the variable
-        if (group !== undefined) {
-            if (group.reads.has(path)) {
-                context.error(new Lifetime.ReadWriteError());
-            }
-
-            if (group.writes.has(path)) {
-                context.error(new Lifetime.WriteWriteError());
-            }
-
-            for (const ref of state.referBy) {
-                if (group.reads.has(ref)) {
-                    context.error(new Lifetime.ReadWriteError());
-                }
-
-                if (group.writes.has(ref)) {
-                    context.error(new Lifetime.WriteWriteError());
-                }
-
-                group.writes.add(ref);
-            }
-
-            group.writes.add(path);
-        }
     }
 
     /** Used for assignment. Variable must be alive or dead. Destroys existing values. */
@@ -293,9 +250,7 @@ class ProgramState {
         const state = this.lookup(path);
 
         this.killRefBy(context, path, state);
-
         state.status = Status.Alive;
-        this.variables.set(path, state);
     }
 
     /** Destroy a value in a variable. Variable must be alive. */
@@ -322,18 +277,40 @@ class ProgramState {
         }
     }
 
-    public toString() {
+    public toString(context: Context) {
+        function pathToName(context: Context, path: Path) {
+            const names = [];
+
+            let nodes = context.container.nodes;
+
+            for (let index = 0; index < path.length - 1; index++) {
+                const id = path[index];
+                const node = nodes[id];
+                const name = Node.getName(node) ?? `%${id}`;
+                names.push(name);
+
+                const type = Expr.getReturnType(context, node);
+                // TODO: Replace manual resolving code
+                nodes = Node.getChildren(context.get((type as TypeGet).target))!.nodes;
+            }
+
+            const id = path[path.length - 1]
+            const node = nodes[id];
+            const name = Node.getName(node) ?? `%${id}`;
+            names.push(name)
+
+            return names.join('.');
+        }
+
         const variables = Array.from(this.variables.entries());
 
-        const names = new Map(variables.map(([id]) => {
-            const node = global_context.get(parseInt(id as string));
-            return [id, (node as DeclVariable).name ?? `Unknown-${id}`];
-        }));
-
-        return variables.map(([id, state]) => {
-            const name = names.get(id);
+        return variables.map(([_, state]) => {
+            // Path to name
+            const name = pathToName(context, state.path);
             const status = Status[state.status];
-            const refs = Array.from(state.referTo).map(path => names.get(path));
+            const refs = Array.from(state.referTo).map(key =>
+                pathToName(context, this.variables.get(key)!.path)
+            );
 
             if (refs.length > 0) {
                 return `${name}: ${status} => {${refs.join(", ")}}`
@@ -345,23 +322,25 @@ class ProgramState {
 
     /** Kill all the variables that reference the current variable */
     private killRefBy(context: Context, path: Path, state: VariableState) {
-        for (const ref of state.referBy) {
-            const refState = this.lookup(ref);
+        //for (const ref of state.referBy) {
+        //    const refState = this.lookup(ref);
 
-            if (refState === null) throw new Error(`Internal Error: Reference state should exist, but doesn't`);
+        //    if (refState === null) throw new Error(`Internal Error: Reference state should exist, but doesn't`);
 
-            refState.referTo.delete(path);
+        //    refState.referTo.delete(path);
 
-            if (refState.referTo.size === 0) {
-                refState.status = Status.Dead;
-            }
-        }
+        //    if (refState.referTo.size === 0) {
+        //        refState.status = Status.Dead;
+        //    }
+        //}
     }
 
     /** Return the state linked with a variable. */
-    private lookup(path: Path): VariableState {
+    private lookupPathHead(path: Path): VariableState {
+        const key = path[0].toString();
+
         // Lookup in this
-        let state = this.variables.get(path);
+        let state = this.variables.get(key);
         if (state !== undefined) {
             return state;
         }
@@ -369,17 +348,18 @@ class ProgramState {
         // Lookup in parent
         let current = this.parent;
         while (current !== null) {
-            const state = current.variables.get(path);
+            const state = current.variables.get(key);
 
             if (state !== undefined) {
                 // Copy state from ancestor - since we might modify it
                 const copy = new VariableState(
+                    state.path,
                     state.status,
                     new Set(state.referTo),
                     new Set(state.referBy),
                 );
 
-                this.variables.set(path, copy);
+                this.variables.set(key, copy);
                 return copy;
             }
 
@@ -387,23 +367,49 @@ class ProgramState {
         }
 
         // Insert new state
-        state = new VariableState(Status.Dead);
-        this.variables.set(path, state);
+        state = new VariableState([path[0]], Status.Dead);
+        this.variables.set(key, state);
+        return state;
+    }
+
+    private lookup(path: Path): VariableState {
+        let state = this.lookupPathHead(path);
+
+        for (let index = 1; index < path.length; index++) {
+            const id = path.slice(0, index + 1);
+            const key = id.join('.');
+            let child = this.variables.get(key);
+
+            if (child === undefined) {
+                child = new VariableState(id, state.status);
+                this.variables.set(key, child);
+            }
+
+            state = child;
+        }
+
         return state;
     }
 }
 
 /** Utilities ******************************************************************/
 
-function refToPath(ref: RefAny): Path {
+function refToPath(context: Context, ref: RefAny): Path {
     if (Ref.isLocal(ref)) {
-        return ref.toString();
+        return [ref];
     }
 
     switch (ref.tag) {
-        case Tag.RefGlobal:       return `global.${ref.id}`;
-        case Tag.RefGlobalDecl:   return `global.${ref.id}.${ref.member}`;
-        case Tag.RefLocal:        return ref.id.toString();
+        case Tag.RefLocal:        return [ref.id];
+        case Tag.RefFieldId: {
+            const target = context.get(ref.target);
+
+            switch (target.tag) {
+                case Tag.ExprGet:      return refToPath(context, target.target).concat(ref.field);
+                case Tag.DeclVariable: return [ref.target, ref.field];
+                default:               throw unreachable(target);
+            }
+        }
     }
 
     throw unreachable(ref);

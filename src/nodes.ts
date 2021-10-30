@@ -465,13 +465,13 @@ export class Context {
                 }
 
                 const parent = this.root.container.nodes[ref.id] as Decl;
-                const children = Node.getChildren(parent);
+                const children = Node.getChildren(parent)!;
                 return children.nodes[ref.member] as T;
             }
 
             case Tag.RefFieldId: {
                 const struct = this.root.container.nodes[ref.targetType] as Decl;
-                const children = Node.getChildren(struct);
+                const children = Node.getChildren(struct)!;
                 const field = children.nodes[ref.field];
 
                 // TODO: Remove nested lookups
@@ -627,16 +627,14 @@ export namespace Node {
         throw new Error(`Expected node of type '${Tag[type.tag]}' but got node of type '${Tag[node.tag]}'`);
     }
 
-    export function getChildren(decl: Decl | Ref) {
-        if (!Node.hasChildren(decl)) {
-            throw new Error(`Unexpected node of type '${Tag[decl.tag]}', expected a node that has children.`);
-        }
-
-        return decl.children;
+    export function getChildren(node: Node) {
+        return Node.hasChildren(node) ?
+            node.children :
+            null;
     }
 
-    export function getName(node: Node): string | undefined {
-        return (node as any).name;
+    export function getName(node: Node): string | null {
+        return (node as any).name ?? null;
     }
 
     type HasChildren = Module | DeclFunction | DeclStruct | DeclTrait;
@@ -685,6 +683,7 @@ export namespace Node {
 export namespace Expr {
     export function getReturnType(context: Context, expr: Node): Type {
         switch (expr.tag) {
+            case Tag.DeclVariable:    return expr.type;
             case Tag.ExprCall:        return context.get(expr.target).returnType;
             case Tag.ExprConstant:    return expr.type;
             case Tag.ExprCreate:      return expr.type;
