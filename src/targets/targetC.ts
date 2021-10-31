@@ -1,6 +1,10 @@
 import { Flags } from '../common/flags';
 import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId, DeclStruct, TypeGet, unreachable } from '../nodes';
 
+export function isGeneric(decl: DeclStruct) {
+    return decl.generics !== null && decl.generics.parameters.length > 0;
+}
+
 export function convertBuiltinName(context: Context, decl: Decl): string | null {
     const name = decl.name;
 
@@ -10,7 +14,6 @@ export function convertBuiltinName(context: Context, decl: Decl): string | null 
 
     if (name.startsWith("Ptr_")) {
         const arg = context.get(((decl as DeclStruct).generics!.args[0] as TypeGet).target);
-
         return convertBuiltinName(context, arg) + "*";
     }
 
@@ -29,6 +32,7 @@ export function convertBuiltinName(context: Context, decl: Decl): string | null 
         case "Size": return "size_t";
         case "bool": return "bool";
         case "void": return "void";
+        case "str":  return "char*";
 
         // Builtin functions
         case "alias":
@@ -64,7 +68,7 @@ export class TargetC {
             const decl = nodes[id];
 
             if (decl.tag === Tag.DeclStruct) {
-                if (isBuiltin(context, decl) || decl.generics !== null) {
+                if (isBuiltin(context, decl) || isGeneric(decl)) {
                     continue;
                 }
 
@@ -123,7 +127,7 @@ export class TargetC {
             }
                 
             case Tag.DeclStruct: {
-                if (isBuiltin(context, decl) || decl.generics !== null) {
+                if (isBuiltin(context, decl) || isGeneric(decl)) {
                     return;
                 }
 

@@ -32,7 +32,7 @@ export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctio
             const ref = node.target;
 
             if (ref.tag === Tag.RefLocal) {
-                const type = state.replaceMap.get(`${context.container.parent}.${ref.id}`);
+                const type = state.replaceMap.get(`${context.container.self.id}.${ref.id}`);
 
                 if (type !== undefined) {
                     return type;
@@ -125,7 +125,7 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
         }
     }
 
-    const id = context.add((id) => {
+    const id = context.root.add((id) => {
         // TODO: Copy body, decls, names rather than referencing
         const children = MutContext.createAndSet(context, id, {
             nodes: nodes,
@@ -140,6 +140,16 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
             flags: Flags.unset(fn.flags, DeclFunctionFlags.Abstract),
         });
     });
+
+    if (fn.generics !== null) {
+        const gen = fn.generics.parameters;
+        for (let index = 0; index < gen.length; index++) {
+            state.replace(`${id}.${gen[index]}`, Expr.getReturnType(context, args[0]));
+        }
+    }
+
+    const f = context.root.get(id) as DeclFunction;
+    context.root.update(id, instantiate(context.root, f, id, state));
 
     return new RefGlobal(context.root.declare(id));
 }
