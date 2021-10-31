@@ -5,7 +5,7 @@ import { isBuiltin } from '../targets/targetC';
 
 export const mangleNames = createVisitor(VisitChildren, (context, decl) => {
     // TODO: Cache results
-    if (decl.tag === Tag.DeclFunction && !isBuiltin(decl)) {
+    if (decl.tag === Tag.DeclFunction && !isBuiltin(context, decl)) {
         // const path = getPathTo(context, decl);
 
         // if (path.length === 0) {

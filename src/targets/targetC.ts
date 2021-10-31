@@ -1,35 +1,49 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId, DeclStruct, TypeGet } from '../nodes';
 
-export function isBuiltin(decl: Decl) {
-    if (decl.name.startsWith("infix") || decl.name.startsWith("prefix") || decl.name.startsWith("postfix")) {
-        return true;
+export function convertBuiltinName(context: Context, decl: Decl): string | null {
+    const name = decl.name;
+
+    if (name.startsWith("infix") || name.startsWith("prefix") || name.startsWith("postfix")) {
+        return "operator";
     }
 
-    switch (decl.name) {
+    if (name.startsWith("Ptr_")) {
+        const arg = context.get(((decl as DeclStruct).generics!.args[0] as TypeGet).target);
+
+        return convertBuiltinName(context, arg) + "*";
+    }
+
+    switch (name) {
+        case "u8":  return "uint8_t";
+        case "u16": return "uint16_t";
+        case "u32": return "uint32_t";
+        case "u64": return "uint64_t";
+
+        case "s8":  return "int8_t";
+        case "s16": return "int16_t";
+        case "s32": return "int32_t";
+        case "s64": return "int64_t";
+
+        case "Ptr":  return "void*";
+        case "Size": return "size_t";
+        case "bool": return "bool";
+        case "void": return "void";
+
+        // Builtin functions
         case "alias":
-        case "Ptr":
-        case "Size":
-        case "void":
-        case "bool":
         case "malloc":
         case "realloc":
         case "deref_ptr":
         case "printf":
-        case "s16":
-        case "s32":
-        case "s64":
-        case "s8":
-        case "str":
-        case "u16":
-        case "u32":
-        case "u64":
-        case "u8":
-            return true;
-        
-        default:
-            return false;
+            return name;
     }
+
+    return null;
+}
+
+export function isBuiltin(context: Context, decl: Decl) {
+    return convertBuiltinName(context, decl) !== null;
 }
 
 export class TargetC {
@@ -50,7 +64,7 @@ export class TargetC {
             const decl = nodes[id];
 
             if (decl.tag === Tag.DeclStruct) {
-                if (isBuiltin(decl) || decl.generics !== null) {
+                if (isBuiltin(context, decl) || decl.generics !== null) {
                     continue;
                 }
 
@@ -65,11 +79,11 @@ export class TargetC {
             const decl = nodes[id];
 
             if (decl.tag === Tag.DeclFunction) {
-                if (isBuiltin(decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
+                const ctx = context.createChildContext(decl.children, id);
+
+                if (isBuiltin(ctx, decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
                     continue;
                 }
-
-                const ctx = context.createChildContext(decl.children, id);
 
                 this.emitTypeName(ctx, decl.returnType);
                 this.emit(" ", decl.name, "(");
@@ -88,7 +102,7 @@ export class TargetC {
     public emitDecl(context: Context, decl: Node, id: DeclId) {
         switch (decl.tag) {
             case Tag.DeclFunction: {
-                if (isBuiltin(decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
+                if (isBuiltin(context, decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
                     return;
                 }
 
@@ -109,7 +123,7 @@ export class TargetC {
             }
                 
             case Tag.DeclStruct: {
-                if (isBuiltin(decl) || decl.generics !== null) {
+                if (isBuiltin(context, decl) || decl.generics !== null) {
                     return;
                 }
 
@@ -432,25 +446,16 @@ export class TargetC {
             }
 
             case Tag.TypeGet: {
-                const name = (context.get(type.target) as Decl).name;
-                
                 // TODO: Implement FFI system to allow aliasing underlying target identifiers
-                switch (name) {
-                    case "u8":  this.emit("uint8_t"); return;
-                    case "u16": this.emit("uint16_t"); return;
-                    case "u32": this.emit("uint32_t"); return;
-                    case "u64": this.emit("uint64_t"); return;
+                const decl = context.get(type.target);
+                const name = convertBuiltinName(context, decl);
 
-                    case "s8":  this.emit("int8_t"); return;
-                    case "s16": this.emit("int16_t"); return;
-                    case "s32": this.emit("int32_t"); return;
-                    case "s64": this.emit("int64_t"); return;
-
-                    case "Ptr": this.emit("uint32_t*"); return;
-                    case "Size": this.emit("size_t"); return;
-
-                    default: this.emit('struct ', name);
+                if (name === null) {
+                    this.emit('struct ', decl.name);
+                } else {
+                    this.emit(name);
                 }
+
                 return;
             }
 

@@ -136,7 +136,7 @@ export class Compiler {
             struct u32
             struct bool
             struct str
-            struct Ptr
+            struct Ptr generic<T>
             struct Size
             struct void
 
@@ -153,7 +153,8 @@ export class Compiler {
             fn printf(s: str, d: u32)
             fn malloc(size: Size) -> Ptr
             fn realloc(ptr: Ptr, size: Size) -> Ptr
-            fn deref_ptr(ptr: Ptr, index: Size) -> u32
+
+            fn deref_ptr(ptr: Ptr, index: Size, value: u32) -> u32
         `;
         const source = new Source(path, content);
 

@@ -385,7 +385,7 @@ function parseGenericDecl(children: MutContext, ast: PNode): GenericData {
         const id = children.add(new Nodes.DeclGenericParameter(parameter));
         children.declare(id);
         return id;
-    }));
+    }), []);
 }
 
 export interface Position {

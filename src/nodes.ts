@@ -142,6 +142,7 @@ export enum DeclFunctionFlags {
 export class GenericData {
     public constructor(
         public readonly parameters: ReadonlyArray<RefLocalId<DeclGenericParameter>>,
+        public readonly args: ReadonlyArray<Type>,
     ) { }
 }
 
@@ -383,7 +384,7 @@ export class TypeGet {
     public static readonly tag = Tag.TypeGet;
 
     public constructor(
-        public readonly target: Ref,
+        public readonly target: Ref<Decl>,
     ) { }
 }
 

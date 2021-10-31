@@ -2,7 +2,7 @@ import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor, VisitorControl } from '../ast/visitor';
 import { VisitType } from '../ast/VisitType';
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, MutContext, Node, Ref, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, Type, TypeGet } from '../nodes';
+import { Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, GenericData, MutContext, Node, Ref, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, Type, TypeGet } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
 export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, VisitType, (context, node, id, state) => {
@@ -70,7 +70,7 @@ function instantiateType(context: MutContext, state: InstantiateState, struct: D
             decls: struct.children.decls.slice(),
         });
 
-        const s = new DeclStruct(`${struct.name}_${id}`, [], children.finalize([]), null);
+        const s = new DeclStruct(`${struct.name}_${id}`, [], children.finalize([]), new GenericData([], args));
 
         const parameters = struct.generics!.parameters;
         for (let index = 0; index < parameters.length; index++) {
