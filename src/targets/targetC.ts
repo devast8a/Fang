@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId, DeclStruct, TypeGet } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId, DeclStruct, TypeGet, unreachable } from '../nodes';
 
 export function convertBuiltinName(context: Context, decl: Decl): string | null {
     const name = decl.name;
@@ -156,7 +156,7 @@ export class TargetC {
             }
         }
 
-        throw new Error(`Unreachable: Unhandled case '${Tag[(decl as any).tag]}'`);
+        throw unreachable(decl);
     }
 
     public emitExpr(context: Context, id: ExprId, expr?: Node) {
@@ -234,7 +234,7 @@ export class TargetC {
             }
 
             case Tag.ExprDeclaration: {
-                throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}' for ExprDeclaration`);
+                throw unreachable(expr);
             }
                 
             case Tag.ExprGet: {
@@ -264,7 +264,7 @@ export class TargetC {
                         
                         
                     default: {
-                        throw new Error(`Unreachable: Unhandled case '${Tag[(targetRef as any).tag]}'`);
+                        throw unreachable(targetRef);
                     }
                 }
             }
@@ -336,7 +336,7 @@ export class TargetC {
                         
                         
                     default: {
-                        throw new Error(`Unreachable: Unhandled case '${Tag[(targetRef as any).tag]}'`);
+                        throw unreachable(targetRef);
                     }
                 }
             }
@@ -464,7 +464,7 @@ export class TargetC {
             }
         }
 
-        throw new Error(`Unreachable: Unhandled case '${Tag[(type as any).tag]}'`);
+        throw unreachable(type);
     }
 
     public emitSeparator() {
