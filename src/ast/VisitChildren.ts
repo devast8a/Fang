@@ -12,7 +12,10 @@ export function VisitChildren<State>(context: Context, node: Node, id: NodeId, s
         for (let id = 0; id < nodes.length; id++) {
             (nodes as any)[id] = first(childContext, nodes[id], id, state);
         }
-    }
 
-    return next(context, node, id, state);
+        // Use childContext rather than context so that downstream visitors (eg. VisitType) work correctly
+        return next(childContext, node, id, state);
+    } else {
+        return next(context, node, id, state);
+    }
 }
