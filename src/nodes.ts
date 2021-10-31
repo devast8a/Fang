@@ -121,6 +121,13 @@ export class MutModule extends Module {
 
 // Declarations ================================================================
 
+export class GenericData {
+    public constructor(
+        public readonly parameters: ReadonlyArray<RefLocalId<DeclGenericParameter>>,
+        public readonly args: ReadonlyArray<Type>,
+    ) { }
+}
+
 export class DeclFunction {
     public readonly tag = Tag.DeclFunction;
     public static readonly tag = Tag.DeclFunction;
@@ -132,18 +139,13 @@ export class DeclFunction {
         public readonly children: Children,
         public readonly attributes: ReadonlyArray<RefLocalId>,
         public readonly flags: DeclFunctionFlags,
+
+        public readonly generics: GenericData | null,
     ) { }
 }
 export enum DeclFunctionFlags {
     None     = 0,
     Abstract  = 1 << 0,
-}
-
-export class GenericData {
-    public constructor(
-        public readonly parameters: ReadonlyArray<RefLocalId<DeclGenericParameter>>,
-        public readonly args: ReadonlyArray<Type>,
-    ) { }
 }
 
 export class DeclGenericParameter {

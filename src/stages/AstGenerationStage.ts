@@ -22,12 +22,13 @@ function parse(parent: MutContext, node: PNode): NodeId {
 
                 // keyword name compileTime parameters returnType generic attributes body
                 const name = parseIdentifier(node.data[1][1]);
-                const returnType = parseTypeNull(node.data[4]?.[3]);
                 const parameters = node.data[3].elements.map(parameter => parse(children, parameter));
+                const returnType = parseTypeNull(node.data[4]?.[3]);
+                const generics = parseGenericDeclNull(children, node.data[5]?.[1]);
                 const attributes = node.data[6].map(attribute => parse(children, attribute[1][1]));
                 const body = parseBodyNull(children, node.data[7]) ?? [];
 
-                return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body), attributes, Nodes.DeclFunctionFlags.None);
+                return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body), attributes, Nodes.DeclFunctionFlags.None, generics);
             });
 
             return parent.declare(Ref.localToGlobal(parent.root, id));
