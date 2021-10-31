@@ -11,7 +11,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
         case Tag.RefName: {
             const ref = lookup(context, node.name);
 
-            if (ref === undefined) {
+            if (ref === null) {
                 console.log(node.name);
                 context.error(new CantFindSymbolError());
                 return node;
@@ -52,7 +52,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
 
             // The variable name 'self' is special, give it the type of the enclosing Struct or Trait.
             if (node.name === 'self') {
-                const parent = context.container.parent;
+                const parent = context.container.parent!;
                 return Node.mutate(node, { type: new TypeGet(parent) });
             }
 
@@ -67,36 +67,23 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
 function lookup(context: Context, name: string) {
     // TODO: Support caching
     // TODO: Support names that bind to multiple symbols
-    const children = context.module.children;
+    let current: Context | null = context;
 
-    let currentId = context.parent;
-    while (currentId !== RootId) {
-        const container = children.nodes[currentId];
-
-        if (!Node.hasChildren(container)) {
-            throw new Error(`Unreachable: Found '${Tag[(container as any).tag]}' but expected a Node with a 'children' field.`);
-        }
-
-        const names = container.children.names;
+    while (current !== null) {
+        const names = current.container.names;
         const ids = names.get(name);
 
         if (ids !== undefined) {
-            return currentId === context.parent ?
-                new RefLocal(ids[0]) :
-                new RefGlobalDecl(currentId, ids[0]);
+            // TODO: Simplify generation of references
+            if (current === context) {
+                return new RefLocal(ids[0]);
+            } else {
+                return new RefGlobalDecl(current.container.self.id, ids[0]);
+            }
         }
 
-        // TODO: Find real parent id
-        currentId = RootId;
+        current = current.getParent();
     }
 
-    // Root context
-    const names = children.names;
-    const ids = names.get(name);
-
-    if (ids === undefined) {
-        return undefined;
-    }
-
-    return new RefGlobal(ids[0]);
+    return null;
 }

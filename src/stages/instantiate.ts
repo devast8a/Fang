@@ -32,7 +32,7 @@ export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctio
             const ref = node.target;
 
             if (ref.tag === Tag.RefLocal) {
-                const type = state.replaceMap.get(`${context.parent}.${ref.id}`);
+                const type = state.replaceMap.get(`${context.container.parent}.${ref.id}`);
 
                 if (type !== undefined) {
                     return type;

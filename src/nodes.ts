@@ -406,7 +406,7 @@ export class NodeFree {
 
 export class Children {
     public constructor(
-        public readonly parent: RefGlobal<Decl>,
+        public readonly parent: RefGlobal<Decl> | null,
         public readonly self:   RefGlobal<Decl>,
         public readonly nodes:  ReadonlyArray<Node>,
         public readonly body:   ReadonlyArray<ExprId>,
@@ -417,7 +417,7 @@ export class Children {
 
 export class MutChildren extends Children {
     public constructor(
-        public readonly parent: RefGlobal<Decl>,
+        public readonly parent: RefGlobal<Decl> | null,
         public readonly self:   RefGlobal<Decl>,
         public readonly nodes:  Array<Node>,
         public readonly body:   Array<ExprId>,
@@ -440,7 +440,6 @@ export class Context {
         public readonly root: Context,
         public readonly container: Children,
 
-        /** @deprecated */ public readonly parent: DeclId,
         /** @deprecated */ public readonly module: Module,
     ) { }
 
@@ -455,6 +454,10 @@ export class Context {
 
         switch (ref.tag) {
             case Tag.RefGlobal: {
+                if (ref.id === RootId) {
+                    return this.module as T;
+                }
+
                 return this.root.container.nodes[ref.id] as T;
             }
 
@@ -489,15 +492,27 @@ export class Context {
         throw unreachable(ref);
     }
 
+    public getParent(): Context | null {
+        const parentRef = this.container.parent;
+
+        if (parentRef === null) {
+            return null;
+        }
+
+        const parent = this.get(parentRef);
+        const children = (parent as any).children;
+        return new Context(this.compiler, this.root, children, this.module);
+    }
+
     public static fromModule(compiler: Compiler, module: Module) {
-        const root = new Context(compiler, null as any, module.children, Ref.fromIndex(RootId), module);
+        const root = new Context(compiler, null as any, module.children, module);
         (root as any).root = root;
         return root;
     }
 
     /** @deprecated */
     public createChildContext(container: Children, id: DeclId) {
-        return new Context(this.compiler, this.root, container, id, this.module);
+        return new Context(this.compiler, this.root, container, this.module);
     }
 }
 
@@ -507,10 +522,9 @@ export class MutContext extends Context {
         public readonly root: MutContext,
         public readonly container: MutChildren,
 
-        /** @deprecated */ public readonly parent: DeclId,
         /** @deprecated */ public readonly module: MutModule,
     ) {
-        super(compiler, root, container, parent, module);
+        super(compiler, root, container, module);
     }
 
     public add<T extends Node>(definition: NodeDefinition<T>): RefLocalId<T>
@@ -528,10 +542,6 @@ export class MutContext extends Context {
         }
 
         return ref;
-    }
-
-    public update<T extends Node>(ref: RefLocalId<T>, node: T) {
-        this.container.nodes[Ref.toIndex(ref)] = node;
     }
 
     public declare<T extends Decl>(ref: RefLocalId<T> | RefGlobalDecl<T>): RefLocalId<T> {
@@ -568,6 +578,22 @@ export class MutContext extends Context {
         return this.container as Children;
     }
 
+    public getParent(): MutContext | null {
+        const parentRef = this.container.parent;
+
+        if (parentRef === null) {
+            return null;
+        }
+
+        const parent = this.get(parentRef);
+        const children = (parent as any).children;
+        return new MutContext(this.compiler, this.root, children, this.module);
+    }
+
+    public update<T extends Node>(ref: RefLocalId<T>, node: T) {
+        this.container.nodes[Ref.toIndex(ref)] = node;
+    }
+
     public static create(parent: MutContext, self: RefLocalId) {
         return this.createAndSet(parent, self, {});
     }
@@ -582,12 +608,12 @@ export class MutContext extends Context {
             fields.names ?? new Map(),
         );
 
-        return new MutContext(parent.compiler, parent.root, container, Ref.toIndex(self), parent.module);
+        return new MutContext(parent.compiler, parent.root, container, parent.module);
     }
 
     public static createRoot(compiler: Compiler) {
         const container = new MutChildren(
-            new RefGlobal(RootId),
+            null,
             new RefGlobal(RootId),
             [],
             [],
@@ -603,7 +629,7 @@ export class MutContext extends Context {
     }
 
     public static fromModule(compiler: Compiler, module: MutModule) {
-        const root = new MutContext(compiler, undefined as any, module.children, Ref.fromIndex(RootId), module);
+        const root = new MutContext(compiler, undefined as any, module.children, module);
         (root as any).root = root;
         return root;
     }
@@ -611,7 +637,7 @@ export class MutContext extends Context {
     /** @deprecated */
     public static fromContext(context: Context) {
         const root = MutContext.fromModule(context.compiler, context.module as MutModule);
-        return new MutContext(context.compiler, root, context.container as MutChildren, context.parent, context.module as MutModule);
+        return new MutContext(context.compiler, root, context.container as MutChildren, context.module as MutModule);
     }
 }
 
