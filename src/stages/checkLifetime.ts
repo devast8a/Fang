@@ -84,10 +84,10 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
                         break;
                     }
                         
-                    case Tag.ExprCall: {
-                        // TODO: Support nested calls
+                    // TODO: Support nested calls and nested create
+                    case Tag.ExprCreate:
+                    case Tag.ExprCall:
                         break;
-                    }
                         
                     case Tag.ExprConstant: {
                         // No analysis required
