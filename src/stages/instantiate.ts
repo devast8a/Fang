@@ -2,7 +2,7 @@ import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor, VisitorControl } from '../ast/visitor';
 import { VisitType } from '../ast/VisitType';
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, GenericData, MutContext, Node, Ref, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, Type, TypeGet } from '../nodes';
+import { Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, GenericData, MutContext, Node, Ref, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, Type, TypeGet, unreachable } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
 export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, VisitType, (context, node, id, state) => {
@@ -155,16 +155,31 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
 }
 
 function FilterAbstractFunctions<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>) {
-    const {next} = control;
+    const { next } = control;
+    
+    switch (node.tag) {
+        case Tag.DeclFunction: {
+            // Process non-abstract functions
+            if (!Flags.has(node.flags, DeclFunctionFlags.Abstract)) {
+                return next(context, node, id, state);
+            }
 
-    if (node.tag !== Tag.DeclFunction) {
-        return next(context, node, id, state);
+            return node;
+        }
+            
+        case Tag.DeclStruct: {
+            // Process non-abstract structs
+            if (node.generics === null || node.generics.parameters.length === 0) {
+                return next(context, node, id, state);
+            }
+
+            return node;
+        }
+            
+        default: {
+            return next(context, node, id, state);
+        }
     }
 
-    if (!Flags.has(node.flags, DeclFunctionFlags.Abstract)) {
-        return next(context, node, id, state);
-    }
-
-    // Don't pass through to the rest of the visitors
-    return node;
+    throw unreachable(node);
 }
