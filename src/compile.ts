@@ -42,9 +42,12 @@ export class Compiler {
         this.stop = true;
 
         const symbol = chalk.bgRedBright.whiteBright(` ! `);
-        const name = (error as any).constructor.name;
+        const message = (error as any).message();
 
-        console.error(`${symbol} ${name}`);
+        const file = chalk.cyanBright('test.fang');
+        const line = chalk.yellowBright(100);
+
+        console.error(`${symbol}  ${file}:${line}  ${message}`);
     }
 
     public async parseFile(source: string | Source): Promise<Module>

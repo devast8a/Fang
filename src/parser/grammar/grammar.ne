@@ -381,6 +381,14 @@
     Stmt            -> ExprMacroCall
     ExprBinary      -> ExprMacroCall
 
+## Expr/Move #######################################################################################
+    ExprMove        -> ExprMoveKeyword ExprMoveExpr {%p.PExprMove%}
+
+    ExprMoveKeyword -> "move" __
+    ExprMoveExpr    -> Atom
+
+    Atom -> ExprMove
+
 ## Stmt/Assign #####################################################################################
     StmtAssign      -> SaTarget SaOperator SaValue {%p.PExprSet%}
 

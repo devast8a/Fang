@@ -53,6 +53,17 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
         case Tag.DeclVariable: {
             return id;
         }
+            
+        case Tag.ExprBody: {
+            const body = expr.body;
+
+            for (let index = 0; index < body.length - 1; index++) {
+                const id = body[index];
+                output.push(flattenExpr(context, output, id, topLevel));
+            }
+
+            return flattenExpr(context, output, body[body.length - 1], topLevel);
+        }
 
         case Tag.ExprCall: {
             context.update(id, Node.mutate(expr, {
@@ -79,6 +90,11 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
         }
 
         case Tag.ExprGet: {
+            return id;
+        }
+            
+        case Tag.ExprMove: {
+            // TODO: 
             return id;
         }
 

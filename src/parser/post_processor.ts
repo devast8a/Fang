@@ -28,6 +28,7 @@ export enum PTag {
     PExprIf,
     PExprIndexDot,
     PExprMacroCall,
+    PExprMove,
     PExprMatch,
     PExprNamedArgument,
     PExprReturn,
@@ -75,6 +76,7 @@ export const PExprIdentifier     = tag(PTag.PExprIdentifier);
 export const PExprIf             = tag(PTag.PExprIf);
 export const PExprIndexDot       = tag(PTag.PExprIndexDot);
 export const PExprMacroCall      = tag(PTag.PExprMacroCall);
+export const PExprMove           = tag(PTag.PExprMove);
 export const PExprMatch          = tag(PTag.PExprMatch);
 export const PExprNamedArgument  = tag(PTag.PExprNamedArgument);
 export const PExprReturn         = tag(PTag.PExprReturn);

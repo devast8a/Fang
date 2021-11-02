@@ -10,7 +10,6 @@ export function parseAst(root: MutContext, ast: PNode[]) {
         body.push(parse(root, node));
     }
 
-
     return body;
 }
 
@@ -200,6 +199,15 @@ function parse(parent: MutContext, node: PNode): NodeId {
                 const argument = parse(parent, node.data[2]?.[1]);
 
                 return new Nodes.ExprCall(target, [argument], true);
+            });
+        }
+            
+        case PTag.PExprMove: {
+            return parent.add((id) => {
+                // keyword expression
+                const expression = parseRef(parent, node.data[1]);
+
+                return new Nodes.ExprMove(expression);
             });
         }
 

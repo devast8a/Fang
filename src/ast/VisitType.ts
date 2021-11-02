@@ -1,4 +1,4 @@
-import { Context, Node, NodeId, Tag } from '../nodes';
+import { Context, Node, NodeId, Tag, unreachable } from '../nodes';
 import { visit, VisitorControl } from './visitor';
 
 export function VisitType<State>(context: Context, node: Node, id: NodeId, state: State, control: VisitorControl<State>): Node {
@@ -24,12 +24,14 @@ export function VisitType<State>(context: Context, node: Node, id: NodeId, state
 
         // Nodes without Type field
         case Tag.DeclGenericParameter:
+        case Tag.ExprBody:
         case Tag.ExprCall:
         case Tag.ExprDeclaration:
         case Tag.ExprDestroy:
         case Tag.ExprGet:
         case Tag.ExprIf:
         case Tag.ExprIfCase:
+        case Tag.ExprMove:
         case Tag.ExprReturn:
         case Tag.ExprSet:
         case Tag.ExprWhile:
@@ -46,5 +48,5 @@ export function VisitType<State>(context: Context, node: Node, id: NodeId, state
             return control.next(context, node, id, state);
     }
 
-    throw new Error(`Unreachable: Unhandled case '${Tag[(node as any)?.tag]}'`);
+    throw unreachable(node);
 }

@@ -8,6 +8,7 @@ export function VisitRefDecl<State>(context: Context, node: Node, id: NodeId, st
         case Tag.ExprDeclaration:
         case Tag.ExprDestroy:
         case Tag.ExprGet:
+        case Tag.ExprMove:
         case Tag.ExprSet:
         case Tag.TypeGet:
             return visit.fieldNode(context, node, id, state, control, 'target');

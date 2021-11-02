@@ -1,6 +1,6 @@
 import { Flags } from '../common/flags';
 import { Lifetime } from '../errors';
-import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, ExprCall, ExprGet, unreachable, RootId, Expr, TypeGet } from '../nodes';
+import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, unreachable, Expr, TypeGet, RefLocalId, MutContext, ExprBody, ExprDestroy, RefLocal, unimplemented } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
@@ -29,7 +29,7 @@ import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAn
 /** Language Semantics *********************************************************/
 
 export function checkLifetime(context: Context) {
-    const parent = new ProgramState(null, new Map());
+    const parent = new ProgramState(null, new Map(), new Map());
 
     const nodes = context.module.children.nodes;
 
@@ -41,7 +41,14 @@ export function checkLifetime(context: Context) {
             const state = parent.copyState();
 
             for (let i = 0; i < node.parameters.length; i++) {
-                state.assign(context, refToPath(context, node.parameters[i]));
+                const id = node.parameters[i];
+                const parameter = Node.as(ctx.get(id), DeclVariable);
+
+                if (Flags.has(parameter.flags, DeclVariableFlags.Owns)) {
+                    state.declared.set(id.toString(), new RefLocal(id));
+                }
+
+                state.assign(ctx, id, id);
             }
 
             checkLifetimeNodes(ctx, node.children.body, state);
@@ -58,12 +65,16 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         case Tag.DeclVariable: {
             if (node.value !== null) {
                 checkLifetimeNode(context, node.value, state);
-                state.assign(context, refToPath(context, id));
+                state.assign(context, id, id);
             }
+
+            state.declared.set(id.toString(), new RefLocal(id));
             return;
         }
 
         case Tag.ExprCall: {
+            checkLifetimeNodes(context, node.args, state);
+
             const fn = context.get(node.target);
 
             // Apply constraints to arguments
@@ -74,12 +85,10 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
 
                 switch (arg.tag) {
                     case Tag.ExprGet: {
-                        const path = refToPath(context, arg.target);
-
                         if (Flags.has(param.flags, DeclVariableFlags.Mutable)) {
-                            state.write(context, path, group);
+                            state.write(context, id, arg.target, group);
                         } else {
-                            state.read(context, path, group);
+                            state.read(context, id, arg.target, group);
                         }
                         break;
                     }
@@ -94,8 +103,12 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
                         break;
                     }
                         
+                    case Tag.ExprMove: {
+                        break;
+                    }
+                        
                     default: {
-                        throw new Error(`Unreachable: Unhandled case '${Tag[(arg as any).tag]}'`);
+                        throw unreachable(arg);
                     }
                 }
             }
@@ -127,25 +140,41 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         }
             
         case Tag.ExprDestroy: {
-            state.delete(context, refToPath(context, node.target));
+            state.delete(context, id, node.target);
             return;
         }
 
         case Tag.ExprGet: {
-            state.read(context, refToPath(context, node.target));
+            state.read(context, id, node.target);
+            return;
+        }
+            
+        case Tag.ExprMove: {
+            // TODO: Implement
+            //checkLifetimeNode(context, node.target, state);
+            const path = refToPath(context, node.target);
+            console.log(path, state.declared);
+            state.declared.delete(path.join('.'));
             return;
         }
 
         case Tag.ExprSet: {
             checkLifetimeNode(context, node.value, state);
-            state.assign(context, refToPath(context, node.target));
+            state.assign(context, id, node.target);
             return;
         }
 
         case Tag.ExprReturn: {
             if (node.value !== null) {
                 checkLifetimeNode(context, node.value, state);
+                
+                const value = context.get(node.value);
+                if (value.tag === Tag.ExprGet) {
+                    state.declared.delete((value.target as RefLocal).id.toString());
+                }
             }
+
+            state.end(context, id);
             return;
         }
     }
@@ -172,8 +201,8 @@ type PathKey = string;
 
 /** Used to track simultaneous access to a group of variables. See: ExprCallStatic as an example. */
 class GroupedAccess {
-    public reads  = new Map<PathKey, Path>();
-    public writes = new Map<PathKey, Path>();
+    public readonly reads  = new Map<PathKey, Path>();
+    public readonly writes = new Map<PathKey, Path>();
 }
 
 /** Tracks the state of one specific variable */
@@ -188,13 +217,14 @@ class VariableState {
 
 class ProgramState {
     public constructor(
-        public parent: ProgramState | null,
-        public variables: Map<PathKey, VariableState>,
+        public readonly parent: ProgramState | null,
+        public readonly variables: Map<PathKey, VariableState>,
+        public readonly declared: Map<PathKey, Ref>, // This needs to be an array
     ) {}
 
     /** Create a copy of the current state. Do -NOT- modify the original while copy is alive. */
     public copyState() {
-        return new ProgramState(this, new Map());
+        return new ProgramState(this, new Map(), new Map());
     }
 
     /** Merge `other` into this the current state. The result is a state that is consistent with both states. */
@@ -217,6 +247,24 @@ class ProgramState {
         //}
     }
 
+    /** Ends a scope - Kills all outstanding declared variables */
+    public end(context: Context, id: RefLocalId) {
+        if (this.declared.size === 0) {
+            return;
+        }
+
+        const mut = MutContext.fromContext(context);
+
+        const body = [];
+
+        for (const [key, ref] of this.declared) {
+            body.push(mut.add(new ExprDestroy(ref)));
+        }
+
+        body.push(mut.add(mut.get(id)));
+        mut.update(id, new ExprBody(body))
+    }
+
     /** Create a reference between a source variable and a destination variable. */
     //public ref(src: Path, dst: Path) {
     //    const srcState = this.lookup(src);
@@ -227,7 +275,8 @@ class ProgramState {
     //}
 
     /** Read a variable. Variable must be alive. No invalidation. */
-    public read(context: Context, path: Path, group?: GroupedAccess) {
+    public read(context: Context, id: RefLocalId, ref: RefAny, group?: GroupedAccess) {
+        const path = refToPath(context, ref);
         const state = this.lookup(path);
 
         if (state.status !== Status.Alive) {
@@ -236,7 +285,8 @@ class ProgramState {
     }
 
     /** Used for non-assignment mutation. Variable must be alive. */
-    public write(context: Context, path: Path, group?: GroupedAccess) {
+    public write(context: Context, id: RefLocalId, ref: RefAny, group?: GroupedAccess) {
+        const path = refToPath(context, ref);
         const state = this.lookup(path);
 
         if (state.status !== Status.Alive) {
@@ -245,16 +295,28 @@ class ProgramState {
     }
 
     /** Used for assignment. Variable must be alive or dead. Destroys existing values. */
-    public assign(context: Context, path: Path) {
+    public assign(context: Context, id: RefLocalId, ref: RefAny) {
         // TODO: Check if a deletion needs to happen
+        const path = refToPath(context, ref);
         const state = this.lookup(path);
+
+        if (state.status === Status.Alive) {
+            // Emit destroy
+            const mut = MutContext.fromContext(context);
+            const node = mut.get(id);
+            mut.update(id, new ExprBody([
+                mut.add(new ExprDestroy(Ref.normalize(ref))),
+                mut.add(node),
+            ]));
+        }
 
         this.killRefBy(context, path, state);
         state.status = Status.Alive;
     }
 
     /** Destroy a value in a variable. Variable must be alive. */
-    public delete(context: Context, path: Path) {
+    public delete(context: Context, id: RefLocalId, ref: RefAny) {
+        const path = refToPath(context, ref);
         const state = this.lookup(path);
 
         if (state.status !== Status.Alive) {
@@ -266,7 +328,8 @@ class ProgramState {
     }
 
     /** Move a value from a variable. Variable must be alive. */
-    public move(context: Context, path: Path) {
+    public move(context: Context, id: RefLocalId, ref: RefAny) {
+        const path = refToPath(context, ref);
         const state = this.lookup(path);
 
         if (state.status !== Status.Alive) {

@@ -1,4 +1,4 @@
-import { Context, RefAny, RefFieldName, Type } from './nodes';
+import { Context, DeclFunction, DeclFunctionFlags, Expr, ExprReturn, RefAny, RefFieldName, Type } from './nodes';
 
 /**
  * In an indexing expression the field could not be found.
@@ -47,6 +47,30 @@ export class ValueOrTypeError {
         public context: Context,
         public variable: RefAny,
     ) { }
+}
+
+/**
+ * Code violates the rule that 'self' variables must exist inside a Struct or Trait.
+ */
+export class SelfWithoutParentError {
+    public constructor(
+        public context: Context,
+        public variable: RefAny,
+    ) { }
+}
+
+export namespace TypeErrors {
+    export class ReturnValue {
+        public constructor(
+            public context: Context,
+            public fn: RefAny<DeclFunction>,
+            public value: RefAny<Expr>,
+        ) { }
+
+        public message() {
+            return `Returning a {value.type} from {fn} but the return type is {fn.type}`;
+        }
+    }
 }
 
 export namespace Lifetime {

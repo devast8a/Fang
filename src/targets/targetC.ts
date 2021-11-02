@@ -241,6 +241,13 @@ export class TargetC {
                 throw unreachable(expr);
             }
                 
+            case Tag.ExprDestroy: {
+                const v = context.get(expr.target);
+
+                this.emit('/* implement destroy(', v.name,') */')
+                return;
+            }
+                
             case Tag.ExprGet: {
                 const targetRef = expr.target;
 
@@ -303,7 +310,7 @@ export class TargetC {
                 
             case Tag.ExprReturn: {
                 if (expr.value === null) {
-                    this.emit("return;");
+                    this.emit("return");
                 } else {
                     this.emit("return ");
                     this.emitExpr(context, expr.value);
@@ -353,7 +360,8 @@ export class TargetC {
                 return;
             }
         }
-        throw new Error(`Unreachable: Unhandled case '${Tag[(expr as any).tag]}'`);
+
+        throw unreachable(expr);
     }
 
     public emit(...text: string[]) {
@@ -378,6 +386,7 @@ export class TargetC {
                     break;
                 }
 
+                case Tag.ExprMove:
                 case Tag.ExprGet: {
                     const local = Node.as(context.get(arg.target), DeclVariable);
 

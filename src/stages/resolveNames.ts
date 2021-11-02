@@ -2,7 +2,7 @@ import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
 import { VisitRefDecl } from '../ast/VisitRefDecl';
 import { VisitType } from '../ast/VisitType';
-import { CantFindFieldError, CantFindSymbolError, ValueOrTypeError } from '../errors';
+import { CantFindFieldError, CantFindSymbolError, SelfWithoutParentError, ValueOrTypeError } from '../errors';
 import { Context, Decl, Expr, Node, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, RootId, Tag, TypeGet } from '../nodes';
 
 // TODO: Implement poisoning properly
@@ -50,14 +50,23 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
                 return Node.mutate(node, { type });
             }
 
-            // The variable name 'self' is special, give it the type of the enclosing Struct or Trait.
+            // The variable name 'self' is defined by the language to have the type of the enclosing Struct or Trait
             if (node.name === 'self') {
-                const parent = context.container.parent!;
-                return Node.mutate(node, { type: new TypeGet(parent) });
+                const parent = context.container.parent;
+
+                if (parent === null) {
+                    // The variable is not inside a Struct or Trait.
+                    context.error(new SelfWithoutParentError(context, id));
+                    return node;
+                } else {
+                    // The variable is inside of a container (assume it is a Struct or Trait for now).
+                    return Node.mutate(node, { type: new TypeGet(parent) });
+                }
             }
 
             // ERROR. None of the above rules match. We don't know what the variable type is.
             context.error(new ValueOrTypeError(context, id));
+            return node;
         }
     }
 

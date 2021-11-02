@@ -19,12 +19,14 @@ export type Decl =
     ;
 
 export type Expr =
+    | ExprBody
     | ExprCall
     | ExprConstant
     | ExprCreate
     | ExprDeclaration
     | ExprDestroy
     | ExprGet
+    | ExprMove
     | ExprIf
     | ExprIfCase
     | ExprReturn
@@ -59,6 +61,7 @@ export enum Tag {
     DeclTrait,
     DeclVariable,
 
+    ExprBody,
     ExprCall,
     ExprConstant,
     ExprCreate,
@@ -67,6 +70,7 @@ export enum Tag {
     ExprGet,
     ExprIf,
     ExprIfCase,
+    ExprMove,
     ExprReturn,
     ExprSet,
     ExprWhile,
@@ -201,6 +205,15 @@ export enum DeclVariableFlags {
 
 // Expressions =================================================================
 
+export class ExprBody {
+    public readonly tag = Tag.ExprBody;
+    public static readonly tag = Tag.ExprBody;
+
+    public constructor(
+        public readonly body: readonly RefLocalId[],
+    ) { }
+}
+
 export class ExprCall {
     public readonly tag = Tag.ExprCall;
     public static readonly tag = Tag.ExprCall;
@@ -277,6 +290,15 @@ export class ExprIfCase {
         // TODO: Don't use null to signal else cases. It causes us to check for the null everywhere.
         public readonly condition: RefLocalId | null,
         public readonly body: readonly RefLocalId[],
+    ) { }
+}
+
+export class ExprMove {
+    public readonly tag = Tag.ExprMove;
+    public static readonly tag = Tag.ExprMove;
+
+    public constructor(
+        public readonly target: Ref,
     ) { }
 }
 
@@ -671,6 +693,7 @@ export namespace Node {
         switch (node.tag) {
             case Tag.DeclGenericParameter:
             case Tag.DeclVariable:
+            case Tag.ExprBody:
             case Tag.ExprCall:
             case Tag.ExprConstant:
             case Tag.ExprCreate:
@@ -679,6 +702,7 @@ export namespace Node {
             case Tag.ExprGet:
             case Tag.ExprIf:
             case Tag.ExprIfCase:
+            case Tag.ExprMove:
             case Tag.ExprReturn:
             case Tag.ExprSet:
             case Tag.ExprWhile:
@@ -717,6 +741,7 @@ export namespace Expr {
             case Tag.ExprConstant:    return expr.type;
             case Tag.ExprCreate:      return expr.type;
             case Tag.ExprGet:         return Node.as(context.get(expr.target), DeclVariable).type;
+            case Tag.ExprReturn:      return expr.value === null ? new TypeInfer() : getReturnType(context, context.get(expr.value));
         }
 
         throw unreachable(expr);
@@ -741,6 +766,12 @@ export namespace Ref {
             context.container.self.id,
             Ref.toIndex(ref),
         );
+    }
+
+    export function normalize<T extends Node>(ref: RefAny<T>): Ref<T> {
+        return Ref.isLocal(ref) ?
+            new RefLocal<T>(ref) :
+            ref;
     }
 }
 
@@ -769,4 +800,8 @@ export namespace Type {
 
 export function unreachable(node: any) {
     return new Error(`Unreachable: Unhandled case '${Tag[node.tag]}'`);
+}
+
+export function unimplemented(name: string) {
+    throw new Error(`'${name}' not implemented.`);
 }
