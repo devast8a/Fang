@@ -20,6 +20,5 @@ fn sumEvenFibonacci() -> u32 {
 
 fn main() -> u32 {
     printf("%d\n", sumEvenFibonacci())
-    printf("%d\n", sumEvenFibonacci!())
     return 0
 }

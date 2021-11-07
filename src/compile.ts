@@ -42,7 +42,7 @@ export class Compiler {
         this.stop = true;
 
         const symbol = chalk.bgRedBright.whiteBright(` ! `);
-        const message = (error as any).message();
+        const message = (error as any).constructor.name;
 
         const file = chalk.cyanBright('test.fang');
         const line = chalk.yellowBright(100);
@@ -56,21 +56,9 @@ export class Compiler {
             source = new Source(source, await Fs.promises.readFile(source, "utf8"));
         }
         
-        console.group(`Parsing ${source.path}`);
-        console.time(`${source.path} Total`);
-
-        console.time(`${source.path} Parsing`);
         const ast = parseSource(source);
-        console.timeEnd(`${source.path} Parsing`);
-
         const root = MutContext.createRoot(this);
-
-        console.time(`${source.path} Ast Generation`);
         const body = parseAst(root, ast);
-        console.timeEnd(`${source.path} Ast Generation`);
-
-        console.timeEnd(`${source.path} Total`);
-        console.groupEnd();
 
         return new Module(root.finalize(body));
     }
@@ -81,20 +69,8 @@ export class Compiler {
             source = new Source(source, Fs.readFileSync(source, "utf8"));
         }
         
-        console.group(`Parsing ${source.path}`);
-        console.time(`${source.path} Total`);
-
-        console.time(`${source.path} Parsing`);
         const ast = parseSource(source);
-        console.timeEnd(`${source.path} Parsing`);
-
-        console.time(`${source.path} Ast Generation`);
         const body = parseAst(context, ast);
-        console.timeEnd(`${source.path} Ast Generation`);
-
-        console.timeEnd(`${source.path} Total`);
-        console.groupEnd();
-
         return body;
     }
 
@@ -105,11 +81,7 @@ export class Compiler {
         let id = 0;
         Fs.writeFileSync(`build/output/${id++}-Initial.txt`, serialize(module));
         for (const [name, fn] of this.stages) {
-            console.time(name);
             module = fn(Context.fromModule(this, module));
-            console.timeEnd(name);
-
-            Fs.writeFileSync(`build/output/${id++}-${name}.txt`, serialize(module));
 
             // A condition has been raised that requires compilation to stop (typically an error has ben raised)
             if (this.stop) {
@@ -117,12 +89,9 @@ export class Compiler {
             }
         }
 
-        console.time("Code Generation");
         const target = new TargetC();
         target.emitProgram(Context.fromModule(this, module));
         const code = target.toString();
-        console.timeEnd("Code Generation");
-        Fs.writeFileSync(`build/output/${id++}-Code Generation.txt`, code);
 
         return code;
     }

@@ -153,7 +153,6 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
             // TODO: Implement
             //checkLifetimeNode(context, node.target, state);
             const path = refToPath(context, node.target);
-            console.log(path, state.declared);
             state.declared.delete(path.join('.'));
             return;
         }
@@ -175,6 +174,11 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
             }
 
             state.end(context, id);
+            return;
+        }
+            
+        case Tag.ExprWhile: {
+            console.error("Not yet implemented");
             return;
         }
     }

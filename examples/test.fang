@@ -1,8 +1,15 @@
-struct Foo generic<T1, T2> {
-    val v1: T1
-    val v2: T2
-}
+struct Foo {}
 
-fn foo() -> u32 {
-    val foo: Foo<u32, Size>
+fn loanFoo(foo: Foo) -> void { return }
+fn mutFoo(mut foo: Foo) -> void { return }
+fn ownFoo(own foo: Foo) -> void { return }
+
+fn main() -> u32 {
+    mut foo = Foo{}
+
+    loanFoo(foo)
+    mutFoo(foo)
+    ownFoo(move foo)
+
+    return 0
 }

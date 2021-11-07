@@ -1,6 +1,3 @@
-struct Bar {
-
-}
 struct Foo {
     fn func(self: Foo) -> u32 {
         return 0
@@ -9,7 +6,6 @@ struct Foo {
 
 fn main() -> u32 {
     val foo = Foo{}
-
-    foo = Bar{}
-    return foo.func()
+    # foo.func()
+    return 0
 }

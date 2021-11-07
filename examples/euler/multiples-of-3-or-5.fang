@@ -18,6 +18,5 @@ fn sum3or5() -> u32 {
 
 fn main() -> u32 {
     printf("%d\n", sum3or5())
-    printf("%d\n", sum3or5!())
     return 0
 }
