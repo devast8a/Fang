@@ -93,6 +93,10 @@ function flattenExpr(context: MutContext, output: ExprId[], id: ExprId, topLevel
             return id;
         }
             
+        case Tag.ExprIf: {
+            return id;
+        }
+            
         case Tag.ExprMove: {
             // TODO: 
             return id;

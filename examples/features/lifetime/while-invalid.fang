@@ -1,0 +1,10 @@
+struct Foo {}
+fn takeFoo(own foo: Foo) -> void {}
+
+fn main() -> void {
+    val foo = Foo{}
+    
+    while (1) {
+        # takeFoo(move foo)     # COMPILE ERROR
+    }
+}

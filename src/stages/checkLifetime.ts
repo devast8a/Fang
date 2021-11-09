@@ -1,35 +1,42 @@
 import { Flags } from '../common/flags';
-import { Lifetime } from '../errors';
-import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, unreachable, Expr, TypeGet, RefLocalId, MutContext, ExprBody, ExprDestroy, RefLocal, unimplemented } from '../nodes';
+import * as Errors from '../errors';
+import { Tag, Context, Ref, Node, DeclVariable, DeclVariableFlags, NodeId, RefAny, unreachable, Expr, TypeGet, RefLocalId, MutContext, ExprBody, ExprDestroy, RefLocal, unimplemented, ExprIfCase } from '../nodes';
 
 /**
  * checkLifetime - Checks that a program conforms to FANG's Lifetime rules.
  * 
  * This is split into three major components.
- * - Language Semantics: `checkLifetime` and friends
- * - Lifetime Implementation: `ProgramState` and friends
- * - Utilities
  * 
- * Language Semantics maps the semantics of the FANG language to
- *  a simpler set of verbs that are defined by 'Lifetime Implementation'.
+ * `checkLifetime` which maps the semantics of the FANG language to a simple set
+ * of verbs that are defined by `Lifetime` and `Usage`. It defines the following
+ *   - when a variable is read, written, assigned, destroyed, or moved.
+ *   - when a variable references another variable
+ *   - when control flow forks and joins together again
+ *   but, does not define the meaning of any of these verbs.
  * 
- * Language Semantics defines:
- * - when a variable is read, written, assigned, destroyed, or moved.
- * - when a variable references another variable
- * - when control flow splits and merges together again
- * but, doesn't actually define the meaning of any of these verbs.
+ * `Lifetime` defines these verbs and ensures these rules are followed:
+ *   - when a variable is read, written, destroyed, or moved - it must be alive.
+ *   - when a variable is written - any references to it are destroyed
+ *   - variables may not be simultaneously read and written through references
  * 
- * Lifetime Implementation defines these verbs and ensures that the following
- * rules are followed:
- * - when a variable is read, written, destroyed, or moved - it must be alive.
- * - when a variable is written - any references to it are destroyed
- * - variables may not be simultaneously read and written to through different references
+ * `Usage` tracks which variables are defined and used by the code.
+ *   - It tracks which variables need to be destroyed
+ *   - It tracks usage information for fast loop analysis
+ * 
+ * This is the first version of a fast loop analyzer. There are probably some
+ *  poor design decisions that need to be revised in a future version.
+ * - `Lifetime` is expensive to fork, and we do that a lot.
+ * - Two classes `Lifetime` and `Usage` rather than a unified Lifetime class.
+ * - Deletion duties are handled partly by `Lifetime` and partly by `Usage`
+ * - There is a lot of duplicated work to store Refs in maps
+ * - The semantics of 'fork' and 'join' are very subtle and hard to get right.
  */
 
 /** Language Semantics *********************************************************/
 
 export function checkLifetime(context: Context) {
-    const parent = new ProgramState(null, new Map(), new Map());
+    const parent = new Lifetime(new Map());
+    const usage = Usage.create();
 
     const nodes = context.module.children.nodes;
 
@@ -38,42 +45,41 @@ export function checkLifetime(context: Context) {
 
         if (node.tag === Tag.DeclFunction) {
             const ctx = context.createChildContext(node.children, id);
-            const state = parent.copyState();
+            const lifetime = parent.fork();
 
             for (let i = 0; i < node.parameters.length; i++) {
                 const id = node.parameters[i];
                 const parameter = Node.as(ctx.get(id), DeclVariable);
 
                 if (Flags.has(parameter.flags, DeclVariableFlags.Owns)) {
-                    state.declared.set(id.toString(), new RefLocal(id));
+                    usage.create(context, id);
                 }
 
-                state.assign(ctx, id, id);
+                lifetime.assign(ctx, id, id);
             }
 
-            checkLifetimeNodes(ctx, node.children.body, state);
+            checkLifetimeNodes(ctx, node.children.body, lifetime, usage);
         }
     }
 
     return context.module;
 }
 
-function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
+function checkLifetimeNode(context: Context, id: NodeId, lifetime: Lifetime, usage: Usage) {
     const node = context.get(id);
 
     switch (node.tag) {
         case Tag.DeclVariable: {
             if (node.value !== null) {
-                checkLifetimeNode(context, node.value, state);
-                state.assign(context, id, id);
+                checkLifetimeNode(context, node.value, lifetime, usage);
+                usage.create(context, id);
+                lifetime.assign(context, id, id);
             }
-
-            state.declared.set(id.toString(), new RefLocal(id));
             return;
         }
 
         case Tag.ExprCall: {
-            checkLifetimeNodes(context, node.args, state);
+            checkLifetimeNodes(context, node.args, lifetime, usage);
 
             const fn = context.get(node.target);
 
@@ -86,9 +92,9 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
                 switch (arg.tag) {
                     case Tag.ExprGet: {
                         if (Flags.has(param.flags, DeclVariableFlags.Mutable)) {
-                            state.write(context, id, arg.target, group);
+                            lifetime.write(context, id, arg.target, group);
                         } else {
-                            state.read(context, id, arg.target, group);
+                            lifetime.read(context, id, arg.target, group);
                         }
                         break;
                     }
@@ -125,7 +131,7 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         }
             
         case Tag.ExprCreate: {
-            checkLifetimeNodes(context, node.args, state);
+            checkLifetimeNodes(context, node.args, lifetime, usage);
             // TODO: Support arguments for ExprCreate
             return;
         }
@@ -140,45 +146,91 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
         }
             
         case Tag.ExprDestroy: {
-            state.delete(context, id, node.target);
+            usage.delete(context, node.target);
+            lifetime.delete(context, id, node.target);
             return;
         }
 
         case Tag.ExprGet: {
-            state.read(context, id, node.target);
+            usage.use(context, node.target);
+            lifetime.read(context, id, node.target);
+            return;
+        }
+
+        case Tag.ExprIf: {
+            // NOTE[dev]: node.cases are always ExprIfCase, but RefLocalId<T> doesn't pick this up
+            const cases = node.cases as any[] as Ref<ExprIfCase>[];
+
+            // First branch
+            const first = context.get(cases[0]);
+            checkLifetimeNode(context, first.condition!, lifetime, usage);
+            const taken = lifetime.fork();
+            checkLifetimeNodes(context, first.body, taken, usage);
+
+            // Remaining branches
+            for (let index = 1; index < node.cases.length; index++) {
+                const node = context.get(cases[0]) as ExprIfCase;
+
+                if (node.condition === null) {
+                    // Else branch
+                    checkLifetimeNodes(context, node.body, lifetime, usage);
+                } else {
+                    // Elif branch
+                    checkLifetimeNode(context, node.condition, lifetime, usage)
+                    const branch = lifetime.fork();
+                    checkLifetimeNodes(context, node.body, branch, usage);
+                    taken.join(branch);
+                }
+            }
+            
             return;
         }
             
         case Tag.ExprMove: {
             // TODO: Implement
             //checkLifetimeNode(context, node.target, state);
-            const path = refToPath(context, node.target);
-            state.declared.delete(path.join('.'));
+            usage.delete(context, node.target);
+            lifetime.move(context, id, node.target);
             return;
         }
 
         case Tag.ExprSet: {
-            checkLifetimeNode(context, node.value, state);
-            state.assign(context, id, node.target);
+            checkLifetimeNode(context, node.value, lifetime, usage);
+            usage.create(context, node.target);
+            lifetime.assign(context, id, node.target);
             return;
         }
 
         case Tag.ExprReturn: {
             if (node.value !== null) {
-                checkLifetimeNode(context, node.value, state);
+                checkLifetimeNode(context, node.value, lifetime, usage);
                 
                 const value = context.get(node.value);
                 if (value.tag === Tag.ExprGet) {
-                    state.declared.delete((value.target as RefLocal).id.toString());
+                    // lifetime.declared.delete((value.target as RefLocal).id.toString());
                 }
             }
 
-            state.end(context, id);
+            // lifetime.end(context, id);
             return;
         }
             
         case Tag.ExprWhile: {
-            console.error("Not yet implemented");
+            // Collect variable usage throughout the loop.
+            const loop = usage.fork();
+
+            // Condition is always executed at least once.
+            checkLifetimeNode(context, node.condition, lifetime, loop);
+
+            // Body may or may not be executed, split control flow.
+            const body = lifetime.fork();
+            checkLifetimeNodes(context, node.body, body, loop);
+            lifetime.join(body);
+
+            // Handle looping case. Check all variable usage within the loop is still valid with the final loop state.
+            loop.checkUsage(context, lifetime);
+
+            loop.end(context, id);
             return;
         }
     }
@@ -186,9 +238,9 @@ function checkLifetimeNode(context: Context, id: NodeId, state: ProgramState) {
     throw new Error(`Unreachable: Unhandled case '${Tag[(node as any).tag]}'`);
 }
 
-function checkLifetimeNodes(context: Context, exprs: ReadonlyArray<NodeId>, state: ProgramState) {
+function checkLifetimeNodes(context: Context, exprs: ReadonlyArray<NodeId>, lifetime: Lifetime, usage: Usage) {
     for (const expr of exprs) {
-        checkLifetimeNode(context, expr, state);
+        checkLifetimeNode(context, expr, lifetime, usage);
     }
 }
 
@@ -216,67 +268,95 @@ class VariableState {
         public status: Status,
         public readonly referTo = new Set<PathKey>(),
         public readonly referBy = new Set<PathKey>(),
-    ) {}
+    ) { }
+    
+    public copy() {
+        return new VariableState(this.path, this.status, new Set(this.referTo), new Set(this.referBy));
+    }
 }
 
-class ProgramState {
-    public constructor(
-        public readonly parent: ProgramState | null,
-        public readonly variables: Map<PathKey, VariableState>,
-        public readonly declared: Map<PathKey, Ref>, // This needs to be an array
-    ) {}
+class Usage {
+    private constructor(
+        private parent: Usage | null,
+        private defined: Map<PathKey, RefAny>,
+        private used: Map<PathKey, Path>,
+    ) { }
 
-    /** Create a copy of the current state. Do -NOT- modify the original while copy is alive. */
-    public copyState() {
-        return new ProgramState(this, new Map(), new Map());
+    public static create() {
+        return new Usage(null, new Map(), new Map());
+    }
+
+    public fork(): Usage {
+        return new Usage(this, new Map(), new Map());
+    }
+
+    public create(context: Context, ref: RefAny) {
+        const key = refToPath(context, ref).join('.');
+        this.defined.set(key, ref);
+    }
+
+    public delete(context: Context, ref: RefAny) {
+        const key = refToPath(context, ref).join('.');
+        this.defined.delete(key);
+    }
+
+    public use(context: Context, ref: RefAny) {
+        const path = refToPath(context, ref);
+        const key = path.join('.');
+
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        let current: Usage | null = this;
+        while (current !== null) {
+            if (current.defined.has(key)) {
+                break;
+            }
+            current.used.set(key, path);
+            current = current.parent;
+        }
+    }
+
+    public checkUsage(context: Context, lifetime: Lifetime) {
+        for (const entry of this.used) {
+            const path = entry[1];
+
+            const state = lifetime.lookup(path);
+            if (state.status !== Status.Alive) {
+                context.error(new Errors.Lifetime.NotAliveError());
+            }
+        }
+    }
+    
+    public end(context: Context, ref: RefLocalId) {
+        // Emit destroy
+    }
+}
+
+class Lifetime {
+    public constructor(
+        public readonly variables: Map<PathKey, VariableState>,
+    ) { }
+
+    /** Create a copy of the current state. */
+    public fork() {
+        const variables = new Map(Array.from(this.variables).map(([key, value]) => [key, value.copy()]))
+        return new Lifetime(variables);
     }
 
     /** Merge `other` into this the current state. The result is a state that is consistent with both states. */
-    public mergeState(other: ProgramState) {
-        // TODO: Need to lookup in ancestors
-        // TODO: Support references
-        //for (const [path, o] of other.variables) {
-        //    const t = this.lookup(path);
+    public join(other: Lifetime) {
+        for (const [key, otherVariable] of other.variables) {
+            const thisVariable = this.variables.get(key);
 
-        //    if (t.status !== o.status) {
-        //        t.status = Status.Dynamic
-        //    }
+            if (thisVariable === undefined) {
+                console.error("Lifetime > Unhandled variable merge");
+                continue;
+            }
 
-        //    // Merge references together
-        //    for (const ref of o.referTo) {
-        //        if (!t.referTo.has(ref)) {
-        //            this.ref(path, ref);
-        //        }
-        //    }
-        //}
-    }
-
-    /** Ends a scope - Kills all outstanding declared variables */
-    public end(context: Context, id: RefLocalId) {
-        if (this.declared.size === 0) {
-            return;
+            if (thisVariable.status !== otherVariable.status) {
+                thisVariable.status = Status.Dynamic;
+            }
         }
-
-        const mut = MutContext.fromContext(context);
-
-        const body = [];
-
-        for (const [key, ref] of this.declared) {
-            body.push(mut.add(new ExprDestroy(ref)));
-        }
-
-        body.push(mut.add(mut.get(id)));
-        mut.update(id, new ExprBody(body))
     }
-
-    /** Create a reference between a source variable and a destination variable. */
-    //public ref(src: Path, dst: Path) {
-    //    const srcState = this.lookup(src);
-    //    const dstState = this.lookup(dst);
-
-    //    srcState.referTo.add(dst);
-    //    dstState.referBy.add(src);
-    //}
 
     /** Read a variable. Variable must be alive. No invalidation. */
     public read(context: Context, id: RefLocalId, ref: RefAny, group?: GroupedAccess) {
@@ -284,7 +364,8 @@ class ProgramState {
         const state = this.lookup(path);
 
         if (state.status !== Status.Alive) {
-            context.error(new Lifetime.NotAliveError());
+            context.error(new Errors.Lifetime.NotAliveError());
+            return;
         }
     }
 
@@ -294,25 +375,15 @@ class ProgramState {
         const state = this.lookup(path);
 
         if (state.status !== Status.Alive) {
-            context.error(new Lifetime.NotAliveError());
+            context.error(new Errors.Lifetime.NotAliveError());
+            return;
         }
     }
 
     /** Used for assignment. Variable must be alive or dead. Destroys existing values. */
     public assign(context: Context, id: RefLocalId, ref: RefAny) {
-        // TODO: Check if a deletion needs to happen
         const path = refToPath(context, ref);
         const state = this.lookup(path);
-
-        if (state.status === Status.Alive) {
-            // Emit destroy
-            const mut = MutContext.fromContext(context);
-            const node = mut.get(id);
-            mut.update(id, new ExprBody([
-                mut.add(new ExprDestroy(Ref.normalize(ref))),
-                mut.add(node),
-            ]));
-        }
 
         this.killRefBy(context, path, state);
         state.status = Status.Alive;
@@ -324,11 +395,12 @@ class ProgramState {
         const state = this.lookup(path);
 
         if (state.status !== Status.Alive) {
-            context.error(new Lifetime.NotAliveError());
-        } else {
-            this.killRefBy(context, path, state);
-            state.status = Status.Dead;
+            context.error(new Errors.Lifetime.NotAliveError());
+            return;
         }
+
+        this.killRefBy(context, path, state);
+        state.status = Status.Dead;
     }
 
     /** Move a value from a variable. Variable must be alive. */
@@ -337,11 +409,12 @@ class ProgramState {
         const state = this.lookup(path);
 
         if (state.status !== Status.Alive) {
-            context.error(new Lifetime.NotAliveError());
-        } else {
-            this.killRefBy(context, path, state);
-            state.status = Status.Dead;
+            context.error(new Errors.Lifetime.NotAliveError());
+            return;
         }
+
+        this.killRefBy(context, path, state);
+        state.status = Status.Dead;
     }
 
     public toString(context: Context) {
@@ -389,57 +462,23 @@ class ProgramState {
 
     /** Kill all the variables that reference the current variable */
     private killRefBy(context: Context, path: Path, state: VariableState) {
-        //for (const ref of state.referBy) {
-        //    const refState = this.lookup(ref);
-
-        //    if (refState === null) throw new Error(`Internal Error: Reference state should exist, but doesn't`);
-
-        //    refState.referTo.delete(path);
-
-        //    if (refState.referTo.size === 0) {
-        //        refState.status = Status.Dead;
-        //    }
-        //}
     }
 
     /** Return the state linked with a variable. */
     private lookupPathHead(path: Path): VariableState {
         const key = path[0].toString();
 
-        // Lookup in this
         let state = this.variables.get(key);
         if (state !== undefined) {
             return state;
         }
 
-        // Lookup in parent
-        let current = this.parent;
-        while (current !== null) {
-            const state = current.variables.get(key);
-
-            if (state !== undefined) {
-                // Copy state from ancestor - since we might modify it
-                const copy = new VariableState(
-                    state.path,
-                    state.status,
-                    new Set(state.referTo),
-                    new Set(state.referBy),
-                );
-
-                this.variables.set(key, copy);
-                return copy;
-            }
-
-            current = current.parent;
-        }
-
-        // Insert new state
         state = new VariableState([path[0]], Status.Dead);
         this.variables.set(key, state);
         return state;
     }
 
-    private lookup(path: Path): VariableState {
+    public lookup(path: Path): VariableState {
         let state = this.lookupPathHead(path);
 
         for (let index = 1; index < path.length; index++) {

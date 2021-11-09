@@ -176,6 +176,11 @@ export class TargetC {
                 }
                 return;
             }
+                
+            case Tag.ExprBody: {
+                console.error("Not implemented ")
+                return;
+            }
 
             case Tag.ExprCall: {
                 const fn = context.get(expr.target);
