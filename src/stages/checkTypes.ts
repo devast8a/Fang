@@ -1,7 +1,7 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
 import { IncorrectTypeError, TypeErrors } from '../errors';
-import { DeclFunction, DeclVariable, Expr, Node, Tag, Type } from '../nodes';
+import { Context, DeclFunction, DeclStruct, DeclVariable, Expr, Node, Tag, Type, unreachable } from '../nodes';
 
 export const checkTypes = createVisitor(VisitChildren, (context, node, id) => {
     switch (node.tag) {
@@ -15,6 +15,81 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id) => {
                 }
             }
 
+            return node;
+        }
+
+        case Tag.ExprCall: {
+            // Get target function
+            const target = context.get(node.target);
+
+            // Hack for 'alias'
+            if (target.name === 'alias') {
+                return node;
+            }
+
+            for (let index = 0; index < node.args.length; index++) {
+                const argumentId = node.args[index];
+                const parameterId = target.parameters[index];
+
+                const argument = context.get(argumentId);
+                const parameter = context.get(parameterId, target.children) as DeclVariable;
+
+                const argumentType = Expr.getReturnType(context, argument);
+                const parameterType = parameter.type;
+
+                if (!Type.canAssignTo(context, argumentType, parameterType)) {
+                    context.error(new IncorrectTypeError(context, argumentId, argumentType, parameterId, parameterType, argumentId));
+                }
+            }
+
+            return node;
+        }
+            
+        case Tag.ExprConstant: {
+            // No check required
+            return node;
+        }
+            
+        case Tag.ExprCreate: {
+            console.error("Not supported yet");
+            return node;
+        }
+
+        case Tag.ExprDeclaration: {
+            // No check required
+            return node;
+        }
+            
+        case Tag.ExprDestroy: {
+            // No check required
+            return node;
+        }
+
+        case Tag.ExprGet: {
+            // No check required
+            return node;
+        }
+            
+        case Tag.ExprIf: {
+            // No check required
+            return node;
+        }
+
+        case Tag.ExprIfCase: {
+            if (node.condition !== null) {
+                const condition = context.get(node.condition);
+                const type = Expr.getReturnType(context, condition);
+
+                if (!isType(context, type, 'bool')) {
+                    context.error(new TypeErrors.ConditionNotBoolean(context, id, node.condition));
+                }
+            }
+
+            return node;
+        }
+            
+        case Tag.ExprMove: {
+            // No check required
             return node;
         }
             
@@ -35,14 +110,47 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id) => {
             const fn = Node.as(context.get(ref), DeclFunction);
 
             if (node.value === null) {
-                // TODO: Implement check for void
+                if (!isType(context, fn.returnType, 'void')) {
+                    context.error(new TypeErrors.ReturnValue(context, ref));
+                }
             } else {
-                if (!Type.canAssignTo(context, Expr.getReturnType(context, node), fn.returnType)) {
+                const returnType = Expr.getReturnType(context, node);
+
+                if (!Type.canAssignTo(context, returnType, fn.returnType)) {
                     context.error(new TypeErrors.ReturnValue(context, ref, node.value));
                 }
             }
+
+            return node;
+        }
+            
+        case Tag.ExprWhile: {
+            const condition = context.get(node.condition);
+            const type = Expr.getReturnType(context, condition);
+
+            if (!isType(context, type, 'bool')) {
+                context.error(new TypeErrors.ConditionNotBoolean(context, id, node.condition));
+            }
+
+            return node;
         }
     }
 
     return node;
 });
+
+function isType(context: Context, type: Type, name: string) {
+    switch (type.tag) {
+        case Tag.TypeGet: {
+            const target = Node.as(context.get(type.target), DeclStruct);
+
+            return target.name === name;
+        }
+
+        default: {
+            return false;
+        }
+    }
+
+    throw unreachable(type);
+}

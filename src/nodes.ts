@@ -469,9 +469,11 @@ export class Context {
         this.compiler.error(error);
     }
 
-    public get<T extends Node>(ref: RefAny<T>): T {
+    public get<T extends Node>(ref: RefAny<T>, context?: Children): T {
+        context = context ?? this.container;
+
         if (typeof (ref) === 'number') {
-            return this.container.nodes[ref] as T;
+            return context.nodes[ref] as T;
         }
 
         switch (ref.tag) {
@@ -484,7 +486,7 @@ export class Context {
             }
 
             case Tag.RefLocal: {
-                return this.container.nodes[ref.id] as T;
+                return context.nodes[ref.id] as T;
             }
 
             case Tag.RefGlobalDecl: {
@@ -741,6 +743,7 @@ export namespace Expr {
             case Tag.ExprConstant:    return expr.type;
             case Tag.ExprCreate:      return expr.type;
             case Tag.ExprGet:         return Node.as(context.get(expr.target), DeclVariable).type;
+            case Tag.ExprMove:        return getReturnType(context, context.get(expr.target));
             case Tag.ExprReturn:      return expr.value === null ? new TypeInfer() : getReturnType(context, context.get(expr.value));
         }
 

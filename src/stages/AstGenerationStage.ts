@@ -181,7 +181,17 @@ function parse(parent: MutContext, node: PNode): NodeId {
             });
         }
 
-        case PTag.PExprIdentifier:
+        case PTag.PExprIdentifier: {
+            const name = parseIdentifier(node.data[0]);
+
+            switch (name) {
+                // TODO: Clean this up
+                case 'true': return parent.add(new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName("bool")), true));
+                case 'false': return parent.add(new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName("bool")), false));
+                default: return parent.add(new Nodes.ExprGet(new Nodes.RefName(name)));
+            }
+        }
+
         case PTag.PExprIndexDot: {
             return parent.add((id) => {
                 // Delegates parsing to ExprRef

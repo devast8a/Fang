@@ -29,10 +29,10 @@ export class Compiler {
         ['Resolve Names', visitor(resolveNames)],
         ['Check Types', visitor(checkTypes)],
         ['Check Lifetime', checkLifetime],
+        ['Flatten', flatten],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
         ['Mangle Names', visitor(mangleNames)],
-        ['Flatten', flatten],
         ['Evaluate Compile Time', visitor(evaluateCompileTime)],
     ];
 
@@ -102,7 +102,7 @@ export class Compiler {
         let content = await Fs.promises.readFile(path, 'utf8');
         content += `
             # Manually declare builtin functions and types
-            #   This crap will be cleaned up eventually and be part of an automatically included prelude
+            #   This will be cleaned up eventually and be part of an automatically included prelude
             fn alias() -> void
 
             struct u32

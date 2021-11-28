@@ -4,7 +4,7 @@ fn takeFoo(own foo: Foo) -> void {}
 fn main() -> void {
     val foo = Foo{}
     
-    while (1) {
+    while (false) {
         takeFoo(move foo)
         foo = Foo{}
     }

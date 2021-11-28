@@ -64,12 +64,16 @@ export namespace TypeErrors {
         public constructor(
             public context: Context,
             public fn: RefAny<DeclFunction>,
-            public value: RefAny<Expr>,
+            public value?: RefAny<Expr>,
         ) { }
+    }
 
-        public message() {
-            return `Returning a {value.type} from {fn} but the return type is {fn.type}`;
-        }
+    export class ConditionNotBoolean {
+        public constructor(
+            public context: Context,
+            public expression: RefAny<Expr>,
+            public condition: RefAny<Expr>,
+        ) { }
     }
 }
 
