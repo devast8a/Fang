@@ -807,7 +807,7 @@ export namespace Type {
         }
 
         switch (parent.tag) {
-            case Tag.TypeGet:       return isSubTypeImpl(context, child, context.get(parent.target));
+            case Tag.TypeGet:           return isSubTypeImpl(context, child, context.get(parent.target));
         }
 
         switch (child.tag) {
@@ -815,9 +815,17 @@ export namespace Type {
                 return parent.tag === Tag.TypeFunction &&
                     isSubType(context, child.returnType, parent.returnType);
 
-            case Tag.DeclStruct:    return child.superTypes.some(child => isSubTypeImpl(context, child, parent));
-            case Tag.DeclTrait:     return false;
-            case Tag.TypeGet:       return isSubTypeImpl(context, context.get(child.target), parent);
+            case Tag.DeclStruct:
+                return child.superTypes.some(child => isSubTypeImpl(context, child, parent));
+
+            case Tag.DeclTrait:
+                return false;
+
+            case Tag.TypeGenericApply:
+                return true;
+
+            case Tag.TypeGet:
+                return isSubTypeImpl(context, context.get(child.target), parent);
         }
 
         throw unreachable(child);

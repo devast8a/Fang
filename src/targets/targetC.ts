@@ -514,8 +514,7 @@ export class TargetC {
     public emitType(context: Context, type: Type) {
         switch (type.tag) {
             case Tag.TypeFunction: {
-                this.emit(`void(*)()`);
-                return;
+                throw new Error();
             }
 
             case Tag.TypeGenericApply: {
