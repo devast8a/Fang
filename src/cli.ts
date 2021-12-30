@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as fs from 'fs';
-import {Compiler} from '.';
+import {Compile} from '.';
 
 async function main() {
     console.group("Compiling...");
 
     const path = process.argv[2];
 
-    const output = await Compiler.compile(path);
+    const output = await Compile.file(path);
 
     console.groupEnd();
 

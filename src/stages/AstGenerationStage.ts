@@ -40,7 +40,7 @@ function parse(parent: MutContext, node: PNode): NodeId {
                 const type  = parseTypeNull(node.data[3]?.[3]);
                 const value = parseNull(parent, node.data[6]?.[3]);
 
-                return new Nodes.DeclVariable(name, type, value, flags);
+                return new Nodes.DeclVariable(name, type, value, flags | Nodes.DeclVariableFlags.Parameter);
             }));
         }
 
@@ -343,6 +343,14 @@ function parseBody(state: MutContext, ast: PNode): NodeId[] {
 
 function parseType(node: PNode): Nodes.Type {
     switch (node.tag) {
+        case PTag.PDeclFunction: {
+            // keyword name compileTime parameters returnType generic attributes body
+
+            const returnType = parseTypeNull(node.data[4]?.[3]);
+
+            return new Nodes.TypeFunction(returnType, [], null);
+        }
+
         case PTag.PExprIdentifier: {
             // identifier
             const name = parseIdentifier(node.data[0]);

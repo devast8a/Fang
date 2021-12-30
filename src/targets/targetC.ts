@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId, DeclStruct, TypeGet, unreachable } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId, DeclStruct, TypeGet, unreachable, NodeId } from '../nodes';
 
 export function isGeneric(decl: DeclStruct) {
     return decl.generics !== null && decl.generics.parameters.length > 0;
@@ -89,10 +89,8 @@ export class TargetC {
                     continue;
                 }
 
-                this.emitTypeName(ctx, decl.returnType);
-                this.emit(" ", decl.name, "(");
-                this.emitParameters(ctx, decl.parameters);
-                this.emit(");");
+                this.emitDeclaration(context, id, decl);
+                this.emit(";");
                 this.emitNewline();
             }
         }
@@ -113,10 +111,9 @@ export class TargetC {
                 const ctx = context.createChildContext(decl.children, id);
 
                 this.emitSeparator();
-                this.emitTypeName(ctx, decl.returnType);
-                this.emit(" ", decl.name, "(");
-                this.emitParameters(ctx, decl.parameters);
-                this.emit(")");
+                this.emitDeclaration(context, id, decl);
+                this.emitNewline();
+
                 this.emitBody(ctx, decl.children.body);
                 return;
             }
@@ -146,7 +143,7 @@ export class TargetC {
             }
                 
             case Tag.DeclVariable: {
-                this.emitTypeName(context, decl.type); // TODO: Keep track of parent
+                this.emitType(context, decl.type); // TODO: Keep track of parent
                 this.emit(" ", decl.name);
                 return;
             }
@@ -168,8 +165,7 @@ export class TargetC {
 
         switch (expr.tag) {
             case Tag.DeclVariable: {
-                this.emitTypeName(context, expr.type);
-                this.emit(" ", expr.name);
+                this.emitDeclaration(context, id, expr);
                 if (expr.value !== null) {
                     this.emit(" = ");
                     this.emitExpr(context, expr.value);
@@ -426,39 +422,105 @@ export class TargetC {
         }
     }
 
-    public emitParameters(context: Context, parameters: ReadonlyArray<RefLocalId<DeclVariable>>) {
-        let first = true;
+    public emitDeclaration(context: Context, id: NodeId, node: Node) {
+        switch (node.tag) {
+            case Tag.DeclFunction: {
+                context = context.createChildContext(node.children, id);
 
-        for (const parameterId of parameters) {
-            if (!first) {
-                this.emit(", ");
-            } else {
-                first = false;
+                this.emitTypeStart(context, node.returnType);
+                this.emit(node.name, "(");
+                this.emitDeclarations(context, node.parameters);
+                this.emit(")");
+                this.emitTypeEnd(context, node.returnType);
+                return;
             }
-
-            const parameter = context.get(parameterId) as DeclVariable;
-
-            this.emitTypeName(context, parameter.type);
-
-            // Turn mutable parameters into pointers so we can modify their values
-            const parameterIsPtr = Flags.has(parameter.flags, DeclVariableFlags.Mutable);
-
-            // Use `restrict` for pointers to inform the C compiler that arguments for this parameter are only accessed
-            //  by this parameter so that it can better optimize output. ie. No aliasing for the argument's value. This
-            //  is guaranteed by `checkLifetime`.
-            if (parameterIsPtr) {
-                this.emit("* restrict");
+                
+            case Tag.DeclVariable: {
+                this.emitTypeStart(context, node.type);
+                this.emit(node.name);
+                this.emitTypeEnd(context, node.type);
+                return;
             }
+        }
 
-            this.emit(" ", parameter.name);
+        throw unreachable(node);
+    }
+
+    public emitDeclarations(context: Context, ids: ReadonlyArray<NodeId>) {
+        if (ids.length === 0) {
+            return;
+        }
+
+        this.emitDeclaration(context, ids[0], context.get(ids[0]));
+
+        for (let index = 1; index < ids.length; index++) {
+            this.emit(", ");
+            this.emitDeclaration(context, ids[index], context.get(ids[index]));
         }
     }
 
-    public emitTypeName(context: Context, type: Type) {
+    public emitTypeStart(context: Context, type: Type) {
         switch (type.tag) {
+            case Tag.TypeFunction: {
+                this.emitTypeStart(context, type.returnType);
+                this.emit('(*');
+                return;
+            }
+                
+            case Tag.TypeGenericApply: {
+                // TODO: Implement generic correctly
+                // We assume this is always a Ptr<T>
+                this.emitTypeStart(context, type.args[0]);
+                this.emit("* ");
+                return;
+            }
+                
+            case Tag.TypeGet: {
+                // TODO: Implement FFI system to allow aliasing underlying target identifiers
+                const decl = context.get(type.target);
+                const name = convertBuiltinName(context, decl);
+
+                if (name === null) {
+                    this.emit('struct ', decl.name, ' ');
+                } else {
+                    this.emit(name, ' ');
+                }
+                return;
+            }
+        }
+
+        unreachable(type);
+    }
+
+    public emitTypeEnd(context: Context, type: Type) {
+        if (type.tag === Tag.TypeFunction) {
+            this.emitTypeEnd(context, type.returnType);
+            this.emit(')(');
+
+            const parameters = type.parameters;
+            if (parameters.length > 0) {
+                this.emitTypeStart(context, parameters[0]);
+
+                for (let index = 1; index < parameters.length; index++) {
+                    this.emit(", ");
+                    this.emitTypeStart(context, parameters[index]);
+                }
+            }
+
+            this.emit(')');
+        }
+    }
+
+    public emitType(context: Context, type: Type) {
+        switch (type.tag) {
+            case Tag.TypeFunction: {
+                this.emit(`void(*)()`);
+                return;
+            }
+
             case Tag.TypeGenericApply: {
                 // Assume it's a Ptr<T>
-                this.emitTypeName(context, type.args[0]);
+                this.emitType(context, type.args[0]);
                 this.emit("*");
                 return;
             }

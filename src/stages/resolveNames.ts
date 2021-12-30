@@ -66,6 +66,7 @@ export const resolveNames = createVisitor(VisitChildren, VisitType, VisitRefDecl
 
             // ERROR. None of the above rules match. We don't know what the variable type is.
             context.error(new ValueOrTypeError(context, id));
+            console.log(context.get(id));
             return node;
         }
     }

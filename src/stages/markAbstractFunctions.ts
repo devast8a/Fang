@@ -37,6 +37,7 @@ export const markAbstractFunctions = createVisitor(VisitDecls, (context, decl) =
 
 export function isAbstractType(context: Context, type: Type): unknown {
     switch (type.tag) {
+        case Tag.TypeFunction: return true;
         case Tag.TypeGet: return context.get(type.target).tag === Tag.DeclTrait;
     }
 

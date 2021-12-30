@@ -1,7 +1,8 @@
 import { VisitChildren } from '../ast/VisitChildren';
 import { createVisitor } from '../ast/visitor';
+import { Flags } from '../common/flags';
 import { IncorrectTypeError, TypeErrors } from '../errors';
-import { Context, DeclFunction, DeclStruct, DeclVariable, Expr, Node, Tag, Type, unreachable } from '../nodes';
+import { Context, DeclFunction, DeclStruct, DeclVariable, DeclVariableFlags, Expr, Node, RefGlobal, Tag, Type, TypeGenericApply, TypeGet, unreachable } from '../nodes';
 
 export const checkTypes = createVisitor(VisitChildren, (context, node, id) => {
     switch (node.tag) {
@@ -37,7 +38,18 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id) => {
                 const argumentType = Expr.getReturnType(context, argument);
                 const parameterType = parameter.type;
 
-                if (!Type.canAssignTo(context, argumentType, parameterType)) {
+                let valid = false;
+
+                // Regular type check
+                valid = valid || (Type.canAssignTo(context, argumentType, parameterType));
+
+                // In-place construction
+                valid = valid || (
+                    Flags.has(parameter.flags, DeclVariableFlags.Owns) &&
+                    Type.canAssignTo(context, argumentType, CreateConstructorType(context, parameterType))
+                );
+
+                if (!valid) {
                     context.error(new IncorrectTypeError(context, argumentId, argumentType, parameterId, parameterType, argumentId));
                 }
             }
@@ -51,7 +63,7 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id) => {
         }
             
         case Tag.ExprCreate: {
-            console.error("Not supported yet");
+            //console.error("Not supported yet");
             return node;
         }
 
@@ -139,6 +151,7 @@ export const checkTypes = createVisitor(VisitChildren, (context, node, id) => {
     return node;
 });
 
+// TODO: This works by looking up the name of the type - switch to a direct reference of the type
 function isType(context: Context, type: Type, name: string) {
     switch (type.tag) {
         case Tag.TypeGet: {
@@ -153,4 +166,14 @@ function isType(context: Context, type: Type, name: string) {
     }
 
     throw unreachable(type);
+}
+
+function CreateConstructorType(context: Context, type: Type): Type {
+    const ids = context.container.names.get('constructor');
+
+    if (ids === undefined) {
+        throw new Error(`Internal Error: Could not find builtin type 'constructor'`);
+    }
+
+    return new TypeGenericApply(new TypeGet(new RefGlobal(ids[0])), [type]);
 }

@@ -32,6 +32,7 @@ export function VisitRefDecl<State>(context: Context, node: Node, id: NodeId, st
         case Tag.RefGlobalDecl:
         case Tag.RefLocal:
         case Tag.RefName:
+        case Tag.TypeFunction:
         case Tag.TypeGenericApply:
         case Tag.TypeInfer:
         case Tag.NodeFree:

@@ -1,2 +1,3 @@
-export { Compiler } from "./compile";
+export { Compile } from "./compile";
+export { Compiler } from "./compiler";
 export { Source } from "./common/source";

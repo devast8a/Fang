@@ -47,6 +47,8 @@ export type RefLocalId<T extends Node = Node> = number;
 export type RefAny<T extends Node = Node> = Ref<T> | RefLocalId<T>;
 
 export type Type =
+    | DeclFunction
+    | TypeFunction
     | TypeGenericApply
     | TypeGet
     | TypeInfer
@@ -82,6 +84,7 @@ export enum Tag {
     RefLocal,
     RefName,
 
+    TypeFunction,
     TypeGenericApply,
     TypeGet,
     TypeInfer,
@@ -198,9 +201,10 @@ export class DeclVariable {
     ) { }
 }
 export enum DeclVariableFlags {
-    None    = 0,
-    Mutable = 1 << 0,
-    Owns    = 1 << 1,
+    None      = 0,
+    Mutable   = 1 << 0,
+    Owns      = 1 << 1,
+    Parameter = 1 << 2,
 }
 
 // Expressions =================================================================
@@ -392,6 +396,17 @@ export class RefName<T extends Node = Node> {
 }
 
 // Types =======================================================================
+
+export class TypeFunction {
+    public readonly tag = Tag.TypeFunction;
+    public static readonly tag = Tag.TypeFunction;
+
+    public constructor(
+        public readonly returnType: Type,
+        public readonly parameters: ReadonlyArray<Type>,
+        public readonly generics: GenericData | null,
+    ) { }
+}
 
 export class TypeGenericApply {
     public readonly tag = Tag.TypeGenericApply;
@@ -713,6 +728,7 @@ export namespace Node {
             case Tag.RefGlobalDecl:
             case Tag.RefLocal:
             case Tag.RefName:
+            case Tag.TypeFunction:
             case Tag.TypeGenericApply:
             case Tag.TypeGet:
             case Tag.TypeInfer:
@@ -736,18 +752,19 @@ export namespace Node {
 }
 
 export namespace Expr {
-    export function getReturnType(context: Context, expr: Node): Type {
-        switch (expr.tag) {
-            case Tag.DeclVariable:    return expr.type;
-            case Tag.ExprCall:        return context.get(expr.target).returnType;
-            case Tag.ExprConstant:    return expr.type;
-            case Tag.ExprCreate:      return expr.type;
-            case Tag.ExprGet:         return Node.as(context.get(expr.target), DeclVariable).type;
-            case Tag.ExprMove:        return getReturnType(context, context.get(expr.target));
-            case Tag.ExprReturn:      return expr.value === null ? new TypeInfer() : getReturnType(context, context.get(expr.value));
+    export function getReturnType(context: Context, node: Node): Type {
+        switch (node.tag) {
+            case Tag.DeclFunction:    return node;
+            case Tag.DeclVariable:    return node.type;
+            case Tag.ExprCall:        return context.get(node.target).returnType;
+            case Tag.ExprConstant:    return node.type;
+            case Tag.ExprCreate:      return node.type;
+            case Tag.ExprGet:         return getReturnType(context, context.get(node.target));
+            case Tag.ExprMove:        return getReturnType(context, context.get(node.target));
+            case Tag.ExprReturn:      return node.value === null ? new TypeInfer() : getReturnType(context, context.get(node.value));
         }
 
-        throw unreachable(expr);
+        throw unreachable(node);
     }
 }
 
@@ -780,29 +797,45 @@ export namespace Ref {
 
 export namespace Type {
     export function canAssignTo(context: Context, source: Type, target: Type): boolean {
-        return Type.isChildType(context, source, target);
+        return Type.isSubType(context, source, target);
     }
 
-    export function isChildType(context: Context, child: Type, parent: Type): boolean {
-        const childDecl = context.get((child as TypeGet).target);
-        const parentDecl = context.get((parent as TypeGet).target);
-
-        if (childDecl === parentDecl) {
+    // eslint-disable-next-line no-inner-declarations
+    function isSubTypeImpl(context: Context, child: Node, parent: Node): boolean {
+        if (child === parent) {
             return true;
         }
 
-        switch (childDecl.tag) {
-            case Tag.DeclFunction: throw new Error('Not implemented yet');
-            case Tag.DeclStruct: return childDecl.superTypes.some(child => isChildType(context, child, parent));
-            case Tag.DeclTrait: return false;
+        switch (parent.tag) {
+            case Tag.TypeGet:       return isSubTypeImpl(context, child, context.get(parent.target));
+        }
+
+        switch (child.tag) {
+            case Tag.DeclFunction:
+                return parent.tag === Tag.TypeFunction &&
+                    isSubType(context, child.returnType, parent.returnType);
+
+            case Tag.DeclStruct:    return child.superTypes.some(child => isSubTypeImpl(context, child, parent));
+            case Tag.DeclTrait:     return false;
+            case Tag.TypeGet:       return isSubTypeImpl(context, context.get(child.target), parent);
         }
 
         throw unreachable(child);
     }
+
+    export function isSubType(context: Context, child: Type, parent: Type): boolean {
+        return isSubTypeImpl(context, child, parent);
+    }
 }
 
-export function unreachable(node: any) {
-    return new Error(`Unreachable: Unhandled case '${Tag[node.tag]}'`);
+export function unreachable(arg?: Node | string | never) {
+    if (typeof(arg) === 'object') {
+        return new Error(`Unreachable: Unhandled case '${Tag[arg.tag]}'`);
+    } else if (arg !== undefined) {
+        return new Error(`Unreachable: ${arg}`);
+    } else {
+        return new Error(`Unreachable`);
+    }
 }
 
 export function unimplemented(name: string) {

@@ -24,8 +24,11 @@ export const resolveImports = createVisitor(VisitChildren, (context, node, id, s
 });
 
 function macroImport(context: Context, argId: number): Node {
-    context.compiler.parseFileSync(MutContext.fromContext(context), "./examples/foo.fang");
+    //context.compiler.parse(
+    //    MutContext.fromContext(context),
+    //    Source.
+    //) "./examples/foo.fang");
 
-    (context.container.nodes as any)[argId] = new NodeFree();
+    //(context.container.nodes as any)[argId] = new NodeFree();
     return new NodeFree();
 }
