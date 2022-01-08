@@ -1,97 +1,49 @@
 import { VisitChildren } from '../ast/VisitChildren';
-import { createVisitor, VisitorControl } from '../ast/visitor';
-import { VisitType } from '../ast/VisitType';
+import { createVisitor } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclFunctionFlags, DeclStruct, DeclVariable, Expr, ExprDeclaration, ExprId, GenericData, MutContext, Node, Ref, RefFieldId, RefGlobal, RefGlobalDecl, RefLocal, Tag, Type, TypeGet, unreachable } from '../nodes';
+import { Context, DeclFunction, DeclFunctionFlags, DeclVariable, Expr, ExprCall, Module, MutContext, MutModule, Node, NodeId, Ref, RefFieldId, RefGlobal, Tag, Type, unreachable } from '../nodes';
 import { isAbstractType } from './markAbstractFunctions';
 
-export const instantiate = createVisitor<InstantiateState>(FilterAbstractFunctions, VisitChildren, VisitType, (context, node, id, state) => {
+export class InstantiateState {
+
+}
+
+export const instantiate = createVisitor<InstantiateState>(VisitChildren, (context, node, id, state, control) => {
     switch (node.tag) {
         case Tag.ExprCall: {
-            const target = context.get(node.target);
+            const fn = context.get(node.target);
 
-            // Non-generic functions do not need instantiation
-            if (!Flags.has(target.flags, DeclFunctionFlags.Abstract)) {
-                return node;
-            }
-
-            return Node.mutate(node, {
-                target: instantiateFn(MutContext.fromContext(context), state, target, node.args)
-            });
-        }
-            
-        case Tag.TypeGenericApply: {
-            const target = context.get(Node.as(node.target, TypeGet).target);
-
-            const instantiated = instantiateType(MutContext.fromContext(context), state, target as DeclStruct, node.args);
-
-            return new TypeGet(instantiated);
-        }
-            
-        case Tag.TypeGet: {
-            const ref = node.target;
-
-            if (ref.tag === Tag.RefLocal) {
-                const type = state.replaceMap.get(`${context.container.self.id}.${ref.id}`);
-
-                if (type !== undefined) {
-                    return type;
-                }
+            if (Flags.all(fn.flags, DeclFunctionFlags.Abstract)) {
+                return Node.mutate(node, {
+                    target: instantiateFn(context, state, fn, node),
+                });
             }
 
             return node;
+        }
+            
+        case Tag.RefFieldId: {
+            control.first(context, context.get(node.target), node.target, state);
+
+            // TODO: Actually implement the member lookup correctly
+            //const type = Expr.getReturnType(context, context.get(target));
+            //const field = Type.getMember(context, type, 'foobar');
+
+            return new RefFieldId(node.target, node.field);
         }
     }
 
     return node;
 });
 
-export class InstantiateState {
-    private mapping = new Map<string, RefGlobalDecl>();
-    public replaceMap = new Map<string, Type>();
+export function instantiateFn(ctx: Context, state: InstantiateState, fn: DeclFunction, call: ExprCall): Ref<DeclFunction> {
+    const context = MutContext.fromContext(ctx);
 
-    public set(key: string, ref: RefGlobalDecl) {
-        return this.mapping.set(key, ref);
-    }
-
-    public get(key: string): RefGlobalDecl | null {
-        return this.mapping.get(key) ?? null;
-    }
-
-    public replace(previous: string, next: Type) {
-        this.replaceMap.set(previous, next);
-    }
-}
-
-function instantiateType(context: MutContext, state: InstantiateState, struct: DeclStruct, args: ReadonlyArray<Type>): RefGlobalDecl {
-    const id = context.root.add((id) => {
-        const children = MutContext.createAndSet(context, id, {
-            nodes: struct.children.nodes.slice(),
-            decls: struct.children.decls.slice(),
-        });
-
-        const s = new DeclStruct(`${struct.name}_${id}`, [], children.finalize([]), new GenericData([], args));
-
-        const parameters = struct.generics!.parameters;
-        for (let index = 0; index < parameters.length; index++) {
-            state.replace(`${id}.${parameters[index]}`, args[index]);
-        }
-
-        return instantiate(context, s, id, state);
-    });
-
-    return Ref.localToGlobal(context.root, id);
-}
-
-function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFunction, argIds: ReadonlyArray<ExprId>) {
-    const args = argIds.map(argId => context.get(argId));
-
-    // TODO: Support memoization
+    // TODO: Setup memoization
+    const args = call.args.map(id => context.get(id));
 
     const nodes = fn.children.nodes.slice();
     const parameters = fn.parameters;
-
-    const t = Expr.getReturnType(context, args[0]);
 
     // Rewrite parameters
     for (let index = 0; index < parameters.length; index++) {
@@ -104,82 +56,21 @@ function instantiateFn(context: MutContext, state: InstantiateState, fn: DeclFun
         nodes[index] = Node.mutate(parameter, { type });
     }
 
-    // Rewrite body
-    for (let index = 0; index < nodes.length; index++) {
-        const node = nodes[index];
-
-        switch (node.tag) {
-            case Tag.ExprCall: {
-                const ref = node.target as RefFieldId;
-
-                const oldType = context.module.children.nodes[ref.targetType] as DeclStruct;
-                const fieldName = (context.get((oldType.children.nodes[ref.field] as ExprDeclaration).target) as Decl).name;
-                const newTypeId = (t as TypeGet).target as RefLocal;
-                const newType = context.get(newTypeId) as DeclStruct;
-                const newFieldId = newType.children.names.get(fieldName)![0];
-                
-                nodes[index] = Node.mutate(node, {
-                    target: new RefFieldId(ref.target, newTypeId.id, newFieldId),
-                });
-            }
-        }
-    }
-
-    const id = context.root.add((id) => {
-        // TODO: Copy body, decls, names rather than referencing
-        const children = MutContext.createAndSet(context, id, {
-            nodes: nodes,
-            body:  fn.children.body as any,
-            decls: fn.children.decls as any,
-            names: fn.children.names as any,
-        });
-
-        return Node.mutate(fn, {
-            name: `${fn.name}_${context.module.children.decls.length}`,
-            children: children.finalize(fn.children.body),
-            flags: Flags.unset(fn.flags, DeclFunctionFlags.Abstract),
-        });
+    const newId = context.root.reserve();
+    const newContext = MutContext.createFrom(context.getParent()!, newId, fn.children, {
+        nodes: nodes
     });
 
-    if (fn.generics !== null) {
-        const gen = fn.generics.parameters;
-        for (let index = 0; index < gen.length; index++) {
-            state.replace(`${id}.${gen[index]}`, Expr.getReturnType(context, args[0]));
-        }
+    // Rewrite all children
+    for (let index = 0; index < nodes.length; index++) {
+        nodes[index] = instantiate(newContext, nodes[index], index, state);
     }
 
-    const f = context.root.get(id) as DeclFunction;
-    context.root.update(id, instantiate(context.root, f, id, state));
+    context.root.update(newId, Node.mutate(fn, {
+        name: `${fn.name}_${context.root.container.decls.length}`,
+        children: newContext.finalize(newContext.container.body),
+        flags: Flags.unset(fn.flags, DeclFunctionFlags.Abstract),
+    }));
 
-    return new RefGlobal(context.root.declare(id));
-}
-
-function FilterAbstractFunctions<State>(context: Context, node: Node, id: number, state: State, control: VisitorControl<State>) {
-    const { next } = control;
-    
-    switch (node.tag) {
-        case Tag.DeclFunction: {
-            // Process non-abstract functions
-            if (!Flags.has(node.flags, DeclFunctionFlags.Abstract)) {
-                return next(context, node, id, state);
-            }
-
-            return node;
-        }
-            
-        case Tag.DeclStruct: {
-            // Process non-abstract structs
-            if (node.generics === null || node.generics.parameters.length === 0) {
-                return next(context, node, id, state);
-            }
-
-            return node;
-        }
-            
-        default: {
-            return next(context, node, id, state);
-        }
-    }
-
-    throw unreachable(node);
+    return new RefGlobal(context.root.declare(newId));
 }

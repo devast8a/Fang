@@ -1,5 +1,5 @@
 import { Flags } from '../common/flags';
-import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId, DeclStruct, TypeGet, unreachable, NodeId } from '../nodes';
+import { Context, Decl, DeclFunction, DeclVariable, DeclId, ExprId, Node, Tag, Type, DeclVariableFlags, DeclFunctionFlags, ExprIfCase, Children, RefLocalId, DeclStruct, TypeGet, unreachable, NodeId, Expr } from '../nodes';
 
 export function isGeneric(decl: DeclStruct) {
     return decl.generics !== null && decl.generics.parameters.length > 0;
@@ -95,45 +95,51 @@ export class TargetC {
             }
         }
 
+        // Declare all structures
         for (let id = 0; id < nodes.length; id++) {
             const decl = nodes[id];
-            this.emitDecl(context, decl as Decl, id);
+
+            if (decl.tag !== Tag.DeclStruct) {
+                continue;
+            }
+
+            if (isBuiltin(context, decl) || isGeneric(decl)) {
+                continue;
+            }
+
+            const ctx = context.createChildContext(decl.children, id);
+
+            this.emitSeparator();
+            this.emit("struct ", decl.name, " ");
+            this.emitDecls(ctx, decl.children);
+            this.emit(';');
+        }
+
+        for (let id = 0; id < nodes.length; id++) {
+            const decl = nodes[id];
+
+            if (decl.tag !== Tag.DeclFunction) {
+                continue;
+            }
+
+            if (isBuiltin(context, decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
+                continue;
+            }
+
+            const ctx = context.createChildContext(decl.children, id);
+
+            this.emitSeparator();
+            this.emitDeclaration(context, id, decl);
+            this.emitNewline();
+
+            this.emitBody(ctx, decl.children.body);
         }
     }
 
     public emitDecl(context: Context, decl: Node, id: DeclId) {
         switch (decl.tag) {
-            case Tag.DeclFunction: {
-                if (isBuiltin(context, decl) || Flags.has(decl.flags, DeclFunctionFlags.Abstract)) {
-                    return;
-                }
-
-                const ctx = context.createChildContext(decl.children, id);
-
-                this.emitSeparator();
-                this.emitDeclaration(context, id, decl);
-                this.emitNewline();
-
-                this.emitBody(ctx, decl.children.body);
-                return;
-            }
-                
             case Tag.DeclGenericParameter: {
                 // TODO: Why is this triggered
-                return;
-            }
-                
-            case Tag.DeclStruct: {
-                if (isBuiltin(context, decl) || isGeneric(decl)) {
-                    return;
-                }
-
-                const ctx = context.createChildContext(decl.children, id);
-
-                this.emitSeparator();
-                this.emit("struct ", decl.name, " ");
-                this.emitDecls(ctx, decl.children);
-                this.emit(';');
                 return;
             }
                 
@@ -179,7 +185,7 @@ export class TargetC {
             }
 
             case Tag.ExprCall: {
-                const fn = context.get(expr.target);
+                const fn = context.getR(expr.target);
 
                 if (fn.name.startsWith('infix')) {
                     this.emitExpr(context, expr.args[0]);
@@ -255,7 +261,13 @@ export class TargetC {
                 switch (targetRef.tag) {
                     case Tag.RefFieldId: {
                         this.emitExpr(context, targetRef.target);
-                        this.emit('->');
+
+                        if (isPointer(context, context.get(targetRef.target))) {
+                            this.emit('->');
+                        } else {
+                            this.emit('.');
+                        }
+
                         const field = Node.as(context.get(targetRef), DeclVariable);
                         this.emit(field.name);
                         return;
@@ -325,7 +337,11 @@ export class TargetC {
                 switch (targetRef.tag) {
                     case Tag.RefFieldId: {
                         this.emitExpr(context, targetRef.target);
-                        this.emit('->');
+                        if (isPointer(context, context.get(targetRef.target))) {
+                            this.emit('->');
+                        } else {
+                            this.emit('.');
+                        }
                         const field = Node.as(context.get(targetRef), DeclVariable);
                         this.emit(field.name, ' = ');
                         this.emitExpr(context, expr.value);
@@ -391,9 +407,8 @@ export class TargetC {
                 case Tag.ExprGet: {
                     const local = Node.as(context.get(arg.target), DeclVariable);
 
-                    // TODO: argumentIsPtr is wrong for locals, needs a parameter flag
                     // TODO: Switch to pointers for large objects
-                    const argumentIsPtr  = Flags.has(local.flags, DeclVariableFlags.Mutable)
+                    const argumentIsPtr  = Flags.has(local.flags, DeclVariableFlags.Mutable) && Flags.has(local.flags, DeclVariableFlags.Parameter);
                     const parameterIsPtr = Flags.has(param.flags, DeclVariableFlags.Mutable);
 
                     // Match pointer-ness of the parameter and the argument
@@ -436,7 +451,7 @@ export class TargetC {
             }
                 
             case Tag.DeclVariable: {
-                this.emitTypeStart(context, node.type);
+                this.emitTypeStart(context, node.type, node.flags);
                 this.emit(node.name);
                 this.emitTypeEnd(context, node.type);
                 return;
@@ -459,7 +474,7 @@ export class TargetC {
         }
     }
 
-    public emitTypeStart(context: Context, type: Type) {
+    public emitTypeStart(context: Context, type: Type, flags: DeclVariableFlags = 0) {
         switch (type.tag) {
             case Tag.TypeFunction: {
                 this.emitTypeStart(context, type.returnType);
@@ -480,11 +495,17 @@ export class TargetC {
                 const decl = context.get(type.target);
                 const name = convertBuiltinName(context, decl);
 
-                if (name === null) {
-                    this.emit('struct ', decl.name, ' ');
-                } else {
+                if (name !== null) {
                     this.emit(name, ' ');
+                    return;
                 }
+
+                if (Flags.has(flags, DeclVariableFlags.Parameter) && Flags.has(flags, DeclVariableFlags.Mutable)) {
+                    this.emit('struct ', decl.name, '* ');
+                    return;
+                }
+
+                this.emit('struct ', decl.name, ' ');
                 return;
             }
         }
@@ -564,6 +585,10 @@ export class TargetC {
                 continue;
             }
 
+            if (context.getR(id).tag === Tag.DeclFunction) {
+                continue;
+            }
+
             this.emitNewline();
             this.emitDecl(context, nodes[id] as Decl, id);
             this.emit(";");
@@ -599,4 +624,13 @@ export class TargetC {
     public toString() {
         return this.output.join("") + "\n";
     }
+}
+
+function isPointer(context: Context, node: Node): boolean {
+    switch (node.tag) {
+        case Tag.ExprGet: return isPointer(context, context.get(node.target));
+        case Tag.DeclVariable: return Flags.all(node.flags, DeclVariableFlags.Mutable | DeclVariableFlags.Parameter);
+    }
+
+    throw unreachable(node);
 }

@@ -343,8 +343,7 @@ export class RefFieldId<T extends Node = Node> {
 
     public constructor(
         public readonly target: RefLocalId,
-        public readonly targetType: DeclId,
-        public readonly field: DeclId,
+        public readonly field: RefGlobalDecl<T>,
     ) { }
 }
 
@@ -515,20 +514,21 @@ export class Context {
             }
 
             case Tag.RefFieldId: {
-                const struct = this.root.container.nodes[ref.targetType] as Decl;
-                const children = Node.getChildren(struct)!;
-                const field = children.nodes[ref.field];
-
-                // TODO: Remove nested lookups
-                if (field.tag === Tag.ExprDeclaration) {
-                    return this.get(field.target) as T;
-                }
-
-                return field as T;
+                return this.get(ref.field);
             }
         }
 
         throw unreachable(ref);
+    }
+
+    public getR<T extends Node>(ref: RefAny<T>, context?: Children): T {
+        let node = this.get(ref, context) as Node;
+
+        while (node.tag === Tag.ExprDeclaration) {
+            node = this.get(node.target);
+        }
+
+        return node as T;
     }
 
     public getParent(): Context | null {
@@ -581,6 +581,15 @@ export class MutContext extends Context {
         }
 
         return ref;
+    }
+
+    public reserve(): RefLocalId<any> {
+        const nodes = this.container.nodes;
+
+        const id = nodes.length;
+        nodes.push(null as any);
+
+        return Ref.fromIndex(id);
     }
 
     public declare<T extends Decl>(ref: RefLocalId<T> | RefGlobalDecl<T>): RefLocalId<T> {
@@ -645,6 +654,27 @@ export class MutContext extends Context {
             fields.body ?? [],
             fields.decls ?? [],
             fields.names ?? new Map(),
+        );
+
+        return new MutContext(parent.compiler, parent.root, container, parent.module);
+    }
+
+    public static createFrom(parent: MutContext, self: RefLocalId, source: Children, fields: Partial<MutChildren>) {
+        const map = fields.names ?? new Map();
+
+        if (fields.names === undefined) {
+            for (const [key, value] of source.names) {
+                map.set(key, value.slice());
+            }
+        }
+
+        const container = new MutChildren(
+            parent.container.self,
+            new RefGlobal(Ref.toIndex(self)),
+            fields.nodes ?? source.nodes.slice(),
+            fields.body ?? source.body.slice(),
+            fields.decls ?? source.decls.slice(),
+            map,
         );
 
         return new MutContext(parent.compiler, parent.root, container, parent.module);
@@ -800,6 +830,25 @@ export namespace Type {
         return Type.isSubType(context, source, target);
     }
 
+    export function getMember(context: Context, node: Type | Decl, field: string): RefGlobalDecl {
+        switch (node.tag) {
+            case Tag.DeclStruct: {
+                const ids = node.children.names.get(field)!;
+                return new RefGlobalDecl(node.children.self.id, ids[0]);
+            }
+
+            case Tag.TypeGet: {
+                return getMember(context, context.get(node.target), field);
+            }
+
+            case Tag.TypeGenericApply: {
+                return getMember(context, node.target, field);
+            }
+        }
+
+        throw unreachable(node);
+    }
+
     // eslint-disable-next-line no-inner-declarations
     function isSubTypeImpl(context: Context, child: Node, parent: Node): boolean {
         if (child === parent) {
@@ -807,7 +856,8 @@ export namespace Type {
         }
 
         switch (parent.tag) {
-            case Tag.TypeGet:           return isSubTypeImpl(context, child, context.get(parent.target));
+            case Tag.TypeGet:
+                return isSubTypeImpl(context, child, context.get(parent.target));
         }
 
         switch (child.tag) {

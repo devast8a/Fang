@@ -6,15 +6,11 @@ import { parseAst } from './stages/AstGenerationStage';
 import { CompileError, Context, Module, MutContext, RootId } from './nodes';
 import { resolveNames } from './stages/resolveNames';
 import { TargetC } from './targets/targetC';
-import { checkTypes } from './stages/checkTypes';
 import { markAbstractFunctions } from './stages/markAbstractFunctions';
 import { Visitor } from './ast/visitor';
 import { instantiate, InstantiateState } from './stages/instantiate';
-import { evaluateCompileTime } from './stages/evaluateCompileTime';
 import { flatten } from './stages/flatten';
-import { mangleNames } from './stages/mangleNames';
 import chalk from 'chalk';
-import { checkLifetime } from './stages/checkLifetime';
 import { resolveImports } from './stages/resolveImports';
 
 function visitor(visitor: Visitor<null>): (context: Context) => Module
@@ -29,13 +25,9 @@ export class Compiler {
     private stages: [string, (context: Context) => Module][] = [
         ['Resolve Imports', visitor(resolveImports)],
         ['Resolve Names', visitor(resolveNames)],
-        ['Check Types', visitor(checkTypes)],
-        //['Check Lifetime', checkLifetime],
         ['Flatten', flatten],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
-        ['Mangle Names', visitor(mangleNames)],
-        ['Evaluate Compile Time', visitor(evaluateCompileTime)],
     ];
 
     private stop = false;
