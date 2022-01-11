@@ -1,7 +1,8 @@
+import { VisitChildren } from '../ast/VisitChildren';
 import { VisitDecls } from '../ast/VisitDecls';
 import { createVisitor } from '../ast/visitor';
 import { Flags } from '../common/flags';
-import { Context, DeclFunctionFlags, DeclVariable, Node, Tag, Type } from '../nodes';
+import { Context, DeclFunctionFlags, DeclVariable, Node, Tag, Type, TypeGet } from '../nodes';
 
 /**
  * Mark abstract functions.
@@ -15,7 +16,7 @@ import { Context, DeclFunctionFlags, DeclVariable, Node, Tag, Type } from '../no
  * It uses the abstract flag to avoid instantiating inside the bodies of abstract functions and to detect when it should
  *  instantiate the target of a function call.
  */
-export const markAbstractFunctions = createVisitor(VisitDecls, (context, decl) => {
+export const markAbstractFunctions = createVisitor(VisitDecls, VisitChildren, (context, decl) => {
     if (decl.tag === Tag.DeclFunction) {
         // TODO: Create a cleaner way to query parameters
         if (decl.parameters.some(parameter => isAbstractType(context, Node.as(decl.children.nodes[parameter], DeclVariable).type))) {
@@ -39,6 +40,7 @@ export function isAbstractType(context: Context, type: Type): unknown {
     switch (type.tag) {
         case Tag.TypeFunction: return true;
         case Tag.TypeGet: return context.get(type.target).tag === Tag.DeclTrait;
+        case Tag.TypeGenericApply: return isAbstractType(context, type.target) || type.args.some(arg => isAbstractType(context, arg));
     }
 
     throw new Error(`'${Tag[type.tag]}' unsupported`);

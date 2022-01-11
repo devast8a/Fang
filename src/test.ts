@@ -18,7 +18,13 @@ async function run(directory: string) {
         } else if (stat.isFile() || stat.isSymbolicLink()) {
             console.group(file);
             try {
-                const code = await Compile.file(full);
+                let count = 0;
+                const code = await Compile.file(full, (name, stage, module) => {
+                    count++;
+                    const full = `debug/${directory}/stages/${file}/${count}-${name}.txt`;
+                    fs.mkdirSync(path.dirname(full), {recursive: true});
+                    fs.writeFileSync(full, serialize(module), 'utf8');
+                });
 
                 const f2 = `debug/${directory}/${file}.c`;
                 fs.mkdirSync(path.dirname(f2), {recursive: true});
@@ -30,25 +36,8 @@ async function run(directory: string) {
                 }
 
                 const symbol = chalk.bgRedBright.whiteBright(` INTERNAL ERROR `);
-                const message = e.stack ?? e.message;
-
-                try {
-                    let count = 0;
-                    await Compile.file(full, (name, stage, module) => {
-                        count++;
-                        const full = `debug/${directory}/stages/${file}/${count}-${name}.txt`;
-                        fs.mkdirSync(path.dirname(full), {recursive: true});
-                        fs.writeFileSync(full, serialize(module), 'utf8');
-                    });
-                }
-                catch (e) {
-                    console.log(e);
-                }
-
-                {
-                    const file = chalk.cyanBright(full);
-                    console.error(`${symbol}  ${file}  ${message}`);
-                }
+                const file = chalk.cyanBright(full);
+                console.error(`${symbol}  ${file}  ${e.stack ?? e.message}`);
             }
             console.groupEnd();
         }

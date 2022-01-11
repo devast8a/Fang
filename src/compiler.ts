@@ -12,6 +12,7 @@ import { instantiate, InstantiateState } from './stages/instantiate';
 import { flatten } from './stages/flatten';
 import chalk from 'chalk';
 import { resolveImports } from './stages/resolveImports';
+import { mangleNames } from './stages/mangleNames';
 
 function visitor(visitor: Visitor<null>): (context: Context) => Module
 function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
@@ -28,6 +29,7 @@ export class Compiler {
         ['Flatten', flatten],
         ['Mark Generic Functions', visitor(markAbstractFunctions)],
         ['Instantiate', visitor(instantiate, new InstantiateState())],
+        ['Mangle Names', visitor(mangleNames)],
     ];
 
     private stop = false;

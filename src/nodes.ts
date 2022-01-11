@@ -753,6 +753,7 @@ export namespace Node {
             case Tag.ExprReturn:
             case Tag.ExprSet:
             case Tag.ExprWhile:
+            case Tag.RefFieldId:
             case Tag.RefFieldName:
             case Tag.RefGlobal:
             case Tag.RefGlobalDecl:
@@ -832,6 +833,7 @@ export namespace Type {
 
     export function getMember(context: Context, node: Type | Decl, field: string): RefGlobalDecl {
         switch (node.tag) {
+            case Tag.DeclTrait:
             case Tag.DeclStruct: {
                 const ids = node.children.names.get(field)!;
                 return new RefGlobalDecl(node.children.self.id, ids[0]);
@@ -843,6 +845,27 @@ export namespace Type {
 
             case Tag.TypeGenericApply: {
                 return getMember(context, node.target, field);
+            }
+        }
+
+        throw unreachable(node);
+    }
+
+    export function getMemberName<T extends Node>(context: Context, node: Type | Decl, field: RefGlobalDecl<T>): string {
+        switch (node.tag) {
+            case Tag.DeclTrait:
+            case Tag.DeclStruct: {
+                let target = node.children.nodes[field.member];
+
+                if (target.tag === Tag.ExprDeclaration) {
+                    target = context.get(target.target);
+                }
+
+                return (target as Decl).name;
+            }
+                
+            case Tag.TypeGet: {
+                return getMemberName(context, context.get(node.target), field);
             }
         }
 

@@ -1,0 +1,11 @@
+struct List generic<T> {
+    fn pop() -> T {
+
+    }
+    fn push(self) -> T {
+    }
+}
+
+fn generate_primes(primes: List<u32>) -> void {
+    primes.push()
+}
