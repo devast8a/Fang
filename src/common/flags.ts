@@ -3,7 +3,7 @@ export namespace Flags {
         return (flag & check) === check;
     }
 
-    export function all<T extends number>(flag: T, check: T) {
+    export function allSet<T extends number>(flag: T, check: T) {
         return (flag & check) === check;
     }
 

@@ -1,15 +1,11 @@
-struct Foo {}
+fn main() {
+    fn foo() {
 
-fn loanFoo(foo: Foo) -> void { return }
-fn mutFoo(mut foo: Foo) -> void { return }
-fn ownFoo(own foo: Foo) -> void { return }
-
-fn main() -> u32 {
-    mut foo = Foo{}
-
-    loanFoo(foo)
-    mutFoo(foo)
-    ownFoo(move foo)
-
-    return 0
+    }
 }
+
+fn foo() {
+
+}
+
+foo()

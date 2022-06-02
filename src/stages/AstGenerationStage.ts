@@ -1,11 +1,12 @@
-import * as Nodes from '../nodes';
-import { GenericData, MutContext, NodeId, Ref } from '../nodes';
+import { Context } from '../ast/context';
+import * as Nodes from '../ast/nodes';
+import { Ref, RefId } from '../ast/nodes';
 import { PNode, PTag } from '../parser/post_processor';
+import { unimplemented, unreachable } from '../utils';
 
-const InferType = new Nodes.TypeInfer();
-
-export function parseAst(root: MutContext, ast: PNode[]) {
+export function parseAst(root: Context, ast: PNode[]) {
     const body = [];
+
     for (const node of ast) {
         body.push(parse(root, node));
     }
@@ -13,284 +14,203 @@ export function parseAst(root: MutContext, ast: PNode[]) {
     return body;
 }
 
-function parse(parent: MutContext, node: PNode): NodeId {
+function parse(parent: Context, node: PNode): RefId {
+    const p = parent.scope;
+
     switch (node.tag) {
         case PTag.PDeclFunction: {
-            const id = parent.root.add((id) => {
-                const children = MutContext.create(parent, id);
-
+            return parent.add(children => {
                 // keyword name compileTime parameters returnType generic attributes body
                 const name = parseIdentifier(node.data[1][1]);
                 const parameters = node.data[3].elements.map(parameter => parse(children, parameter));
                 const returnType = parseTypeNull(node.data[4]?.[3]);
-                const generics = parseGenericDeclNull(children, node.data[5]?.[1]);
+                // const generics = parseGenericDeclNull(children, node.data[5]?.[1]);
                 const attributes = node.data[6].map(attribute => parse(children, attribute[1][1]));
                 const body = parseBodyNull(children, node.data[7]) ?? [];
 
-                return new Nodes.DeclFunction(name, returnType, parameters, children.finalize(body), attributes, Nodes.DeclFunctionFlags.None, generics);
+                return new Nodes.Function(p, children.scope, name, returnType, parameters, body);
             });
-
-            return parent.declare(Ref.localToGlobal(parent.root, id));
         }
+
         case PTag.PDeclParameter: {
-            return parent.declare(parent.add((id) => {
+            return parent.add(children => {
                 // keyword name compileTime type attribute lifetime value
                 const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
                 const name  = parseIdentifier(node.data[1]);
                 const type  = parseTypeNull(node.data[3]?.[3]);
                 const value = parseNull(parent, node.data[6]?.[3]);
 
-                return new Nodes.DeclVariable(name, type, value, flags | Nodes.DeclVariableFlags.Parameter);
-            }));
+                return new Nodes.Variable(p, name);
+            });
         }
 
         case PTag.PDeclStruct: {
-            const id = parent.root.add((id) => {
-                const children = MutContext.create(parent, id);
-
+            return parent.add(children => {
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
                 const superTypes = node.data[2]?.map(x => parseType(x[3]));
-                const generics = parseGenericDeclNull(children, node.data[3]?.[1]);
+                // const generics = parseGenericDeclNull(children, node.data[3]?.[1]);
                 const body = parseBodyNull(children, node.data[5]) ?? [];
 
-                return new Nodes.DeclStruct(name, superTypes, children.finalize(body), generics);
+                return new Nodes.Struct(p, children.scope, name, body);
             });
-
-            return parent.declare(Ref.localToGlobal(parent.root, id));
         }
 
         case PTag.PDeclTrait: {
-            const id = parent.root.add((id) => {
-                const children = MutContext.create(parent, id);
-
+            return parent.add(children => {
                 // keyword name superTypes generic attributes body
                 const name = parseIdentifier(node.data[1]);
                 const superTypes = node.data[2]?.map(x => parseType(x[3]));
                 const body = parseBodyNull(children, node.data[5]) ?? [];
 
-                return new Nodes.DeclTrait(name, superTypes, children.finalize(body));
+                return new Nodes.Trait(p, children.scope, name, body);
             });
-
-            return parent.declare(Ref.localToGlobal(parent.root, id));
         }
 
         case PTag.PDeclVariable: {
-            return parent.declare(parent.add((id) => {
-                // keyword name compileTime type attribute value
-                const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
-                const name  = parseIdentifier(node.data[1]);
-                const type  = parseTypeNull(node.data[3]?.[3]);
-                const value = parseNull(parent, node.data[5]?.[3]);
+            // keyword name compileTime type attribute value
+            const flags = convertVariableKeyword(node.data[0]?.[0]?.value);
+            const name  = parseIdentifier(node.data[1]);
+            const type  = parseTypeNull(node.data[3]?.[3]);
+            const value = parseNull(parent, node.data[5]?.[3]);
 
-                return new Nodes.DeclVariable(name, type, value, flags);
-            }));
+            const n  = parent.add(new Nodes.Variable(p, name));
+
+            // TODO: Yeah not sure how I like this
+            if (value !== null) {
+                parent.add(new Nodes.Set(p, n, value))
+            }
+
+            return n;
         }
 
         case PTag.PExprBinary: {
-            switch (node.data.length) {
-                case 3: {
-                    return parent.add((id) => {
-                        // expression operator expression
-                        const left = parse(parent, node.data[0]);
-                        const symbol = parseOperator(node.data[1]);
-                        const right = parse(parent, node.data[2]);
+            const [l, s, r] = node.data.length === 3 ? [0, 1, 2] : [0, 2, 4];
 
-                        return new Nodes.ExprCall(
-                            new Nodes.RefName(`infix${symbol}`),
-                            [left, right],
-                            false
-                        );
-                    });
-                }
+            // expression operator expression
+            const left = parse(parent, node.data[l]);
+            const symbol = parseOperator(node.data[s]);
+            const right = parse(parent, node.data[r]);
 
-                case 5: {
-                    return parent.add((id) => {
-                        // expression operator expression
-                        const left = parse(parent, node.data[0]);
-                        const symbol = parseOperator(node.data[2]);
-                        const right = parse(parent, node.data[4]);
-
-                        return new Nodes.ExprCall(
-                            new Nodes.RefName(`infix${symbol}`),
-                            [left, right],
-                            false,
-                        );
-                    });
-                }
-
-                default: throw new Error('Unreachable: Unhandled case');
-            }
+            const target = new Nodes.RefName(`infix${symbol}`);
+            return parent.add(new Nodes.Call(p, target, [left, right]));
         }
 
         case PTag.PExprCall: {
-            return parent.add((id) => {
-                // target compileTime arguments
-                const target = parseRef(parent, node.data[0]);
-                const compileTime = node.data[1] !== null;
-                const args = node.data[2].elements.map((expr) => parse(parent, expr));
+            const target = parseRef(parent, node.data[0]);
+            const compileTime = node.data[1] !== null;
+            const args = node.data[2].elements.map((expr) => parse(parent, expr));
 
-                return new Nodes.ExprCall(target, args, compileTime);
-            });
+            return parent.add(new Nodes.Call(p, target, args));
         }
 
         case PTag.PExprConstruct: {
-            return parent.add((id) => {
-                // target compileTime arguments
-                const type = parseType(node.data[0]);
-                const args = node.data[2].elements.map((expr) => parse(parent, expr));
+            const type = parseType(node.data[0]);
+            const args = node.data[2].elements.map((expr) => parse(parent, expr));
 
-                return new Nodes.ExprCreate(type, args);
-            });
+            throw unimplemented("Construction has not been implemented");
         }
             
         case PTag.PExprIf: {
-            return parent.add((id) => {
-                // keyword condition body elseif else
-                const firstCondition = parse(parent, node.data[1][2]);
-                const firstBody = parseBody(parent, node.data[2]);
-                const others = node.data[3];
-                const lastBody = parseBodyNull(parent, node.data[4]?.[1]);
-
-                const cases = [];
-                
-                // First case
-                cases.push(parent.add((id) => {
-                    return new Nodes.ExprIfCase(firstCondition, firstBody);
-                }));
-
-                // Other cases
-                for (const other of others) {
-                    cases.push(parent.add((id) => {
-                        // keyword condition body
-                        const condition = parse(parent, other[1][2]);
-                        const body = parseBody(parent, other[2]);
-
-                        return new Nodes.ExprIfCase(condition, body);
-                    }));
-                }
-
-                // Last case (else)
-                if (lastBody !== null) {
-                    cases.push(parent.add((id) => {
-                        return new Nodes.ExprIfCase(null, lastBody);
-                    }));
-                }
-
-                return new Nodes.ExprIf(cases);
-            });
+            throw unimplemented("If is not yet implemented");
         }
 
         case PTag.PExprIdentifier: {
             const name = parseIdentifier(node.data[0]);
+            const ref = new Nodes.RefName(name);
 
-            switch (name) {
-                // TODO: Clean this up
-                case 'true': return parent.add(new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName("bool")), true));
-                case 'false': return parent.add(new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName("bool")), false));
-                default: return parent.add(new Nodes.ExprGet(new Nodes.RefName(name)));
-            }
+            return parent.add(new Nodes.Get(p, ref));
         }
 
         case PTag.PExprIndexDot: {
-            return parent.add((id) => {
-                // Delegates parsing to ExprRef
-                const target = parseRef(parent, node);
-                return new Nodes.ExprGet(target);
-            });
+            // Delegates parsing to ExprRef
+            const target = parseRef(parent, node);
+            return parent.add(new Nodes.Get(p, target));
         }
 
         case PTag.PExprMacroCall: {
-            return parent.add((id) => {
-                // target compileTime argument
-                const name = parseIdentifier(node.data[0]);
-                const target = new Nodes.RefName(name);
+            // target compileTime argument
+            const name = parseIdentifier(node.data[0]);
+            const target = new Nodes.RefName(name);
 
-                const argument = parse(parent, node.data[2]?.[1]);
+            const argument = parse(parent, node.data[2]?.[1]);
 
-                return new Nodes.ExprCall(target, [argument], true);
-            });
+            return parent.add(new Nodes.Call(p, target, [argument]));
         }
             
         case PTag.PExprMove: {
-            return parent.add((id) => {
-                // keyword expression
-                const expression = parseRef(parent, node.data[1]);
+            // keyword expression
+            const expression = parseRef(parent, node.data[1]);
 
-                return new Nodes.ExprMove(expression);
-            });
+            return parent.add(new Nodes.Move(p, expression));
         }
 
         case PTag.PExprReturn: {
-            return parent.add((id) => {
-                // keyword value
-                const value = parseNull(parent, node.data[1]?.[1]);
+            // keyword value
+            const value = parseNull(parent, node.data[1]?.[1]);
 
-                return new Nodes.ExprReturn(value);
-            });
+            return parent.add(new Nodes.Return(p, value));
         }
             
         case PTag.PExprSet: {
-            return parent.add((id) => {
-                // target operator value
-                const target = parseRef(parent, node.data[0]);
-                const value = parse(parent, node.data[2]);
+            // target operator value
+            const target = parseRef(parent, node.data[0]);
+            const value = parse(parent, node.data[2]);
 
-                return new Nodes.ExprSet(target, value);
-            });
+            return parent.add(new Nodes.Set(p, target, value));
         }
 
         case PTag.PExprWhile: {
-            return parent.add((id) => {
-                // keyword compileTime condition body
-                const condition = parse(parent, node.data[2][3]);
-                const body = parseBody(parent, node.data[3]);
+            // keyword compileTime condition body
+            const condition = parse(parent, node.data[2][3]);
+            const body = parseBody(parent, node.data[3]);
 
-                return new Nodes.ExprWhile(condition, body);
-            });
+            return parent.add(new Nodes.While(p, condition, body));
         }
 
         case PTag.PLiteralIntegerBin: {
-            return parent.add((id) => {
-                const value = parseInt(node.data[0].value.slice(2).replace(/_/g, ''), 2);
-                return new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName('u32')), value);
-            });
+            const value = node.data[0].value.replace(/_/g, '');
+            const type = new Nodes.RefName('u32');
+            const number = parseInt(value, 2);
+
+            return parent.add(new Nodes.Constant(p, type, number));
         }
 
         case PTag.PLiteralIntegerDec: {
-            return parent.add((id) => {
-                const value = parseInt(node.data[0].value.replace(/_/g, ''), 10);
-                return new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName('u32')), value);
-            });
+            const value = node.data[0].value.replace(/_/g, '');
+            const type = new Nodes.RefName('u32');
+            const number = parseInt(value, 10);
+
+            return parent.add(new Nodes.Constant(p, type, number));
         }
 
         case PTag.PLiteralIntegerHex: {
-            return parent.add((id) => {
-                const value = parseInt(node.data[0].value.slice(2).replace(/_/g, ''), 16);
-                return new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName('u32')), value);
-            });
+            const value = node.data[0].value.replace(/_/g, '');
+            const type = new Nodes.RefName('u32');
+            const number = parseInt(value, 16);
+
+            return parent.add(new Nodes.Constant(p, type, number));
         }
 
         case PTag.PLiteralString: {
-            return parent.add((id) => {
-                const value = node.data[0].value.slice(1,-1).replace(/\\(.)/, (_,c) => {
-                    switch (c) {
-                        case '\\': return "\\";
-                        case '"': return "\"";
-                        case 'n': return "\n";
-                        default: throw new Error("Not implemented yet");
-                    }
-                });
-
-                return new Nodes.ExprConstant(new Nodes.TypeGet(new Nodes.RefName('str')), value);
+            const value = node.data[0].value.slice(1,-1).replace(/\\(.)/, (_,c) => {
+                switch (c) {
+                    case '\\': return "\\";
+                    case '"': return "\"";
+                    case 'n': return "\n";
+                    default: throw unimplemented(`String escape code: ${c}`)
+                }
             });
+
+            const type = new Nodes.RefName('str');
+            return parent.add(new Nodes.Constant(p, type, value));
         }
     }
 
-    throw new Error(`parse: No case for '${PTag[node.tag]}'`)
+    throw unreachable(`Unhandled case ${PTag[node.tag]}`);
 }
 
-function parseRef(parent: MutContext, node: PNode) {
+function parseRef(parent: Context, node: PNode) {
     switch (node.tag) {
         case PTag.PExprIdentifier: {
             // identifier
@@ -299,40 +219,35 @@ function parseRef(parent: MutContext, node: PNode) {
             return new Nodes.RefName(name);
         }
             
-        case PTag.PExprIndexDot: {
-            // target operator name
-            const target = parse(parent, node.data[0]);
-            const name = parseIdentifier(node.data[2]);
+        //case PTag.PExprIndexDot: {
+        //    // target operator name
+        //    const target = parse(parent, node.data[0]);
+        //    const name = parseIdentifier(node.data[2]);
 
-            return new Nodes.RefFieldName(target, name);
-        }
+        //    return new Nodes.RefFieldName(target, name);
+        //}
             
-        default: {
-            throw new Error(`Unreachable: Unhandled case ${node.tag}`);
-        }
     }
+
+    throw unreachable(`Unhandled case ${node.tag}`);
 }
 
-function parseNull(parent: MutContext, node: PNode | null | undefined): NodeId | null {
+function parseNull(parent: Context, node: PNode | null | undefined): RefId | null {
     return node === undefined || node === null ? null : parse(parent, node);
 }
 
-function parseBodyNull(parent: MutContext, node: PNode): NodeId[] | null {
-    return node === undefined || node === null ? null : parseBody(parent, node);
-}
-
-function parseBody(state: MutContext, ast: PNode): NodeId[] {
+function parseBody(context: Context, ast: PNode): RefId[] {
     switch (ast.length) {
         case 2: {
             // whitespace body
-            return ast[1].elements.map(node => parse(state, node));
+            return ast[1].elements.map(node => parse(context, node));
         }
 
         case 4: {
             // whitespace => whitespace expression
-            const expr = parse(state, ast[3]);
+            const expr = parse(context, ast[3]);
 
-            return [state.add(new Nodes.ExprReturn(expr))];
+            return [context.add(new Nodes.Return(context.scope, expr))];
         }
             
         default: {
@@ -341,44 +256,33 @@ function parseBody(state: MutContext, ast: PNode): NodeId[] {
     }
 }
 
-function parseType(node: PNode): Nodes.Type {
+function parseBodyNull(parent: Context, node: PNode): RefId[] | null {
+    return node === undefined || node === null ? null : parseBody(parent, node);
+}
+
+// Yeah not sure about this one...
+function parseType(node: PNode): Ref {
     switch (node.tag) {
-        case PTag.PDeclFunction: {
-            // keyword name compileTime parameters returnType generic attributes body
-
-            const returnType = parseTypeNull(node.data[4]?.[3]);
-
-            return new Nodes.TypeFunction(returnType, [], null);
-        }
-
         case PTag.PExprIdentifier: {
             // identifier
             const name = parseIdentifier(node.data[0]);
-            return new Nodes.TypeGet(new Nodes.RefName(name));
-        }
-            
-        case PTag.PExprGenericApply: {
-            // identifier args
-            const target = parseType(node.data[0]);
-            const args = node.data[1].elements.map(parseType);
-
-            return new Nodes.TypeGenericApply(target, args);
+            return new Nodes.RefName(name);
         }
     }
     
-    throw new Error(`parseType: No case for '${PTag[node.tag]}'`);
+    throw unreachable(`parseType unhandled case ${PTag[node.tag]}`);
 }
 
-function parseTypeNull(node: PNode | null | undefined): Nodes.Type {
-    return node === undefined || node === null ? InferType : parseType(node);
+function parseTypeNull(node: PNode | null | undefined): Ref {
+    return node === undefined || node === null ? new Nodes.RefInfer() : parseType(node);
 }
 
 function convertVariableKeyword(keyword: string | undefined) {
     switch (keyword) {
-        case "mut": return Nodes.DeclVariableFlags.Mutable;
-        case "val": return Nodes.DeclVariableFlags.None;
-        case "own": return Nodes.DeclVariableFlags.Owns;
-        case undefined: return Nodes.DeclVariableFlags.None;
+        case "mut": return Nodes.VariableFlags.Mutable;
+        case "val": return Nodes.VariableFlags.None;
+        case "own": return Nodes.VariableFlags.Owns;
+        case undefined: return Nodes.VariableFlags.None;
         default: throw new Error("Unreachable");
     }
 }
@@ -400,105 +304,17 @@ function parseOperator(node: PNode) {
     }
 }
 
-function parseGenericDeclNull(children: MutContext, ast: PNode | null | undefined) {
-    return ast === null || ast === undefined ? null : parseGenericDecl(children, ast);
-}
-
-function parseGenericDecl(children: MutContext, ast: PNode): GenericData {
-    // keyword parameters where-clauses
-    const parameters = ast[1].elements.map(parseIdentifier);
-
-    return new GenericData(parameters.map(parameter => {
-        const id = children.add(new Nodes.DeclGenericParameter(parameter));
-        children.declare(id);
-        return id;
-    }), []);
-}
-
-export interface Position {
-    offset: number;
-    line: number;
-    column: number;
-}
-
-export interface Location {
-    start: Position;
-    end: Position;
-}
-
-function getLocation(node: any): Location {
-    return {
-        start: getStart(node)!,
-        end: getEnd(node)!,
-    }
-}
-
-function getStart(node: any): (Position | null) {
-    if (node === null) {
-        return null;
-    }
-
-    if (node.data instanceof Array) {
-        return getStart(node.data)
-    }
-
-    if (node.elements instanceof Array) {
-        return getStart(node.begin);
-    }
-
-    if (node instanceof Array) {
-        for (let index = 0; index < node.length; index++) {
-            const result = getStart(node[index]);
-
-            if (result !== null) {
-                return result
-            }
-        }
-
-        return null;
-    }
-
-    if (node.offset !== undefined) {
-        return {
-            offset: node.offset,
-            line: node.line,
-            column: node.col,
-        };
-    }
-
-    return null;
-}
-
-function getEnd(node: any): (Position | null) {
-    if (node === null) {
-        return null;
-    }
-
-    if (node.data instanceof Array) {
-        return getEnd(node.data)
-    }
-
-    if (node.elements instanceof Array) {
-        return getEnd(node.end);
-    }
-
-    if (node instanceof Array) {
-        for (let index = node.length - 1; index >= 0; index--) {
-            const result = getEnd(node[index]);
-
-            if (result !== null) {
-                return result
-            }
-        }
-    }
-
-    if (node.offset !== undefined) {
-        return {
-            offset: node.offset + node.text.length,
-            line: node.line,
-            column: node.col,
-        };
-    }
-
-    return null;
-}
+// function parseGenericDecl(children: Context, ast: PNode): GenericData {
+//     // keyword parameters where-clauses
+//     const parameters = ast[1].elements.map(parseIdentifier);
+// 
+//     return new GenericData(parameters.map(parameter => {
+//         const id = children.add(new Nodes.DeclGenericParameter(parameter));
+//         children.declare(id);
+//         return id;
+//     }), []);
+// }
+// 
+// function parseGenericDeclNull(children: Context, ast: PNode | null | undefined) {
+//     return ast === null || ast === undefined ? null : parseGenericDecl(children, ast);
+// }

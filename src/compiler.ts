@@ -1,120 +1,33 @@
-import * as Fs from 'fs';
-import { Source } from './common/source';
+import { Context } from './ast/context';
+import { Node, RefId, Scope } from './ast/nodes';
 import { serialize } from './ast/serialize';
-import { parseSource } from './stages/ParseStage';
+import { Source } from './common/source';
 import { parseAst } from './stages/AstGenerationStage';
-import { CompileError, Context, Module, MutContext, RootId } from './nodes';
+import { parseSource } from './stages/ParseStage';
 import { resolveNames } from './stages/resolveNames';
-import { TargetC } from './targets/targetC';
-import { markAbstractFunctions } from './stages/markAbstractFunctions';
-import { Visitor } from './ast/visitor';
-import { instantiate, InstantiateState } from './stages/instantiate';
-import { flatten } from './stages/flatten';
-import chalk from 'chalk';
-import { resolveImports } from './stages/resolveImports';
-import { mangleNames } from './stages/mangleNames';
-
-function visitor(visitor: Visitor<null>): (context: Context) => Module
-function visitor<State>(visitor: Visitor<State>, state: State): (context: Context) => Module
-function visitor<State>(visitor: Visitor<State>, state?: State) {
-    return (context: Context) => visitor(context, context.module, RootId, state ?? (null as any));
-}
-
-export type StageEvent = (name: string, stage: (context: Context) => Module, module: Module) => void;
 
 export class Compiler {
-    private stages: [string, (context: Context) => Module][] = [
-        ['Resolve Imports', visitor(resolveImports)],
-        ['Resolve Names', visitor(resolveNames)],
-        ['Flatten', flatten],
-        ['Mark Generic Functions', visitor(markAbstractFunctions)],
-        ['Instantiate', visitor(instantiate, new InstantiateState())],
-        ['Mangle Names', visitor(mangleNames)],
-    ];
+    public static async compileFile(path: string) {
+        const source = await Source.fromFile(path);
 
-    private stop = false;
+        // TODO: Reserve id 0 for the module or something
+        const id = new RefId(0);
 
-    public error(error: CompileError) {
-        this.stop = true;
+        const ast = new Array<Node>();
+        const scope = new Scope(null, new Map());
+        const context = new Context(null, scope, ast);
 
-        const symbol = chalk.bgRedBright.whiteBright(` ! `);
-        const message = (error as any).constructor.name;
+        const nodes = parseSource(source);
 
-        const file = chalk.cyanBright('test.fang');
-        const line = chalk.yellowBright(100);
+        const root = parseAst(context, nodes);
 
-        console.error(`${symbol}  ${file}:${line}  ${message}`);
-    }
+        const resolved = resolveNames(context, root);
 
-    public parse(source: Source): Module
-    {
-        const ast = parseSource(source);
-        const root = MutContext.createRoot(this);
-        const body = parseAst(root, ast);
-
-        return new Module(root.finalize(body));
-    }
-
-    public compile(source: Source): string
-    {
-        let module = this.parse(source);
-
-        for (const [name, fn] of this.stages) {
-            module = fn(Context.fromModule(this, module));
-
-            if (this.onNextStage) {
-                this.onNextStage(name, fn, module);
-            }
-
-            // A condition has been raised that requires compilation to stop (typically an error has ben raised)
-            if (this.stop) {
-                return "";
-            }
-        }
-
-        const target = new TargetC();
-        target.emitProgram(Context.fromModule(this, module));
-        const code = target.toString();
-
-        return code;
-    }
-
-    // TODO: Replace with an event system
-    public onNextStage?: StageEvent;
-
-    public static compile(source: Source, stage?: StageEvent) {
-        const compiler = new Compiler();
-        compiler.onNextStage = stage;
-
-        source.content += `
-            # Manually declare builtin functions and types
-            #   This will be cleaned up eventually and be part of an automatically included prelude
-            fn alias() -> void
-
-            struct u32
-            struct bool
-            struct str
-            struct Ptr generic<T>
-            struct Size
-            struct void
-
-            fn infix+(left: u32, right: u32) -> u32
-            fn infix-(left: u32, right: u32) -> u32
-            fn infix%(left: u32, right: u32) -> u32
-
-            fn infix>(left: u32, right: u32) -> bool
-            fn infix>=(left: u32, right: u32) -> bool
-            fn infix<(left: u32, right: u32) -> bool
-            fn infix<=(left: u32, right: u32) -> bool
-            fn infix==(left: u32, right: u32) -> bool
-
-            fn printf(s: str, d: u32)
-            fn malloc(size: Size) -> Ptr
-            fn realloc(ptr: Ptr, size: Size) -> Ptr
-
-            fn deref_ptr(ptr: Ptr, index: Size, value: u32) -> u32
-        `;
-
-        return compiler.compile(source);
+        console.log("=== root ===");
+        console.log(root);
+        console.log("=== scope ===");
+        console.log(scope.symbols);
+        console.log("=== ast ===");
+        console.log(serialize(ast));
     }
 }

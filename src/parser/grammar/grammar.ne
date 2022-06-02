@@ -188,7 +188,7 @@
     # Exmaples:
     #   val name
     #   mut name: Type
-    #   val name!: Type = value #attribute
+    #   val name!: Type #attribute = value
 
     # Supports:
     #   Attributes

@@ -1,0 +1,50 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "Fang",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#comments"
+		},
+		{
+			"include": "#attributes"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.fang",
+				"match": "\\b(if|while|for|return|continue|break|fn|own|mut|val|struct|impl|in|enum|move|trait)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.fang",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.fang",
+					"match": "\\\\."
+				}
+			]
+		},
+		"comments": {
+			"patterns": [{
+				"name": "comment.line",
+				"match": "(#+ [^\\n]*\\n)|(#+\\n)"
+			}]
+		},
+		"attributes": {
+			"patterns": [{
+				"name": "variable.other",
+				"match": "#+[a-zA-Z_][a-zA-Z0-9_]*"
+			}]
+		}
+	},
+	"scopeName": "source.fang"
+}

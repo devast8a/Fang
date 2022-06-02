@@ -1,0 +1,37 @@
+{
+    "name": "fang-syntax",
+    "displayName": "fang-syntax",
+    "description": "",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.64.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "fang",
+                "aliases": [
+                    "Fang",
+                    "fang"
+                ],
+                "extensions": [
+                    ".fang"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "fang",
+                "scopeName": "source.fang",
+                "path": "./syntaxes/fang.tmLanguage.json"
+            }
+        ]
+    },
+    "dependencies": {
+        "vsce": "^2.6.7"
+    }
+}
