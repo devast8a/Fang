@@ -18,6 +18,18 @@ function parse(parent: Context, node: PNode): RefId {
     const p = parent.scope;
 
     switch (node.tag) {
+        case PTag.PDeclEnum: {
+            return parent.add(children => {
+                // keyword name attributes body
+                console.log()
+                const name = parseIdentifier(node.data[1][1]);
+                const attributes = node.data[2].map(attribute => parse(children, attribute[1][1]));
+                const body = parseBodyNull(children, node.data[3]) ?? [];
+
+                return new Nodes.Enum(p, children.scope, name, body);
+            });
+        }
+
         case PTag.PDeclFunction: {
             return parent.add(children => {
                 // keyword name compileTime parameters returnType generic attributes body
@@ -207,7 +219,7 @@ function parse(parent: Context, node: PNode): RefId {
         }
     }
 
-    throw unreachable(`Unhandled case ${PTag[node.tag]}`);
+    throw unimplemented(`Unhandled case ${PTag[node.tag]}`);
 }
 
 function parseRef(parent: Context, node: PNode) {

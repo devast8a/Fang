@@ -1,5 +1,6 @@
 export enum Tag {
     // Decl
+    Enum,
     Function,
     Struct,
     Trait,
@@ -41,10 +42,22 @@ export class Scope {
 
 // =============================================================================
 export type Decl =
+    | Enum
     | Function
     | Struct
     | Trait
     | Variable
+
+export class Enum {
+    readonly tag = Tag.Enum
+
+    constructor(
+        readonly parent: Scope,
+        readonly scope: Scope,
+        readonly name: string,
+        readonly body: Local[],
+    ) { }
+}
 
 export class Function {
     readonly tag = Tag.Function

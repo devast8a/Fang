@@ -57,12 +57,12 @@
     #   Attributes
 
     # Required
-    DeKeyword       -> "enum" __
-    DeName          -> Identifier
+    DeKeyword       -> "enum"
+    DeName          -> __ Identifier
 
     # Optional After
-    DeBody          -> N_ BODY[Stmt]
     DeAttribute     -> N__ Attribute
+    DeBody          -> N_ BODY[Stmt]
 
     # Contexts
     Stmt            -> DeclEnum

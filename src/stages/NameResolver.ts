@@ -60,10 +60,12 @@ function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
     // TODO: Constant.type should probably be resolved by default
 
     switch (node.tag) {
+        case Tag.Enum:      return node;
         case Tag.Function:  return mutate(node, 'returnType', fn);
         case Tag.Struct:    return node;
         case Tag.Trait:     return node;
         case Tag.Variable:  return mutate(node, 'type', fn);
+
         case Tag.Break:     return mutateNull(node, 'target', fn);
         case Tag.Call:      return mutate(node, 'target', fn);
         case Tag.Constant:  return mutate(node, 'type', fn);
