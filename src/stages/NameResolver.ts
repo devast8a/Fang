@@ -1,7 +1,7 @@
 import { Node, Ref, RefId, Scope, Tag } from '../ast/nodes';
 import * as Nodes from '../ast/nodes';
 import { Context } from '../ast/context';
-import { MultiMapUtils, unimplemented, unreachable } from '../utils';
+import { MultiMapUtils, unimplemented } from '../utils';
 
 // TODO: Implement poisoning properly
 export function resolveNames(context: Context, refs: RefId[]) {
@@ -26,6 +26,34 @@ export function resolveNames(context: Context, refs: RefId[]) {
             return ref;
         });
     }
+}
+
+function lookup(scope: Scope, symbol: string) {
+    let current: Scope | null = scope;
+
+    do {
+        const ids = current.symbols.get(symbol);
+
+        // Symbol does not exist in current scope, look in parent
+        if (ids === undefined) {
+            current = current.parent;
+            continue;
+        }
+
+        // Resolved the symbol, cache it in the starting scope.
+        while (scope !== current) {
+            MultiMapUtils.pushMulti(scope.symbols, symbol, ids);
+
+            // We will hit current before we hit null
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            scope = scope.parent!;
+        }
+
+        return ids;
+    } while (current !== null)
+
+    // Symbol does not exist at all.
+    return null;
 }
 
 function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
@@ -67,32 +95,4 @@ function mutateNull<T, F extends keyof T>(node: T, field: F, fn: (field: NonNull
     }
 
     return mutate(node, field, fn as any);
-}
-
-function lookup(scope: Scope, symbol: string) {
-    let current: Scope | null = scope;
-
-    do {
-        const ids = current.symbols.get(symbol);
-
-        // Symbol does not exist in current scope, look in parent
-        if (ids === undefined) {
-            current = current.parent;
-            continue;
-        }
-
-        // Resolved the symbol, cache it in the starting scope.
-        while (scope !== current) {
-            MultiMapUtils.pushMulti(scope.symbols, symbol, ids);
-
-            // We will hit current before we hit null
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            scope = scope.parent!;
-        }
-
-        return ids;
-    } while (current !== null)
-
-    // Symbol does not exist at all.
-    return null;
 }

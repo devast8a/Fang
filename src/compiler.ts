@@ -2,9 +2,9 @@ import { Context } from './ast/context';
 import { Node, RefId, Scope } from './ast/nodes';
 import { serialize } from './ast/serialize';
 import { Source } from './common/source';
-import { parseAst } from './stages/AstGenerationStage';
-import { parseSource } from './stages/ParseStage';
-import { resolveNames } from './stages/resolveNames';
+import { parseAst } from './stages/AstGeneration';
+import { parseSource } from './stages/Parse';
+import { resolveNames } from './stages/NameResolver';
 
 export class Compiler {
     public static async compileFile(path: string) {
