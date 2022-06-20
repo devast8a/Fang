@@ -29,7 +29,8 @@ export type Node =
     | Expr
     | Ref<any>
 
-export interface Type { }
+export type Type<T extends Node = Node> = Ref<T>;
+export type Local<T extends Node = Node> = Ref<T>;
 
 export class Scope {
     public constructor(
@@ -52,9 +53,9 @@ export class Function {
         readonly parent: Scope,
         readonly scope: Scope,
         readonly name: string,
-        readonly returnType: Ref,
-        readonly parameters: readonly Ref[],
-        readonly body: RefId[],
+        readonly returnType: Type,
+        readonly parameters: readonly Local[],
+        readonly body: Local[],
     ) { }
 }
 
@@ -65,7 +66,7 @@ export class Struct {
         readonly parent: Scope,
         readonly scope: Scope,
         readonly name: string,
-        readonly body: RefId[],
+        readonly body: Local[],
     ) { }
 }
 
@@ -76,7 +77,7 @@ export class Trait {
         readonly parent: Scope,
         readonly scope: Scope,
         readonly name: string,
-        readonly body: RefId[],
+        readonly body: Local[],
     ) { }
 }
 
@@ -86,6 +87,7 @@ export class Variable {
     constructor(
         readonly parent: Scope,
         readonly name: string,
+        readonly type: Type,
     ) { }
 }
 export enum VariableFlags {
@@ -112,8 +114,8 @@ export class Break {
 
     constructor(
         readonly parent: Scope,
-        readonly target: Ref,
-        readonly value: Ref | null,
+        readonly target: Ref | null,
+        readonly value: Local | null,
     ) { }
 }
 
@@ -132,7 +134,7 @@ export class Constant<Value> {
 
     constructor(
         readonly parent: Scope,
-        readonly type: Ref,
+        readonly type: Type,
         readonly value: Value,
     ) { }
 }
@@ -142,8 +144,8 @@ export class Continue {
 
     constructor(
         readonly parent: Scope,
-        readonly target: Ref,
-        readonly value: Ref | null,
+        readonly target: Ref | null,
+        readonly value: Local | null,
     ) { }
 }
 
@@ -168,8 +170,8 @@ export class If {
 export class IfCase {
     constructor(
         readonly parent: Scope,
-        readonly condition: Ref,
-        readonly body: Ref[],
+        readonly condition: Local,
+        readonly body: Local[],
     ) { }
 }
 
@@ -178,7 +180,7 @@ export class Move {
 
     constructor(
         readonly parent: Scope,
-        readonly value: Ref,
+        readonly value: Local,
     ) { }
 }
 
@@ -187,7 +189,7 @@ export class Return {
 
     constructor(
         readonly parent: Scope,
-        readonly value: Ref | null,
+        readonly value: Local | null,
     ) { }
 }
 
@@ -197,7 +199,7 @@ export class Set {
     constructor(
         readonly parent: Scope,
         readonly target: Ref,
-        readonly value: Ref,
+        readonly value: Local,
     ) { }
 }
 
@@ -206,8 +208,8 @@ export class While {
 
     constructor(
         readonly parent: Scope,
-        readonly condition: Ref,
-        readonly body: Ref[],
+        readonly condition: Local,
+        readonly body: Local[],
     ) {}
 }
 

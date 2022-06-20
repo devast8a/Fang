@@ -40,7 +40,7 @@ function parse(parent: Context, node: PNode): RefId {
                 const type  = parseTypeNull(node.data[3]?.[3]);
                 const value = parseNull(parent, node.data[6]?.[3]);
 
-                return new Nodes.Variable(p, name);
+                return new Nodes.Variable(p, name, type);
             });
         }
 
@@ -74,7 +74,7 @@ function parse(parent: Context, node: PNode): RefId {
             const type  = parseTypeNull(node.data[3]?.[3]);
             const value = parseNull(parent, node.data[5]?.[3]);
 
-            const n  = parent.add(new Nodes.Variable(p, name));
+            const n  = parent.add(new Nodes.Variable(p, name, type));
 
             // TODO: Yeah not sure how I like this
             if (value !== null) {
