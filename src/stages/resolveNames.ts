@@ -29,21 +29,24 @@ export function resolveNames(context: Context, refs: RefId[]) {
 }
 
 function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
-    switch (node.tag) {
-        case Tag.Function:      return mutate(node, 'returnType', fn);
-        case Tag.Struct:        return node;
-        case Tag.Trait: return node;
-        case Tag.Variable: return node;
-        case Tag.Break: return mutateNull(node, 'value', fn);
-        case Tag.Call: return mutate(node, 'target', fn);
-        case Tag.Constant: return mutate(node, 'type', fn);
-        case Tag.Continue: return mutateNull(node, 'value', fn);
-        case Tag.Get: return mutate(node, 'target', fn);
-        case Tag.If: throw unimplemented(node as never);
-        case Tag.Move: throw unimplemented(node as never);
+    // TODO: Constant.type should probably be resolved by default
 
-        default:
-            throw unreachable(node as never);
+    switch (node.tag) {
+        case Tag.Function:  return mutate(node, 'returnType', fn);
+        case Tag.Struct:    return node;
+        case Tag.Trait:     return node;
+        case Tag.Variable:  return mutate(node, 'type', fn);
+        case Tag.Break:     return mutateNull(node, 'target', fn);
+        case Tag.Call:      return mutate(node, 'target', fn);
+        case Tag.Constant:  return mutate(node, 'type', fn);
+        case Tag.Continue:  return mutateNull(node, 'target', fn);
+        case Tag.Get:       return mutate(node, 'target', fn);
+        case Tag.If:        return node;
+        case Tag.Move:      return node;
+        case Tag.Return:    return node;
+        case Tag.While:     return node;
+
+        default:            throw unimplemented(node as never);
     }
 }
 
