@@ -1,17 +1,15 @@
 import { Context } from './ast/context';
-import { Node, RefId, Scope } from './ast/nodes';
+import { Node, Scope } from './ast/nodes';
 import { serialize } from './ast/serialize';
 import { Source } from './common/source';
 import { parseAst } from './stages/AstGeneration';
 import { parseSource } from './stages/Parse';
 import { resolveNames } from './stages/NameResolver';
+import { Interpreter } from './interpret/interpret';
 
 export class Compiler {
     public static async compileFile(path: string) {
         const source = await Source.fromFile(path);
-
-        // TODO: Reserve id 0 for the module or something
-        const id = new RefId(0);
 
         const ast = new Array<Node>();
         const scope = new Scope(null, new Map());
@@ -20,8 +18,7 @@ export class Compiler {
         const nodes = parseSource(source);
 
         const root = parseAst(context, nodes);
-
-        const resolved = resolveNames(context, root);
+        resolveNames(context, root);
 
         console.log("=== root ===");
         console.log(root);

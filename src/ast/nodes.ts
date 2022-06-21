@@ -31,7 +31,7 @@ export type Node =
     | Ref<any>
 
 export type Type<T extends Node = Node> = Ref<T>;
-export type Local<T extends Node = Node> = Ref<T>;
+export type Local<T extends Node = Node> = RefId<T>;
 
 export class Scope {
     public constructor(

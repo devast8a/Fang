@@ -152,9 +152,10 @@ function parse(parent: Context, node: PNode): RefId {
             
         case PTag.PExprMove: {
             // keyword expression
-            const expression = parseRef(parent, node.data[1]);
+            //const expression = parseRef(parent, node.data[1]);
 
-            return parent.add(new Nodes.Move(p, expression));
+            //return parent.add(new Nodes.Move(p, expression));
+            throw unimplemented(`PTag.PExprMove`);
         }
 
         case PTag.PExprReturn: {
