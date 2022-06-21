@@ -26,5 +26,9 @@ export class Compiler {
         console.log(scope.symbols);
         console.log("=== ast ===");
         console.log(serialize(ast));
+
+        const i = new Interpreter(context);
+        const result = i.get('main')!();
+        console.log(result);
     }
 }
