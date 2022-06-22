@@ -2,13 +2,7 @@ import { Context } from '../ast/context';
 import { Node, Ref, RefId, Tag } from '../ast/nodes';
 import { unimplemented } from '../utils';
 
-class StackFrame {
-
-}
-
 export class Interpreter {
-    private stack = new Array<StackFrame>();
-
     constructor(
         public context: Context,
     ) { }
@@ -30,15 +24,34 @@ export class Interpreter {
         }
 
         return () => {
-            return this.executeBody(fn.body);
+            return this.start(fn.body);
         }
     }
 
-    private executeBody(body: RefId[]) {
-        for (const id of body) {
+    private start(body: RefId[]) {
+        const stack = [];
+        let index = 0;
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            // Finished interpretering the block
+            if (index >= body.length) {
+                const frame = stack.pop();
+
+                if (frame === undefined) {
+                    return undefined;
+                }
+
+                body = frame.body;
+                index = frame.index;
+                continue;
+            }
+
+            const id = body[index++];
             const node = this.context.nodes[id.target];
 
             switch (node.tag) {
+                // Definitions do nothing
                 case Tag.Enum:
                 case Tag.Function:
                 case Tag.Struct:
@@ -46,12 +59,20 @@ export class Interpreter {
                 case Tag.Variable:
                     break;
                 
-                case Tag.Return:
-                    return this.execute(id);
-                
-                default:
-                    this.execute(id);
+                case Tag.If: {
+                    for (const c of node.cases) {
+                        if (c.condition === null || this.execute(c.condition) === true) {
+                            stack.push(new StackFrame(index, body));
+                            index = 0;
+                            body = c.body;
+                            break;
+                        }
+                    }
                     break;
+                }
+
+                case Tag.Return: return this.execute(id);
+                default: this.execute(id); break;
             }
         }
     }
@@ -64,17 +85,22 @@ export class Interpreter {
                 const args = node.args.map(ref => this.execute(ref as any));
                 return args[0] + args[1];
             }
-
-            case Tag.Constant: {
-                return node.value;
-            }
-            
-            case Tag.Return: {
-                return node.value === null ? null : this.execute(node.value);
-            }
-
-            default:
-                throw unimplemented(node as never);
+                
+            case Tag.Constant: return node.value;
+            case Tag.Get:      return false;
+            case Tag.Return:   return this.executeNull(node.value);
+            default:           throw unimplemented(node as never);
         }
     }
+
+    private executeNull(id: RefId | null) {
+        return id === null ? null : this.execute(id);
+    }
+}
+
+class StackFrame {
+    constructor(
+        public index: number,
+        public body: RefId[],
+    ) { }
 }

@@ -124,7 +124,29 @@ function parse(parent: Context, node: PNode): RefId {
         }
             
         case PTag.PExprIf: {
-            throw unimplemented("If is not yet implemented");
+            // keyword condition body elseif+ else
+            const parseCase = (node: PNode) => new Nodes.IfCase(
+                parse(parent, node[1][2]),
+                parseBody(parent, node[2]),
+            );
+
+            const cases = [];
+
+            // If case
+            cases.push(parseCase(node.data));
+
+            // Else-if cases
+            for (const other of node.data[3]) {
+                cases.push(parseCase(other));
+            }
+
+            // Else case
+            const last = parseBodyNull(parent, node.data[4]?.[1]);
+            if (last !== null) {
+                cases.push(new Nodes.IfCase(null, last));
+            }
+
+            return parent.add(new Nodes.If(p, cases));
         }
 
         case PTag.PExprIdentifier: {

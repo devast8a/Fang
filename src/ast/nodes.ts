@@ -171,6 +171,7 @@ export class Get {
     ) { }
 }
 
+
 export class If {
     readonly tag = Tag.If
 
@@ -182,8 +183,7 @@ export class If {
 
 export class IfCase {
     constructor(
-        readonly parent: Scope,
-        readonly condition: Local,
+        readonly condition: Local | null,
         readonly body: Local[],
     ) { }
 }

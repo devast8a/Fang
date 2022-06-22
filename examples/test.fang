@@ -1,11 +1,7 @@
 fn main() {
-    fn foo() {
-
+    if (false) {
+        return 1 + 2 + 5
+    } else {
+        return 1 + 2
     }
 }
-
-fn foo() {
-
-}
-
-foo()
