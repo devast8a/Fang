@@ -74,6 +74,7 @@ function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
         case Tag.If:        return node;
         case Tag.Move:      return node;
         case Tag.Return:    return node;
+        case Tag.Set:       return mutate(node, 'target', fn);
         case Tag.While:     return node;
 
         default:            throw unimplemented(node as never);
