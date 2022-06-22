@@ -59,6 +59,16 @@ export class Interpreter {
                 case Tag.Variable:
                     break;
                 
+                case Tag.While: {
+                    if (this.execute(node.condition) === true) {
+                        stack.push(new StackFrame(index - 1, body));
+                        index = 0;
+                        body = node.body;
+                        break;
+                    }
+                    break;
+                }
+                
                 case Tag.If: {
                     for (const c of node.cases) {
                         if (c.condition === null || this.execute(c.condition) === true) {
