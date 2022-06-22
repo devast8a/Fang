@@ -41,9 +41,11 @@ export class Context {
 
         // Register the node name
         switch (definition.tag) {
+            case Tag.Enum:
             case Tag.Function:
             case Tag.Struct:
             case Tag.Trait:
+            case Tag.Variable:
                 MultiMapUtils.push(this.scope.symbols, definition.name, id);
                 break;
         }
