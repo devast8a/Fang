@@ -1,8 +1,13 @@
 import { Context } from '../ast/context';
 import { Node, Ref, RefId, Tag } from '../ast/nodes';
-import { unimplemented } from '../utils';
+import { unimplemented, unreachable } from '../utils';
 
 export class Interpreter {
+    private stack = new Array<StackFrame>();
+    private body = new Array<RefId>();
+    private index = 0;
+    private locals = new Array<any>();
+
     constructor(
         public context: Context,
     ) { }
@@ -28,26 +33,44 @@ export class Interpreter {
         }
     }
 
-    private start(body: RefId[]) {
-        const stack = [];
-        let index = 0;
+    private pop() {
+        const frame = this.stack.pop();
+
+        if (frame === undefined) {
+            return true;
+        }
+
+        this.body = frame.body;
+        this.index = frame.index;
+        this.locals = frame.locals;
+        return false;
+    }
+
+    private push(body: RefId[], locals?: any[]) {
+        this.stack.push(
+            new StackFrame(this.index, this.locals, this.body),
+        );
+
+        this.index = 0;
+        this.locals = locals ?? [];
+        this.body = body;
+    }
+
+    private start(b: RefId[]) {
+        this.body = b;
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
             // Finished interpretering the block
-            if (index >= body.length) {
-                const frame = stack.pop();
-
-                if (frame === undefined) {
-                    return undefined;
+            if (this.index >= this.body.length) {
+                if (this.pop()) {
+                    return;
                 }
-
-                body = frame.body;
-                index = frame.index;
-                continue;
+                break;
             }
 
-            const id = body[index++];
+            // Decode
+            const id = this.body[this.index];
             const node = this.context.nodes[id.target];
 
             switch (node.tag) {
@@ -57,32 +80,38 @@ export class Interpreter {
                 case Tag.Struct:
                 case Tag.Trait:
                 case Tag.Variable:
+                    this.index++;
                     break;
                 
                 case Tag.While: {
                     if (this.execute(node.condition) === true) {
-                        stack.push(new StackFrame(index - 1, body));
-                        index = 0;
-                        body = node.body;
-                        break;
+                        this.push(node.body, this.locals);
+                    } else {
+                        this.index++;
                     }
                     break;
                 }
                 
                 case Tag.If: {
+                    this.index++;
                     for (const c of node.cases) {
                         if (c.condition === null || this.execute(c.condition) === true) {
-                            stack.push(new StackFrame(index, body));
-                            index = 0;
-                            body = c.body;
+                            this.push(c.body, this.locals);
                             break;
                         }
                     }
                     break;
                 }
 
-                case Tag.Return: return this.execute(id);
-                default: this.execute(id); break;
+                case Tag.Return: {
+                    return this.execute(id);
+                }
+
+                default: {
+                    this.index++;
+                    this.execute(id);
+                    break;
+                }
             }
         }
     }
@@ -96,8 +125,31 @@ export class Interpreter {
                 return args[0] + args[1];
             }
                 
+            case Tag.Get: {
+                const ref = node.target;
+                switch (ref.tag) {
+                    case Tag.RefName: return ref.target === 'true';
+                    case Tag.RefId: return this.locals[ref.target];
+                    case Tag.RefIds: return this.locals[ref.target[0]];
+                    default: throw unimplemented(ref as never);
+                }
+                break;
+            }
+                
+            case Tag.Set: {
+                const ref = node.target;
+                const value = this.execute(node.value);
+
+                switch (ref.tag) {
+                    case Tag.RefName: throw unreachable("Unresolved target of assignment");
+                    case Tag.RefId: return this.locals[ref.target] = value;
+                    case Tag.RefIds: return this.locals[ref.target[0]] = value;
+                    default: throw unimplemented(ref as never);
+                }
+                break;
+            }
+                
             case Tag.Constant: return node.value;
-            case Tag.Get:      return false;
             case Tag.Return:   return this.executeNull(node.value);
             default:           throw unimplemented(node as never);
         }
@@ -111,6 +163,7 @@ export class Interpreter {
 class StackFrame {
     constructor(
         public index: number,
+        public locals: any[],
         public body: RefId[],
     ) { }
 }
