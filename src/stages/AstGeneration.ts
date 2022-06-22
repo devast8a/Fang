@@ -90,7 +90,7 @@ function parse(parent: Context, node: PNode): RefId {
 
             // TODO: Yeah not sure how I like this
             if (value !== null) {
-                parent.add(new Nodes.Set(p, n, value))
+                return parent.add(new Nodes.Set(p, n, value))
             }
 
             return n;
