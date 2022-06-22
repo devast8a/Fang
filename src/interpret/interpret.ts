@@ -119,8 +119,23 @@ export class Interpreter {
 
         switch (node.tag) {
             case Tag.Call: {
-                const args = node.args.map(ref => this.execute(ref as any));
-                return args[0] + args[1];
+                const ref = node.target;
+                switch (ref.tag) {
+                    case Tag.RefName: {
+                        const args = node.args.map(ref => this.execute(ref as any));
+
+                        switch (ref.target) {
+                            case 'infix+': return args[0] + args[1];
+                            case 'infix-': return args[0] - args[1];
+                            case 'infix<': return args[0] < args[1];
+                            case 'infix>': return args[0] > args[1];
+                            case 'infix<=': return args[0] <= args[1];
+                            case 'infix>=': return args[0] >= args[1];
+                            default: throw unimplemented(ref.target);
+                        }
+                    }
+                    default: throw unimplemented(ref as never);
+                }
             }
                 
             case Tag.Get: {
