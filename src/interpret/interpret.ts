@@ -47,9 +47,8 @@ export class Interpreter {
     }
 
     private push(body: RefId[], locals?: any[]) {
-        this.stack.push(
-            new StackFrame(this.index, this.locals, this.body),
-        );
+        const frame = new StackFrame(this.index, this.locals, this.body);
+        this.stack.push(frame);
 
         this.index = 0;
         this.locals = locals ?? [];
@@ -62,11 +61,10 @@ export class Interpreter {
         // eslint-disable-next-line no-constant-condition
         while (true) {
             // Finished interpretering the block
-            if (this.index >= this.body.length) {
+            while (this.index >= this.body.length) {
                 if (this.pop()) {
                     return;
                 }
-                break;
             }
 
             // Decode
