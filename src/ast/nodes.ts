@@ -10,7 +10,9 @@ export enum Tag {
     Break,
     Call,
     Constant,
+    Construct,
     Continue,
+    ForEach,
     Get,
     If,
     Move,
@@ -19,6 +21,7 @@ export enum Tag {
     While,
 
     // Ref
+    RefFieldName,
     RefId,
     RefIds,
     RefInfer,
@@ -114,7 +117,9 @@ export type Expr =
     | Break
     | Call
     | Constant<any>
+    | Construct
     | Continue
+    | ForEach
     | Get
     | If
     | Move
@@ -152,6 +157,16 @@ export class Constant<Value> {
     ) { }
 }
 
+export class Construct {
+    readonly tag = Tag.Construct;
+
+    constructor(
+        readonly parent: Scope,
+        readonly target: Ref<Struct>,
+        readonly args: readonly Ref[],
+    ) { }
+}
+
 export class Continue {
     readonly tag = Tag.Continue
 
@@ -160,6 +175,17 @@ export class Continue {
         readonly target: Ref | null,
         readonly value: Local | null,
     ) { }
+}
+
+export class ForEach {
+    readonly tag = Tag.ForEach
+
+    constructor(
+        readonly parent: Scope,
+        readonly element: Local,
+        readonly collection: Local,
+        readonly body: Local[],
+    ) {}
 }
 
 export class Get {
@@ -228,10 +254,20 @@ export class While {
 
 // =============================================================================
 export type Ref<T extends Node = Node> =
+    | RefFieldName<T>
     | RefId<T>
     | RefIds<T>
     | RefInfer
     | RefName<T>
+
+export class RefFieldName<T extends Node = Node> {
+    readonly tag = Tag.RefFieldName;
+
+    constructor(
+        readonly object: Ref,
+        readonly target: string,
+    ) { }
+}
 
 // Reference a single symbol
 export class RefId<T extends Node = Node> {

@@ -20,9 +20,10 @@ const lexer = moo.compile({
       kw_struct: "struct",
       kw_trait: "trait",
       kw_val: "val",
+      kw_or: "or",
+      kw_and: "and",
     })
   },
-  lifetime:         /%[a-zA-Z_][a-zA-Z0-9_]*/,
   attribute_begin:  '#[',
 
   left_curly:       '{',

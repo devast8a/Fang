@@ -10,21 +10,29 @@ export function resolveNames(context: Context, refs: RefId[]) {
     for (let id = 0; id < nodes.length; id++) {
         const node = nodes[id];
 
-        nodes[id] = mutateRef(node, ref => {
-            if (ref.tag === Tag.RefName) {
-                const ids = lookup((node as any).parent, ref.target);
+        const set = (ref: Ref): Ref => {
+            switch (ref.tag) {
+                case Tag.RefName: {
+                    const ids = lookup((node as any).parent, ref.target);
 
-                if (ids === null) {
-                    return ref;
-                } else if (ids.length === 1) {
-                    return new Nodes.RefId(ids[0]);
-                } else {
+                    if (ids === null) {
+                        return ref;
+                    }
+                    if (ids.length === 1) {
+                        return new Nodes.RefId(ids[0]);
+                    }
                     return new Nodes.RefIds(ids);
                 }
+                    
+                case Tag.RefFieldName: {
+                    return mutate(ref, 'object', set);
+                }
+                    
+                default: return ref;
             }
+        }
 
-            return ref;
-        });
+        nodes[id] = mutateRef(node, set);
     }
 }
 
@@ -69,7 +77,9 @@ function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
         case Tag.Break:     return mutateNull(node, 'target', fn);
         case Tag.Call:      return mutate(node, 'target', fn);
         case Tag.Constant:  return mutate(node, 'type', fn);
+        case Tag.Construct: return mutate(node, 'target', fn);
         case Tag.Continue:  return mutateNull(node, 'target', fn);
+        case Tag.ForEach:   return node;
         case Tag.Get:       return mutate(node, 'target', fn);
         case Tag.If:        return node;
         case Tag.Move:      return node;

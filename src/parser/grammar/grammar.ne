@@ -110,7 +110,7 @@
     # After the function name but before the body in DeclFunction
 
 ## Decl/Parameter ##################################################################################
-    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpLifetime:? DpValue:? {%p.PDeclParameter%}
+    DeclParameter    -> DpKeyword:? DpName CompileTime:? DpType:? DpAttribute:* DpValue:? {%p.PDeclParameter%}
 
     # Examples:
     #   name
@@ -133,7 +133,6 @@
     DpType          -> _ ":" _ Type
     DpAttribute     -> __ Attribute
     DpValue         -> _ "=" _ Expr
-    DpLifetime      -> __ %lifetime
 
     # Context
     # Function declaration parameter's list (DeclFunction)
@@ -210,7 +209,7 @@
 ## Expr ############################################################################################
     # Expr describes expressions that may be comprised of binary and unary operations
     # Atom describes what binary and unary operators may be performed on
-    Expr            -> ExprBinary
+    Expr            -> ExprLogical
 
     # To avoid potential ambiguity between generics and less than or greater than operators we do
     # not consider "<" and ">" to be legal operators. However, we still want to use these symbols
@@ -222,13 +221,17 @@
     OperatorSpaced  -> %operator {% p.RejectOperators %}
     Operator        -> %operator {% p.RejectOperators %}
 
-    # Binary Expressions
-    # x + y or x+y
-    ExprBinary      -> ExprBinary __ OperatorSpaced __ ExprUnary    {%p.PExprBinary%}
-    ExprBinary      -> ExprBinary NL OperatorSpaced __ ExprUnary    {%p.PExprBinary%}
-    ExprBinary      -> ExprBinary __ OperatorSpaced NL ExprUnary    {%p.PExprBinary%}
-    ExprBinary      -> Atom Operator Atom                           {%p.PExprBinary%}
-    ExprBinary      -> ExprUnary
+    ExprLogical     -> ExprBinaryA
+    ExprLogical     -> ExprLogical __ "or" __ ExprBinaryA           {%p.PExprBinary%}
+    ExprLogical     -> ExprLogical __ "and" __ ExprBinaryA          {%p.PExprBinary%}
+
+    ExprBinaryA     -> ExprBinaryB
+    ExprBinaryA     -> ExprBinaryA __ OperatorSpaced __ ExprBinaryB {%p.PExprBinary%}
+    ExprBinaryA     -> ExprBinaryA NL OperatorSpaced __ ExprBinaryB {%p.PExprBinary%}
+    ExprBinaryA     -> ExprBinaryA __ OperatorSpaced NL ExprBinaryB {%p.PExprBinary%}
+
+    ExprBinaryB     -> ExprUnary
+    ExprBinaryB     -> Atom Operator Atom                           {%p.PExprBinary%}
 
     # Unary Expressions
     # ++x or x++
@@ -379,7 +382,7 @@
 
     # Contexts
     Stmt            -> ExprMacroCall
-    ExprBinary      -> ExprMacroCall
+    #ExprBinary      -> ExprMacroCall
 
 ## Expr/Move #######################################################################################
     ExprMove        -> ExprMoveKeyword ExprMoveExpr {%p.PExprMove%}
@@ -408,7 +411,8 @@
 
     # Required
     SfKeyword       -> "for"
-    SfCondition     -> _ "(" _ Identifier __ "in" __ Expr _ ")"
+    # Identifier should actually be a variable declaration
+    SfCondition     -> _ Identifier __ "in" __ Expr
     SfBody          -> N_ BODY[Stmt]
 
     # Contexts
@@ -427,10 +431,10 @@
     # TODO: Support compile time operator
 
     # Required
-    SiKeyword       -> "if" N_
+    SiKeyword       -> "if"
     SiElifKeyword   -> N_ "else" __ "if" _
     SiElseKeyword   -> N_ "else"
-    SiCondition     -> "(" _ Expr _ ")"
+    SiCondition     -> _ Expr
     SiBody          -> N_ BODY[Stmt]
 
     # Optional After
@@ -480,7 +484,7 @@
 
     # Required
     SwKeyword       -> "while"
-    SwCondition     -> _ "(" _ Expr _ ")"
+    SwCondition     -> _ Expr
     SwBody          -> N_ BODY[Stmt]
 
     # Context

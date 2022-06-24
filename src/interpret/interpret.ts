@@ -1,5 +1,5 @@
 import { Context } from '../ast/context';
-import { Node, Ref, RefId, Tag } from '../ast/nodes';
+import { Function, Node, Ref, RefId, Tag } from '../ast/nodes';
 import { unimplemented, unreachable } from '../utils';
 
 export class Interpreter {
@@ -28,8 +28,8 @@ export class Interpreter {
             return null;
         }
 
-        return () => {
-            return this.start(fn.body);
+        return (...args: any[]) => {
+            return this.executeFn(fn, args);
         }
     }
 
@@ -55,8 +55,13 @@ export class Interpreter {
         this.body = body;
     }
 
-    private start(b: RefId[]) {
-        this.body = b;
+    private executeFn(fn: Function, args: any[]) {
+        this.body = fn.body;
+        
+        // Set parameters
+        for (let i = 0; i < args.length; i++) {
+            this.locals[fn.parameters[i].target] = args[i];
+        }
 
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -87,6 +92,12 @@ export class Interpreter {
                     } else {
                         this.index++;
                     }
+                    break;
+                }
+
+                case Tag.ForEach: {
+                    const collection = this.execute(node.collection);
+                    const variable = node.element.target;
                     break;
                 }
                 
@@ -123,25 +134,60 @@ export class Interpreter {
                 switch (ref.tag) {
                     case Tag.RefName: {
                         const args = node.args.map(ref => this.execute(ref as any));
-
                         switch (ref.target) {
                             case 'infix+': return args[0] + args[1];
                             case 'infix-': return args[0] - args[1];
+                            case 'infix*': return args[0] * args[1];
+                            case 'infix/': return args[0] / args[1];
+                            case 'infix**': return args[0] ** args[1];
+                            case 'infix//': return Math.trunc(args[0] / args[1]);
+                            case 'infix%': return args[0] % args[1];
                             case 'infix<': return args[0] < args[1];
                             case 'infix>': return args[0] > args[1];
+                            case 'infix==': return compare(args[0], args[1]);
+                            case 'infix!=': return !compare(args[0], args[1]);
                             case 'infix<=': return args[0] <= args[1];
                             case 'infix>=': return args[0] >= args[1];
+                            case 'infix||': return args[0] || args[1];
+                            case 'infix&&': return args[0] && args[1];
+                            case 'infixor': return args[0] || args[1];
+                            case 'infixand': return args[0] && args[1];
+                            case 'print': console.log(...args); break;
+                            case 'wait': for (let i = 0; i < 1000 * 1000 * 100; i++); return;
                             default: throw unimplemented(ref.target);
                         }
+                        break;
+                    }
+                    case Tag.RefId: {
+                        // Load the function
+                        const fn = this.context.nodes[ref.target] as Function;
+                        const args = node.args.map(ref => this.execute(ref as any));
+                        const interpreter = new Interpreter(this.context);
+                        return interpreter.executeFn(fn, args);
+                    }
+                    case Tag.RefFieldName: {
+                        // Currently there is only one type of structure, the array
+                        const object = this.execute(ref.object as RefId);
+                        const args = node.args.map(ref => this.execute(ref as any));
+                        return object[ref.target](...args);
                     }
                     default: throw unimplemented(ref as never);
                 }
+                break;
             }
                 
             case Tag.Get: {
                 const ref = node.target;
                 switch (ref.tag) {
-                    case Tag.RefName: return ref.target === 'true';
+                    case Tag.RefName: {
+                        switch (ref.target) {
+                            case 'true': return true;
+                            case 'false': return false;
+                            case 'Math': return Math;
+                            case 'String': return XString;
+                            default: throw unimplemented(ref.target);
+                        }
+                    }
                     case Tag.RefId: return this.locals[ref.target];
                     case Tag.RefIds: return this.locals[ref.target[0]];
                     default: throw unimplemented(ref as never);
@@ -161,7 +207,8 @@ export class Interpreter {
                 }
                 break;
             }
-                
+
+            case Tag.Construct: return [];
             case Tag.Constant: return node.value;
             case Tag.Return:   return this.executeNull(node.value);
             default:           throw unimplemented(node as never);
@@ -179,4 +226,26 @@ class StackFrame {
         public locals: any[],
         public body: RefId[],
     ) { }
+}
+
+class XString {
+    constructor(
+        public value: string,
+    ) { }
+
+    reverse() {
+        return new XString(this.value.split('').reverse().join(''))
+    }
+
+    static from(value: any) {
+        return new XString(value.toString());
+    }
+}
+
+function compare(left: any, right: any) {
+    if (left instanceof XString && right instanceof XString) {
+        return left.value === right.value;
+    }
+
+    return left === right;
 }

@@ -120,13 +120,24 @@ function parse(parent: Context, node: PNode): RefId {
             const type = parseType(node.data[0]);
             const args = node.data[2].elements.map((expr) => parse(parent, expr));
 
-            throw unimplemented("Construction has not been implemented");
+            return parent.add(new Nodes.Construct(p, type, args));
+        }
+            
+        case PTag.PExprForEach: {
+            // keyword compileTime condition body
+            const declaration = parseIdentifier(node.data[2][1]);
+            const expression = parse(parent, node.data[2][5]);
+            const body = parseBody(parent, node.data[3]);
+
+            // A little bit messy, but it's okay
+            const element = parent.add(new Nodes.Variable(p, declaration, new Nodes.RefInfer()));
+            return parent.add(new Nodes.ForEach(p, element, expression, body));
         }
             
         case PTag.PExprIf: {
             // keyword condition body elseif+ else
             const parseCase = (node: PNode) => new Nodes.IfCase(
-                parse(parent, node[1][2]),
+                parse(parent, node[1][1]),
                 parseBody(parent, node[2]),
             );
 
@@ -197,7 +208,7 @@ function parse(parent: Context, node: PNode): RefId {
 
         case PTag.PExprWhile: {
             // keyword compileTime condition body
-            const condition = parse(parent, node.data[2][3]);
+            const condition = parse(parent, node.data[2][1]);
             const body = parseBody(parent, node.data[3]);
 
             return parent.add(new Nodes.While(p, condition, body));
@@ -254,17 +265,16 @@ function parseRef(parent: Context, node: PNode) {
             return new Nodes.RefName(name);
         }
             
-        //case PTag.PExprIndexDot: {
-        //    // target operator name
-        //    const target = parse(parent, node.data[0]);
-        //    const name = parseIdentifier(node.data[2]);
+        case PTag.PExprIndexDot: {
+            // target operator name
+            const target = parse(parent, node.data[0]);
+            const name = parseIdentifier(node.data[2]);
 
-        //    return new Nodes.RefFieldName(target, name);
-        //}
-            
+            return new Nodes.RefFieldName(target, name);
+        }
     }
 
-    throw unreachable(`Unhandled case ${node.tag}`);
+    throw unreachable(`Unhandled case ${PTag[node.tag]}`);
 }
 
 function parseNull(parent: Context, node: PNode | null | undefined): RefId | null {
@@ -329,6 +339,9 @@ function parseIdentifier(node: PNode) {
 
 function parseOperator(node: PNode) {
     // @see grammar.ne/OperatorSpaced
+    if (node.value) {
+        return node.value;
+    }
     if (node.length === 1) {
         return node[0].value;
     } else if (node[1] === null) {
