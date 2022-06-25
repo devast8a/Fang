@@ -264,7 +264,7 @@ const grammar: Grammar = {
     {"name": "ExprBinaryA", "symbols": ["ExprBinaryA", "NL", "OperatorSpaced", "__", "ExprBinaryB"], "postprocess": p.PExprBinary},
     {"name": "ExprBinaryA", "symbols": ["ExprBinaryA", "__", "OperatorSpaced", "NL", "ExprBinaryB"], "postprocess": p.PExprBinary},
     {"name": "ExprBinaryB", "symbols": ["ExprUnary"]},
-    {"name": "ExprBinaryB", "symbols": ["Atom", "Operator", "Atom"], "postprocess": p.PExprBinary},
+    {"name": "ExprBinaryB", "symbols": ["ExprBinaryB", "Operator", "Atom"], "postprocess": p.PExprBinary},
     {"name": "ExprUnary", "symbols": ["Operator", "Atom"], "postprocess": p.PExprUnaryPrefix},
     {"name": "ExprUnary", "symbols": ["Atom", "Operator"], "postprocess": p.PExprUnaryPostfix},
     {"name": "ExprUnary", "symbols": ["Atom"]},

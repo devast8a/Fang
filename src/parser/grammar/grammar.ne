@@ -231,7 +231,7 @@
     ExprBinaryA     -> ExprBinaryA __ OperatorSpaced NL ExprBinaryB {%p.PExprBinary%}
 
     ExprBinaryB     -> ExprUnary
-    ExprBinaryB     -> Atom Operator Atom                           {%p.PExprBinary%}
+    ExprBinaryB     -> ExprBinaryB Operator Atom                    {%p.PExprBinary%}
 
     # Unary Expressions
     # ++x or x++
