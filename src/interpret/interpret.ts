@@ -3,11 +3,6 @@ import { Function, Node, Ref, RefId, Tag } from '../ast/nodes';
 import { unimplemented, unreachable } from '../utils';
 
 export class Interpreter {
-    private stack = new Array<StackFrame>();
-    private body = new Array<RefId>();
-    private index = 0;
-    private locals = new Array<any>();
-
     constructor(
         public context: Context,
     ) { }
@@ -29,111 +24,31 @@ export class Interpreter {
         }
 
         return (...args: any[]) => {
-            return this.executeFn(fn, args);
+            return this.executeFunction(fn, args);
         }
     }
 
-    private pop() {
-        const frame = this.stack.pop();
-
-        if (frame === undefined) {
-            return true;
-        }
-
-        this.body = frame.body;
-        this.index = frame.index;
-        this.locals = frame.locals;
-        return false;
-    }
-
-    private push(body: RefId[], locals?: any[]) {
-        const frame = new StackFrame(this.index, this.locals, this.body);
-        this.stack.push(frame);
-
-        this.index = 0;
-        this.locals = locals ?? [];
-        this.body = body;
-    }
-
-    private executeFn(fn: Function, args: any[]) {
-        this.body = fn.body;
-        
-        // Set parameters
-        for (let i = 0; i < args.length; i++) {
-            this.locals[fn.parameters[i].target] = args[i];
-        }
-
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
-            // Finished interpretering the block
-            while (this.index >= this.body.length) {
-                if (this.pop()) {
-                    return;
-                }
-            }
-
-            // Decode
-            const id = this.body[this.index];
-            const node = this.context.nodes[id.target];
-
-            switch (node.tag) {
-                // Definitions do nothing
-                case Tag.Enum:
-                case Tag.Function:
-                case Tag.Struct:
-                case Tag.Trait:
-                case Tag.Variable:
-                    this.index++;
-                    break;
-                
-                case Tag.While: {
-                    if (this.execute(node.condition) === true) {
-                        this.push(node.body, this.locals);
-                    } else {
-                        this.index++;
-                    }
-                    break;
-                }
-
-                case Tag.ForEach: {
-                    const collection = this.execute(node.collection);
-                    const variable = node.element.target;
-                    break;
-                }
-                
-                case Tag.If: {
-                    this.index++;
-                    for (const c of node.cases) {
-                        if (c.condition === null || this.execute(c.condition) === true) {
-                            this.push(c.body, this.locals);
-                            break;
-                        }
-                    }
-                    break;
-                }
-
-                case Tag.Return: {
-                    return this.execute(id);
-                }
-
-                default: {
-                    this.index++;
-                    this.execute(id);
-                    break;
-                }
-            }
-        }
-    }
-
-    private execute(id: RefId): any {
+    private execute(id: RefId, locals: Value[]): (Value | ControlFlow) {
         const node = this.context.nodes[id.target];
 
         switch (node.tag) {
+            // Declerations
+            case Tag.Enum:
+            case Tag.Function:
+            case Tag.Struct:
+            case Tag.Trait:
+            case Tag.Variable:
+                return null;
+                
+            // Expressions
             case Tag.Call: {
                 const ref = node.target;
                 switch (ref.tag) {
                     case Tag.RefName: {
-                        const args = node.args.map(ref => this.execute(ref as any));
+                        const args = node.args.map(ref =>
+                            ToValue(this.execute(ref, locals)) as any
+                        );
+
                         switch (ref.target) {
                             case 'infix+': return args[0] + args[1];
                             case 'infix-': return args[0] - args[1];
@@ -150,10 +65,16 @@ export class Interpreter {
                             case 'infix>=': return args[0] >= args[1];
                             case 'infix||': return args[0] || args[1];
                             case 'infix&&': return args[0] && args[1];
+                            case 'infix..': {
+                                const result = [];
+                                for (let i = args[0]; i < args[1]; i++) {
+                                    result.push(i);
+                                }
+                                return result;
+                            }
                             case 'infixor': return args[0] || args[1];
                             case 'infixand': return args[0] && args[1];
                             case 'print': console.log(...args); break;
-                            case 'wait': for (let i = 0; i < 1000 * 1000 * 100; i++); return;
                             default: throw unimplemented(ref.target);
                         }
                         break;
@@ -161,21 +82,39 @@ export class Interpreter {
                     case Tag.RefId: {
                         // Load the function
                         const fn = this.context.nodes[ref.target] as Function;
-                        const args = node.args.map(ref => this.execute(ref as any));
+                        const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
                         const interpreter = new Interpreter(this.context);
-                        return interpreter.executeFn(fn, args);
+                        return interpreter.executeFunction(fn, args);
                     }
                     case Tag.RefFieldName: {
-                        // Currently there is only one type of structure, the array
-                        const object = this.execute(ref.object as RefId);
-                        const args = node.args.map(ref => this.execute(ref as any));
+                        const object = this.execute(ref.object as RefId, locals) as any;
+                        const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
                         return object[ref.target](...args);
                     }
                     default: throw unimplemented(ref as never);
                 }
-                break;
+                return null;
             }
                 
+            case Tag.Constant: {
+                return node.value;
+            }
+                
+            case Tag.ForEach: {
+                // eslint-disable-next-line no-constant-condition
+                const collection = ToValue(this.execute(node.collection, locals)) as any;
+
+                for (const element of collection) {
+                    locals[node.element.target] = element;
+                    const body = this.executeBody(node.body, locals);
+
+                    if (controlFlowExit(body)) {
+                        return body.value;
+                    }
+                }
+                return null;
+            }
+
             case Tag.Get: {
                 const ref = node.target;
                 switch (ref.tag) {
@@ -184,68 +123,153 @@ export class Interpreter {
                             case 'true': return true;
                             case 'false': return false;
                             case 'Math': return Math;
-                            case 'String': return XString;
+                            case 'String': return FString;
                             default: throw unimplemented(ref.target);
                         }
                     }
-                    case Tag.RefId: return this.locals[ref.target];
-                    case Tag.RefIds: return this.locals[ref.target[0]];
+                    case Tag.RefId: return locals[ref.target];
+                    case Tag.RefIds: return locals[ref.target[0]];
                     default: throw unimplemented(ref as never);
                 }
                 break;
             }
                 
+            case Tag.If: {
+                for (const c of node.cases) {
+                    if (c.condition === null || ToBoolean(this.execute(c.condition, locals))) {
+                        return this.executeBody(c.body, locals);
+                    }
+                }
+                return null;
+            }
+                
+            case Tag.Return: {
+                return new ControlFlow(
+                    ControlFlowType.Return,
+                    ToValue(node.value === null ? null : this.execute(node.value, locals)),
+                );
+            }
+
             case Tag.Set: {
                 const ref = node.target;
-                const value = this.execute(node.value);
+                const value = ToValue(this.execute(node.value, locals));
 
                 switch (ref.tag) {
                     case Tag.RefName: throw unreachable("Unresolved target of assignment");
-                    case Tag.RefId: return this.locals[ref.target] = value;
-                    case Tag.RefIds: return this.locals[ref.target[0]] = value;
+                    case Tag.RefId: return (locals[ref.target] = value);
+                    case Tag.RefIds: return (locals[ref.target[0]] = value);
                     default: throw unimplemented(ref as never);
                 }
                 break;
             }
 
-            case Tag.Construct: return [];
-            case Tag.Constant: return node.value;
-            case Tag.Return:   return this.executeNull(node.value);
-            default:           throw unimplemented(node as never);
+            case Tag.While: {
+                // eslint-disable-next-line no-constant-condition
+                while (ToBoolean(this.execute(node.condition, locals))) {
+                    const body = this.executeBody(node.body, locals);
+
+                    if (controlFlowExit(body)) {
+                        return body.value;
+                    }
+                }
+                return null;
+            }
         }
+
+        throw unimplemented(node as never);
     }
 
-    private executeNull(id: RefId | null) {
-        return id === null ? null : this.execute(id);
+    private executeBody(ids: RefId[], locals: Value[]): (Value | ControlFlow) {
+        for (const id of ids) {
+            const result = this.execute(id, locals);
+
+            if (result instanceof ControlFlow) {
+                return result;
+            }
+        }
+
+        return null;
+    }
+
+    private executeFunction(fn: Function, args: any[]) {
+        // Set parameter values
+        const locals = [];
+        for (let i = 0; i < args.length; i++) {
+            locals[fn.parameters[i].target] = args[i];
+        }
+
+        const result = this.executeBody(fn.body, locals);
+        if (result instanceof ControlFlow) {
+            return result.value;
+        }
+        return result;
     }
 }
 
-class StackFrame {
+type Value =
+    | boolean
+    | number
+    | string
+    | null
+    | object
+    ;
+
+enum ControlFlowType {
+    Break,
+    Continue,
+    Return,
+}
+
+class ControlFlow {
     constructor(
-        public index: number,
-        public locals: any[],
-        public body: RefId[],
+        readonly control: ControlFlowType,
+        readonly value: Value,
     ) { }
 }
 
-class XString {
-    constructor(
-        public value: string,
-    ) { }
-
-    reverse() {
-        return new XString(this.value.split('').reverse().join(''))
+// Check that `value` is of type `Value` and not `ControlFlow`
+function ToValue(value: Value | ControlFlow): Value {
+    if (value instanceof ControlFlow) {
+        throw new Error('Type Error: expected value')
     }
 
-    static from(value: any) {
-        return new XString(value.toString());
-    }
+    return value;
 }
 
-function compare(left: any, right: any) {
-    if (left instanceof XString && right instanceof XString) {
+function ToBoolean(value: Value | ControlFlow): boolean {
+    if (typeof (value) !== 'boolean') {
+        throw new Error('Type Error: expected boolean')
+    }
+
+    return value;
+}
+
+function controlFlowExit(value: Value | ControlFlow): value is ControlFlow {
+    if (!(value instanceof ControlFlow)) {
+        return false;
+    }
+
+    return value.control !== ControlFlowType.Continue;
+}
+
+function compare(left: Value, right: Value) {
+    if (left instanceof FString && right instanceof FString) {
         return left.value === right.value;
     }
 
     return left === right;
+}
+
+class FString {
+    constructor(
+        readonly value: string
+    ) { }
+
+    static from(value: Value) {
+        return new FString(value?.toString() ?? "");
+    }
+
+    reverse() {
+        return new FString(this.value.split('').reverse().join(''));
+    }
 }

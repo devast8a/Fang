@@ -143,7 +143,7 @@ export class Call {
     constructor(
         readonly parent: Scope,
         readonly target: Ref<Function>,
-        readonly args: readonly Ref[],
+        readonly args: readonly Local[],
     ) { }
 }
 
