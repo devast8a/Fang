@@ -167,6 +167,12 @@ function parse(parent: Context, node: PNode): RefId {
             return parent.add(new Nodes.Get(p, ref));
         }
 
+        case PTag.PExprIndexBracket: {
+            // Target Index
+            const target = parseRef(parent, node);
+            return parent.add(new Nodes.Get(p, target));
+        }
+
         case PTag.PExprIndexDot: {
             // Delegates parsing to ExprRef
             const target = parseRef(parent, node);
@@ -237,6 +243,13 @@ function parse(parent: Context, node: PNode): RefId {
 
             return parent.add(new Nodes.Constant(p, type, number));
         }
+            
+        case PTag.PLiteralList: {
+            const type = new Nodes.RefName('u32array');
+            const value = node.data[0].elements.map(node => parseInt(node.data[0].value));
+
+            return parent.add(new Nodes.Constant(p, type, value));
+        }
 
         case PTag.PLiteralString: {
             const value = node.data[0].value.slice(1,-1).replace(/\\(.)/, (_,c) => {
@@ -271,6 +284,14 @@ function parseRef(parent: Context, node: PNode) {
             const name = parseIdentifier(node.data[2]);
 
             return new Nodes.RefFieldName(target, name);
+        }
+            
+        case PTag.PExprIndexBracket: {
+            // target index
+            const target = parse(parent, node.data[0]);
+            const index = parse(parent, node.data[1].elements[0]);
+
+            return new Nodes.RefFieldName(target, index as any);
         }
     }
 

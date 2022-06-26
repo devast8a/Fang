@@ -252,7 +252,7 @@
     Atom            -> %integer_hex           {%p.PLiteralIntegerHex%}   # 0x01234567890ABCDEF 0xFF_FF
 
 ## Expr/Literals/List ##############################################################################
-    ExprList        -> STAR["[", _, Expr, COMMA, "]"]
+    ExprList        -> STAR["[", N_, Expr, COMMA, "]"]              {%p.PLiteralList%}
     # This quote is a workaround to fix a highlighting bug in vscode "
 
     # Example:
@@ -336,7 +336,7 @@
     # Expr            -> ExprIf
 
 ## Expr/IndexBracket ###############################################################################
-    ExprIndexBracket -> EbTarget EbIndex
+    ExprIndexBracket -> EbTarget EbIndex        {%p.PExprIndexBracket%}
 
     # Examples:
     #   foo[bar, baz]

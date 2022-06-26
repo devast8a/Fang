@@ -163,7 +163,7 @@ export class Construct {
     constructor(
         readonly parent: Scope,
         readonly target: Ref<Struct>,
-        readonly args: readonly Ref[],
+        readonly args: readonly Local[],
     ) { }
 }
 

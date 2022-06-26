@@ -26,6 +26,7 @@ export enum PTag {
     PExprGenericApply,
     PExprIdentifier,
     PExprIf,
+    PExprIndexBracket,
     PExprIndexDot,
     PExprMacroCall,
     PExprMove,
@@ -40,6 +41,7 @@ export enum PTag {
     PLiteralIntegerDec,
     PLiteralIntegerHex,
     PLiteralIntegerOct,
+    PLiteralList,
     PLiteralString,
 }
 
@@ -74,6 +76,7 @@ export const PExprForEach        = tag(PTag.PExprForEach);
 export const PExprGenericApply   = tag(PTag.PExprGenericApply);
 export const PExprIdentifier     = tag(PTag.PExprIdentifier);
 export const PExprIf             = tag(PTag.PExprIf);
+export const PExprIndexBracket   = tag(PTag.PExprIndexBracket);
 export const PExprIndexDot       = tag(PTag.PExprIndexDot);
 export const PExprMacroCall      = tag(PTag.PExprMacroCall);
 export const PExprMove           = tag(PTag.PExprMove);
@@ -88,6 +91,7 @@ export const PLiteralIntegerBin  = tag(PTag.PLiteralIntegerBin);
 export const PLiteralIntegerDec  = tag(PTag.PLiteralIntegerDec);
 export const PLiteralIntegerHex  = tag(PTag.PLiteralIntegerHex);
 export const PLiteralIntegerOct  = tag(PTag.PLiteralIntegerOct);
+export const PLiteralList        = tag(PTag.PLiteralList);
 export const PLiteralString      = tag(PTag.PLiteralString);
 
 // Post-processors /////////////////////////////////////////////////////////////////////////////////

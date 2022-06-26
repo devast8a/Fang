@@ -1,13 +1,24 @@
+import { inspect } from 'util';
 import { Context } from '../ast/context';
-import { Function, Node, Ref, RefId, Tag } from '../ast/nodes';
+import { Function, Node, Ref, RefId, Struct, Tag, Variable } from '../ast/nodes';
 import { unimplemented, unreachable } from '../utils';
 
 export class Interpreter {
     constructor(
-        public context: Context,
+        private context: Context,
+        private root: RefId[],
     ) { }
 
+    get(name: '$body'): (...args: any[]) => any;
+    get(name: string): ((...args: any[]) => any) | null;
     get(name: string) {
+        if (name === '$body') {
+            return () => {
+                const result = this.executeBody(this.root, []);
+                return result instanceof ControlFlow ? result.value : result;
+            };
+        }
+
         const ids = this.context.scope.symbols.get(name);
 
         // Could not find the symbol
@@ -83,8 +94,7 @@ export class Interpreter {
                         // Load the function
                         const fn = this.context.nodes[ref.target] as Function;
                         const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
-                        const interpreter = new Interpreter(this.context);
-                        return interpreter.executeFunction(fn, args);
+                        return this.executeFunction(fn, args);
                     }
                     case Tag.RefFieldName: {
                         const object = this.execute(ref.object as RefId, locals) as any;
@@ -97,7 +107,34 @@ export class Interpreter {
             }
                 
             case Tag.Constant: {
-                return node.value;
+                return typeof(node.value) === 'string' ? new FString(node.value) : node.value;
+            }
+                
+            case Tag.Construct: {
+                const ref = node.target;
+                
+                const args = node.args.map(arg => this.execute(arg, locals));
+                switch (ref.tag) {
+                    case Tag.RefId: {
+                        const target = this.context.nodes[ref.target] as Struct;
+
+                        const object = {} as any;
+
+                        for (let i = 0; i < target.body.length; i++) {
+                            object[(this.context.nodes[target.body[i].target] as Variable).name] = args[i];
+                        }
+
+                        return object;
+                    }
+                        
+                    case Tag.RefName: {
+                        switch (ref.target) {
+                            case 'List': return new Array(args?.[0] ?? 0).fill(args?.[1] ?? 0);
+                        }
+                        throw unimplemented(ref.target);
+                    }
+                }
+                throw unimplemented(ref as never);
             }
                 
             case Tag.ForEach: {
@@ -108,9 +145,7 @@ export class Interpreter {
                     locals[node.element.target] = element;
                     const body = this.executeBody(node.body, locals);
 
-                    if (controlFlowExit(body)) {
-                        return body.value;
-                    }
+                    if (IsExit(body)) return ToExit(body);
                 }
                 return null;
             }
@@ -129,6 +164,16 @@ export class Interpreter {
                     }
                     case Tag.RefId: return locals[ref.target];
                     case Tag.RefIds: return locals[ref.target[0]];
+                    case Tag.RefFieldName: {
+                        const object = ToValue(this.execute(ref.object as RefId, locals));
+
+                        if (typeof (ref.target) === 'string') {
+                            return (object as any)[ref.target];
+                        } else {
+                            const index = ToNumber(this.execute(ref.target, locals));
+                            return (object as any)[index];
+                        }
+                    }
                     default: throw unimplemented(ref as never);
                 }
                 break;
@@ -158,6 +203,16 @@ export class Interpreter {
                     case Tag.RefName: throw unreachable("Unresolved target of assignment");
                     case Tag.RefId: return (locals[ref.target] = value);
                     case Tag.RefIds: return (locals[ref.target[0]] = value);
+                    case Tag.RefFieldName: {
+                        const object = ToValue(this.execute(ref.object as RefId, locals));
+
+                        if (typeof (ref.target) === 'string') {
+                            return (object as any)[ref.target] = value;
+                        } else {
+                            const index = ToNumber(this.execute(ref.target, locals));
+                            return (object as any)[index] = value;
+                        }
+                    }
                     default: throw unimplemented(ref as never);
                 }
                 break;
@@ -168,9 +223,7 @@ export class Interpreter {
                 while (ToBoolean(this.execute(node.condition, locals))) {
                     const body = this.executeBody(node.body, locals);
 
-                    if (controlFlowExit(body)) {
-                        return body.value;
-                    }
+                    if (IsExit(body)) return ToExit(body);
                 }
                 return null;
             }
@@ -199,10 +252,7 @@ export class Interpreter {
         }
 
         const result = this.executeBody(fn.body, locals);
-        if (result instanceof ControlFlow) {
-            return result.value;
-        }
-        return result;
+        return result instanceof ControlFlow ? result.value : result;
     }
 }
 
@@ -244,12 +294,24 @@ function ToBoolean(value: Value | ControlFlow): boolean {
     return value;
 }
 
-function controlFlowExit(value: Value | ControlFlow): value is ControlFlow {
+function ToNumber(value: Value | ControlFlow): number {
+    if (typeof (value) !== 'number') {
+        throw new Error('Type Error: expected number')
+    }
+
+    return value;
+}
+
+function IsExit(value: Value | ControlFlow): value is ControlFlow {
     if (!(value instanceof ControlFlow)) {
         return false;
     }
 
     return value.control !== ControlFlowType.Continue;
+}
+
+function ToExit(value: ControlFlow) {
+    return value.control === ControlFlowType.Return ? value : value.value;
 }
 
 function compare(left: Value, right: Value) {
@@ -271,5 +333,21 @@ class FString {
 
     reverse() {
         return new FString(this.value.split('').reverse().join(''));
+    }
+
+    strip() {
+        return new FString(this.value.trim());
+    }
+
+    replace(value: string, replace: string) {
+        return new FString(this.value.replace(new RegExp(value, 'g'), replace));
+    }
+
+    toString() {
+        return this.value;
+    }
+
+    [inspect.custom]() {
+        return this.value;
     }
 }
