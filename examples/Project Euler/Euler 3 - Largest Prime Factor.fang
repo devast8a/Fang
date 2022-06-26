@@ -1,0 +1,26 @@
+val target = 600851475143 
+val sqrt = Math.sqrt(target)
+
+mut largest = 0
+
+mut i = 2
+while i < sqrt {
+    if target%i == 0 {
+        # Check if the number is prime
+        mut prime = true
+        mut ii = 2
+        val s = Math.sqrt(i)
+        while ii < s {
+            if i%ii == 0 {
+                prime = false
+            }
+            ii = ii + 1
+        }
+        if prime {
+            largest = i
+        }
+    }
+    i = i + 1
+}
+
+return largest

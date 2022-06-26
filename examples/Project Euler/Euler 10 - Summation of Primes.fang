@@ -1,0 +1,29 @@
+val largest = 2_000_000
+val primes = List{}
+val sieve = List{2_000_000, 0}
+
+for candidate in 2..largest {
+    if sieve[candidate] == 0 {
+        primes.push(candidate)
+
+        # Fill in the sieve
+        val i = candidate * 2
+        while i < largest {
+            sieve[i] = 1
+            i = i + candidate
+        }
+    }
+}
+
+return sum(primes)
+
+# TODO: Expose as a library and import
+fn sum(ns: List_Num) {
+    val sum = 0
+
+    for n in ns {
+        sum = sum + n
+    }
+
+    return sum
+}

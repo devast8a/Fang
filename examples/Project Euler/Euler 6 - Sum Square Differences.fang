@@ -1,0 +1,10 @@
+return sumN(100)**2 - sumNSquared(100)
+
+# TODO: Expose as a library and import
+# The sum of the first n natural numbers. https://oeis.org/A000217
+# f(n) = 0 + 1 + 2 + ... + n
+fn sumN(n: Num) => n * n+1 / 2
+
+# The sum of the first n natural numbers squared. https://oeis.org/A000330
+# f(n) = 0^2 + 1^2 + 2^2 + ... + n^2
+fn sumNSquared(n: Num) => n * n+1 * (2*n + 1) / 6

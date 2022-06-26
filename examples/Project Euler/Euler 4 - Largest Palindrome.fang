@@ -1,0 +1,12 @@
+mut largest = 0
+
+for x in 1..999 {
+    for y in 1..999 {
+        val s = String.from(x*y)
+        if x*y > largest and s == s.reverse() {
+            largest = x*y
+        }
+    }
+}
+
+return largest
