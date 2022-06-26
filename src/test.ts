@@ -6,10 +6,26 @@ import { Compiler } from '.';
 async function run(directory: string) {
     const files = await fs.readdir(directory);
 
+    files.sort((a, b) => {
+        return a.localeCompare(b, undefined, { numeric: true });
+    })
+
     for (const file of files) {
         const full = Path.join(directory, file);
 
-        await Compiler.compileFile(full);
+        const stat = await fs.stat(full);
+        if (stat.isDirectory()) {
+            console.group(file);
+            await run(full);
+            console.groupEnd();
+        } else if (Path.extname(file) === '.fang') {
+            const name = Path.basename(file, '.fang');
+            const module = await Compiler.compileFile(full);
+
+            const fn = module.get('main') ?? module.get('$body');
+
+            console.log(`${name}: ${fn()}`);
+        }
     }
 }
 

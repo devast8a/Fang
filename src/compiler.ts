@@ -26,8 +26,6 @@ export class Compiler {
         //console.log(serialize(ast));
         //console.log("=== interpreter ===");
 
-        const i = new Interpreter(context);
-        const result = i.get('main')!();
-        console.log(result);
+        return new Interpreter(context, root);
     }
 }
