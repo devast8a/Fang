@@ -14,6 +14,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export enum PTag {
     Break,
+    Continue,
     PDeclEnum,
     PDeclFunction,
     PDeclParameter,
@@ -65,6 +66,7 @@ function tag(tag: PTag) {
 }
 
 export const Break               = tag(PTag.Break);
+export const Continue            = tag(PTag.Continue);
 export const PDeclEnum           = tag(PTag.PDeclEnum);
 export const PDeclFunction       = tag(PTag.PDeclFunction);
 export const PDeclParameter      = tag(PTag.PDeclParameter);

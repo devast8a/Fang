@@ -347,6 +347,8 @@ const grammar: Grammar = {
     {"name": "EnArgument", "symbols": ["Expr"]},
     {"name": "EnArgument", "symbols": ["Identifier", "_", {"literal":":"}, "_", "Expr"], "postprocess": p.PExprNamedArgument},
     {"name": "Atom", "symbols": ["ExprConstruct"]},
+    {"name": "Continue", "symbols": [{"literal":"continue"}], "postprocess": p.Continue},
+    {"name": "Stmt", "symbols": ["Continue"]},
     {"name": "ExprIf", "symbols": ["EiKeyword", "EiCondition", {"literal":"?"}, "EiTrue", {"literal":":"}, "EiFalse"]},
     {"name": "EiKeyword$ebnf$1", "symbols": ["CompileTime"], "postprocess": id},
     {"name": "EiKeyword$ebnf$1", "symbols": [], "postprocess": () => null},

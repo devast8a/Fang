@@ -1,0 +1,12 @@
+# The "continue" keyword allows you to restart the loop early
+mut count = 0
+for value in 1..10 {
+    # Only count odd numbers
+    if value%2 == 0 {
+        continue
+    }
+
+    count = count + 1
+}
+
+return count == 5

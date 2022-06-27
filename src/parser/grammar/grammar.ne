@@ -318,6 +318,11 @@
     # Contexts
     Atom            -> ExprConstruct
 
+## Break ############################################################################################
+    Continue        -> "continue" {%p.Continue%}
+
+    Stmt            -> Continue
+
 ## Expr/If #########################################################################################
     ExprIf          -> EiKeyword EiCondition "?" EiTrue ":" EiFalse
 

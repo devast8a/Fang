@@ -26,6 +26,10 @@ function parse(parent: Context, node: PNode): RefId {
             return parent.add(new Nodes.Break(p, null, null));
         }
 
+        case PTag.Continue: {
+            return parent.add(new Nodes.Continue(p, null, null));
+        }
+
         case PTag.PDeclEnum: {
             return parent.add(children => {
                 // keyword name attributes body

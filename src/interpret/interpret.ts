@@ -116,7 +116,7 @@ export class Interpreter {
             case Tag.Constant: {
                 return typeof(node.value) === 'string' ? new FString(node.value) : node.value;
             }
-                
+
             case Tag.Construct: {
                 const ref = node.target;
                 
@@ -143,6 +143,13 @@ export class Interpreter {
                     }
                 }
                 throw unimplemented(ref as never);
+            }
+
+            case Tag.Continue: {
+                return new ControlFlow(
+                    ControlFlowType.Continue,
+                    null,
+                );
             }
                 
             case Tag.ForEach: {
