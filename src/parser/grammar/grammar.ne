@@ -273,6 +273,11 @@
     # Context
     Atom            -> ExprDictionary
 
+## Break ############################################################################################
+    Break           -> "break" {%p.Break%}
+
+    Stmt            -> Break
+
 ## Expr/Call #######################################################################################
     ExprCall        -> EcTarget CompileTime:? EcArguments {%p.PExprCall%}
 
@@ -375,7 +380,7 @@
     #   bar!
 
     # Required
-    EmTarget        -> Identifier
+    EmTarget        -> Atom
 
     # Optional After
     EmArgument      -> __ Expr

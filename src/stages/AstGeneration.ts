@@ -7,6 +7,10 @@ import { unimplemented, unreachable } from '../utils';
 export function parseAst(root: Context, ast: PNode[]) {
     const body = [];
 
+    if (ast[0] === null) {
+        return [];
+    }
+
     for (const node of ast) {
         body.push(parse(root, node));
     }
@@ -18,6 +22,10 @@ function parse(parent: Context, node: PNode): RefId {
     const p = parent.scope;
 
     switch (node.tag) {
+        case PTag.Break: {
+            return parent.add(new Nodes.Break(p, null, null));
+        }
+
         case PTag.PDeclEnum: {
             return parent.add(children => {
                 // keyword name attributes body
@@ -184,9 +192,9 @@ function parse(parent: Context, node: PNode): RefId {
             const name = parseIdentifier(node.data[0]);
             const target = new Nodes.RefName(name);
 
-            const argument = parse(parent, node.data[2]?.[1]);
+            const argument = parseNull(parent, node.data[2]?.[1]);
 
-            return parent.add(new Nodes.Call(p, target, [argument]));
+            return parent.add(new Nodes.Call(p, target, []));
         }
             
         case PTag.PExprMove: {

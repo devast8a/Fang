@@ -52,6 +52,13 @@ export class Interpreter {
                 return null;
                 
             // Expressions
+            case Tag.Break: {
+                return new ControlFlow(
+                    ControlFlowType.Break,
+                    null,
+                );
+            }
+
             case Tag.Call: {
                 const ref = node.target;
                 switch (ref.tag) {
@@ -130,6 +137,7 @@ export class Interpreter {
                     case Tag.RefName: {
                         switch (ref.target) {
                             case 'List': return new Array(args?.[0] ?? 0).fill(args?.[1] ?? 0);
+                            case 'Set': return new Set();
                         }
                         throw unimplemented(ref.target);
                     }

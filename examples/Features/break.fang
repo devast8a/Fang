@@ -1,0 +1,9 @@
+# The "break" keyword allows you to break from a loop early
+mut count = 0
+for value in 1..10 {
+    count = count + 1
+    if value == 5 {
+        break
+    }
+}
+return count == 5
