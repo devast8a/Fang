@@ -13,6 +13,7 @@
  */
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 export enum PTag {
+    BlockAttribute,
     Break,
     Continue,
     PDeclEnum,
@@ -65,6 +66,7 @@ function tag(tag: PTag) {
     };
 }
 
+export const BlockAttribute      = tag(PTag.BlockAttribute);
 export const Break               = tag(PTag.Break);
 export const Continue            = tag(PTag.Continue);
 export const PDeclEnum           = tag(PTag.PDeclEnum);

@@ -74,6 +74,7 @@ function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
         case Tag.Trait:     return node;
         case Tag.Variable:  return mutate(node, 'type', fn);
 
+        case Tag.BlockAttribute: return node;
         case Tag.Break:     return mutateNull(node, 'target', fn);
         case Tag.Call:      return mutate(node, 'target', fn);
         case Tag.Constant:  return mutate(node, 'type', fn);

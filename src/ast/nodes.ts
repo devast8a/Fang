@@ -7,6 +7,7 @@ export enum Tag {
     Variable,
 
     // Expr
+    BlockAttribute,
     Break,
     Call,
     Constant,
@@ -114,6 +115,7 @@ export enum VariableFlags {
 
 // =============================================================================
 export type Expr =
+    | BlockAttribute
     | Break
     | Call
     | Constant<any>
@@ -126,6 +128,15 @@ export type Expr =
     | Return
     | Set
     | While
+
+export class BlockAttribute {
+    readonly tag = Tag.BlockAttribute
+
+    constructor(
+        readonly parent: Scope,
+        readonly target: Local,
+    ) { }
+}
 
 export class Break {
     readonly tag = Tag.Break

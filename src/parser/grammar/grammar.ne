@@ -531,6 +531,9 @@
 ## Attribute #######################################################################################
     Attribute -> "#" Atom
 
+    BlockAttribute -> "##" Atom          {%p.BlockAttribute%}
+    Stmt -> BlockAttribute
+
 ## Compile Time Operator ###########################################################################
     CompileTime -> "!"
 

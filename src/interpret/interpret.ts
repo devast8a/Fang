@@ -56,6 +56,10 @@ export class Interpreter {
                 }
                 
             // Expressions
+            case Tag.BlockAttribute: {
+                return null;
+            }
+
             case Tag.Break: {
                 return new ControlFlow(
                     ControlFlowType.Break,

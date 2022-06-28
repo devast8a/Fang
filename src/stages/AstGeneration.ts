@@ -22,6 +22,13 @@ function parse(parent: Context, node: PNode): RefId {
     const p = parent.scope;
 
     switch (node.tag) {
+        case PTag.BlockAttribute: {
+            // keyword atom
+            const target = parse(parent, node.data[1]);
+
+            return parent.add(new Nodes.BlockAttribute(p, target));
+        }
+
         case PTag.Break: {
             return parent.add(new Nodes.Break(p, null, null));
         }

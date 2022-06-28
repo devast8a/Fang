@@ -1,7 +1,7 @@
 import * as moo from 'moo';
 
 const lexer = moo.compile({
-  comment:          /#[ #][ -~]*/,
+  comment:          /#+\s[ -~]*/,
   newline:          {match: '\n', lineBreaks: true},
   ws:               /[ \t]+/,
 
@@ -24,7 +24,6 @@ const lexer = moo.compile({
       kw_and: "and",
     })
   },
-  attribute_begin:  '#[',
 
   left_curly:       '{',
   left_round:       '(',

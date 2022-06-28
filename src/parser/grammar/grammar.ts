@@ -557,6 +557,8 @@ const grammar: Grammar = {
     {"name": "PdKeyword", "symbols": [{"literal":"val"}, "__"]},
     {"name": "PdRebind", "symbols": ["_", {"literal":"="}, {"literal":">"}, "_"]},
     {"name": "Attribute", "symbols": [{"literal":"#"}, "Atom"]},
+    {"name": "BlockAttribute", "symbols": [{"literal":"##"}, "Atom"], "postprocess": p.BlockAttribute},
+    {"name": "Stmt", "symbols": ["BlockAttribute"]},
     {"name": "CompileTime", "symbols": [{"literal":"!"}]},
     {"name": "Identifier", "symbols": [(lexer.has("identifier") ? {type: "identifier"} : identifier)]},
     {"name": "Identifier", "symbols": [(lexer.has("prefix") ? {type: "prefix"} : prefix)]},
