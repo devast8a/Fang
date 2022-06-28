@@ -45,11 +45,15 @@ export class Interpreter {
         switch (node.tag) {
             // Declerations
             case Tag.Enum:
-            case Tag.Function:
             case Tag.Struct:
             case Tag.Trait:
             case Tag.Variable:
                 return null;
+
+            case Tag.Function:
+                return (...args: any[]) => {
+                    return this.executeFunction(node, args);
+                }
                 
             // Expressions
             case Tag.Break: {
@@ -99,10 +103,24 @@ export class Interpreter {
                     }
                     case Tag.RefId: {
                         // Load the function
-                        const fn = this.context.nodes[ref.target] as Function;
-                        const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
-                        return this.executeFunction(fn, args);
+                        const fn = this.context.nodes[ref.target];
+
+                        switch (fn.tag) {
+                            case Tag.Function: {
+                                const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
+                                return this.executeFunction(fn, args);
+                            }
+                                
+                            case Tag.Variable: {
+                                const f = locals[ref.target] as (...args: any) => any;
+                                const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
+                                return f(args);
+                            }
+                        }
+
+                        throw unimplemented(fn as never);
                     }
+
                     case Tag.RefFieldName: {
                         const object = this.execute(ref.object as RefId, locals) as any;
                         const args = node.args.map(ref => ToValue(this.execute(ref, locals)));

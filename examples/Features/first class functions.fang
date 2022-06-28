@@ -1,0 +1,5 @@
+fn foo(f: fn(U32)->U32) {
+    return f(10)
+}
+
+return foo(fn(a) => a * 2)

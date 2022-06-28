@@ -68,7 +68,7 @@ export class Function {
     constructor(
         readonly parent: Scope,
         readonly scope: Scope,
-        readonly name: string,
+        readonly name: string | null,
         readonly returnType: Type,
         readonly parameters: readonly Local[],
         readonly body: Local[],

@@ -45,7 +45,7 @@ function parse(parent: Context, node: PNode): RefId {
         case PTag.PDeclFunction: {
             return parent.add(children => {
                 // keyword name compileTime parameters returnType generic attributes body
-                const name = parseIdentifier(node.data[1][1]);
+                const name = node.data[1] !== null ? parseIdentifier(node.data[1][1]) : null;
                 const parameters = node.data[3].elements.map(parameter => parse(children, parameter));
                 const returnType = parseTypeNull(node.data[4]?.[3]);
                 // const generics = parseGenericDeclNull(children, node.data[5]?.[1]);
@@ -345,6 +345,10 @@ function parseType(node: PNode): Ref {
             // identifier
             const name = parseIdentifier(node.data[0]);
             return new Nodes.RefName(name);
+        }
+            
+        case PTag.PDeclFunction: {
+            return new Nodes.RefName("");
         }
     }
     
