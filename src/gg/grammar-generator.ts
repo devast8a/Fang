@@ -1,5 +1,6 @@
 import { Parser, Grammar } from 'nearley';
 import * as moo from 'moo';
+import { NearleyRule, NearleySymbol } from './nearley-types';
 
 export type Definition<Config> =
     | Matcher<any, Config>
@@ -19,27 +20,12 @@ export type GetTypes<T extends Definition<any>[]> = {
     length: T['length']
 };
 
-type NearleySymbol =
-    | string                             // Name of rule to match
-    | { literal: string }                // Match value of token
-    | { type: string }                   // Match name of token
-    | { test: (token: any) => boolean }  // Arbitrary matcher
-    ;
-
-interface NearleyRule {
-    name: string
-    symbols: NearleySymbol[]
-    postprocess?: NearleyProcessor
-}
-
-type NearleyProcessor = (data: any[], location: any, reject: any) => any;
-
 export abstract class Matcher<
     Match = any,
     Config = any
 > {
     // Set during toParser
-    private _id = '';
+    private id = '';
     private _match!: Match;
 
     public readonly config!: Config;
@@ -68,7 +54,7 @@ export abstract class Matcher<
     public abstract toNearleyRules(id: string): NearleyRule[]
 
     public toNearleySymbol(): NearleySymbol {
-        return this._id;
+        return this.id;
     }
 
     static toParser<Match>(self: Rule<any, Match>) {
@@ -140,8 +126,8 @@ export abstract class Matcher<
         // Assign unique ids to all unnamed parameters
         let id = 0;
         for (const rule of rules) {
-            if (rule._id === '') {
-                rule._id = (id++).toString();
+            if (rule.id === '') {
+                rule.id = (id++).toString();
             }
         }
 
@@ -150,7 +136,7 @@ export abstract class Matcher<
         // Generate symbols
         const nearleyRules = [];
         for (const rule of rules) {
-            for (const generated of rule.toNearleyRules(rule._id)) {
+            for (const generated of rule.toNearleyRules(rule.id)) {
                 nearleyRules.push(generated);
             }
         }
@@ -162,7 +148,7 @@ export abstract class Matcher<
                 lexerRules[rule.value] = rule.value;
             }
             if (rule instanceof Regex) {
-                lexerRules[rule._id] = rule.regex;
+                lexerRules[rule.id] = rule.regex;
             }
         }
 
@@ -172,7 +158,7 @@ export abstract class Matcher<
         const grammar = {
             Lexer: moo.compile(lexerRules),
             ParserRules: nearleyRules,
-            ParserStart: self._id,
+            ParserStart: self.id,
         };
 
         console.log(...nearleyRules);
@@ -226,19 +212,6 @@ export class Rule<Context, Result> extends Matcher<Result, true> {
                 }
             };
         });
-    }
-}
-
-class Parserx<U> {
-    constructor(
-        private parser: Parser
-    ) {
-    }
-
-    parse(context: any, input: string): U {
-        this.parser.feed(input);
-        this.parser.finish();
-        return this.parser.results[0].build(context);
     }
 }
 
@@ -404,4 +377,17 @@ export function Rules<Context>() {
     }
 
     return { rule, def };
+}
+
+class Parserx<U> {
+    constructor(
+        private parser: Parser
+    ) {
+    }
+
+    parse(context: any, input: string): U {
+        this.parser.feed(input);
+        this.parser.finish();
+        return this.parser.results[0].build(context);
+    }
 }
