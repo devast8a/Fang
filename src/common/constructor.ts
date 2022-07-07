@@ -1,1 +1,1 @@
-export type Constructor<T = any, P = any> = { new(...args: any[]): T, prototype: P };
+export type Constructor<Type = any, Parameters extends any[] = any, Prototype = any> = { new(...args: Parameters): Type, prototype: Prototype };

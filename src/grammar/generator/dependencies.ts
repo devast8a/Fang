@@ -1,3 +1,4 @@
+// =========================================================================
 export type NearleySymbol =
     | string                             // Name of rule to match
     | { literal: string }                // Match value of token
@@ -18,3 +19,9 @@ export interface NearleyGrammar {
     ParserRules: NearleyRule[];
     ParserStart: string;
 }
+
+// =========================================================================
+export type MooRule =
+    | RegExp
+    | string
+    ;

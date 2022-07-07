@@ -22,9 +22,10 @@ async function run(directory: string) {
             const name = Path.basename(file, '.fang');
             const module = await Compiler.compileFile(full);
 
-            const fn = module.get('main') ?? module.get('$body');
+            console.log(name);
+            // const fn = module.get('main') ?? module.get('$body');
 
-            console.log(`${name}: ${fn()}`);
+            // console.log(`${name}: ${fn()}`);
         }
     }
 }
