@@ -51,15 +51,13 @@ const Body = rule(
 // == Block Attributes ==
 Expr.add(
     def('##', Atom),
-    (ctx, keyword, target) =>
-        ctx.add(new Nodes.BlockAttribute(ctx.scope, target.build(ctx)))
+    (ctx, kw, target) => make(Nodes.BlockAttribute, ctx, target)
 )
 
 // == Break ==
 Expr.add(
     def('break'),
-    (ctx, keyword) =>
-        ctx.add(new Nodes.Break(ctx.scope, null, null))
+    (ctx, kw) => make(Nodes.Break, ctx, null, null)
 )
 
 // == Call ==
@@ -75,7 +73,7 @@ Atom.add(
 // == Construct ==
 {
     Expr.add(
-        () => def(Atom, Arguments),
+        () => def(Symbol, Arguments),
         (ctx, target, args) =>
             ctx.add(new Nodes.Construct(ctx.scope, target.build(ctx), args.build(ctx).elements))
     )
@@ -86,8 +84,7 @@ Atom.add(
 // == Continue ==
 Expr.add(
     def('continue'),
-    (ctx, keyword) =>
-        ctx.add(new Nodes.Continue(ctx.scope, null, null))
+    (ctx, kw) => make(Nodes.Continue, ctx, null, null)
 )
 
 // == Enum ==
@@ -111,20 +108,28 @@ Expr.add(
 )
 
 // == Function ==
+const FnBody = rule<RefId[]>();
+FnBody.add(def(N_, Body), (ctx, ...match) => match[1].build(ctx));
+FnBody.add(def(_, '=>', N_, Expr), (ctx, ...match) => [make(Nodes.Return, ctx, match[3])])
+
 Expr.add(
     () => {
         const keyword    = 'fn'
         const name       = seq(__, Identifier)
         const parameters = star('(', _, Parameter, Comma, ')').elements
         const returnType = seq(_, '->', _, Type)
-        const body = either([
-            seq(N_, Body),
-            seq(_, '=>', N_, Expr),
-        ])
 
-        return def(keyword, opt(name), parameters, opt(returnType), opt(body))
-    }, (ctx, keyword, name, parameters, returnType, body) =>
-        ctx.add(children => new Nodes.Function(ctx.scope, children.scope, name?.[1] ?? null, infer(), parameters.build(ctx), []))
+        return def(keyword, opt(name), parameters, opt(returnType), opt(FnBody))
+    }, (ctx, keyword, name, parameters, returnType, body) => {
+        return ctx.add(children => new Nodes.Function(
+            ctx.scope,
+            children.scope,
+            name?.[1] ?? null,
+            infer(),
+            parameters.build(children),
+            body.build(children) ?? []
+        ))
+    }
 )
 const Parameter = rule(() => {
     const keyword = either([
@@ -148,20 +153,27 @@ Atom.add(
 
 // == If ==
 {
-    const Elif = list(seq(N_, 'else', __, 'if', N_, Body));
+    const Elif = list(seq(N_, 'else', __, 'if', N_, Body))
     const Else = seq(N_, 'else', N_, Body)
 
     Expr.add(
         def('if', __, Expr, N_, Body, opt(Elif), opt(Else)),
-        (ctx, keyword, s1, condition, s2, body, x, y) =>
-            ctx.add(new Nodes.If(ctx.scope, []))
+        (ctx, kw, s1, condition, s2, body, x, y) => {
+            const cases = [];
+
+            // If case
+            cases.push(new Nodes.IfCase(condition.build(ctx), body.build(ctx)));
+
+            return make(Nodes.If, ctx, cases)
+        }
     )
 }
 
 // == Index Bracket ==
 Symbol.add(
     def(Atom, '[', Expr, ']'),
-    (ctx, target, left, field, right) => new Nodes.RefFieldName(target.build(ctx), field.build(ctx) as any)
+    (ctx, target, left, field, right) =>
+        new Nodes.RefFieldName(target.build(ctx), field.build(ctx) as any)
 )
 
 // == Index Dot ==
@@ -173,7 +185,8 @@ const Dot = either([
 
 Symbol.add(
     def(Atom, Dot, Identifier),
-    (ctx, target, op, field) => new Nodes.RefFieldName(target.build(ctx), field)
+    (ctx, target, op, field) =>
+        new Nodes.RefFieldName(target.build(ctx), field)
 )
 
 // == Literal Integer ==
@@ -194,8 +207,8 @@ Symbol.add(
 
 // == Literal List ==
 Atom.add(
-    star('[', N_, Expr, Comma, ']').elements,
-    (ctx, values) => make(Nodes.Constant, ctx, infer(), values.build(ctx))
+    star('[', N_, /[0-9_]+/, Comma, ']').elements,
+    (ctx, values) => make(Nodes.Constant, ctx, infer(), values.map(number => parseInt(number)))
 )
 
 // == Move ==
@@ -270,12 +283,12 @@ Expr.add(
     () => {
         const keyword = 'struct'
         const name = seq(__, Identifier)
-        const body = seq(N_, Body)
+        const body = seq(N_, Body).get(1)
 
         return def(keyword, name, opt(body))
     },
     (ctx, keyword, name, body) =>
-        ctx.add(children => new Nodes.Struct(ctx.scope, children.scope, name[1], body.build(ctx)?.[1] ?? []))
+        ctx.add(children => new Nodes.Struct(ctx.scope, children.scope, name[1], body.build(children) ?? []))
 )
 
 // == Trait ==
@@ -288,7 +301,7 @@ Expr.add(
         return def(keyword, name, opt(body))
     },
     (ctx, keyword, name, body) =>
-        ctx.add(children => new Nodes.Trait(ctx.scope, children.scope, name[1], body.build(ctx)?.[1] ?? []))
+        ctx.add(children => new Nodes.Trait(ctx.scope, children.scope, name[1], body.build(children)?.[1] ?? []))
 )
 
 // == Variable ==
