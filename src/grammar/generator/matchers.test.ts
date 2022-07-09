@@ -186,18 +186,18 @@ describe('Grammar Generator', () => {
         const Number = rule<number>();
         Number.add(/0x[0-9]+/, (ctx, number) => parseInt(number.slice(2), 16));
         Number.add(/0b[0-9]+/, (ctx, number) => parseInt(number.slice(2), 2));
-        Number.add(/[0-9]+/, (ctx, number) => parseInt(number));
-
-        const Operator = either(['+', '-']);
+        Number.add(/[0-9]+/,   (ctx, number) => parseInt(number));
 
         const Expr = rule<number>();
-        Expr.add(Number, (ctx, number) => number.build(ctx));
-        Expr.add(def(Expr, Operator, Number), (ctx, left, operator, right) => {
-            switch (operator) {
-                case '+': return left.build(ctx) + right.build(ctx);
-                case '-': return left.build(ctx) - right.build(ctx);
-            }
-            throw unreachable(operator);
+        Expr.add(Number);
+        Expr.add(
+            def(Expr, /[+-]/, Number),
+            (ctx, left, operator, right) => {
+                switch (operator) {
+                    case '+': return left.build(ctx) + right.build(ctx);
+                    case '-': return left.build(ctx) - right.build(ctx);
+                }
+                throw unreachable(operator);
         })
 
         const parser = Expr.toParser();
