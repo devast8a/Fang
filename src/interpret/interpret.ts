@@ -113,7 +113,7 @@ export class Interpreter {
             }
                 
             case Tag.Constant: {
-                return typeof(node.value) === 'string' ? new FString(node.value) : node.value;
+                return typeof(node.value) === 'string' ? FString.from(node.value) : node.value;
             }
 
             case Tag.Construct: {
@@ -337,24 +337,32 @@ function compare(left: Value, right: Value) {
 }
 
 class FString {
-    constructor(
+    private constructor(
         readonly value: string
     ) { }
 
-    static from(value: Value) {
+    static from(value: Value): FString {
         return new FString(value?.toString() ?? "");
     }
 
     reverse() {
-        return new FString(this.value.split('').reverse().join(''));
+        return FString.from(this.value.split('').reverse().join(''));
     }
 
     strip() {
-        return new FString(this.value.trim());
+        return FString.from(this.value.trim());
     }
 
     replace(value: string, replace: string) {
-        return new FString(this.value.replace(new RegExp(value, 'g'), replace));
+        return FString.from(this.value.replace(new RegExp(value, 'g'), replace));
+    }
+
+    get size() {
+        return this.value.length;
+    }
+
+    getCode(nth: number) {
+        return this.value.charCodeAt(nth);
     }
 
     toString() {
@@ -381,8 +389,11 @@ function callExternal(name: string, args: any[]) {
         case 'infix!=': return !compare(args[0], args[1]);
         case 'infix<=': return args[0] <= args[1];
         case 'infix>=': return args[0] >= args[1];
-        case 'infix||': return args[0] || args[1];
-        case 'infix&&': return args[0] && args[1];
+
+        case 'infix<<': return args[0] << args[1];
+        case 'infix|': return args[0] | args[1];
+        case 'infix&': return args[0] & args[1];
+
         case 'infix..': {
             const result = [];
             for (let i = args[0]; i < args[1]; i++) {
@@ -390,6 +401,7 @@ function callExternal(name: string, args: any[]) {
             }
             return result;
         }
+
         case 'infixor':  return args[0] || args[1];
         case 'infixand': return args[0] && args[1];
         case 'print':    console.log(...args); return;
