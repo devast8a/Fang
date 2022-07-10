@@ -162,11 +162,18 @@ Atom.add(
 
     Expr.add(
         def('if', __, Expr, N_, Body, opt(Elif), opt(Else)),
-        (ctx, kw, s1, condition, s2, body, x, y) => {
+        (ctx, kw, s1, condition, s2, body, x, final) => {
             const cases = [];
 
             // If case
             cases.push(new Nodes.IfCase(condition.build(ctx), body.build(ctx)));
+
+            // Else case
+            const f = final.build(ctx)
+            if (f !== null) {
+                cases.push(new Nodes.IfCase(null, f[3]))
+            }
+            
 
             return make(Nodes.If, ctx, cases)
         }
