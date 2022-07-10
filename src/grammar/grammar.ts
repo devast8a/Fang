@@ -1,7 +1,7 @@
 import { make } from '../ast/builder-helpers'
 import { Context } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { RefId } from '../ast/nodes'
+import { Ref, RefId } from '../ast/nodes'
 import { list, either, opt, Rules, seq, Builder, star } from './generator'
 
 const { rule, def } = Rules<Context>()
@@ -12,9 +12,10 @@ const { rule, def } = Rules<Context>()
 // == Core Rules ==
 const Atom = rule<RefId>()  // Simple expression, no spaces, unless delimited. eg. "(a + b)" is ok
 const Expr = rule<RefId>()  // Any expression.
-const Type = rule<RefId>()  // A type expression.
+const Type = rule<Ref>()    // A type expression.
+const Symbol = rule<Ref>()
 
-Type.add(Expr)
+Type.add(Symbol, (ctx, ref) => ref.build(ctx))
 
 export const FangGrammar = rule(
     () => def(N_, list(Expr, Semicolon), N_),
@@ -36,6 +37,7 @@ const Comma     = either([NL, seq(',', _)])
 
 // == Identifier ==
 const Identifier = /[_a-zA-Z][_a-zA-Z0-9]*/
+Symbol.add(Identifier, (ctx, name) => new Nodes.RefName(name))
 
 function infer() {
     return new Nodes.RefInfer();
@@ -50,7 +52,7 @@ const Body = rule(
 
 // == Block Attributes ==
 Expr.add(
-    def('##', Atom),
+    def('##', Symbol),
     (ctx, kw, target) => make(Nodes.BlockAttribute, ctx, target)
 )
 
@@ -61,9 +63,6 @@ Expr.add(
 )
 
 // == Call ==
-const Symbol = rule<Nodes.Ref>();
-Symbol.add(Identifier, (ctx, name) => new Nodes.RefName(name))
-
 const Arguments = star('(', N_, Expr, Comma, ')').elements
 Atom.add(
     def(Symbol, Arguments),
@@ -112,12 +111,12 @@ const FnBody = rule<RefId[]>();
 FnBody.add(def(N_, Body), (ctx, ...match) => match[1].build(ctx));
 FnBody.add(def(_, '=>', N_, Expr), (ctx, ...match) => [make(Nodes.Return, ctx, match[3])])
 
-Expr.add(
+const Function = rule(
     () => {
         const keyword    = 'fn'
         const name       = seq(__, Identifier)
         const parameters = star('(', _, Parameter, Comma, ')').elements
-        const returnType = seq(_, '->', _, Type)
+        const returnType = seq(_, '->', _, Type).get(3)
 
         return def(keyword, opt(name), parameters, opt(returnType), opt(FnBody))
     }, (ctx, keyword, name, parameters, returnType, body) => {
@@ -125,24 +124,28 @@ Expr.add(
             ctx.scope,
             children.scope,
             name?.[1] ?? null,
-            infer(),
+            returnType.build(children) ?? infer(),
             parameters.build(children),
             body.build(children) ?? []
         ))
     }
 )
+
+Expr.add(Function)
+Type.add(Function)
+
 const Parameter = rule(() => {
     const keyword = either([
         seq('own', __),
         seq('mut', __),
     ]);
     const name = Identifier;
-    const type = seq(_, ':', _, Type)
+    const type = seq(_, ':', _, Type).get(3)
     const value = seq(_, '=', _, Expr)
 
     return def(opt(keyword), name, opt(type), opt(value))
 }, (ctx, keyword, name, type, value) => {
-    return ctx.add(new Nodes.Variable(ctx.scope, name, infer()))
+    return ctx.add(new Nodes.Variable(ctx.scope, name, type.build(ctx) ?? infer()))
 })
 
 // == Get ==
@@ -173,7 +176,7 @@ Atom.add(
 Symbol.add(
     def(Atom, '[', Expr, ']'),
     (ctx, target, left, field, right) =>
-        new Nodes.RefFieldName(target.build(ctx), field.build(ctx) as any)
+        new Nodes.RefFieldName(target.build(ctx), field.build(ctx) as any),
 )
 
 // == Index Dot ==
@@ -209,6 +212,12 @@ Symbol.add(
 Atom.add(
     star('[', N_, /[0-9_]+/, Comma, ']').elements,
     (ctx, values) => make(Nodes.Constant, ctx, infer(), values.map(number => parseInt(number)))
+)
+
+// == Literal String ==
+Atom.add(
+    /'(?:[^\\']+|\\['])+'/,
+    (ctx, value) => make(Nodes.Constant, ctx, new Nodes.RefName('str'), value),
 )
 
 // == Move ==
@@ -311,12 +320,12 @@ const Variable = rule(() => {
         seq('mut', __),
     ]);
     const name = Identifier;
-    const type = seq(_, ':', _, Type)
+    const type = seq(_, ':', _, Type).get(3)
     const value = seq(_, '=', _, Expr)
 
     return def(keyword, name, opt(type), opt(value))
 }, (ctx, keyword, name, type, value) => {
-    const id = ctx.add(new Nodes.Variable(ctx.scope, name, infer()))
+    const id = ctx.add(new Nodes.Variable(ctx.scope, name, type.build(ctx) ?? infer()))
 
     const v = value.build(ctx)
     if (v !== null) {
@@ -324,7 +333,7 @@ const Variable = rule(() => {
     }
 
     return id;
-})
+}, 'variable')
 Expr.add(Variable)
 
 // == While ==

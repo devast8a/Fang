@@ -75,35 +75,7 @@ export class Interpreter {
                             ToValue(this.execute(ref, locals)) as any
                         );
 
-                        switch (ref.target) {
-                            case 'infix+': return args[0] + args[1];
-                            case 'infix-': return args[0] - args[1];
-                            case 'infix*': return args[0] * args[1];
-                            case 'infix/': return args[0] / args[1];
-                            case 'infix**': return args[0] ** args[1];
-                            case 'infix//': return Math.trunc(args[0] / args[1]);
-                            case 'infix%': return args[0] % args[1];
-                            case 'infix<': return args[0] < args[1];
-                            case 'infix>': return args[0] > args[1];
-                            case 'infix==': return compare(args[0], args[1]);
-                            case 'infix!=': return !compare(args[0], args[1]);
-                            case 'infix<=': return args[0] <= args[1];
-                            case 'infix>=': return args[0] >= args[1];
-                            case 'infix||': return args[0] || args[1];
-                            case 'infix&&': return args[0] && args[1];
-                            case 'infix..': {
-                                const result = [];
-                                for (let i = args[0]; i < args[1]; i++) {
-                                    result.push(i);
-                                }
-                                return result;
-                            }
-                            case 'infixor': return args[0] || args[1];
-                            case 'infixand': return args[0] && args[1];
-                            case 'print': console.log(...args); break;
-                            default: throw unimplemented(ref.target);
-                        }
-                        break;
+                        return callExternal(ref.target, args);
                     }
                     case Tag.RefId: {
                         // Load the function
@@ -112,6 +84,11 @@ export class Interpreter {
                         switch (fn.tag) {
                             case Tag.Function: {
                                 const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
+
+                                if (fn.external) {
+                                    return callExternal(fn.name!, args)
+                                }
+
                                 return this.executeFunction(fn, args);
                             }
                                 
@@ -386,5 +363,36 @@ class FString {
 
     [inspect.custom]() {
         return this.value;
+    }
+}
+
+function callExternal(name: string, args: any[]) {
+    switch (name) {
+        case 'infix+':  return args[0] + args[1];
+        case 'infix-':  return args[0] - args[1];
+        case 'infix*':  return args[0] * args[1];
+        case 'infix/':  return args[0] / args[1];
+        case 'infix**': return args[0] ** args[1];
+        case 'infix//': return Math.trunc(args[0] / args[1]);
+        case 'infix%':  return args[0] % args[1];
+        case 'infix<':  return args[0] < args[1];
+        case 'infix>':  return args[0] > args[1];
+        case 'infix==': return compare(args[0], args[1]);
+        case 'infix!=': return !compare(args[0], args[1]);
+        case 'infix<=': return args[0] <= args[1];
+        case 'infix>=': return args[0] >= args[1];
+        case 'infix||': return args[0] || args[1];
+        case 'infix&&': return args[0] && args[1];
+        case 'infix..': {
+            const result = [];
+            for (let i = args[0]; i < args[1]; i++) {
+                result.push(i);
+            }
+            return result;
+        }
+        case 'infixor':  return args[0] || args[1];
+        case 'infixand': return args[0] && args[1];
+        case 'print':    console.log(...args); return;
+        default: throw unimplemented(name);
     }
 }

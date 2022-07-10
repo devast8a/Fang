@@ -1,0 +1,9 @@
+struct Foo {
+    val x: U23
+    val y: U32
+}
+
+fn main() {
+    val foo = Foo{1, 2}
+    print(foo)
+}

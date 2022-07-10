@@ -2,6 +2,7 @@ import * as Nearley from 'nearley';
 import * as moo from 'moo';
 import { MooRule, NearleyGrammar, NearleyProcessor, NearleyRule, NearleySymbol } from './dependencies';
 import { unreachable } from '../../utils';
+import * as fs from 'fs'
 
 export type Definition<Config = any> =
     | Matcher<any, Config>
@@ -44,11 +45,11 @@ function PRE(matcher: Matcher, handler?: NearleyProcessor) {
     if (handler !== undefined) {
         return (data: any, location: any, reject: any) => {
             data = handler(data, location, reject)
-            return data === reject ? reject : new Builder(data, UNWRAP)
+            return data === reject ? reject : new Builder(matcher.getName(), data, UNWRAP)
         }
     }
 
-    return (data: any) => new Builder(data, UNWRAP)
+    return (data: any) => new Builder(matcher.getName(), data, UNWRAP)
 }
 
 function POST(matcher: Matcher, handler?: (data: any) => any) {
@@ -57,10 +58,10 @@ function POST(matcher: Matcher, handler?: (data: any) => any) {
     }
 
     if (handler !== undefined) {
-        return (data: any) => new Builder(data, (ctx, data) => handler(UNWRAP(ctx, data)))
+        return (data: any) => new Builder(matcher.getName(), data, (ctx, data) => handler(UNWRAP(ctx, data)))
     }
 
-    return (data: any) => new Builder(data, UNWRAP)
+    return (data: any) => new Builder(matcher.getName(), data, UNWRAP)
 }
 
 function UNWRAP(ctx: any, data: any) {
@@ -138,6 +139,10 @@ export abstract class Matcher<
     
     toToken(): MooRule {
         throw new Error('Not implemented');
+    }
+
+    getName() {
+        return this.id;
     }
 
     toParser<Context>() {
@@ -336,6 +341,7 @@ export abstract class Matcher<
 }
 
 interface Subrule<Context, Match extends any[], Result> {
+    name: string,
     definition: Definition | (() => Definition),
     builder: (context: Context, ...args: Match) => Result
     matchers?: Matcher[],
@@ -350,9 +356,10 @@ export class Rule<Context, Result> extends Matcher<Result, true> {
     }
 
     add<D extends Definition>(definition: Matcher<Result>): void
-    add<D extends Definition>(definition: D | (() => D), builder: (ctx: Context, ...args: GetProcessorParameters<D>) => Result): void
-    add<D extends Definition>(definition: D | (() => D), builder: (ctx: Context, ...args: GetProcessorParameters<D>) => Result = (ID as any)) {
+    add<D extends Definition>(definition: D | (() => D), builder: (ctx: Context, ...args: GetProcessorParameters<D>) => Result, name?: string): void
+    add<D extends Definition>(definition: D | (() => D), builder: (ctx: Context, ...args: GetProcessorParameters<D>) => Result = (ID as any), name: string = '<SUBRULE>') {
         this.definitions.push({
+            name: name,
             definition: definition,
             builder: builder,
         })
@@ -360,7 +367,7 @@ export class Rule<Context, Result> extends Matcher<Result, true> {
 
     toRules(id: string): NearleyRule[] {
         return this.definitions.map(definition =>
-            RULE(id, definition.matchers!, data => new Builder(data, (ctx, data) => definition.builder(ctx as any, ...data)))
+            RULE(id, definition.matchers!, data => new Builder(definition.name, data, (ctx, data) => definition.builder(ctx as any, ...data)))
         );
     }
 
@@ -561,7 +568,7 @@ export class List<Match, Config> extends Matcher<Match, Config> {
                             elements: data[0].elements.concat([data[2]]),
                             separators: data[0].separators.concat([data[1]]),
                         })),
-                        RULE(id, [inner], data => new Builder(data, (ctx, data) => ({
+                        RULE(id, [inner], data => new Builder(id, data, (ctx, data) => ({
                             elements: data[0].elements.map((value: any) => value instanceof Builder ? value.build(ctx) : value),
                             separators: data[0].separators.map((value: any) => value instanceof Builder ? value.build(ctx) : value),
                         }))),
@@ -689,8 +696,9 @@ const ID = (ctx: any, ...data: any[]) => data.map(arg => arg instanceof Builder 
 
 export class Builder<Result, Context> {
     public constructor(
-        private data: any,
-        private processor: (ctx: Context, data: any) => Result
+        readonly name: string,
+        readonly data: any,
+        readonly processor: (ctx: Context, data: any) => Result
     ) {
     }
 
@@ -714,13 +722,13 @@ export type GetBuilderParameters<T extends Definition<any>[], Context> = {
 export function Rules<Context>() {
     function rule<Result>(): Rule<Context, Result>
     //function rule<D extends Definition>(definition: D | (() => D)): Rule<Context, GetType<D>>
-    function rule<D extends Definition, Result>(definition: D | (() => D), builder: (ctx: Context, ...args: GetProcessorParameters<D>) => Result): Rule<Context, Result>
-    function rule<T extends any[], Result>(definition?: () => Def<T, any>, builder?: (ctx: Context, ...args: T) => Result): Rule<Context, Result>
+    function rule<D extends Definition, Result>(definition: D | (() => D), builder: (ctx: Context, ...args: GetProcessorParameters<D>) => Result, name?: string): Rule<Context, Result>
+    function rule<T extends any[], Result>(definition?: () => Def<T, any>, builder?: (ctx: Context, ...args: T) => Result, name: string = '<SUBRULE>'): Rule<Context, Result>
     {
         const rule = new Rule<Context, Result>();
 
         if (definition !== undefined && builder !== undefined) {
-            rule.add(definition, builder);
+            rule.add(definition, builder, name);
         }
 
         return rule;
@@ -748,6 +756,13 @@ class Parser<Match, Context> {
             throw new Error('Incomplete Parse')
         }
         if (parser.results.length > 1) {
+            for (let n = 0; n < parser.results.length; n++) {
+                const result = compact(parser.results[n])
+                const json = JSON.stringify(result, undefined, 4)
+                fs.writeFileSync(`ambiguous-${n}`, json);
+            }
+
+            console.log();
             throw new Error('Ambiguous Parse')
         }
 
@@ -758,4 +773,29 @@ class Parser<Match, Context> {
             return result;
         }
     }
+}
+
+function compact(value: any): any {
+    if (value instanceof Array) {
+        return value.map(compact)
+    }
+
+    if (value instanceof Builder) {
+        return {
+            name: value.name,
+            value: compact(value.data),
+        }
+    }
+
+    if (value instanceof Object) {
+        const result = {} as any
+
+        for (const name of Object.getOwnPropertyNames(value)) {
+            result[name] = compact(value[name])
+        }
+
+        return result
+    }
+
+    return value
 }

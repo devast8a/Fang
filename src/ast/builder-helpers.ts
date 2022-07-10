@@ -4,7 +4,7 @@ import { unreachable } from '../utils';
 import { Context } from './context';
 import { Node, RefId, RefName, Scope } from './nodes';
 
-type RewriteParameters<T extends any[]> = {
+export type RewriteParameters<T extends any[]> = {
     [K in keyof T]: T[K] extends Scope ? Context : (T[K] | Builder<T[K], Context>);
 } & {
     length: T['length'];

@@ -71,8 +71,9 @@ export class Function {
         readonly scope: Scope,
         readonly name: string | null,
         readonly returnType: Type,
-        readonly parameters: readonly Local[],
+        readonly parameters: readonly Local<Variable>[],
         readonly body: Local[],
+        readonly external = false,
     ) { }
 }
 
@@ -134,7 +135,7 @@ export class BlockAttribute {
 
     constructor(
         readonly parent: Scope,
-        readonly target: Local,
+        readonly target: Ref,
     ) { }
 }
 
