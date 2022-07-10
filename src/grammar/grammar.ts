@@ -2,6 +2,7 @@ import { make } from '../ast/builder-helpers'
 import { Context } from '../ast/context'
 import * as Nodes from '../ast/nodes'
 import { Ref, RefId } from '../ast/nodes'
+import { unimplemented } from '../utils'
 import { list, either, opt, Rules, seq, Builder, star } from './generator'
 
 const { rule, def } = Rules<Context>()
@@ -217,7 +218,19 @@ Atom.add(
 // == Literal String ==
 Atom.add(
     /'(?:[^\\']+|\\['])+'/,
-    (ctx, value) => make(Nodes.Constant, ctx, new Nodes.RefName('str'), value),
+    (ctx, value) => {
+        // Remove starting and ending '
+        value = value.slice(1, -1);
+        value = value.replace(/\\./, value => {
+            switch (value[1]) {
+                case 'n':  return '\n'
+                case '\'': return '\''
+                default: throw unimplemented('Escape')
+            }
+        })
+
+        return make(Nodes.Constant, ctx, new Nodes.RefName('str'), value)
+    },
 )
 
 // == Move ==

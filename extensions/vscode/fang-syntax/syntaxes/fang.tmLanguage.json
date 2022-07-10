@@ -26,9 +26,9 @@
 			}]
 		},
 		"strings": {
-			"name": "string.quoted.double.fang",
-			"begin": "\"",
-			"end": "\"",
+			"name": "string.quoted.single.fang",
+			"begin": "'",
+			"end": "'",
 			"patterns": [
 				{
 					"name": "constant.character.escape.fang",
