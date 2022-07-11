@@ -1,5 +1,5 @@
-import { Context as Ctx } from './ast/context';
 import { Node, Ref, RefId, Scope, Struct, Tag, Type, Variable } from './ast/nodes';
+import { Ctx as Ctx } from './ast/context';
 import * as Nodes from './ast/nodes';
 import { Source } from './common/source';
 import { resolveNames } from './stages/NameResolver';

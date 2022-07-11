@@ -1,11 +1,11 @@
 import { inspect } from 'util';
-import { Context } from '../ast/context';
+import { Ctx } from '../ast/context';
 import { Function, Node, Ref, RefId, Struct, Tag, Variable } from '../ast/nodes';
 import { unimplemented, unreachable } from '../utils';
 
 export class Interpreter {
     constructor(
-        private context: Context,
+        private context: Ctx,
         private root: RefId[],
     ) { }
 

@@ -1,11 +1,11 @@
 import { make } from '../ast/builder-helpers'
-import { Context } from '../ast/context'
+import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
 import { Ref, RefId } from '../ast/nodes'
 import { unimplemented } from '../utils'
 import { list, either, opt, Rules, seq, Builder, star } from './generator'
 
-const { rule, def } = Rules<Context>()
+const { rule, def } = Rules<Ctx>()
 
 // ------------------------------------------------------------------------------------------------
 // Define these at the top of the file because they are used commonly throughout the file.
@@ -203,7 +203,7 @@ Symbol.add(
 // == Literal Integer ==
 {
     const processor = (offset: number, base: number) =>
-        (ctx: Context, number: string) =>
+        (ctx: Ctx, number: string) =>
             ctx.add(new Nodes.Constant(
                 ctx.scope,
                 new Nodes.RefName('u32'),
@@ -254,14 +254,14 @@ Expr.add(
     const Unary    = rule<RefId>() // x++
     const Compact  = rule<RefId>() // x+y
 
-    const B = (ctx: Context, left: Builder<RefId, Context>, ls: any, op: string, rs: any, right: Builder<RefId, Context>) =>
+    const B = (ctx: Ctx, left: Builder<RefId, Ctx>, ls: any, op: string, rs: any, right: Builder<RefId, Ctx>) =>
         ctx.add(new Nodes.Call(
             ctx.scope,
             new Nodes.RefName(`infix${op}`),
             [left.build(ctx), right.build(ctx)]
         ))
 
-    const U = (ctx: Context, type: string, op: string, value: Builder<RefId, Context>) =>
+    const U = (ctx: Ctx, type: string, op: string, value: Builder<RefId, Ctx>) =>
         ctx.add(new Nodes.Call(
             ctx.scope,
             new Nodes.RefName(type + op),

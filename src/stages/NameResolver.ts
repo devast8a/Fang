@@ -1,12 +1,12 @@
 import { Node, Ref, RefId, Scope, Tag } from '../ast/nodes';
 import * as Nodes from '../ast/nodes';
-import { Context } from '../ast/context';
+import { Ctx } from '../ast/context';
 import { MultiMapUtils, unimplemented } from '../utils';
 import { mutate, mutateRef } from '../ast/mutate';
 
 // TODO: Implement poisoning properly
-export function resolveNames(context: Context, refs: RefId[]) {
-    const nodes = context.nodes;
+export function resolveNames(ctx: Ctx, refs: RefId[]) {
+    const nodes = ctx.nodes;
 
     for (let id = 0; id < nodes.length; id++) {
         const node = nodes[id];

@@ -8,14 +8,14 @@ export enum State {
     DONE,
 }
 
-export class Context {
+export class Ctx {
     public constructor(
-        public readonly parent: Context | null,
+        public readonly parent: Ctx | null,
         public readonly scope: Scope,
         public readonly nodes: Node[],
     ) { }
 
-    public add(definition: Node | ((context: Context) => Node)) {
+    public add(definition: Node | ((context: Ctx) => Node)) {
         const id = this.nodes.length;
 
         // Add the node
@@ -25,7 +25,7 @@ export class Context {
                 new Map(),
             );
 
-            const context = new Context(
+            const context = new Ctx(
                 this,
                 container,
                 this.nodes,
