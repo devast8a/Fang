@@ -22,6 +22,7 @@ export enum Tag {
     While,
 
     // Ref
+    RefFieldId,
     RefFieldName,
     RefId,
     RefIds,
@@ -272,8 +273,17 @@ export type Ref<T extends Node = Node> =
     | RefInfer
     | RefName<T>
 
+export class RefFieldId<T extends Node = Node> {
+    readonly tag = Tag.RefFieldId
+
+    constructor(
+        readonly object: Ref,
+        readonly target: number,
+    ) { }
+}
+
 export class RefFieldName<T extends Node = Node> {
-    readonly tag = Tag.RefFieldName;
+    readonly tag = Tag.RefFieldName
 
     constructor(
         readonly object: Ref,

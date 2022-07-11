@@ -9,6 +9,8 @@ export class Interpreter {
         private root: RefId[],
     ) { }
 
+    prototypeCache = new Map<number, object>()
+
     get(name: '$body'): (...args: any[]) => any;
     get(name: string): ((...args: any[]) => any) | null;
     get(name: string) {
@@ -124,9 +126,10 @@ export class Interpreter {
                     case Tag.RefId: {
                         const target = this.context.nodes[ref.target] as Struct;
 
-                        const object = {} as any;
+                        // Create prototype
+                        const object = Object.create(this.getPrototype(ref.target, target));
 
-                        for (let i = 0; i < target.body.length; i++) {
+                        for (let i = 0; i < args.length; i++) {
                             object[(this.context.nodes[target.body[i].target] as Variable).name] = args[i];
                         }
 
@@ -267,6 +270,74 @@ export class Interpreter {
 
         const result = this.executeBody(fn.body, locals);
         return result instanceof ControlFlow ? result.value : result;
+    }
+
+    private getPrototype(id: number, struct: Struct) {
+        let prototype: any = this.prototypeCache.get(id);
+
+        if (prototype !== undefined) {
+            return prototype;
+        }
+
+        prototype = {};
+
+        for (const ref of struct.body) {
+            const { node, id } = this.resolve(ref);
+
+            switch (node.tag) {
+                case Tag.Set: {
+                    const left  = this.resolve(node.target).node;
+                    const right = this.resolve(node.value).node;
+
+                    if (left.tag === Tag.Variable && right.tag === Tag.Constant) {
+                        prototype[left.name] = right.value;
+                    }
+
+                    break;
+                }
+                    
+                case Tag.Function: {
+                    if (node.name === null) {
+                        throw new Error("Function in struct without a name");
+                    }
+
+                    if (node.parameters.length > 0) {
+                        const first = this.resolve(node.parameters[0]).node;
+
+                        if (first.name === 'self') {
+                            // eslint-disable-next-line @typescript-eslint/no-this-alias
+                            const interpreter = this;
+                            prototype[node.name] = function(this, ...args: any[]) {
+                                args.unshift(this);
+                                return interpreter.executeFunction(node, args);
+                            }
+                            break;
+                        }
+                    }
+
+                    prototype[node.name] = (...args: any[]) => this.executeFunction(node, args);
+                    break;
+                }
+            }
+        }
+
+        this.prototypeCache.set(id, prototype);
+        return prototype;
+    }
+
+    private resolve<T extends Node>(ref: Ref<T>) {
+        switch (ref.tag) {
+            case Tag.RefId: {
+                return {
+                    node: this.context.nodes[ref.target] as T,
+                    id: ref.target
+                };
+            }
+
+            default: {
+                throw new Error('');
+            }
+        }
     }
 }
 

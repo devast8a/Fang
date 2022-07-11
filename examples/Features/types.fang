@@ -1,6 +1,5 @@
 # Test attributes please ignore.
 ##DEBUG_TYPE_CHECK
-##DEBUG_PRINT_AST
 
 # Type checking and inference test
 fn foo(x: u32) => x
