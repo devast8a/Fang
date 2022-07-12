@@ -247,9 +247,16 @@ Atom.add(
         (ctx, keyword, s1, value, s2, body) => make(Nodes.Match, ctx, value, body),
     )
 
+    const B = rule<RefId[]>();
+    B.add(seq(N_, Body).get(1));
+    B.add(
+        def(_, '=>', _, Expr),
+        (ctx, n1, n2, n3, body) => [make(Nodes.Return, ctx, body)]
+    )
+
     const MatchCase = rule(
-        def('case', __, Expr, N_, Body),
-        (ctx, keyword, s1, value, s2, body) => new Nodes.MatchCase(value.build(ctx), body.build(ctx))
+        def('case', __, Expr, B),
+        (ctx, keyword, s1, value, body) => new Nodes.MatchCase(value.build(ctx), body.build(ctx))
     )
 
     const MatchBody = rule(
