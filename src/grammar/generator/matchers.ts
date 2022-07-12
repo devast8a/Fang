@@ -743,7 +743,9 @@ export function Rules<Context>() {
 }
 
 class Parser<Match, Context> {
-    constructor(readonly grammar: NearleyGrammar) {
+    constructor(
+        private readonly grammar: NearleyGrammar
+    ) {
     }
 
     parse(context: Context, input: string): Match {
