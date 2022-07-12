@@ -240,6 +240,24 @@ Atom.add(
     },
 )
 
+// == Match ==
+{
+    Expr.add(
+        () => def('match', __, Expr, N_, MatchBody),
+        (ctx, keyword, s1, value, s2, body) => make(Nodes.Match, ctx, value, body),
+    )
+
+    const MatchCase = rule(
+        def('case', __, Expr, N_, Body),
+        (ctx, keyword, s1, value, s2, body) => new Nodes.MatchCase(value.build(ctx), body.build(ctx))
+    )
+
+    const MatchBody = rule(
+        star('{', N_, MatchCase, Semicolon, '}'),
+        (ctx, list) => list.build(ctx).elements,
+    )
+}
+
 // == Move ==
 Expr.add(
     def('move', __, Expr),

@@ -16,6 +16,7 @@ export enum Tag {
     ForEach,
     Get,
     If,
+    Match,
     Move,
     Return,
     Set,
@@ -126,6 +127,7 @@ export type Expr =
     | ForEach
     | Get
     | If
+    | Match
     | Move
     | Return
     | Set
@@ -223,6 +225,23 @@ export class If {
 export class IfCase {
     constructor(
         readonly condition: Local | null,
+        readonly body: Local[],
+    ) { }
+}
+
+export class Match {
+    readonly tag = Tag.Match
+
+    constructor(
+        readonly parent: Scope,
+        readonly value: Local,
+        readonly cases: MatchCase[],
+    ) { }
+}
+
+export class MatchCase {
+    constructor(
+        readonly value: Local,
         readonly body: Local[],
     ) { }
 }

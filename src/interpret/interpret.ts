@@ -204,6 +204,18 @@ export class Interpreter {
                 }
                 return null;
             }
+
+            case Tag.Match: {
+                const value = ToValue(this.execute(node.value, locals));
+
+                for (const c of node.cases) {
+                    const caseValue = ToValue(this.execute(c.value, locals));
+                    if (compare(value, caseValue)) {
+                        return this.executeBody(c.body, locals);
+                    }
+                }
+                return null;
+            }
                 
             case Tag.Return: {
                 return new ControlFlow(

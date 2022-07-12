@@ -39,6 +39,7 @@ export function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
         case Tag.ForEach:   return node;
         case Tag.Get:       return mutate(node, 'target', fn);
         case Tag.If:        return node;
+        case Tag.Match:     return node;
         case Tag.Move:      return node;
         case Tag.Return:    return node;
         case Tag.Set:       return mutate(node, 'target', fn);
