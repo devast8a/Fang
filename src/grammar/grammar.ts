@@ -307,6 +307,10 @@ Expr.add(
     // x+y
     Compact.add(def(Compact, Operator, Atom), (ctx, left, op, right) => B(ctx, left, null, op, null, right))
     Compact.add(Atom)
+
+    Symbol.add(def('infix',   Operator), (ctx, l, r) => new Nodes.RefName(l + r))
+    Symbol.add(def('postfix', Operator), (ctx, l, r) => new Nodes.RefName(l + r))
+    Symbol.add(def('prefix',  Operator), (ctx, l, r) => new Nodes.RefName(l + r))
 }
 
 // == Parentheses ==

@@ -7,8 +7,25 @@ export class Interpreter {
     constructor(
         private context: Ctx,
         private root: RefId[],
-    ) { }
+    ) {
+        for (const ref of root) {
+            const {node, id} = this.resolve(ref);
 
+            if (node.tag === Tag.Struct) {
+                this.globals[id] = this.getPrototype(id, node);
+            }
+        }
+
+        for (let id = 0; id < context.nodes.length; id++) {
+            const node = context.nodes[id];
+
+            if (node.tag === Tag.Function && node.external && node.name) {
+                this.globals[id] = getExternal(node.name);
+            }
+        }
+    }
+
+    globals = new Array<any>();
     prototypeCache = new Map<number, object>()
 
     get(name: '$body'): (...args: any[]) => any;
@@ -170,17 +187,9 @@ export class Interpreter {
             case Tag.Get: {
                 const ref = node.target;
                 switch (ref.tag) {
-                    case Tag.RefName: {
-                        switch (ref.target) {
-                            case 'true': return true;
-                            case 'false': return false;
-                            case 'Math': return Math;
-                            case 'String': return FString;
-                            default: throw unimplemented(ref.target);
-                        }
-                    }
-                    case Tag.RefId: return locals[ref.target];
-                    case Tag.RefIds: return locals[ref.target[0]];
+                    case Tag.RefName: return getExternal(ref.target);
+                    case Tag.RefId:   return locals[ref.target] ?? this.globals[ref.target];
+                    case Tag.RefIds:  return locals[ref.target[0]];
                     case Tag.RefFieldName: {
                         const object = ToValue(this.execute(ref.object as RefId, locals));
 
@@ -457,6 +466,41 @@ class FString {
     }
 }
 
+function getExternal(name: string) {
+    switch (name) {
+        case 'true':     return true;
+        case 'false':    return false;
+        case 'Math':     return Math;
+        case 'String':   return FString;
+
+        case 'infix+':   return (l: any, r: any) => l +  r;
+        case 'infix-':   return (l: any, r: any) => l -  r;
+        case 'infix*':   return (l: any, r: any) => l *  r;
+        case 'infix/':   return (l: any, r: any) => l /  r;
+        case 'infix**':  return (l: any, r: any) => l ** r;
+        case 'infix%':   return (l: any, r: any) => l %  r;
+        case 'infix<':   return (l: any, r: any) => l <  r;
+        case 'infix>':   return (l: any, r: any) => l >  r;
+        case 'infix<=':  return (l: any, r: any) => l <= r;
+        case 'infix>=':  return (l: any, r: any) => l >= r;
+        case 'infix<<':  return (l: any, r: any) => l << r;
+        case 'infix>>':  return (l: any, r: any) => l >> r;
+        case 'infix|':   return (l: any, r: any) => l |  r;
+        case 'infix&':   return (l: any, r: any) => l &  r;
+
+        case 'infix//':  return (l: any, r: any) => Math.floor(l / r);
+        case 'infix==':  return (l: any, r: any) => compare(l, r);
+        case 'infix!=':  return (l: any, r: any) => !compare(l, r);
+
+        case 'infix..':  return (l: any, r: any) => { throw new Error(); }
+
+        case 'infixor':  return (l: any, r: any) => l || r;
+        case 'infixand': return (l: any, r: any) => l && r;
+
+        default: throw unimplemented(name);
+    }
+}
+
 function callExternal(name: string, args: any[]) {
     switch (name) {
         case 'infix+':  return args[0] + args[1];
@@ -474,8 +518,9 @@ function callExternal(name: string, args: any[]) {
         case 'infix>=': return args[0] >= args[1];
 
         case 'infix<<': return args[0] << args[1];
-        case 'infix|': return args[0] | args[1];
-        case 'infix&': return args[0] & args[1];
+        case 'infix>>': return args[0] >> args[1];
+        case 'infix|':  return args[0] | args[1];
+        case 'infix&':  return args[0] & args[1];
 
         case 'infix..': {
             const result = [];
