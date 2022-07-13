@@ -1,5 +1,4 @@
-import { Scope, Node, Tag } from './nodes';
-import * as Nodes from './nodes';
+import { Scope, Node, Tag, RefId } from './nodes';
 import { MultiMapUtils } from '../utils';
 
 export enum State {
@@ -50,6 +49,10 @@ export class Ctx {
                 break;
         }
 
-        return new Nodes.RefId(id);
+        return new RefId(id);
+    }
+
+    public get<T extends Node>(ref: RefId<T>): T {
+        return this.nodes[ref.target] as T;
     }
 }

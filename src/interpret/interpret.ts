@@ -1,452 +1,359 @@
 import { inspect } from 'util';
 import { Ctx } from '../ast/context';
-import { Function, Node, Ref, RefId, Struct, Tag, Variable } from '../ast/nodes';
-import { unimplemented, unreachable } from '../utils';
+import { Node, RefId, Tag, Function, Call, Ref, Struct, Variable } from '../ast/nodes';
+import { unimplemented } from '../utils';
 
 export class Interpreter {
+    private globals = new Array<any>();
+
     constructor(
-        private context: Ctx,
+        private ctx: Ctx,
         private root: RefId[],
     ) {
         for (const ref of root) {
-            const {node, id} = this.resolve(ref);
+            const id = ref.target;
+            const node = this.ctx.get(ref);
 
-            if (node.tag === Tag.Struct) {
-                this.globals[id] = this.getPrototype(id, node);
+            switch (node.tag) {
+                case Tag.Function: this.globals[id] = this.buildFn(node); break;
+                case Tag.Struct: this.globals[id] = this.buildStruct(node); break;
             }
         }
 
-        for (let id = 0; id < context.nodes.length; id++) {
-            const node = context.nodes[id];
+        for (let id = 0; id < ctx.nodes.length; id++) {
+            const node = ctx.nodes[id];
 
-            if (node.tag === Tag.Function && node.external && node.name) {
-                this.globals[id] = getExternal(node.name);
+            switch (node.tag) {
+                case Tag.Function: this.globals[id] = this.buildFn(node); break;
+                case Tag.Struct: this.globals[id] = this.buildStruct(node); break;
             }
         }
     }
 
-    globals = new Array<any>();
-    prototypeCache = new Map<number, object>()
-
-    get(name: '$body'): (...args: any[]) => any;
-    get(name: string): ((...args: any[]) => any) | null;
-    get(name: string) {
-        if (name === '$body') {
-            return () => {
-                const result = this.executeBody(this.root, []);
-                return result instanceof ControlFlow ? result.value : result;
-            };
-        }
-
-        const ids = this.context.scope.symbols.get(name);
-
-        // Could not find the symbol
-        if (ids === undefined) {
+    private evaluate(ref: RefId | null, locals: any[]): any {
+        if (ref === null) {
             return null;
         }
 
-        // TODO: Support overload resolution
-        const id = ids[0];
-        const fn = this.context.nodes[id];
-
-        if (fn.tag !== Tag.Function) {
-            return null;
-        }
-
-        return (...args: any[]) => {
-            return this.executeFunction(fn, args);
-        }
-    }
-
-    private execute(id: RefId, locals: Value[]): (Value | ControlFlow) {
-        const node = this.context.nodes[id.target];
-
+        const node = this.ctx.get(ref);
         switch (node.tag) {
-            // Declerations
-            case Tag.Enum:
-            case Tag.Struct:
-            case Tag.Trait:
-            case Tag.Variable:
-                return null;
-
-            case Tag.Function:
-                return (...args: any[]) => {
-                    return this.executeFunction(node, args);
-                }
-                
-            // Expressions
             case Tag.BlockAttribute: {
                 return null;
             }
-
+                
             case Tag.Break: {
-                return new ControlFlow(
-                    ControlFlowType.Break,
-                    null,
-                );
+                return new Control(Type.Break, Value.unwrap(this.evaluate(node.value, locals)))
             }
 
             case Tag.Call: {
-                const ref = node.target;
-                switch (ref.tag) {
-                    case Tag.RefName: {
-                        const args = node.args.map(ref =>
-                            ToValue(this.execute(ref, locals)) as any
-                        );
+                const { target, member } = this.resolve(node.target, locals);
+                const args = node.args.map(arg => Value.unwrap(this.evaluate(arg, locals)))
 
-                        return callExternal(ref.target, args);
-                    }
-                    case Tag.RefId: {
-                        // Load the function
-                        const fn = this.context.nodes[ref.target];
-
-                        switch (fn.tag) {
-                            case Tag.Function: {
-                                const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
-
-                                if (fn.external) {
-                                    return callExternal(fn.name!, args)
-                                }
-
-                                return this.executeFunction(fn, args);
-                            }
-                                
-                            case Tag.Variable: {
-                                const f = locals[ref.target] as (...args: any) => any;
-                                const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
-                                return f(args);
-                            }
-                        }
-
-                        throw unimplemented(fn as never);
-                    }
-
-                    case Tag.RefFieldName: {
-                        const object = this.execute(ref.object as RefId, locals) as any;
-                        const args = node.args.map(ref => ToValue(this.execute(ref, locals)));
-                        return object[ref.target](...args);
-                    }
-                    default: throw unimplemented(ref as never);
+                if (typeof (target[member]) !== 'function') {
+                    throw new Error(`Unknown function ${member}`)
                 }
-                return null;
+
+                return target[member](...args);
             }
                 
             case Tag.Constant: {
-                return typeof(node.value) === 'string' ? FString.from(node.value) : node.value;
+                switch (typeof (node.value)) {
+                    case 'string': return new VmString(node.value);
+                    default: return node.value;
+                }
             }
 
             case Tag.Construct: {
-                const ref = node.target;
-                
-                const args = node.args.map(arg => this.execute(arg, locals));
-                switch (ref.tag) {
-                    case Tag.RefId: {
-                        const target = this.context.nodes[ref.target] as Struct;
+                const { target, member } = this.resolve(node.target, locals);
+                const args = node.args.map(arg => Value.unwrap(this.evaluate(arg, locals)));
 
-                        // Create prototype
-                        const object = Object.create(this.getPrototype(ref.target, target));
-
-                        for (let i = 0; i < args.length; i++) {
-                            object[(this.context.nodes[target.body[i].target] as Variable).name] = args[i];
-                        }
-
-                        return object;
-                    }
-                        
-                    case Tag.RefName: {
-                        switch (ref.target) {
-                            case 'List': return new Array(args?.[0] ?? 0).fill(args?.[1] ?? 0);
-                            case 'Set': return new Set();
-                        }
-                        throw unimplemented(ref.target);
-                    }
+                // TODO: Remove this hack
+                if (target === externals && member === 'List') {
+                    return new Array(args[0] ?? 0).fill(args[1] ?? 0)
                 }
-                throw unimplemented(ref as never);
+
+                return new target[member](...args);
             }
 
             case Tag.Continue: {
-                return new ControlFlow(
-                    ControlFlowType.Continue,
-                    null,
-                );
+                return new Control(Type.Continue, Value.unwrap(this.evaluate(node.value, locals)))
             }
-                
+
             case Tag.ForEach: {
                 // eslint-disable-next-line no-constant-condition
-                const collection = ToValue(this.execute(node.collection, locals)) as any;
+                const collection = Value.unwrap(this.evaluate(node.collection, locals));
 
                 for (const element of collection) {
                     locals[node.element.target] = element;
-                    const body = this.executeBody(node.body, locals);
+                    const body = this.evaluateBody(node.body, locals);
 
-                    if (IsExit(body)) return ToExit(body);
+                    if (Value.isExit(body)) {
+                        return Value.asExit(body);
+                    }
                 }
                 return null;
             }
 
-            case Tag.Get: {
-                const ref = node.target;
-                switch (ref.tag) {
-                    case Tag.RefName: return getExternal(ref.target);
-                    case Tag.RefId:   return locals[ref.target] ?? this.globals[ref.target];
-                    case Tag.RefIds:  return locals[ref.target[0]];
-                    case Tag.RefFieldName: {
-                        const object = ToValue(this.execute(ref.object as RefId, locals));
+            case Tag.Function: {
+                return this.globals[ref.target];
+            }
 
-                        if (typeof (ref.target) === 'string') {
-                            return (object as any)[ref.target];
-                        } else {
-                            const index = ToNumber(this.execute(ref.target, locals));
-                            return (object as any)[index];
-                        }
-                    }
-                    default: throw unimplemented(ref as never);
-                }
-                break;
+            case Tag.Get: {
+                const { target, member } = this.resolve(node.target, locals);
+                return target[member];
             }
                 
             case Tag.If: {
                 for (const c of node.cases) {
-                    if (c.condition === null || ToBoolean(this.execute(c.condition, locals))) {
-                        return this.executeBody(c.body, locals);
+                    if (c.condition === null || Value.asBoolean(this.evaluate(c.condition, locals))) {
+                        return this.evaluateBody(c.body, locals);
+                    }
+                }
+                return null;   
+            }
+                
+            case Tag.Match: {
+                const value = Value.unwrap(this.evaluate(node.value, locals));
+
+                for (const c of node.cases) {
+                    const caseValue = Value.unwrap(this.evaluate(c.value, locals));
+
+                    if (compare(value, caseValue)) {
+                        return this.evaluateBody(c.body, locals);
                     }
                 }
                 return null;
             }
 
-            case Tag.Match: {
-                const value = ToValue(this.execute(node.value, locals));
+            case Tag.Return: {
+                return new Control(Type.Return, Value.unwrap(this.evaluate(node.value, locals)));
+            }
+                
+            case Tag.Set: {
+                const { target, member } = this.resolve(node.target, locals);
+                return target[member] = Value.unwrap(this.evaluate(node.value, locals));
+            }
 
-                for (const c of node.cases) {
-                    const caseValue = ToValue(this.execute(c.value, locals));
-                    if (compare(value, caseValue)) {
-                        return this.executeBody(c.body, locals);
-                    }
-                }
+            case Tag.Struct: {
                 return null;
             }
                 
-            case Tag.Return: {
-                return new ControlFlow(
-                    ControlFlowType.Return,
-                    ToValue(node.value === null ? null : this.execute(node.value, locals)),
-                );
-            }
-
-            case Tag.Set: {
-                const ref = node.target;
-                const value = ToValue(this.execute(node.value, locals));
-
-                switch (ref.tag) {
-                    case Tag.RefName: throw unreachable("Unresolved target of assignment");
-                    case Tag.RefId: return (locals[ref.target] = value);
-                    case Tag.RefIds: return (locals[ref.target[0]] = value);
-                    case Tag.RefFieldName: {
-                        const object = ToValue(this.execute(ref.object as RefId, locals));
-
-                        if (typeof (ref.target) === 'string') {
-                            return (object as any)[ref.target] = value;
-                        } else {
-                            const index = ToNumber(this.execute(ref.target, locals));
-                            return (object as any)[index] = value;
-                        }
-                    }
-                    default: throw unimplemented(ref as never);
-                }
-                break;
-            }
-
             case Tag.While: {
-                // eslint-disable-next-line no-constant-condition
-                while (ToBoolean(this.execute(node.condition, locals))) {
-                    const body = this.executeBody(node.body, locals);
-
-                    if (IsExit(body)) return ToExit(body);
+                while (Value.asBoolean(this.evaluate(node.condition, locals))) {
+                    const body = this.evaluateBody(node.body, locals);
+                
+                    if (Value.isExit(body)) {
+                        return Value.asExit(body);
+                    }
                 }
                 return null;
             }
-        }
 
-        throw unimplemented(node as never);
-    }
-
-    private executeBody(ids: RefId[], locals: Value[]): (Value | ControlFlow) {
-        for (const id of ids) {
-            const result = this.execute(id, locals);
-
-            if (result instanceof ControlFlow) {
-                return result;
+            default: {
+                throw unimplemented(node as never);
             }
         }
-
-        return null;
     }
 
-    private executeFunction(fn: Function, args: any[]) {
-        // Set parameter values
-        const locals = [];
+    private evaluateFn(fn: Function, args: any[]) {
+        const locals = new Array<any>();
         for (let i = 0; i < args.length; i++) {
             locals[fn.parameters[i].target] = args[i];
         }
 
-        const result = this.executeBody(fn.body, locals);
-        return result instanceof ControlFlow ? result.value : result;
+        return Value.unwrap(this.evaluateBody(fn.body, locals));
     }
 
-    private getPrototype(id: number, struct: Struct) {
-        let prototype: any = this.prototypeCache.get(id);
+    private evaluateBody(body: RefId[], locals: any[]) {
+        for (const ref of body) {
+            const result = this.evaluate(ref, locals);
 
-        if (prototype !== undefined) {
-            return prototype;
+            if (result instanceof Control) {
+                return result;
+            }
+        }
+    }
+
+    // Get a value
+    get(name: string): any {
+        if (name === '$body') {
+            return () => Value.unwrap(this.evaluateBody(this.root, []));
         }
 
-        prototype = {};
+        const ids = this.ctx.scope.symbols.get(name);
+        if (ids === undefined) {
+            return null;
+        }
 
+        return this.globals[ids[0]];
+    }
+
+    private resolve(ref: Ref, locals: any[]): {target: any, member: any} {
+        switch (ref.tag) {
+            case Tag.RefId: {
+                if (locals[ref.target] !== undefined) {
+                    return { target: locals, member: ref.target };
+                }
+
+                if (this.globals[ref.target] !== undefined) {
+                    return { target: this.globals, member: ref.target };
+                }
+
+                return {target: locals, member: ref.target}
+            }
+                
+            case Tag.RefName: {
+                if (externals[ref.target] === undefined) {
+                    throw unimplemented(`External identifier: ${ref.target}`);
+                }
+
+                return { target: externals, member: ref.target };
+            }
+                
+            case Tag.RefFieldName: {
+                const object = this.evaluate(ref.object as RefId, locals);
+
+                if ((ref.target as any) instanceof RefId) {
+                    const target = this.evaluate(ref.target as any, locals);
+                    return { target: object, member: target };
+                }
+
+                return { target: object, member: ref.target };
+            }
+
+            default: throw unimplemented(ref as never);
+        }
+    }
+
+    private buildFn(fn: Function, members = true): any {
+        // External functions
+        if (fn.external) {
+            if (fn.name === null) {
+                throw new Error('External functions must have a name')
+            }
+
+            if (typeof (externals[fn.name]) !== 'function') {
+                throw new Error(`External ${fn.name} is not a function`)
+            }
+
+            return externals[fn.name];
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const interpreter = this;
+
+        // Member functions
+        if (members && fn.parameters.length > 0 && this.ctx.get(fn.parameters[0]).name === 'self') {
+            return function(this: any, ...args: any[]) {
+                args.unshift(this);
+                return interpreter.evaluateFn(fn, args);
+            }
+        }
+
+        // Regular functions
+        return (...args: any[]) => interpreter.evaluateFn(fn, args);
+    }
+
+    private buildStruct(struct: Struct): any {
+        const ctx = this.ctx;
+
+        function constructor(this: any, ...args: any[]) {
+            for (let i = 0; i < args.length; i++) {
+                const member = ctx.get(struct.body[i]) as Variable;
+                this[member.name] = args[i];
+            }
+        }
+
+        const prototype = {} as any;
+    
         for (const ref of struct.body) {
-            const { node, id } = this.resolve(ref);
+            const node = this.ctx.get(ref);
 
             switch (node.tag) {
+                case Tag.Function: {
+                    if (node.name === null) {
+                        throw new Error('Function in struct must have name');
+                    }
+
+                    prototype[node.name] = this.buildFn(node);
+                    (constructor as any)[node.name] = this.buildFn(node, false);
+                    break;
+                }
+
                 case Tag.Set: {
-                    const left  = this.resolve(node.target).node;
-                    const right = this.resolve(node.value).node;
+                    const left = this.ctx.get(node.target as RefId);
+                    const right = this.ctx.get(node.value);
 
                     if (left.tag === Tag.Variable && right.tag === Tag.Constant) {
                         prototype[left.name] = right.value;
+                    } else {
+                        throw unimplemented('Only supports assigning constants to members');
                     }
-
-                    break;
-                }
-                    
-                case Tag.Function: {
-                    if (node.name === null) {
-                        throw new Error("Function in struct without a name");
-                    }
-
-                    if (node.parameters.length > 0) {
-                        const first = this.resolve(node.parameters[0]).node;
-
-                        if (first.name === 'self') {
-                            // eslint-disable-next-line @typescript-eslint/no-this-alias
-                            const interpreter = this;
-                            prototype[node.name] = function(this, ...args: any[]) {
-                                args.unshift(this);
-                                return interpreter.executeFunction(node, args);
-                            }
-                            break;
-                        }
-                    }
-
-                    prototype[node.name] = (...args: any[]) => this.executeFunction(node, args);
                     break;
                 }
             }
         }
 
-        this.prototypeCache.set(id, prototype);
-        return prototype;
-    }
+        constructor.prototype = prototype;
 
-    private resolve<T extends Node>(ref: Ref<T>) {
-        switch (ref.tag) {
-            case Tag.RefId: {
-                return {
-                    node: this.context.nodes[ref.target] as T,
-                    id: ref.target
-                };
-            }
-
-            default: {
-                throw new Error('');
-            }
-        }
+        return constructor;
     }
 }
 
-type Value =
-    | boolean
-    | number
-    | string
-    | null
-    | object
-    ;
-
-enum ControlFlowType {
+export enum Type {
     Break,
     Continue,
     Return,
 }
 
-class ControlFlow {
+export class Control {
     constructor(
-        readonly control: ControlFlowType,
-        readonly value: Value,
+        readonly type: Type,
+        readonly value: any,
     ) { }
 }
 
-// Check that `value` is of type `Value` and not `ControlFlow`
-function ToValue(value: Value | ControlFlow): Value {
-    if (value instanceof ControlFlow) {
-        throw new Error('Type Error: expected value')
+namespace Value {
+    export function unwrap(value: any) {
+        return value instanceof Control ? value.value : value;
     }
 
-    return value;
-}
+    export function asBoolean(value: any) {
+        value = Value.unwrap(value);
+        
+        if (typeof (value) !== 'boolean') {
+            throw new Error('Expecting boolean');
+        }
 
-function ToBoolean(value: Value | ControlFlow): boolean {
-    if (typeof (value) !== 'boolean') {
-        throw new Error('Type Error: expected boolean')
+        return value;
     }
 
-    return value;
-}
-
-function ToNumber(value: Value | ControlFlow): number {
-    if (typeof (value) !== 'number') {
-        throw new Error('Type Error: expected number')
+    export function isExit(value: any): value is Control {
+        return value instanceof Control && value.type !== Type.Continue;
     }
 
-    return value;
-}
-
-function IsExit(value: Value | ControlFlow): value is ControlFlow {
-    if (!(value instanceof ControlFlow)) {
-        return false;
+    export function asExit(control: Control) {
+        return control.type === Type.Return ? control : control.value;
     }
-
-    return value.control !== ControlFlowType.Continue;
 }
 
-function ToExit(value: ControlFlow) {
-    return value.control === ControlFlowType.Return ? value : value.value;
-}
+class VmString {
+    constructor(readonly value: string) { }
 
-function compare(left: Value, right: Value) {
-    if (left instanceof FString && right instanceof FString) {
-        return left.value === right.value;
-    }
-
-    return left === right;
-}
-
-class FString {
-    private constructor(
-        readonly value: string
-    ) { }
-
-    static from(value: Value): FString {
-        return new FString(value?.toString() ?? "");
+    static from(value: any) {
+        return new VmString(value.toString());
     }
 
     reverse() {
-        return FString.from(this.value.split('').reverse().join(''));
+        return new VmString(this.value.split('').reverse().join(''));
     }
 
     strip() {
-        return FString.from(this.value.trim());
+        return new VmString(this.value.trim());
     }
 
     replace(value: string, replace: string) {
-        return FString.from(this.value.replace(new RegExp(value, 'g'), replace));
+        return new VmString(this.value.replace(new RegExp(value, 'g'), replace));
     }
 
     get size() {
@@ -466,73 +373,48 @@ class FString {
     }
 }
 
-function getExternal(name: string) {
-    switch (name) {
-        case 'true':     return true;
-        case 'false':    return false;
-        case 'Math':     return Math;
-        case 'String':   return FString;
-
-        case 'infix+':   return (l: any, r: any) => l +  r;
-        case 'infix-':   return (l: any, r: any) => l -  r;
-        case 'infix*':   return (l: any, r: any) => l *  r;
-        case 'infix/':   return (l: any, r: any) => l /  r;
-        case 'infix**':  return (l: any, r: any) => l ** r;
-        case 'infix%':   return (l: any, r: any) => l %  r;
-        case 'infix<':   return (l: any, r: any) => l <  r;
-        case 'infix>':   return (l: any, r: any) => l >  r;
-        case 'infix<=':  return (l: any, r: any) => l <= r;
-        case 'infix>=':  return (l: any, r: any) => l >= r;
-        case 'infix<<':  return (l: any, r: any) => l << r;
-        case 'infix>>':  return (l: any, r: any) => l >> r;
-        case 'infix|':   return (l: any, r: any) => l |  r;
-        case 'infix&':   return (l: any, r: any) => l &  r;
-
-        case 'infix//':  return (l: any, r: any) => Math.floor(l / r);
-        case 'infix==':  return (l: any, r: any) => compare(l, r);
-        case 'infix!=':  return (l: any, r: any) => !compare(l, r);
-
-        case 'infix..':  return (l: any, r: any) => { throw new Error(); }
-
-        case 'infixor':  return (l: any, r: any) => l || r;
-        case 'infixand': return (l: any, r: any) => l && r;
-
-        default: throw unimplemented(name);
+function compare(left: any, right: any) {
+    if (left instanceof VmString && right instanceof VmString) {
+        return left.value === right.value;
     }
+
+    return left === right;
 }
 
-function callExternal(name: string, args: any[]) {
-    switch (name) {
-        case 'infix+':  return args[0] + args[1];
-        case 'infix-':  return args[0] - args[1];
-        case 'infix*':  return args[0] * args[1];
-        case 'infix/':  return args[0] / args[1];
-        case 'infix**': return args[0] ** args[1];
-        case 'infix//': return Math.trunc(args[0] / args[1]);
-        case 'infix%':  return args[0] % args[1];
-        case 'infix<':  return args[0] < args[1];
-        case 'infix>':  return args[0] > args[1];
-        case 'infix==': return compare(args[0], args[1]);
-        case 'infix!=': return !compare(args[0], args[1]);
-        case 'infix<=': return args[0] <= args[1];
-        case 'infix>=': return args[0] >= args[1];
+const externals: any = {
+    List: Array,
+    Math: Math,
+    String: VmString,
+    print: (...args: any[]) => console.log(...args),
 
-        case 'infix<<': return args[0] << args[1];
-        case 'infix>>': return args[0] >> args[1];
-        case 'infix|':  return args[0] | args[1];
-        case 'infix&':  return args[0] & args[1];
+    'infix+':   (l: any, r: any) => l  + r,
+    'infix-':   (l: any, r: any) => l  - r,
+    'infix*':   (l: any, r: any) => l  * r,
+    'infix/':   (l: any, r: any) => l  / r,
+    'infix**':  (l: any, r: any) => l ** r,
+    'infix%':   (l: any, r: any) => l  % r,
+    'infix<':   (l: any, r: any) => l  < r,
+    'infix>':   (l: any, r: any) => l  > r,
+    'infix<=':  (l: any, r: any) => l <= r,
+    'infix>=':  (l: any, r: any) => l >= r,
+    'infix<<':  (l: any, r: any) => l << r,
+    'infix>>':  (l: any, r: any) => l >> r,
+    'infix|':   (l: any, r: any) => l  | r,
+    'infix&':   (l: any, r: any) => l  & r,
+    'infixor':  (l: any, r: any) => l || r,
+    'infixand': (l: any, r: any) => l && r,
+    'infix//':  (l: any, r: any) => Math.floor(l / r),
+    'infix!=':  (l: any, r: any) => !compare(l, r),
+    'infix==':  compare,
 
-        case 'infix..': {
-            const result = [];
-            for (let i = args[0]; i < args[1]; i++) {
-                result.push(i);
-            }
-            return result;
+    'infix..': (start: any, end: any) => {
+        const result = [];
+        for (let i = start; i < end; i++) {
+            result.push(i);
         }
+        return result;
+    },
 
-        case 'infixor':  return args[0] || args[1];
-        case 'infixand': return args[0] && args[1];
-        case 'print':    console.log(...args); return;
-        default: throw unimplemented(name);
-    }
-}
+    true: true,
+    false: false,
+};

@@ -93,7 +93,7 @@ fn decode(packet: Stream) {
     }
 
     # Evaluate the packet
-    match type {
+    return match type {
         case 0 => subpackets.reduce(infix+)
         case 1 => subpackets.reduce(infix*)
         case 2 => subpackets.reduce(Math.min)
