@@ -1,7 +1,7 @@
-import { inspect } from 'util';
 import { Ctx } from '../ast/context';
-import { Node, RefId, Tag, Function, Call, Ref, Struct, Variable } from '../ast/nodes';
+import { RefId, Tag, Function, Ref, Struct, Variable } from '../ast/nodes';
 import { unimplemented } from '../utils';
+import { VmString } from './VmString';
 
 export class Interpreter {
     private globals = new Array<any>();
@@ -334,42 +334,6 @@ namespace Value {
 
     export function asExit(control: Control) {
         return control.type === Type.Return ? control : control.value;
-    }
-}
-
-class VmString {
-    constructor(readonly value: string) { }
-
-    static from(value: any) {
-        return new VmString(value.toString());
-    }
-
-    reverse() {
-        return new VmString(this.value.split('').reverse().join(''));
-    }
-
-    strip() {
-        return new VmString(this.value.trim());
-    }
-
-    replace(value: string, replace: string) {
-        return new VmString(this.value.replace(new RegExp(value, 'g'), replace));
-    }
-
-    get size() {
-        return this.value.length;
-    }
-
-    getCode(nth: number) {
-        return this.value.charCodeAt(nth);
-    }
-
-    toString() {
-        return this.value;
-    }
-
-    [inspect.custom]() {
-        return this.value;
     }
 }
 
