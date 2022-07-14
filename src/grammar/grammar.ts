@@ -51,6 +51,13 @@ const Body = rule(
     (ctx, list) => list.build(ctx).elements,
 )
 
+const BodyX = rule<RefId[]>();
+BodyX.add(seq(N_, Body).get(1));
+BodyX.add(
+    def(_, '=>', _, Expr),
+    (ctx, n1, n2, n3, body) => [make(Nodes.Return, ctx, body)]
+)
+
 // == Block Attributes ==
 Expr.add(
     def('##', Symbol),
@@ -108,10 +115,6 @@ Expr.add(
 )
 
 // == Function ==
-const FnBody = rule<RefId[]>();
-FnBody.add(def(N_, Body), (ctx, ...match) => match[1].build(ctx));
-FnBody.add(def(_, '=>', N_, Expr), (ctx, ...match) => [make(Nodes.Return, ctx, match[3])])
-
 const Function = rule(
     () => {
         const keyword    = 'fn'
@@ -119,7 +122,7 @@ const Function = rule(
         const parameters = star('(', _, Parameter, Comma, ')').elements
         const returnType = seq(_, '->', _, Type).get(3)
 
-        return def(keyword, opt(name), parameters, opt(returnType), opt(FnBody))
+        return def(keyword, opt(name), parameters, opt(returnType), opt(BodyX))
     }, (ctx, keyword, name, parameters, returnType, body) => {
         return ctx.add(children => new Nodes.Function(
             ctx.scope,
@@ -157,12 +160,12 @@ Atom.add(
 
 // == If ==
 {
-    const Elif = list(seq(N_, 'else', __, 'if', N_, Body))
-    const Else = seq(N_, 'else', N_, Body)
+    const Elif = list(seq(N_, 'else', __, 'if', BodyX))
+    const Else = seq(N_, 'else', BodyX)
 
     Expr.add(
-        def('if', __, Expr, N_, Body, opt(Elif), opt(Else)),
-        (ctx, kw, s1, condition, s2, body, x, final) => {
+        def('if', __, Expr, BodyX, opt(Elif), opt(Else)),
+        (ctx, kw, s1, condition, body, x, final) => {
             const cases = [];
 
             // If case
@@ -171,7 +174,7 @@ Atom.add(
             // Else case
             const f = final.build(ctx)
             if (f !== null) {
-                cases.push(new Nodes.IfCase(null, f[3]))
+                cases.push(new Nodes.IfCase(null, f[2]))
             }
             
 
@@ -247,15 +250,8 @@ Atom.add(
         (ctx, keyword, s1, value, s2, body) => make(Nodes.Match, ctx, value, body),
     )
 
-    const B = rule<RefId[]>();
-    B.add(seq(N_, Body).get(1));
-    B.add(
-        def(_, '=>', _, Expr),
-        (ctx, n1, n2, n3, body) => [make(Nodes.Return, ctx, body)]
-    )
-
     const MatchCase = rule(
-        def('case', __, Expr, B),
+        def('case', __, Expr, BodyX),
         (ctx, keyword, s1, value, body) => new Nodes.MatchCase(value.build(ctx), body.build(ctx))
     )
 
@@ -273,11 +269,12 @@ Expr.add(
 
 // == Operators ==
 {
-    const Operator = /[~!@#$%^&*+=|?/:.\-\\<>]+/
-    const Logical  = rule<RefId>() // x or y
-    const Spaced   = rule<RefId>() // x + y
-    const Unary    = rule<RefId>() // x++
-    const Compact  = rule<RefId>() // x+y
+    const Operator  = /[~!@#$%^&*+=|?/:.\-\\<>]+/
+    const LogicalOp = either(['and', 'or'])
+    const Logical   = rule<RefId>() // x or y
+    const Spaced    = rule<RefId>() // x + y
+    const Unary     = rule<RefId>() // x++
+    const Compact   = rule<RefId>() // x+y
 
     const B = (ctx: Ctx, left: Builder<RefId, Ctx>, ls: any, op: string, rs: any, right: Builder<RefId, Ctx>) =>
         ctx.add(new Nodes.Call(
@@ -296,8 +293,9 @@ Expr.add(
     Expr.add(Logical)
 
     // x or y
-    Logical.add(def(Logical, __, "or", __, Spaced), B)
-    Logical.add(def(Logical, __, "and", __, Spaced), B)
+    Logical.add(def(Logical, __, LogicalOp, __, Spaced), B)
+    Logical.add(def(Logical, NL, LogicalOp, __, Spaced), B)
+    Logical.add(def(Logical, __, LogicalOp, NL, Spaced), B)
     Logical.add(Spaced)
 
     // x + y
