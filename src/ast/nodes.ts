@@ -1,11 +1,4 @@
 export enum Tag {
-    // Decl
-    Enum,
-    Function,
-    Struct,
-    Trait,
-    Variable,
-
     // Expr
     BlockAttribute,
     Break,
@@ -13,13 +6,18 @@ export enum Tag {
     Constant,
     Construct,
     Continue,
+    Enum,
     ForEach,
+    Function,
     Get,
     If,
     Match,
     Move,
     Return,
     Set,
+    Struct,
+    Trait,
+    Variable,
     While,
 
     // Ref
@@ -32,7 +30,6 @@ export enum Tag {
 }
 
 export type Node =
-    | Decl
     | Expr
     | Ref<any>
 
@@ -47,76 +44,6 @@ export class Scope {
 }
 
 // =============================================================================
-export type Decl =
-    | Enum
-    | Function
-    | Struct
-    | Trait
-    | Variable
-
-export class Enum {
-    readonly tag = Tag.Enum
-
-    constructor(
-        readonly parent: Scope,
-        readonly scope: Scope,
-        readonly name: string,
-        readonly body: Local[],
-    ) { }
-}
-
-export class Function {
-    readonly tag = Tag.Function
-
-    constructor(
-        readonly parent: Scope,
-        readonly scope: Scope,
-        readonly name: string | null,
-        readonly returnType: Type,
-        readonly parameters: readonly Local<Variable>[],
-        readonly body: Local[],
-        readonly external = false,
-    ) { }
-}
-
-export class Struct {
-    readonly tag = Tag.Struct
-
-    constructor(
-        readonly parent: Scope,
-        readonly scope: Scope,
-        readonly name: string,
-        readonly body: Local[],
-    ) { }
-}
-
-export class Trait {
-    readonly tag = Tag.Trait
-
-    constructor(
-        readonly parent: Scope,
-        readonly scope: Scope,
-        readonly name: string,
-        readonly body: Local[],
-    ) { }
-}
-
-export class Variable {
-    readonly tag = Tag.Variable
-
-    constructor(
-        readonly parent: Scope,
-        readonly name: string,
-        readonly type: Type,
-    ) { }
-}
-export enum VariableFlags {
-    None,
-    Mutable,
-    Owns,
-}
-
-// =============================================================================
 export type Expr =
     | BlockAttribute
     | Break
@@ -124,13 +51,18 @@ export type Expr =
     | Constant<any>
     | Construct
     | Continue
+    | Enum
     | ForEach
+    | Function
     | Get
     | If
     | Match
     | Move
     | Return
     | Set
+    | Struct
+    | Trait
+    | Variable
     | While
 
 export class BlockAttribute {
@@ -192,6 +124,17 @@ export class Continue {
     ) { }
 }
 
+export class Enum {
+    readonly tag = Tag.Enum
+
+    constructor(
+        readonly parent: Scope,
+        readonly scope: Scope,
+        readonly name: string,
+        readonly body: Local[],
+    ) { }
+}
+
 export class ForEach {
     readonly tag = Tag.ForEach
 
@@ -203,6 +146,20 @@ export class ForEach {
     ) {}
 }
 
+export class Function {
+    readonly tag = Tag.Function
+
+    constructor(
+        readonly parent: Scope,
+        readonly scope: Scope,
+        readonly name: string | null,
+        readonly returnType: Type,
+        readonly parameters: readonly Local<Variable>[],
+        readonly body: Local[],
+        readonly external = false,
+    ) { }
+}
+
 export class Get {
     readonly tag = Tag.Get
 
@@ -211,7 +168,6 @@ export class Get {
         readonly target: Ref,
     ) { }
 }
-
 
 export class If {
     readonly tag = Tag.If
@@ -272,6 +228,43 @@ export class Set {
         readonly target: Ref,
         readonly value: Local,
     ) { }
+}
+
+export class Struct {
+    readonly tag = Tag.Struct
+
+    constructor(
+        readonly parent: Scope,
+        readonly scope: Scope,
+        readonly name: string,
+        readonly body: Local[],
+    ) { }
+}
+
+export class Trait {
+    readonly tag = Tag.Trait
+
+    constructor(
+        readonly parent: Scope,
+        readonly scope: Scope,
+        readonly name: string,
+        readonly body: Local[],
+    ) { }
+}
+
+export class Variable {
+    readonly tag = Tag.Variable
+
+    constructor(
+        readonly parent: Scope,
+        readonly name: string,
+        readonly type: Type,
+    ) { }
+}
+export enum VariableFlags {
+    None,
+    Mutable,
+    Owns,
 }
 
 export class While {
