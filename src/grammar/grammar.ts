@@ -40,6 +40,9 @@ const Comma     = either([NL, seq(',', _)])
 const Identifier = /[_a-zA-Z][_a-zA-Z0-9]*/
 Symbol.add(Identifier, (ctx, name) => new Nodes.RefName(name))
 
+const Name = rule<string>();
+Name.add(Identifier, (ctx, name) => name);
+
 function infer() {
     return new Nodes.RefInfer();
 }
@@ -94,6 +97,12 @@ Expr.add(
     (ctx, kw) => make(Nodes.Continue, ctx, null, null)
 )
 
+// == Copy ==
+//Expr.add(
+//    def('copy', __, Expr),
+//    (ctx, kw) => make(Nodes.Copy)
+//)
+
 // == Enum ==
 Expr.add(
     def('enum', __, Identifier, N_, Body),
@@ -118,7 +127,7 @@ Expr.add(
 const Function = rule(
     () => {
         const keyword    = 'fn'
-        const name       = seq(__, Identifier)
+        const name       = seq(__, Name).get(1)
         const parameters = star('(', _, Parameter, Comma, ')').elements
         const returnType = seq(_, '->', _, Type).get(3)
 
@@ -127,7 +136,7 @@ const Function = rule(
         return ctx.add(children => new Nodes.Function(
             ctx.scope,
             children.scope,
-            name?.[1] ?? null,
+            name.build(ctx) ?? null,
             returnType.build(children) ?? infer(),
             parameters.build(children),
             body.build(children) ?? []
@@ -315,7 +324,10 @@ Expr.add(
 
     Symbol.add(def('infix',   Operator), (ctx, l, r) => new Nodes.RefName(l + r))
     Symbol.add(def('postfix', Operator), (ctx, l, r) => new Nodes.RefName(l + r))
-    Symbol.add(def('prefix',  Operator), (ctx, l, r) => new Nodes.RefName(l + r))
+    Symbol.add(def('prefix', Operator), (ctx, l, r) => new Nodes.RefName(l + r))
+    Name.add(def('infix',   Operator), (ctx, l, r) => l + r)
+    Name.add(def('postfix', Operator), (ctx, l, r) => l + r)
+    Name.add(def('prefix', Operator), (ctx, l, r) => l + r)
 }
 
 // == Parentheses ==
@@ -338,13 +350,14 @@ Expr.add(
 Expr.add(
     () => {
         const keyword = 'struct'
-        const name = seq(__, Identifier)
+        const name = seq(__, Identifier).get(1)
+        const impls = list(seq(_, 'impl', __, Expr).get(3)).get('elements')
         const body = seq(N_, Body).get(1)
 
-        return def(keyword, name, opt(body))
+        return def(keyword, name, opt(impls), opt(body))
     },
-    (ctx, keyword, name, body) =>
-        ctx.add(children => new Nodes.Struct(ctx.scope, children.scope, name[1], body.build(children) ?? []))
+    (ctx, keyword, name, impls, body) =>
+        ctx.add(children => new Nodes.Struct(ctx.scope, children.scope, name, body.build(children) ?? []))
 )
 
 // == Trait ==
