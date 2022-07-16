@@ -124,6 +124,10 @@ export class Interpreter {
                 }
                 return null;
             }
+                
+            case Tag.Move: {
+                return Value.unwrap(this.evaluate(node.value, locals));
+            }
 
             case Tag.Return: {
                 return new Control(Type.Return, Value.unwrap(this.evaluate(node.value, locals)));
@@ -135,7 +139,11 @@ export class Interpreter {
             }
 
             case Tag.Struct: {
-                return null;
+                return this.globals[ref.target];
+            }
+                
+            case Tag.Trait: {
+                return this.globals[ref.target];
             }
                 
             case Tag.While: {
