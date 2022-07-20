@@ -165,7 +165,7 @@ export class Get {
 
     constructor(
         readonly parent: Scope,
-        readonly target: Ref,
+        readonly source: Ref,
     ) { }
 }
 
@@ -225,8 +225,8 @@ export class Set {
 
     constructor(
         readonly parent: Scope,
-        readonly target: Ref,
-        readonly value: Local,
+        readonly target: Ref<Variable>,
+        readonly source: Local,
     ) { }
 }
 
@@ -259,6 +259,7 @@ export class Variable {
         readonly parent: Scope,
         readonly name: string,
         readonly type: Type,
+        readonly flags: VariableFlags,
     ) { }
 }
 export enum VariableFlags {

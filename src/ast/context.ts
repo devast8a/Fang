@@ -1,18 +1,25 @@
-import { Scope, Node, Tag, RefId } from './nodes';
-import { MultiMapUtils } from '../utils';
-
-export enum State {
-    NOT_STARTED,
-    RUNNING,
-    DONE,
-}
+import { Scope, Node, Tag, RefId, Ref } from './nodes';
+import { MultiMapUtils, unimplemented } from '../utils';
+import { Builtins, populateBuiltins } from '../builtins';
 
 export class Ctx {
-    public constructor(
+    public readonly builtins: Builtins;
+
+    private constructor(
         public readonly parent: Ctx | null,
         public readonly scope: Scope,
         public readonly nodes: Node[],
-    ) { }
+    ) {
+        this.builtins = parent === null ? populateBuiltins(this) : parent.builtins;
+    }
+
+    public static createRoot() {
+        return new Ctx(
+            null,
+            new Scope(null, new Map()),
+            [],
+        )
+    }
 
     public add(definition: Node | ((context: Ctx) => Node)) {
         const id = this.nodes.length;
@@ -52,7 +59,11 @@ export class Ctx {
         return new RefId(id);
     }
 
-    public get<T extends Node>(ref: RefId<T>): T {
+    public get<T extends Node>(ref: Ref<T>): T {
+        if (ref.tag !== Tag.RefId) {
+            throw unimplemented(ref as never);
+        }
+
         return this.nodes[ref.target] as T;
     }
 }

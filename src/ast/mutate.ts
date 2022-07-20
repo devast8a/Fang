@@ -37,7 +37,7 @@ export function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
         case Tag.Construct: return mutate(node, 'target', fn);
         case Tag.Continue:  return mutateNull(node, 'target', fn);
         case Tag.ForEach:   return node;
-        case Tag.Get:       return mutate(node, 'target', fn);
+        case Tag.Get:       return mutate(node, 'source', fn);
         case Tag.If:        return node;
         case Tag.Match:     return node;
         case Tag.Move:      return node;

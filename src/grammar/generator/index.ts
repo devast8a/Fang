@@ -7,6 +7,7 @@ export {
     // Rule contexts
     Rules,
 
+    // Matcher builders
     constant,
     either,
     list,
@@ -14,4 +15,13 @@ export {
     regex,
     seq,
     star,
+
+    // Matcher types
+    Constant,
+    Either,
+    List,
+    Opt,
+    Regex,
+    Seq,
+    Star,
 } from './matchers';

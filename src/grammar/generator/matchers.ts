@@ -146,100 +146,7 @@ export abstract class Matcher<
     }
 
     toParser<Context>() {
-        const rules = new Set<Matcher>();
-        const stack = new Array<Matcher>();
-
-        // Collect all matchers
-        rules.add(this);
-        stack.push(this);
-        while (stack.length > 0) {
-            const rule = stack.pop()!;
-
-            // Populate the definition
-            if (rule instanceof Rule) {
-                for (const definition of rule.definitions) {
-                    const def = typeof (definition.definition) === 'function' ?
-                        definition.definition() :
-                        definition.definition;
-                    
-                    const matcher = Matcher.from(def);
-
-                    if (matcher instanceof Def) {
-                        rule.subrules = rule.subrules.concat(matcher.subrules);
-                        definition.matchers = matcher.subrules;
-                    } else {
-                        rule.subrules = rule.subrules.concat([matcher]);
-                        definition.matchers = [matcher];
-                    }
-                }
-            }
-
-            // Visit subrules
-            for (const subrule of rule.subrules) {
-                if (rules.has(subrule)) {
-                    continue;
-                }
-
-                rules.add(subrule);
-                stack.push(subrule);
-            }
-        }
-
-        // Collect all unique string/regex
-        const unique = new Map<string | RegExp, Matcher>();
-        const remove = new Set<Matcher>();
-        for (const rule of rules) {
-            if (rule instanceof Constant) {
-                if (unique.has(rule.value)) {
-                    remove.add(rule);
-                } else {
-                    unique.set(rule.value, rule);
-                }
-            }
-            if (rule instanceof Regex) {
-                if (unique.has(rule.regex.toString())) {
-                    remove.add(rule);
-                } else {
-                    unique.set(rule.regex.toString(), rule);
-                }
-            }
-        }
-
-        // Deduplicate
-        for (const rule of remove) {
-            rules.delete(rule);
-        }
-        for (const rule of rules) {
-            if (rule instanceof Rule) {
-                for (const definition of rule.definitions) {
-                    definition.matchers = definition.matchers?.map(matcher => {
-                        if (matcher instanceof Constant) {
-                            return unique.get(matcher.value)!;
-                        }
-                        if (matcher instanceof Regex) {
-                            return unique.get(matcher.regex.toString())!;
-                        }
-                        return matcher;
-                    });
-                }
-            } else {
-                for (let i = 0; i < rule.subrules.length; i++) {
-                    const subrule = rule.subrules[i];
-                    if (subrule instanceof Constant) {
-                        rule.subrules[i] = unique.get(subrule.value)!;
-                    }
-                    if (subrule instanceof Regex) {
-                        rule.subrules[i] = unique.get(subrule.regex.toString())!;
-                    }
-                }
-            }
-        }
-
-        // Assign unique ids to all unnamed parameters
-        let id = 0;
-        for (const rule of rules) {
-            rule.id = (id++).toString();
-        }
+        const rules = Matcher.collect(this);
 
         // Generate symbols
         const nearleyRules = [];
@@ -325,6 +232,104 @@ export abstract class Matcher<
 
     public get<K extends keyof Match>(key: K): Matcher<Match[K], Config> {
         return get(this, key);
+    }
+
+    static collect(matcher: Matcher) {
+        const rules = new Set<Matcher>();
+        const stack = new Array<Matcher>();
+
+        // Collect all matchers
+        rules.add(matcher);
+        stack.push(matcher);
+        while (stack.length > 0) {
+            const rule = stack.pop()!;
+
+            // Populate the definition
+            if (rule instanceof Rule) {
+                for (const definition of rule.definitions) {
+                    const def = typeof (definition.definition) === 'function' ?
+                        definition.definition() :
+                        definition.definition;
+                    
+                    const matcher = Matcher.from(def);
+
+                    if (matcher instanceof Def) {
+                        rule.subrules = rule.subrules.concat(matcher.subrules);
+                        definition.matchers = matcher.subrules;
+                    } else {
+                        rule.subrules = rule.subrules.concat([matcher]);
+                        definition.matchers = [matcher];
+                    }
+                }
+            }
+
+            // Visit subrules
+            for (const subrule of rule.subrules) {
+                if (rules.has(subrule)) {
+                    continue;
+                }
+
+                rules.add(subrule);
+                stack.push(subrule);
+            }
+        }
+
+        // Collect all unique string/regex
+        const unique = new Map<string | RegExp, Matcher>();
+        const remove = new Set<Matcher>();
+        for (const rule of rules) {
+            if (rule instanceof Constant) {
+                if (unique.has(rule.value)) {
+                    remove.add(rule);
+                } else {
+                    unique.set(rule.value, rule);
+                }
+            }
+            if (rule instanceof Regex) {
+                if (unique.has(rule.regex.toString())) {
+                    remove.add(rule);
+                } else {
+                    unique.set(rule.regex.toString(), rule);
+                }
+            }
+        }
+
+        // Deduplicate
+        for (const rule of remove) {
+            rules.delete(rule);
+        }
+        for (const rule of rules) {
+            if (rule instanceof Rule) {
+                for (const definition of rule.definitions) {
+                    definition.matchers = definition.matchers?.map(matcher => {
+                        if (matcher instanceof Constant) {
+                            return unique.get(matcher.value)!;
+                        }
+                        if (matcher instanceof Regex) {
+                            return unique.get(matcher.regex.toString())!;
+                        }
+                        return matcher;
+                    });
+                }
+            } else {
+                for (let i = 0; i < rule.subrules.length; i++) {
+                    const subrule = rule.subrules[i];
+                    if (subrule instanceof Constant) {
+                        rule.subrules[i] = unique.get(subrule.value)!;
+                    }
+                    if (subrule instanceof Regex) {
+                        rule.subrules[i] = unique.get(subrule.regex.toString())!;
+                    }
+                }
+            }
+        }
+
+        let id = 0;
+        for (const rule of rules) {
+            rule.id = (id++).toString();
+        }
+
+        return Array.from(rules);
     }
 
     static from<D extends Definition>(definition: D): Matcher<GetType<D>, any> {

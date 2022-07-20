@@ -1,7 +1,7 @@
 import { make } from '../ast/builder-helpers'
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { Ref, RefId } from '../ast/nodes'
+import { Ref, RefId, VariableFlags } from '../ast/nodes'
 import { unimplemented } from '../utils'
 import { list, either, opt, Rules, seq, Builder, star } from './generator'
 
@@ -47,6 +47,10 @@ function infer() {
     return new Nodes.RefInfer();
 }
 
+function ref(name: string) {
+    return new Nodes.RefName<any>(name);
+}
+
 // ------------------------------------------------------------------------------------------------
 // == Body ==
 const Body = rule(
@@ -57,7 +61,7 @@ const Body = rule(
 const BodyX = rule<RefId[]>();
 BodyX.add(seq(N_, Body).get(1));
 BodyX.add(
-    def(_, '=>', _, Expr),
+    def(_, '=>', N_, Expr),
     (ctx, n1, n2, n3, body) => [make(Nodes.Return, ctx, body)]
 )
 
@@ -74,21 +78,28 @@ Expr.add(
 )
 
 // == Call ==
-const Arguments = star('(', N_, Expr, Comma, ')').elements
-Atom.add(
-    def(Symbol, Arguments),
-    (ctx, target, args) => make(Nodes.Call, ctx, target, args)
-)
+{
+    const Arguments = star('(', N_, Expr, Comma, ')').elements
+
+    const Call = rule(
+        def(Symbol, Arguments),
+        (ctx, target, args) => make(Nodes.Call, ctx, target, args)
+    )
+    Atom.add(Call)
+    Type.add(Call)
+}
 
 // == Construct ==
 {
-    Expr.add(
+    const Construct = rule(
         () => def(Symbol, Arguments),
         (ctx, target, args) =>
             ctx.add(new Nodes.Construct(ctx.scope, target.build(ctx), args.build(ctx).elements))
     )
 
     const Arguments = star('{', N_, Expr, Comma, '}')
+
+    Atom.add(Construct)
 }
 
 // == Continue ==
@@ -118,7 +129,7 @@ Expr.add(
         const collection = args[6].build(ctx);
         const body = args[8].build(ctx);
 
-        const variable = ctx.add(new Nodes.Variable(ctx.scope, name, infer()));
+        const variable = ctx.add(new Nodes.Variable(ctx.scope, name, infer(), VariableFlags.None));
         return ctx.add(new Nodes.ForEach(ctx.scope, variable, collection, body))
     }
 )
@@ -151,14 +162,15 @@ const Parameter = rule(() => {
     const keyword = either([
         seq('own', __),
         seq('mut', __),
-    ]);
+    ]).get(0);
+
     const name = Identifier;
     const type = seq(_, ':', _, Type).get(3)
     const value = seq(_, '=', _, Expr)
 
     return def(opt(keyword), name, opt(type), opt(value))
 }, (ctx, keyword, name, type, value) => {
-    return ctx.add(new Nodes.Variable(ctx.scope, name, type.build(ctx) ?? infer()))
+    return ctx.add(new Nodes.Variable(ctx.scope, name, type.build(ctx) ?? infer(), getVariableFlags(keyword)))
 })
 
 // == Get ==
@@ -207,9 +219,14 @@ const Dot = either([
 ])
 
 Symbol.add(
-    def(Atom, Dot, Identifier),
+    def(Atom, Dot, Name),
     (ctx, target, op, field) =>
-        new Nodes.RefFieldName(target.build(ctx), field)
+        new Nodes.RefFieldName(target.build(ctx), field.build(ctx))
+)
+
+// == Literal Float ==
+Atom.add(/[0-9_]+\.[0-9_]+/, (ctx, number) =>
+    make(Nodes.Constant, ctx, ctx.builtins.f64, parseFloat(number.replace(/_/g, '')))
 )
 
 // == Literal Integer ==
@@ -218,7 +235,7 @@ Symbol.add(
         (ctx: Ctx, number: string) =>
             ctx.add(new Nodes.Constant(
                 ctx.scope,
-                new Nodes.RefName('u32'),
+                ctx.builtins.u32,
                 parseInt(number.replace(/_/g, '').slice(offset), base)
             ))
 
@@ -248,7 +265,7 @@ Atom.add(
             }
         })
 
-        return make(Nodes.Constant, ctx, new Nodes.RefName('str'), value)
+        return make(Nodes.Constant, ctx, ctx.builtins.str, value)
     },
 )
 
@@ -285,12 +302,13 @@ Expr.add(
     const Unary     = rule<RefId>() // x++
     const Compact   = rule<RefId>() // x+y
 
-    const B = (ctx: Ctx, left: Builder<RefId, Ctx>, ls: any, op: string, rs: any, right: Builder<RefId, Ctx>) =>
-        ctx.add(new Nodes.Call(
+    const B = (ctx: Ctx, left: Builder<RefId, Ctx>, ls: any, op: string, rs: any, right: Builder<RefId, Ctx>) => {
+        return ctx.add(new Nodes.Call(
             ctx.scope,
             new Nodes.RefName(`infix${op}`),
             [left.build(ctx), right.build(ctx)]
         ))
+    }
 
     const U = (ctx: Ctx, type: string, op: string, value: Builder<RefId, Ctx>) =>
         ctx.add(new Nodes.Call(
@@ -378,14 +396,15 @@ const Variable = rule(() => {
     const keyword = either([
         seq('val', __),
         seq('mut', __),
-    ]);
+    ]).get(0);
+
     const name = Identifier;
     const type = seq(_, ':', _, Type).get(3)
     const value = seq(_, '=', _, Expr)
 
     return def(keyword, name, opt(type), opt(value))
 }, (ctx, keyword, name, type, value) => {
-    const id = ctx.add(new Nodes.Variable(ctx.scope, name, type.build(ctx) ?? infer()))
+    const id = ctx.add(new Nodes.Variable(ctx.scope, name, type.build(ctx) ?? infer(), getVariableFlags(keyword)))
 
     const v = value.build(ctx)
     if (v !== null) {
@@ -402,3 +421,13 @@ Expr.add(
     (ctx, keyword, s1, condition, s2, body) =>
         ctx.add(new Nodes.While(ctx.scope, condition.build(ctx), body.build(ctx)))
 )
+
+function getVariableFlags(keyword: string | null) {
+    switch (keyword) {
+        case null: return VariableFlags.None;
+        case 'mut': return VariableFlags.Mutable;
+        case 'own': return VariableFlags.Owns;
+        case 'val': return VariableFlags.None;
+        default: throw unimplemented(keyword);
+    }
+}

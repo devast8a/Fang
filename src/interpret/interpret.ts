@@ -99,7 +99,7 @@ export class Interpreter {
             }
 
             case Tag.Get: {
-                const { target, member } = this.resolve(node.target, locals);
+                const { target, member } = this.resolve(node.source, locals);
                 return target[member];
             }
                 
@@ -135,7 +135,7 @@ export class Interpreter {
                 
             case Tag.Set: {
                 const { target, member } = this.resolve(node.target, locals);
-                return target[member] = Value.unwrap(this.evaluate(node.value, locals));
+                return target[member] = Value.unwrap(this.evaluate(node.source, locals));
             }
 
             case Tag.Struct: {
@@ -211,6 +211,13 @@ export class Interpreter {
             }
                 
             case Tag.RefName: {
+                if (isOperator(ref.target)) {
+                    return {
+                        member: 'fn',
+                        target: { fn: operator(ref.target) },
+                    };
+                }
+
                 if (externals[ref.target] === undefined) {
                     throw unimplemented(`External identifier: ${ref.target}`);
                 }
@@ -259,7 +266,9 @@ export class Interpreter {
         }
 
         // Regular functions
-        return (...args: any[]) => interpreter.evaluateFn(fn, args);
+        return (...args: any[]) => {
+            return interpreter.evaluateFn(fn, args);
+        }
     }
 
     private buildStruct(struct: Struct): any {
@@ -290,7 +299,7 @@ export class Interpreter {
 
                 case Tag.Set: {
                     const left = this.ctx.get(node.target as RefId);
-                    const right = this.ctx.get(node.value);
+                    const right = this.ctx.get(node.source);
 
                     if (left.tag === Tag.Variable && right.tag === Tag.Constant) {
                         prototype[left.name] = right.value;
@@ -319,6 +328,20 @@ export class Control {
         readonly type: Type,
         readonly value: any,
     ) { }
+}
+
+function isOperator(name: string) {
+    return name.startsWith('infix') || name.startsWith('prefix') || name.startsWith('postfix');
+}
+
+function operator(name: string) {
+    return (left: any, right: any) => {
+        if (typeof left === 'object' && left !== null && typeof left[name] === 'function') {
+            return left[name](right);
+        }
+
+        return externals[name](left, right);
+    }
 }
 
 namespace Value {
@@ -359,6 +382,8 @@ const externals: any = {
     String: VmString,
     print: (...args: any[]) => console.log(...args),
 
+    'prefix-':  (l: any) => -l,
+    'prefix!':  (l: any) => !l,
     'infix+':   (l: any, r: any) => l  + r,
     'infix-':   (l: any, r: any) => l  - r,
     'infix*':   (l: any, r: any) => l  * r,
