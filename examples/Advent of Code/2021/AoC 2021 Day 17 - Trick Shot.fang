@@ -1,0 +1,56 @@
+struct Vec {
+    val x: u32
+    val y: u32
+
+    fn infix++(self, other: Vec) =>
+        Vec{self.x + other.x, self.y + other.y}
+
+    fn infix--(self, other: Vec) =>
+        Vec{self.x - other.x, self.y - other.y}
+}
+
+struct Rect {
+    val left: u32
+    val right: u32
+    val bottom: u32
+    val top: u32
+
+    fn contains(self, vec: Vec) {
+        return self.left <= vec.x and
+            self.bottom <= vec.y and
+            vec.x <= self.right and
+            vec.y <= self.top
+    }
+}
+
+fn simulate(velocity: Vec, target: Rect) {
+    mut position = Vec{0, 0}
+
+    while position.y >= target.bottom and !target.contains(position) {
+        position = position ++ velocity
+        
+        # Gravity
+        velocity = velocity -- Vec{0, 1}
+
+        # Friction
+        if velocity.x > 0 {
+            velocity = velocity -- Vec{1, 0}
+        }
+    }
+
+    return target.contains(position)
+}
+
+val target = Rect{20, 30, -10, -5}
+val velocities = List{}
+for x in 1..31 {
+    for y in -11 .. 11 {
+        val velocity = Vec{x, y}
+
+        if simulate(velocity, target) {
+            velocities.push(velocity)
+        }
+    }
+}
+
+return velocities.length == 112

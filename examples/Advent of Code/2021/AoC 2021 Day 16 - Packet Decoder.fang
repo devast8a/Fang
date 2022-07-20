@@ -17,7 +17,7 @@ fn decodeHexDigit(code: u32) {
 }
 
 fn decodeHex(s: str) {
-    val list = List{}
+    mut list = List{}
 
     mut i = 0
     while i < s.size {
@@ -36,7 +36,7 @@ struct Stream {
     
     val position = 0
 
-    fn read(self, bits: u32) {
+    fn read(mut self, bits: u32) {
         if (bits > 8) {
             return self.read(8)<<8 | self.read(bits - 8)
         }
@@ -56,12 +56,12 @@ struct Stream {
     }
 }
 
-fn decode(packet: Stream) {
+fn decode(mut packet: Stream) {
     val version = packet.read(3)
     val type    = packet.read(3)
 
     # Decode a 'literal' value
-    if type == 0b100 {
+    if type == 4 {
         mut value = 0
         mut next  = true
 
