@@ -14,13 +14,13 @@ class State {
     ) { }
 
     create(mode = this.mode) {
-        return new State(this.scope.create(), mode);
+        return new State(this.scope.push(), mode);
     }
 }
 
 interface Lookup {
     scope: Scope;
-    name: string;
+    symbol: string;
 
     node: any;
     field: any;
@@ -86,12 +86,12 @@ export class Resolve {
                 
             case Tag.RefName: {
                 // Perform a lookup
-                const ids = lookup(state.scope, ref.target);
+                const ids = state.scope.lookup(ref.target);
 
                 if (ids === null) {
                     this.lookups.push({
                         field: field,
-                        name: ref.target,
+                        symbol: ref.target,
                         node: node,
                         scope: state.scope,
                     });
@@ -276,18 +276,18 @@ export class Resolve {
     }
 
     public define(state: State, name: string, node: Node & { id: number }) {
-        MultiMapUtils.push(state.scope.symbols, name, node.id);
+        state.scope.declare(name, node.id);
     }
 }
 
 export function resolveNames(ctx: Ctx) {
     const resolver = new Resolve(ctx);
 
-    const scope = ctx.builtins.scope.create();
+    const scope = ctx.builtins.scope.push();
     resolver.visit(new State(scope, Mode.DEFAULT), ctx.root);
 
     for (const entry of resolver.lookups) {
-        const id = lookup(entry.scope, entry.name);
+        const id = entry.scope.lookup(entry.symbol);
 
         if (id === null) {
             continue;
@@ -297,32 +297,4 @@ export function resolveNames(ctx: Ctx) {
     }
 
     return scope;
-}
-
-function lookup(scope: Scope, symbol: string) {
-    let current: Scope | null = scope;
-
-    do {
-        const ids = current.symbols.get(symbol);
-
-        // Symbol does not exist in current scope, look in parent
-        if (ids === undefined) {
-            current = current.parent;
-            continue;
-        }
-
-        // Resolved the symbol, cache it in the starting scope.
-        while (scope !== current) {
-            MultiMapUtils.pushMulti(scope.symbols, symbol, ids);
-
-            // We will hit current before we hit null
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            scope = scope.parent!;
-        }
-
-        return ids;
-    } while (current !== null)
-
-    // Symbol does not exist at all.
-    return null;
 }

@@ -11,7 +11,7 @@ export function serialize(nodes: Node[]) {
 
 function replace(this: any, key: string, value: any) {
     if (key === 'scope' && value.constructor === Scope) {
-        return MapUtils.toObject(value.symbols);
+        return MapUtils.toObject((value as any).declared);
     }
     
     if (key === 'parent' && value.constructor === Scope) {

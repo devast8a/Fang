@@ -194,8 +194,8 @@ export class Interpreter {
             return () => Value.unwrap(this.evaluateBody(this.root, []));
         }
 
-        const ids = this.scope.symbols.get(name);
-        if (ids === undefined) {
+        const ids = this.scope.lookup(name);
+        if (ids === null) {
             return null;
         }
 

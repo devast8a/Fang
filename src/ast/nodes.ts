@@ -38,12 +38,55 @@ export type Local<T extends Node = Node> = RefId<T>;
 
 export class Scope {
     public constructor(
-        readonly parent: Scope | null,
-        readonly symbols: Map<string, number[]>,
+        private readonly parent: Scope | null,
+        private readonly declared: Map<string, number[]>,
+        private readonly cache: Map<string, number[]>,
     ) { }
 
-    public create() {
-        return new Scope(this, new Map());
+    public push() {
+        return new Scope(this, new Map(), new Map());
+    }
+
+    public declare(symbol: string, id: number) {
+        const ids = this.declared.get(symbol);
+    
+        if (ids === undefined) {
+            const ids = [id];
+            this.declared.set(symbol, ids);
+            // There might already be an entry for cache set. Overwrite it.
+            this.cache.set(symbol, ids);
+        } else {
+            ids.push(id);
+        }
+    }
+
+    public lookup(symbol: string) {
+        let start: Scope = this;
+        let current: Scope | null = this;
+
+        do {
+            const ids = current.declared.get(symbol);
+
+            // Symbol does not exist in current scope, look in parent
+            if (ids === undefined) {
+                current = current.parent;
+                continue;
+            }
+
+            // Resolved the symbol, cache it
+            while (start !== current) {
+                start.cache.set(symbol, ids);
+
+                // We will hit current before we hit null
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                start = start.parent!;
+            }
+
+            return ids;
+        } while (current !== null)
+
+        // Symbol does not exist at all.
+        return null;
     }
 }
 

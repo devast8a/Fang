@@ -6,7 +6,7 @@ import { MultiMapUtils } from './utils';
 export type Builtins = ReturnType<typeof populateBuiltins>;
 
 export function populateBuiltins(ctx: Ctx) {
-    const scope = new Scope(null, new Map());
+    const scope = new Scope(null, new Map(), new Map());
 
     // const List    = mkType(ctx, scope, 'List');
     // const Math    = mkType(ctx, scope, 'Math');
@@ -66,18 +66,18 @@ function mkFunc(ctx: Ctx, scope: Scope, name: string, returnType: RefId, paramet
     );
 
     const ref = ctx.add(new Nodes.Function(name, returnType, ps, [], true));
-    MultiMapUtils.push(scope.symbols, name, ref.target);
+    scope.declare(name, ref.target);
     return ref;
 }
 
 function mkType(ctx: Ctx, scope: Scope, name: string): RefId {
     const ref = ctx.add(new Nodes.Struct(name, []));
-    MultiMapUtils.push(scope.symbols, name, ref.target);
+    scope.declare(name, ref.target);
     return ref;
 }
 
 function mkConst(ctx: Ctx, scope: Scope, type: RefId, name: string, value: any): RefId {
     const ref = ctx.add(new Nodes.Constant(type, value));
-    MultiMapUtils.push(scope.symbols, name, ref.target);
+    scope.declare(name, ref.target);
     return ref;
 }
