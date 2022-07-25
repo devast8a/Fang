@@ -194,8 +194,8 @@ describe('Grammar Generator', () => {
             def(Expr, /[+-]/, Number),
             (ctx, left, operator, right) => {
                 switch (operator) {
-                    case '+': return left.build(ctx) + right.build(ctx);
-                    case '-': return left.build(ctx) - right.build(ctx);
+                    case '+': return left + right;
+                    case '-': return left - right;
                 }
                 throw unreachable(operator);
         })

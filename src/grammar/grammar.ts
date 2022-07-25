@@ -1,7 +1,6 @@
-import { make } from '../ast/builder-helpers'
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { Ref, RefId, VariableFlags } from '../ast/nodes'
+import { Node, Ref, RefId, VariableFlags } from '../ast/nodes'
 import { unimplemented } from '../utils'
 import { list, either, opt, Rules, seq, Builder, star } from './generator'
 
@@ -16,11 +15,11 @@ const Expr = rule<RefId>()  // Any expression.
 const Type = rule<Ref>()    // A type expression.
 const Symbol = rule<Ref>()
 
-Type.add(Symbol, (ctx, ref) => ref.build(ctx))
+Type.add(Symbol)
 
 export const FangGrammar = rule(
     () => def(N_, list(Expr, Semicolon), N_),
-    (ctx, s1, list, s2) => list.build(ctx).elements
+    (ctx, n1, list, n3) => list.elements
 )
 
 // == Whitespace ==
@@ -51,88 +50,89 @@ function ref(name: string) {
     return new Nodes.RefName<any>(name);
 }
 
+function addNode(ctx: Ctx, node: Node) {
+    return ctx.add(node);
+}
+
 // ------------------------------------------------------------------------------------------------
 // == Body ==
 const Body = rule(
-    star('{', N_, Expr, Semicolon, '}'),
-    (ctx, list) => list.build(ctx).elements,
+    star('{', N_, Expr, Semicolon, '}').elements,
+    (ctx, list) => list
 )
 
 const BodyX = rule<RefId[]>();
 BodyX.add(seq(N_, Body).get(1));
 BodyX.add(
-    def(_, '=>', N_, Expr),
-    (ctx, n1, n2, n3, body) => [make(Nodes.Return, ctx, body)]
+    () => def(_, '=>', N_, Expr),
+    (ctx, n1, n2, n3, body) => [ctx.add(new Nodes.Return(body))]
 )
 
 // == Block Attributes ==
-Expr.add(
-    def('##', Symbol),
-    (ctx, kw, target) => make(Nodes.BlockAttribute, ctx, target)
-)
+const BlockAttribute = rule(
+    () => def('##', Symbol),
+    (ctx, n1, target) => new Nodes.BlockAttribute(target),
+);
+
+Expr.add(BlockAttribute, addNode);
 
 // == Break ==
-Expr.add(
-    def('break'),
-    (ctx, kw) => make(Nodes.Break, ctx, null, null)
-)
+const Break = rule(
+    () => def('break'),
+    (ctx, n1) => new Nodes.Break(null, null),
+);
+
+Expr.add(Break, addNode);
 
 // == Call ==
-{
-    const Arguments = star('(', N_, Expr, Comma, ')').elements
+const Call = rule(
+    () => def(Symbol, CallArguments),
+    (ctx, target, args) => new Nodes.Call(target, args),
+);
 
-    const Call = rule(
-        def(Symbol, Arguments),
-        (ctx, target, args) => make(Nodes.Call, ctx, target, args)
-    )
-    Atom.add(Call)
-    Type.add(Call)
-}
+const CallArguments = star('(', N_, Expr, Comma, ')').elements;
+
+Atom.add(Call, addNode);
+Type.add(Call, addNode);
 
 // == Construct ==
-{
-    const Construct = rule(
-        () => def(Symbol, Arguments),
-        (ctx, target, args) =>
-            ctx.add(new Nodes.Construct(ctx.scope, target.build(ctx), args.build(ctx).elements))
-    )
+const Construct = rule(
+    () => def(Symbol, ConstructArguments),
+    (ctx, target, args) => new Nodes.Construct(target, args),
+)
 
-    const Arguments = star('{', N_, Expr, Comma, '}')
+const ConstructArguments = star('{', N_, Expr, Comma, '}').elements;
 
-    Atom.add(Construct)
-}
+Atom.add(Construct, addNode);
 
 // == Continue ==
-Expr.add(
-    def('continue'),
-    (ctx, kw) => make(Nodes.Continue, ctx, null, null)
+const Continue = rule(
+    () => def('continue'),
+    (ctx, n1) => new Nodes.Continue(null, null),
 )
 
-// == Copy ==
-//Expr.add(
-//    def('copy', __, Expr),
-//    (ctx, kw) => make(Nodes.Copy)
-//)
+Expr.add(Continue, addNode);
 
 // == Enum ==
-Expr.add(
-    def('enum', __, Identifier, N_, Body),
-    (ctx, keyword, s1, name, s2, body) =>
-        ctx.add(children => new Nodes.Enum(ctx.scope, children.scope, name, body.build(ctx)))
+const Enum = rule(
+    () => def('enum', __, Identifier, N_, Body),
+    (ctx, n1, n2, name, n4, body) => new Nodes.Enum(name, body),
 )
+
+Expr.add(Enum, addNode);
 
 // == For Each ==
-Expr.add(
-    def('for', __, Identifier, __, 'in', __, Expr, N_, Body),
-    (ctx, ...args) => {
-        const name = args[2];
-        const collection = args[6].build(ctx);
-        const body = args[8].build(ctx);
+const ForEach = rule(
+    () => def('for', __, Identifier, __, 'in', __, Expr, N_, Body),
 
-        const variable = ctx.add(new Nodes.Variable(ctx.scope, name, infer(), VariableFlags.None));
-        return ctx.add(new Nodes.ForEach(ctx.scope, variable, collection, body))
+    (ctx, n1, n2, name, n4, n5, n6, collection, n8, body) => {
+        const variable = ctx.add(new Nodes.Variable(name, infer(), VariableFlags.None));
+        
+        return new Nodes.ForEach(variable, collection, body)
     }
 )
+
+Expr.add(ForEach, addNode);
 
 // == Function ==
 const Function = rule(
@@ -143,20 +143,13 @@ const Function = rule(
         const returnType = seq(_, '->', _, Type).get(3)
 
         return def(keyword, opt(name), parameters, opt(returnType), opt(BodyX))
-    }, (ctx, keyword, name, parameters, returnType, body) => {
-        return ctx.add(children => new Nodes.Function(
-            ctx.scope,
-            children.scope,
-            name.build(ctx) ?? null,
-            returnType.build(children) ?? infer(),
-            parameters.build(children),
-            body.build(children) ?? []
-        ))
-    }
+    },
+    (ctx, keyword, name, parameters, returnType, body) =>
+        new Nodes.Function(name, returnType ?? infer(), parameters, body ?? [])
 )
 
-Expr.add(Function)
-Type.add(Function)
+Expr.add(Function, addNode)
+Type.add(Function, addNode)
 
 const Parameter = rule(() => {
     const keyword = either([
@@ -170,71 +163,81 @@ const Parameter = rule(() => {
 
     return def(opt(keyword), name, opt(type), opt(value))
 }, (ctx, keyword, name, type, value) => {
-    return ctx.add(new Nodes.Variable(ctx.scope, name, type.build(ctx) ?? infer(), getVariableFlags(keyword)))
+    return ctx.add(new Nodes.Variable(name, type ?? infer(), getVariableFlags(keyword)));
 })
 
 // == Get ==
-Atom.add(
+const Get = rule(
     def(Symbol),
-    (ctx, ref) => make(Nodes.Get, ctx, ref)
+    (ctx, ref) => new Nodes.Get(ref),
 )
+
+Atom.add(Get, addNode);
 
 // == If ==
 {
     const Elif = list(seq(N_, 'else', __, 'if', BodyX))
     const Else = seq(N_, 'else', BodyX)
 
-    Expr.add(
+    const If = rule(
         def('if', __, Expr, BodyX, opt(Elif), opt(Else)),
         (ctx, kw, s1, condition, body, x, final) => {
             const cases = [];
 
             // If case
-            cases.push(new Nodes.IfCase(condition.build(ctx), body.build(ctx)));
+            cases.push(new Nodes.IfCase(condition, body));
 
             // Else case
-            const f = final.build(ctx)
+            const f = final;
             if (f !== null) {
                 cases.push(new Nodes.IfCase(null, f[2]))
             }
             
 
-            return make(Nodes.If, ctx, cases)
+            return new Nodes.If(cases);
         }
     )
+
+    Expr.add(If, addNode);
 }
 
 // == Index Bracket ==
-Symbol.add(
+const IndexBracket = rule(
     def(Atom, '[', Expr, ']'),
     (ctx, target, left, field, right) =>
-        new Nodes.RefFieldName(target.build(ctx), field.build(ctx) as any),
-)
+        new Nodes.RefFieldName(target, field as any),
+);
+
+Symbol.add(IndexBracket);
 
 // == Index Dot ==
+const IndexDot = rule(
+    () => def(Atom, Dot, Name),
+    (ctx, target, op, field) => new Nodes.RefFieldName(target, field)
+)
+
+Symbol.add(IndexDot);
+
 const Dot = either([
     '.',
     seq('.', NL),
     seq(NL, '.'),
 ])
 
-Symbol.add(
-    def(Atom, Dot, Name),
-    (ctx, target, op, field) =>
-        new Nodes.RefFieldName(target.build(ctx), field.build(ctx))
+// == Literal Float ==
+const LiteralFloat = rule(
+    /[0-9_]+\.[0-9_]+/,
+    (ctx, number) => new Nodes.Constant(ctx.builtins.f64, parseFloat(number.replace(/_/g, '')))
 )
 
-// == Literal Float ==
-Atom.add(/[0-9_]+\.[0-9_]+/, (ctx, number) =>
-    make(Nodes.Constant, ctx, ctx.builtins.f64, parseFloat(number.replace(/_/g, '')))
-)
+Atom.add(LiteralFloat, addNode);
 
 // == Literal Integer ==
+// TODO: Convert to new style
 {
     const processor = (offset: number, base: number) =>
         (ctx: Ctx, number: string) =>
             ctx.add(new Nodes.Constant(
-                ctx.scope,
                 ctx.builtins.u32,
                 parseInt(number.replace(/_/g, '').slice(offset), base)
             ))
@@ -246,12 +249,14 @@ Atom.add(/[0-9_]+\.[0-9_]+/, (ctx, number) =>
 }
 
 // == Literal List ==
+// TODO: Convert to new style
 Atom.add(
     star('[', N_, /[0-9_]+/, Comma, ']').elements,
-    (ctx, values) => make(Nodes.Constant, ctx, infer(), values.map(number => parseInt(number)))
+    (ctx, values) => ctx.add(new Nodes.Constant(infer(), values.map(number => parseInt(number))))
 )
 
 // == Literal String ==
+// TODO: Convert to new style
 Atom.add(
     /'(?:[^\\']+|\\['])+'/,
     (ctx, value) => {
@@ -265,33 +270,35 @@ Atom.add(
             }
         })
 
-        return make(Nodes.Constant, ctx, ctx.builtins.str, value)
+        return ctx.add(new Nodes.Constant(ctx.builtins.str, value));
     },
 )
 
 // == Match ==
-{
-    Expr.add(
-        () => def('match', __, Expr, N_, MatchBody),
-        (ctx, keyword, s1, value, s2, body) => make(Nodes.Match, ctx, value, body),
-    )
+const Match = rule(
+    () => def('match', __, Expr, N_, MatchCases),
+    (ctx, n1, n2, value, n4, cases) => new Nodes.Match(value, cases),
+)
 
-    const MatchCase = rule(
-        def('case', __, Expr, BodyX),
-        (ctx, keyword, s1, value, body) => new Nodes.MatchCase(value.build(ctx), body.build(ctx))
-    )
+const MatchCases = rule(
+    () => star('{', N_, MatchCase, Semicolon, '}').elements,
+    (ctx, list) => list,
+);
 
-    const MatchBody = rule(
-        star('{', N_, MatchCase, Semicolon, '}'),
-        (ctx, list) => list.build(ctx).elements,
-    )
-}
+const MatchCase = rule(
+    def('case', __, Expr, BodyX),
+    (ctx, n1, n2, value, body) => new Nodes.MatchCase(value, body),
+);
+
+Expr.add(Match, addNode);
 
 // == Move ==
-Expr.add(
+const Move = rule(
     def('move', __, Expr),
-    (ctx, keyword, s1, value) => make(Nodes.Move, ctx, value)
+    (ctx, n1, n2, value) => new Nodes.Move(value),
 )
+
+Expr.add(Move, addNode);
 
 // == Operators ==
 {
@@ -302,24 +309,15 @@ Expr.add(
     const Unary     = rule<RefId>() // x++
     const Compact   = rule<RefId>() // x+y
 
-    const B = (ctx: Ctx, left: Builder<RefId, Ctx>, ls: any, op: string, rs: any, right: Builder<RefId, Ctx>) => {
-        return ctx.add(new Nodes.Call(
-            ctx.scope,
-            new Nodes.RefName(`infix${op}`),
-            [left.build(ctx), right.build(ctx)]
-        ))
-    }
+    const B = (ctx: Ctx, left: RefId, ls: any, op: string, rs: any, right: RefId) =>
+        ctx.add(new Nodes.Call(ref(`infix${op}`), [left, right]))
 
-    const U = (ctx: Ctx, type: string, op: string, value: Builder<RefId, Ctx>) =>
-        ctx.add(new Nodes.Call(
-            ctx.scope,
-            new Nodes.RefName(type + op),
-            [value.build(ctx)]
-        ))
+    const U = (ctx: Ctx, type: string, op: string, value: RefId) =>
+        ctx.add(new Nodes.Call(ref(type + op), [value]))
 
     Expr.add(Logical)
 
-    // x or y
+    // x and/or y
     Logical.add(def(Logical, __, LogicalOp, __, Spaced), B)
     Logical.add(def(Logical, NL, LogicalOp, __, Spaced), B)
     Logical.add(def(Logical, __, LogicalOp, NL, Spaced), B)
@@ -349,23 +347,38 @@ Expr.add(
 }
 
 // == Parentheses ==
-Atom.add(
-    def('(', _, Expr, _, ')'),
-    (ctx, ...match) => match[2].build(ctx)
+const Parentheses = rule(
+    () => seq('(', _, Expr, _, ')').get(2),
+    (ctx, body) => body
 )
+
+Atom.add(Parentheses)
 
 // == Return ==
-Expr.add(def('return'), (ctx, kw) => make(Nodes.Return, ctx, null))
-Expr.add(def('return', __, Expr), (ctx, kw, s1, value) => make(Nodes.Return, ctx, value))
+const Return = rule<Nodes.Return>();
+
+Return.add(
+    () => def('return'),
+    (ctx, n1) => new Nodes.Return(null)
+);
+
+Return.add(
+    () => def('return', __, Expr),
+    (ctx, n1, n2, value) => new Nodes.Return(value),
+);
+
+Expr.add(Return, addNode);
 
 // == Set ==
-Expr.add(
-    def(Symbol, _, '=', _, Expr),
-    (ctx, target, s1, op, s2, value) => make(Nodes.Set, ctx, target, value)
-)
+const Set = rule(
+    () => def(Symbol, _, '=', _, Expr),
+    (ctx, target, n2, op, n4, value) => new Nodes.Set(target, value),
+);
+
+Expr.add(Set, addNode);
 
 // == Struct ==
-Expr.add(
+const Struct = rule(
     () => {
         const keyword = 'struct'
         const name = seq(__, Identifier).get(1)
@@ -375,21 +388,27 @@ Expr.add(
         return def(keyword, name, opt(impls), opt(body))
     },
     (ctx, keyword, name, impls, body) =>
-        ctx.add(children => new Nodes.Struct(ctx.scope, children.scope, name, body.build(children) ?? []))
+        new Nodes.Struct(name, body ?? [])
 )
 
+Expr.add(Struct, addNode)
+
 // == Trait ==
-Expr.add(
+const Trait = rule(
     () => {
         const keyword = 'trait'
-        const name = seq(__, Identifier)
-        const body = seq(N_, Body)
+        const name = seq(__, Identifier).get(1)
+        const body = seq(N_, Body).get(1)
 
         return def(keyword, name, opt(body))
     },
     (ctx, keyword, name, body) =>
-        ctx.add(children => new Nodes.Trait(ctx.scope, children.scope, name[1], body.build(children)?.[1] ?? []))
+        new Nodes.Trait(name, body ?? [])
 )
+
+Expr.add(Trait, addNode);
+
+
 
 // == Variable ==
 const Variable = rule(() => {
@@ -404,11 +423,11 @@ const Variable = rule(() => {
 
     return def(keyword, name, opt(type), opt(value))
 }, (ctx, keyword, name, type, value) => {
-    const id = ctx.add(new Nodes.Variable(ctx.scope, name, type.build(ctx) ?? infer(), getVariableFlags(keyword)))
+    const id = ctx.add(new Nodes.Variable(name, type ?? infer(), getVariableFlags(keyword)))
 
-    const v = value.build(ctx)
+    const v = value
     if (v !== null) {
-        return ctx.add(new Nodes.Set(ctx.scope, id, v[3]))
+        return ctx.add(new Nodes.Set(id, v[3]))
     }
 
     return id;
@@ -419,7 +438,7 @@ Expr.add(Variable)
 Expr.add(
     def('while', __, Expr, N_, Body),
     (ctx, keyword, s1, condition, s2, body) =>
-        ctx.add(new Nodes.While(ctx.scope, condition.build(ctx), body.build(ctx)))
+        ctx.add(new Nodes.While(condition, body))
 )
 
 function getVariableFlags(keyword: string | null) {

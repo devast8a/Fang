@@ -1,6 +1,6 @@
 struct Foo {
-    val x: U23
-    val y: U32
+    val x: u32
+    val y: u32
 }
 
 fn main() {

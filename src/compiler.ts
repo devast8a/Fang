@@ -6,7 +6,7 @@ import { Interpreter } from './interpret/interpret';
 import { serialize } from './ast/serialize';
 import { FangGrammar } from './grammar/grammar';
 import { promises as fs } from 'fs';
-import { resolve } from './stages/Resolver';
+// import { resolve } from './stages/Resolver';
 
 export class Compiler {
     public static async compileFile(path: string) {
@@ -15,7 +15,9 @@ export class Compiler {
         const ctx = Ctx.createRoot();
 
         const parser = FangGrammar.toParser();
+
         const root = parser.parse(ctx, source.content);
+        ctx.root = root;
 
         let enableTypeChecking = false;
 
@@ -35,14 +37,12 @@ export class Compiler {
             }
         }
 
+        const scope = resolveNames(ctx);
+
         if (enableTypeChecking) {
             console.log("Type checking enabled")
-            resolve(ctx);
-        } else {
-            // Use old name resolver
-            resolveNames(ctx, root);
         }
 
-        return new Interpreter(ctx, root);
+        return new Interpreter(ctx, root, scope);
     }
 }

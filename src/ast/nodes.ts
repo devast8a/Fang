@@ -41,6 +41,10 @@ export class Scope {
         readonly parent: Scope | null,
         readonly symbols: Map<string, number[]>,
     ) { }
+
+    public create() {
+        return new Scope(this, new Map());
+    }
 }
 
 // =============================================================================
@@ -65,20 +69,22 @@ export type Expr =
     | Variable
     | While
 
+const id = () => undefined as any as number;
+
 export class BlockAttribute {
     readonly tag = Tag.BlockAttribute
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly target: Ref,
     ) { }
 }
 
 export class Break {
     readonly tag = Tag.Break
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly target: Ref | null,
         readonly value: Local | null,
     ) { }
@@ -86,9 +92,9 @@ export class Break {
 
 export class Call {
     readonly tag = Tag.Call
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly target: Ref<Function>,
         readonly args: readonly Local[],
     ) { }
@@ -96,9 +102,9 @@ export class Call {
 
 export class Constant<Value> {
     readonly tag = Tag.Constant
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly type: Type,
         readonly value: Value,
     ) { }
@@ -106,9 +112,9 @@ export class Constant<Value> {
 
 export class Construct {
     readonly tag = Tag.Construct;
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly target: Ref<Struct>,
         readonly args: readonly Local[],
     ) { }
@@ -116,9 +122,9 @@ export class Construct {
 
 export class Continue {
     readonly tag = Tag.Continue
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly target: Ref | null,
         readonly value: Local | null,
     ) { }
@@ -126,10 +132,9 @@ export class Continue {
 
 export class Enum {
     readonly tag = Tag.Enum
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
-        readonly scope: Scope,
         readonly name: string,
         readonly body: Local[],
     ) { }
@@ -137,9 +142,9 @@ export class Enum {
 
 export class ForEach {
     readonly tag = Tag.ForEach
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly element: Local,
         readonly collection: Local,
         readonly body: Local[],
@@ -148,10 +153,9 @@ export class ForEach {
 
 export class Function {
     readonly tag = Tag.Function
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
-        readonly scope: Scope,
         readonly name: string | null,
         readonly returnType: Type,
         readonly parameters: readonly Local<Variable>[],
@@ -162,18 +166,18 @@ export class Function {
 
 export class Get {
     readonly tag = Tag.Get
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
-        readonly source: Ref,
+        public source: Ref,
     ) { }
 }
 
 export class If {
     readonly tag = Tag.If
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly cases: readonly IfCase[],
     ) { }
 }
@@ -187,9 +191,9 @@ export class IfCase {
 
 export class Match {
     readonly tag = Tag.Match
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly value: Local,
         readonly cases: MatchCase[],
     ) { }
@@ -204,27 +208,27 @@ export class MatchCase {
 
 export class Move {
     readonly tag = Tag.Move
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly value: Local,
     ) { }
 }
 
 export class Return {
     readonly tag = Tag.Return
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly value: Local | null,
     ) { }
 }
 
 export class Set {
     readonly tag = Tag.Set
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly target: Ref<Variable>,
         readonly source: Local,
     ) { }
@@ -232,10 +236,9 @@ export class Set {
 
 export class Struct {
     readonly tag = Tag.Struct
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
-        readonly scope: Scope,
         readonly name: string,
         readonly body: Local[],
     ) { }
@@ -243,10 +246,9 @@ export class Struct {
 
 export class Trait {
     readonly tag = Tag.Trait
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
-        readonly scope: Scope,
         readonly name: string,
         readonly body: Local[],
     ) { }
@@ -254,9 +256,9 @@ export class Trait {
 
 export class Variable {
     readonly tag = Tag.Variable
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly name: string,
         readonly type: Type,
         readonly flags: VariableFlags,
@@ -270,9 +272,9 @@ export enum VariableFlags {
 
 export class While {
     readonly tag = Tag.While
+    readonly id = id();
 
     constructor(
-        readonly parent: Scope,
         readonly condition: Local,
         readonly body: Local[],
     ) {}
@@ -299,7 +301,7 @@ export class RefFieldName<T extends Node = Node> {
     readonly tag = Tag.RefFieldName
 
     constructor(
-        readonly object: Ref,
+        public object: Ref,
         readonly target: string,
     ) { }
 }

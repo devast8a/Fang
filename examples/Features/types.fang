@@ -1,16 +1,2 @@
 # Test attributes please ignore.
 ##DEBUG_TYPE_CHECK
-
-# Type checking and inference test
-fn foo(x: u32) => x
-mut bar = 100
-val number = 100
-val boolean = false
-
-# These compile
-foo(number)
-foo(200)
-bar = number
-bar = 200
-
-mut qux = 10..20

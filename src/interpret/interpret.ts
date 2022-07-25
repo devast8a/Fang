@@ -1,5 +1,5 @@
 import { Ctx } from '../ast/context';
-import { RefId, Tag, Function, Ref, Struct, Variable } from '../ast/nodes';
+import { RefId, Tag, Function, Ref, Struct, Variable, Scope } from '../ast/nodes';
 import { unimplemented } from '../utils';
 import { VmString } from './VmString';
 
@@ -9,6 +9,7 @@ export class Interpreter {
     constructor(
         private ctx: Ctx,
         private root: RefId[],
+        private scope: Scope,
     ) {
         for (const ref of root) {
             const id = ref.target;
@@ -165,6 +166,11 @@ export class Interpreter {
 
     private evaluateFn(fn: Function, args: any[]) {
         const locals = new Array<any>();
+
+        if (args.length > fn.parameters.length) {
+            throw new Error(`Called a function with more parameters than exists ${fn.name}`);
+        }
+
         for (let i = 0; i < args.length; i++) {
             locals[fn.parameters[i].target] = args[i];
         }
@@ -188,7 +194,7 @@ export class Interpreter {
             return () => Value.unwrap(this.evaluateBody(this.root, []));
         }
 
-        const ids = this.ctx.scope.symbols.get(name);
+        const ids = this.scope.symbols.get(name);
         if (ids === undefined) {
             return null;
         }
@@ -249,6 +255,10 @@ export class Interpreter {
 
             if (typeof (externals[fn.name]) !== 'function') {
                 throw new Error(`External ${fn.name} is not a function`)
+            }
+
+            if (isOperator(fn.name)) {
+                return operator(fn.name);
             }
 
             return externals[fn.name];

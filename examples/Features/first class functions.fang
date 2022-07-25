@@ -1,4 +1,4 @@
-fn foo(f: fn(U32)->U32) {
+fn foo(f: fn(u32)->u32) {
     return f(10)
 }
 

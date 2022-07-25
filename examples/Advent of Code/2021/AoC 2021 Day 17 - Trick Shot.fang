@@ -2,10 +2,10 @@ struct Vec {
     val x: u32
     val y: u32
 
-    fn infix++(self, other: Vec) =>
+    fn infix+(self, other: Vec) =>
         Vec{self.x + other.x, self.y + other.y}
 
-    fn infix--(self, other: Vec) =>
+    fn infix-(self, other: Vec) =>
         Vec{self.x - other.x, self.y - other.y}
 }
 
@@ -27,14 +27,14 @@ fn simulate(velocity: Vec, target: Rect) {
     mut position = Vec{0, 0}
 
     while position.y >= target.bottom and !target.contains(position) {
-        position = position ++ velocity
+        position = position + velocity
         
         # Gravity
-        velocity = velocity -- Vec{0, 1}
+        velocity = velocity - Vec{0, 1}
 
         # Friction
         if velocity.x > 0 {
-            velocity = velocity -- Vec{1, 0}
+            velocity = velocity - Vec{1, 0}
         }
     }
 

@@ -372,7 +372,7 @@ export class Rule<Context, Result> extends Matcher<Result, true> {
 
     toRules(id: string): NearleyRule[] {
         return this.definitions.map(definition =>
-            RULE(id, definition.matchers!, data => new Builder(definition.name, data, (ctx, data) => definition.builder(ctx as any, ...data)))
+            RULE(id, definition.matchers!, data => new Builder(definition.name, data, (ctx, data) => definition.builder(ctx as any, ...unwrap(ctx, data))))
         );
     }
 
@@ -384,7 +384,7 @@ export class Rule<Context, Result> extends Matcher<Result, true> {
 export type GetProcessorParameters<D extends Definition> =
     D extends Def<infer M, any> ? M :
     D extends Matcher<infer M, false> ? [M] :
-    D extends Matcher<infer M, true> ? [Builder<M, any>] :
+    D extends Matcher<infer M, true> ? [M] :
     [string];
 
 export enum MatcherTag {
@@ -712,18 +712,6 @@ export class Builder<Result, Context> {
     }
 }
 
-export type GetBuilderParameter<T, Context> =
-    T extends Matcher<infer U, false> ? U :
-    T extends Matcher<infer U, true> ? Builder<U, Context> :
-    string
-    ;
-
-export type GetBuilderParameters<T extends Definition<any>[], Context> = {
-    [index in keyof T]: GetBuilderParameter<T[index], Context>
-} & {
-    length: T['length']
-};
-
 export function Rules<Context>() {
     function rule<Result>(): Rule<Context, Result>
     //function rule<D extends Definition>(definition: D | (() => D)): Rule<Context, GetType<D>>
@@ -739,7 +727,7 @@ export function Rules<Context>() {
         return rule;
     }
 
-    function def<D extends Definition<any>[]>(...definition: D): Def<GetBuilderParameters<D, Context>, false>
+    function def<D extends Definition<any>[]>(...definition: D): Def<GetTypes<D>, false>
     {
         return new Def(definition);
     }
