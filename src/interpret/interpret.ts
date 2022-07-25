@@ -1,6 +1,7 @@
 import { Ctx } from '../ast/context';
 import { RefId, Tag, Function, Ref, Struct, Variable, Scope } from '../ast/nodes';
 import { unimplemented } from '../utils';
+import { VmEnvironment } from './VmEnvironment';
 import { VmString } from './VmString';
 
 export class Interpreter {
@@ -31,7 +32,7 @@ export class Interpreter {
         }
     }
 
-    private evaluate(ref: RefId | null, locals: any[]): any {
+    private evaluate(ref: RefId | null, locals: VmEnvironment): any {
         if (ref === null) {
             return null;
         }
@@ -85,7 +86,7 @@ export class Interpreter {
                 const collection = Value.unwrap(this.evaluate(node.collection, locals));
 
                 for (const element of collection) {
-                    locals[node.element.target] = element;
+                    locals.locals[node.element.target] = element;
                     const body = this.evaluateBody(node.body, locals);
 
                     if (Value.isExit(body)) {
@@ -165,20 +166,20 @@ export class Interpreter {
     }
 
     private evaluateFn(fn: Function, args: any[]) {
-        const locals = new Array<any>();
+        const locals = VmEnvironment.create();
 
         if (args.length > fn.parameters.length) {
             throw new Error(`Called a function with more parameters than exists ${fn.name}`);
         }
 
         for (let i = 0; i < args.length; i++) {
-            locals[fn.parameters[i].target] = args[i];
+            locals.locals[fn.parameters[i].target] = args[i];
         }
 
         return Value.unwrap(this.evaluateBody(fn.body, locals));
     }
 
-    private evaluateBody(body: RefId[], locals: any[]) {
+    private evaluateBody(body: RefId[], locals: VmEnvironment) {
         for (const ref of body) {
             const result = this.evaluate(ref, locals);
 
@@ -191,29 +192,41 @@ export class Interpreter {
     // Get a value
     get(name: string): any {
         if (name === '$body') {
-            return () => Value.unwrap(this.evaluateBody(this.root, []));
+            return () => Value.unwrap(this.evaluateBody(this.root, VmEnvironment.create()));
         }
 
-        const ids = this.scope.lookup(name);
-        if (ids === null) {
+        const result = this.scope.lookup(name);
+        if (result === null) {
             return null;
         }
 
-        return this.globals[ids[0]];
+        return this.globals[result.ids[0]];
     }
 
-    private resolve(ref: Ref, locals: any[]): {target: any, member: any} {
+    private resolve(ref: Ref, env: VmEnvironment): {target: any, member: any} {
         switch (ref.tag) {
             case Tag.RefId: {
-                if (locals[ref.target] !== undefined) {
-                    return { target: locals, member: ref.target };
+                if (env.locals[ref.target] !== undefined) {
+                    return { target: env.locals, member: ref.target };
                 }
 
                 if (this.globals[ref.target] !== undefined) {
                     return { target: this.globals, member: ref.target };
                 }
 
-                return {target: locals, member: ref.target}
+                return {target: env.locals, member: ref.target}
+            }
+
+            case Tag.RefUpvalue: {
+                if (env.locals[ref.id] !== undefined) {
+                    return { target: env.locals, member: ref.id };
+                }
+
+                if (this.globals[ref.id] !== undefined) {
+                    return { target: this.globals, member: ref.id };
+                }
+
+                return {target: env.locals, member: ref.id}
             }
                 
             case Tag.RefName: {
@@ -232,16 +245,16 @@ export class Interpreter {
             }
                 
             case Tag.RefFieldName: {
-                const object = this.evaluate(ref.object as RefId, locals);
+                const object = this.evaluate(ref.object as RefId, env);
 
                 if ((ref.target as any) instanceof RefId) {
-                    const target = this.evaluate(ref.target as any, locals);
+                    const target = this.evaluate(ref.target as any, env);
                     return { target: object, member: target };
                 }
 
                 return { target: object, member: ref.target };
             }
-
+                
             default: throw unimplemented(ref as never);
         }
     }

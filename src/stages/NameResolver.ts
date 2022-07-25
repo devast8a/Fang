@@ -1,4 +1,4 @@
-import { Node, Ref, RefId, Scope, Tag } from '../ast/nodes';
+import { Node, Ref, RefId, RefUpvalue, Scope, Tag } from '../ast/nodes';
 import { Ctx } from '../ast/context';
 import { MultiMapUtils, unimplemented, unreachable } from '../utils';
 
@@ -86,9 +86,9 @@ export class Resolve {
                 
             case Tag.RefName: {
                 // Perform a lookup
-                const ids = state.scope.lookup(ref.target);
+                const result = state.scope.lookup(ref.target);
 
-                if (ids === null) {
+                if (result === null) {
                     this.lookups.push({
                         field: field,
                         symbol: ref.target,
@@ -98,7 +98,13 @@ export class Resolve {
                     return ref;
                 }
 
-                node[field] = new RefId(ids[ids.length - 1]) as any;
+                const id = result.ids[result.ids.length - 1];
+
+                if (result.distance > 0) {
+                    node[field] = new RefUpvalue(id, result.distance) as any;
+                } else {
+                    node[field] = new RefId(id) as any;
+                }
                 break;
             }
 
@@ -253,21 +259,12 @@ export class Resolve {
                 break;
             }
 
-            case Tag.RefId: {
+            case Tag.RefId:
+            case Tag.RefIds:
+            case Tag.RefInfer:
+            case Tag.RefName:
+            case Tag.RefUpvalue:
                 break;
-            }
-
-            case Tag.RefIds: {
-                break;
-            }
-
-            case Tag.RefInfer: {
-                break;
-            }
-
-            case Tag.RefName: {
-                break;
-            }
 
             default: {
                 throw unreachable(node);
@@ -287,13 +284,13 @@ export function resolveNames(ctx: Ctx) {
     resolver.visit(new State(scope, Mode.DEFAULT), ctx.root);
 
     for (const entry of resolver.lookups) {
-        const id = entry.scope.lookup(entry.symbol);
+        const result = entry.scope.lookup(entry.symbol);
 
-        if (id === null) {
+        if (result === null) {
             continue;
         }
 
-        entry.node[entry.field] = new RefId(id[id.length - 1]);
+        entry.node[entry.field] = new RefId(result.ids[result.ids.length - 1]);
     }
 
     return scope;

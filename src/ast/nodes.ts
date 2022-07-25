@@ -27,6 +27,7 @@ export enum Tag {
     RefIds,
     RefInfer,
     RefName,
+    RefUpvalue,
 }
 
 export type Node =
@@ -63,6 +64,7 @@ export class Scope {
     public lookup(symbol: string) {
         let start: Scope = this;
         let current: Scope | null = this;
+        let distance = 0;
 
         do {
             const ids = current.declared.get(symbol);
@@ -70,6 +72,7 @@ export class Scope {
             // Symbol does not exist in current scope, look in parent
             if (ids === undefined) {
                 current = current.parent;
+                distance++;
                 continue;
             }
 
@@ -82,7 +85,10 @@ export class Scope {
                 start = start.parent!;
             }
 
-            return ids;
+            return {
+                ids: ids,
+                distance: distance,
+            };
         } while (current !== null)
 
         // Symbol does not exist at all.
@@ -330,6 +336,7 @@ export type Ref<T extends Node = Node> =
     | RefIds<T>
     | RefInfer
     | RefName<T>
+    | RefUpvalue<T>
 
 export class RefFieldId<T extends Node = Node> {
     readonly tag = Tag.RefFieldId
@@ -377,5 +384,14 @@ export class RefName<T extends Node = Node> {
 
     constructor(
         readonly target: string,
+    ) { }
+}
+
+export class RefUpvalue<T extends Node = Node> {
+    readonly tag = Tag.RefUpvalue;
+
+    constructor(
+        readonly id: number,
+        readonly distance: number,
     ) { }
 }
