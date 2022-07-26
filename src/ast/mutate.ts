@@ -21,8 +21,6 @@ export function mutateNull<T, F extends keyof T>(node: T, field: F, fn: (field: 
 }
 
 export function mutateRef(node: Node, fn: (ref: Ref) => Ref) {
-    // TODO: Constant.type should probably be resolved by default
-
     switch (node.tag) {
         case Tag.Enum:      return node;
         case Tag.Function:  return mutate(node, 'returnType', fn);
