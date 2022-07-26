@@ -2,6 +2,7 @@ import { Ctx } from '../ast/context';
 import { RefId, Tag, Function, Ref, Struct, Variable, Scope } from '../ast/nodes';
 import { unimplemented } from '../utils';
 import { VmEnvironment } from './VmEnvironment';
+import { VmList } from './VmList';
 import { VmString } from './VmString';
 
 export class Interpreter {
@@ -395,6 +396,34 @@ function compare(left: any, right: any) {
     if (left instanceof VmString && right instanceof VmString) {
         return left.value === right.value;
     }
+    
+    if (left instanceof VmList && right instanceof VmList) {
+        if (left.size !== right.size) {
+            return false;
+        }
+
+        for (let index = 0; index < left.size; index++) {
+            if (!compare(left.values[index], right.values[index])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    if (left instanceof Array && right instanceof Array) {
+        if (left.length !== right.length) {
+            return false;
+        }
+
+        for (let index = 0; index < left.length; index++) {
+            if (!compare(left[index], right[index])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     return left === right;
 }
@@ -403,6 +432,7 @@ const externals: any = {
     List: Array,
     Math: Math,
     String: VmString,
+    List2: VmList,
     print: (...args: any[]) => console.log(...args),
 
     'prefix-':  (l: any) => -l,
