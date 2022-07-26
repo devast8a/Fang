@@ -21,6 +21,8 @@ export class Compiler {
 
         let enableTypeChecking = false;
 
+        const scope = resolveNames(ctx);
+
         for (const { target } of root) {
             const node = ctx.nodes[target];
 
@@ -36,8 +38,6 @@ export class Compiler {
                 }
             }
         }
-
-        const scope = resolveNames(ctx);
 
         if (enableTypeChecking) {
             console.log("Type checking enabled")
