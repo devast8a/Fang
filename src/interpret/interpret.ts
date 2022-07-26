@@ -1,5 +1,6 @@
 import { Ctx } from '../ast/context';
-import { RefId, Tag, Function, Ref, Struct, Variable, Scope } from '../ast/nodes';
+import { RefId, Tag, Function, Ref, Struct, Variable } from '../ast/nodes';
+import { Scope } from "../ast/Scope";
 import { unimplemented } from '../utils';
 import { VmEnvironment } from './VmEnvironment';
 import { VmList } from './VmList';

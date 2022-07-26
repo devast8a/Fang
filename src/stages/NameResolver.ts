@@ -1,4 +1,5 @@
-import { Node, Ref, RefId, RefUpvalue, Scope, Tag } from '../ast/nodes';
+import { Node, Ref, RefId, RefUpvalue, Tag } from '../ast/nodes';
+import { Scope } from "../ast/Scope";
 import { Ctx } from '../ast/context';
 import { MultiMapUtils, unimplemented, unreachable } from '../utils';
 

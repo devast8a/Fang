@@ -1,5 +1,6 @@
 import { MapUtils } from '../utils';
-import { Node, Scope, Tag } from './nodes';
+import { Node, Tag } from './nodes';
+import { Scope } from "./Scope";
 
 export function serialize(nodes: Node[]) {
     const ns = nodes.map((node, index) =>

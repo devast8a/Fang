@@ -1,6 +1,7 @@
 import * as Nodes from './ast/nodes';
 import { Ctx } from './ast/context';
-import { RefId, Scope, VariableFlags } from './ast/nodes';
+import { RefId, VariableFlags } from './ast/nodes';
+import { Scope } from "./ast/Scope";
 import { MultiMapUtils } from './utils';
 
 export type Builtins = ReturnType<typeof populateBuiltins>;
