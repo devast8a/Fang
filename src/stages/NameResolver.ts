@@ -98,13 +98,7 @@ export class Resolve {
                     return ref;
                 }
 
-                const id = result.ids[result.ids.length - 1];
-
-                if (result.distance > 0) {
-                    node[field] = new RefUpvalue(id, result.distance) as any;
-                } else {
-                    node[field] = new RefId(id) as any;
-                }
+                node[field] = result as any;
                 break;
             }
 
@@ -259,6 +253,7 @@ export class Resolve {
                 break;
             }
 
+            case Tag.RefGlobal:
             case Tag.RefId:
             case Tag.RefIds:
             case Tag.RefInfer:
@@ -280,7 +275,7 @@ export class Resolve {
 export function resolveNames(ctx: Ctx) {
     const resolver = new Resolve(ctx);
 
-    const scope = ctx.builtins.scope.push();
+    const scope = ctx.builtins.scope.push(true);
     resolver.visit(new State(scope, Mode.DEFAULT), ctx.root);
 
     for (const entry of resolver.lookups) {
@@ -290,7 +285,7 @@ export function resolveNames(ctx: Ctx) {
             continue;
         }
 
-        entry.node[entry.field] = new RefId(result.ids[result.ids.length - 1]);
+        entry.node[entry.field] = result as any;
     }
 
     return scope;

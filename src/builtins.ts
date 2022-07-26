@@ -6,7 +6,7 @@ import { MultiMapUtils } from './utils';
 export type Builtins = ReturnType<typeof populateBuiltins>;
 
 export function populateBuiltins(ctx: Ctx) {
-    const scope = new Scope(null, new Map(), new Map());
+    const scope = new Scope(null, new Map(), new Map(), true);
 
     // const List    = mkType(ctx, scope, 'List');
     // const Math    = mkType(ctx, scope, 'Math');

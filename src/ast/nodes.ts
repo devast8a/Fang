@@ -23,6 +23,7 @@ export enum Tag {
     // Ref
     RefFieldId,
     RefFieldName,
+    RefGlobal,
     RefId,
     RefIds,
     RefInfer,
@@ -42,10 +43,11 @@ export class Scope {
         private readonly parent: Scope | null,
         private readonly declared: Map<string, number[]>,
         private readonly cache: Map<string, number[]>,
+        public readonly global: boolean,
     ) { }
 
-    public push() {
-        return new Scope(this, new Map(), new Map());
+    public push(global = false) {
+        return new Scope(this, new Map(), new Map(), global);
     }
 
     public declare(symbol: string, id: number) {
@@ -84,11 +86,19 @@ export class Scope {
                 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
                 start = start.parent!;
             }
+            
+            const id = ids[ids.length - 1];
 
-            return {
-                ids: ids,
-                distance: distance,
-            };
+            // TODO: Remove `current !== this` - Blocked on the following
+            //  Declaring and assigning a variable at the same time produces a Set node that directly references the
+            //    variable with RefId. This causes breakage in top-level code that refers to nodes with RefGlobal
+            if (current.global && current !== this) {
+                return new RefGlobal(id);
+            } else if (distance === 0) {
+                return new RefId(id);
+            } else {
+                return new RefUpvalue(id, distance);
+            }
         } while (current !== null)
 
         // Symbol does not exist at all.
@@ -332,6 +342,7 @@ export class While {
 // =============================================================================
 export type Ref<T extends Node = Node> =
     | RefFieldName<T>
+    | RefGlobal<T>
     | RefId<T>
     | RefIds<T>
     | RefInfer
@@ -353,6 +364,14 @@ export class RefFieldName<T extends Node = Node> {
     constructor(
         public object: Ref,
         readonly target: string,
+    ) { }
+}
+
+export class RefGlobal<T extends Node = Node> {
+    readonly tag = Tag.RefGlobal
+
+    constructor(
+        public targetId: number,
     ) { }
 }
 
@@ -391,7 +410,7 @@ export class RefUpvalue<T extends Node = Node> {
     readonly tag = Tag.RefUpvalue;
 
     constructor(
-        readonly id: number,
+        readonly targetId: number,
         readonly distance: number,
     ) { }
 }

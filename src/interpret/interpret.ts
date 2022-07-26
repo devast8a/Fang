@@ -33,7 +33,7 @@ export class Interpreter {
         }
     }
 
-    private evaluate(ref: RefId | null, locals: VmEnvironment): any {
+    private evaluate(ref: RefId | null, env: VmEnvironment): any {
         if (ref === null) {
             return null;
         }
@@ -45,12 +45,12 @@ export class Interpreter {
             }
                 
             case Tag.Break: {
-                return new Control(Type.Break, Value.unwrap(this.evaluate(node.value, locals)))
+                return new Control(Type.Break, Value.unwrap(this.evaluate(node.value, env)))
             }
 
             case Tag.Call: {
-                const { target, member } = this.resolve(node.target, locals);
-                const args = node.args.map(arg => Value.unwrap(this.evaluate(arg, locals)))
+                const { target, member } = this.resolve(node.target, env);
+                const args = node.args.map(arg => Value.unwrap(this.evaluate(arg, env)))
 
                 if (typeof (target[member]) !== 'function') {
                     throw new Error(`Unknown function ${member}`)
@@ -67,8 +67,8 @@ export class Interpreter {
             }
 
             case Tag.Construct: {
-                const { target, member } = this.resolve(node.target, locals);
-                const args = node.args.map(arg => Value.unwrap(this.evaluate(arg, locals)));
+                const { target, member } = this.resolve(node.target, env);
+                const args = node.args.map(arg => Value.unwrap(this.evaluate(arg, env)));
 
                 // TODO: Remove this hack
                 if (target === externals && member === 'List') {
@@ -79,16 +79,16 @@ export class Interpreter {
             }
 
             case Tag.Continue: {
-                return new Control(Type.Continue, Value.unwrap(this.evaluate(node.value, locals)))
+                return new Control(Type.Continue, Value.unwrap(this.evaluate(node.value, env)))
             }
 
             case Tag.ForEach: {
                 // eslint-disable-next-line no-constant-condition
-                const collection = Value.unwrap(this.evaluate(node.collection, locals));
+                const collection = Value.unwrap(this.evaluate(node.collection, env));
 
                 for (const element of collection) {
-                    locals.locals[node.element.target] = element;
-                    const body = this.evaluateBody(node.body, locals);
+                    env.locals[node.element.target] = element;
+                    const body = this.evaluateBody(node.body, env);
 
                     if (Value.isExit(body)) {
                         return Value.asExit(body);
@@ -98,47 +98,47 @@ export class Interpreter {
             }
 
             case Tag.Function: {
-                return this.globals[ref.target];
+                return this.buildFn(node, true, env);
             }
 
             case Tag.Get: {
-                const { target, member } = this.resolve(node.source, locals);
+                const { target, member } = this.resolve(node.source, env);
                 return target[member];
             }
                 
             case Tag.If: {
                 for (const c of node.cases) {
-                    if (c.condition === null || Value.asBoolean(this.evaluate(c.condition, locals))) {
-                        return this.evaluateBody(c.body, locals);
+                    if (c.condition === null || Value.asBoolean(this.evaluate(c.condition, env))) {
+                        return this.evaluateBody(c.body, env);
                     }
                 }
                 return null;   
             }
                 
             case Tag.Match: {
-                const value = Value.unwrap(this.evaluate(node.value, locals));
+                const value = Value.unwrap(this.evaluate(node.value, env));
 
                 for (const c of node.cases) {
-                    const caseValue = Value.unwrap(this.evaluate(c.value, locals));
+                    const caseValue = Value.unwrap(this.evaluate(c.value, env));
 
                     if (compare(value, caseValue)) {
-                        return this.evaluateBody(c.body, locals);
+                        return this.evaluateBody(c.body, env);
                     }
                 }
                 return null;
             }
                 
             case Tag.Move: {
-                return Value.unwrap(this.evaluate(node.value, locals));
+                return Value.unwrap(this.evaluate(node.value, env));
             }
 
             case Tag.Return: {
-                return new Control(Type.Return, Value.unwrap(this.evaluate(node.value, locals)));
+                return new Control(Type.Return, Value.unwrap(this.evaluate(node.value, env)));
             }
                 
             case Tag.Set: {
-                const { target, member } = this.resolve(node.target, locals);
-                return target[member] = Value.unwrap(this.evaluate(node.source, locals));
+                const { target, member } = this.resolve(node.target, env);
+                return target[member] = Value.unwrap(this.evaluate(node.source, env));
             }
 
             case Tag.Struct: {
@@ -150,8 +150,8 @@ export class Interpreter {
             }
                 
             case Tag.While: {
-                while (Value.asBoolean(this.evaluate(node.condition, locals))) {
-                    const body = this.evaluateBody(node.body, locals);
+                while (Value.asBoolean(this.evaluate(node.condition, env))) {
+                    const body = this.evaluateBody(node.body, env);
                 
                     if (Value.isExit(body)) {
                         return Value.asExit(body);
@@ -166,23 +166,21 @@ export class Interpreter {
         }
     }
 
-    private evaluateFn(fn: Function, args: any[]) {
-        const locals = VmEnvironment.create();
-
+    private evaluateFn(fn: Function, args: any[], env: VmEnvironment) {
         if (args.length > fn.parameters.length) {
             throw new Error(`Called a function with more parameters than exists ${fn.name}`);
         }
 
         for (let i = 0; i < args.length; i++) {
-            locals.locals[fn.parameters[i].target] = args[i];
+            env.locals[fn.parameters[i].target] = args[i];
         }
 
-        return Value.unwrap(this.evaluateBody(fn.body, locals));
+        return Value.unwrap(this.evaluateBody(fn.body, env));
     }
 
-    private evaluateBody(body: RefId[], locals: VmEnvironment) {
+    private evaluateBody(body: RefId[], env: VmEnvironment) {
         for (const ref of body) {
-            const result = this.evaluate(ref, locals);
+            const result = this.evaluate(ref, env);
 
             if (result instanceof Control) {
                 return result;
@@ -197,15 +195,20 @@ export class Interpreter {
         }
 
         const result = this.scope.lookup(name);
-        if (result === null) {
+
+        if (result === null || result.tag !== Tag.RefGlobal) {
             return null;
         }
 
-        return this.globals[result.ids[0]];
+        return this.globals[result.targetId];
     }
 
     private resolve(ref: Ref, env: VmEnvironment): {target: any, member: any} {
         switch (ref.tag) {
+            case Tag.RefGlobal: {
+                return { target: this.globals, member: ref.targetId };
+            }
+
             case Tag.RefId: {
                 if (env.locals[ref.target] !== undefined) {
                     return { target: env.locals, member: ref.target };
@@ -218,16 +221,15 @@ export class Interpreter {
                 return {target: env.locals, member: ref.target}
             }
 
+            // TODO: Replace with lookup in VmEnvironment. Blocked on resolving RefGlobal
             case Tag.RefUpvalue: {
-                if (env.locals[ref.id] !== undefined) {
-                    return { target: env.locals, member: ref.id };
+                try {
+                    return env.lookup(ref.targetId, ref.distance);
                 }
-
-                if (this.globals[ref.id] !== undefined) {
-                    return { target: this.globals, member: ref.id };
+                catch (e) {
+                    console.log(this.ctx.nodes[ref.targetId]);
+                    throw e;
                 }
-
-                return {target: env.locals, member: ref.id}
             }
                 
             case Tag.RefName: {
@@ -260,7 +262,7 @@ export class Interpreter {
         }
     }
 
-    private buildFn(fn: Function, members = true): any {
+    private buildFn(fn: Function, members = true, env: VmEnvironment = VmEnvironment.create()): any {
         // External functions
         if (fn.external) {
             if (fn.name === null) {
@@ -285,13 +287,13 @@ export class Interpreter {
         if (members && fn.parameters.length > 0 && this.ctx.get(fn.parameters[0]).name === 'self') {
             return function(this: any, ...args: any[]) {
                 args.unshift(this);
-                return interpreter.evaluateFn(fn, args);
+                return interpreter.evaluateFn(fn, args, env.createChildEnvironment());
             }
         }
 
         // Regular functions
         return (...args: any[]) => {
-            return interpreter.evaluateFn(fn, args);
+            return interpreter.evaluateFn(fn, args, env.createChildEnvironment());
         }
     }
 

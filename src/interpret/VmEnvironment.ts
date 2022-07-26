@@ -22,6 +22,6 @@ export class VmEnvironment {
             throw new Error();
         }
 
-        return env.locals[id];
+        return { target: env.locals, member: id };
     }
 }
