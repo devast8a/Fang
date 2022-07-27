@@ -197,11 +197,11 @@ export class Interpreter {
 
         const result = this.scope.lookup(name);
 
-        if (result === null || result.tag !== Tag.RefGlobal) {
+        if (result === null || result.tag !== Tag.RefId) {
             return null;
         }
 
-        return this.globals[result.targetId];
+        return this.globals[result.target];
     }
 
     private resolve(ref: Ref, env: VmEnvironment): {target: any, member: any} {

@@ -1,13 +1,12 @@
 import * as Nodes from './ast/nodes';
 import { Ctx } from './ast/context';
 import { RefId, VariableFlags } from './ast/nodes';
-import { Scope } from "./ast/Scope";
-import { MultiMapUtils } from './utils';
+import { Scope, ScopeType } from "./ast/Scope";
 
 export type Builtins = ReturnType<typeof populateBuiltins>;
 
 export function populateBuiltins(ctx: Ctx) {
-    const scope = new Scope(null, new Map(), new Map(), true);
+    const scope = new Scope(null, new Map(), new Map(), ScopeType.Global);
 
     // const List    = mkType(ctx, scope, 'List');
     // const Math    = mkType(ctx, scope, 'Math');

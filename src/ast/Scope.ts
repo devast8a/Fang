@@ -5,11 +5,11 @@ export class Scope {
         private readonly parent: Scope | null,
         private readonly declared: Map<string, number[]>,
         private readonly cache: Map<string, number[]>,
-        public readonly global: boolean
+        public readonly type: ScopeType,
     ) { }
 
-    public push(global = false) {
-        return new Scope(this, new Map(), new Map(), global);
+    public push(type: ScopeType) {
+        return new Scope(this, new Map(), new Map(), type);
     }
 
     public declare(symbol: string, id: number) {
@@ -35,8 +35,11 @@ export class Scope {
 
             // Symbol does not exist in current scope, look in parent
             if (ids === undefined) {
+                if (current.type !== ScopeType.Inner) {
+                    distance++;
+                }
+
                 current = current.parent;
-                distance++;
                 continue;
             }
 
@@ -51,11 +54,11 @@ export class Scope {
 
             const id = ids[ids.length - 1];
 
-            // TODO: Remove `current !== this` - Blocked on the following
-            //  Declaring and assigning a variable at the same time produces a Set node that directly references the
-            //    variable with RefId. This causes breakage in top-level code that refers to nodes with RefGlobal
-            if (current.global && current !== this) {
-                return new RefGlobal(id);
+            if (current.type === ScopeType.Global) {
+                // TODO: Return RefGlobal
+                //  Declaring and assigning a variable at the same time produces a Set node that directly references the
+                //    variable with RefId. This causes breakage in top-level code that refers to nodes with RefGlobal
+                return new RefId(id);
             } else if (distance === 0) {
                 return new RefId(id);
             } else {
@@ -66,4 +69,11 @@ export class Scope {
         // Symbol does not exist at all.
         return null;
     }
+}
+
+export enum ScopeType {
+    Inner,
+    Global,
+    Function,
+    StructTrait,
 }

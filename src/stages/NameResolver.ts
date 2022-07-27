@@ -1,23 +1,7 @@
-import { Node, Ref, RefId, RefUpvalue, Tag } from '../ast/nodes';
-import { Scope } from "../ast/Scope";
+import { Node, Ref, Tag } from '../ast/nodes';
+import { Scope, ScopeType } from "../ast/Scope";
 import { Ctx } from '../ast/context';
-import { MultiMapUtils, unimplemented, unreachable } from '../utils';
-
-enum Mode {
-    DEFAULT,
-    MEMBERS,
-}
-
-class State {
-    public constructor(
-        readonly scope: Scope,
-        readonly mode: Mode,
-    ) { }
-
-    create(mode = this.mode) {
-        return new State(this.scope.push(), mode);
-    }
-}
+import { unimplemented, unreachable } from '../utils';
 
 interface Lookup {
     scope: Scope;
@@ -34,25 +18,25 @@ export class Resolve {
 
     public lookups = new Array<Lookup>();
 
-    public visit(state: State, visitable: readonly Ref[] | Ref | null) {
+    public visit(scope: Scope, visitable: readonly Ref[] | Ref | null) {
         if (visitable === null) {
             return;
         }
 
         if (visitable instanceof Array) {
             for (const ref of visitable) {
-                this.resolve(state, ref);
+                this.resolve(scope, ref);
             }
             return;
         } else {
-            this.resolve(state, visitable);
+            this.resolve(scope, visitable);
         }
     }
 
-    private resolve(state: State, ref: Ref) {
+    private resolve(scope: Scope, ref: Ref) {
         switch (ref.tag) {
             case Tag.RefId: {
-                this.resolveNode(state, this.ctx.get(ref));
+                this.resolveNode(scope, this.ctx.get(ref));
                 return ref;
             }
                 
@@ -62,7 +46,7 @@ export class Resolve {
             }
 
             case Tag.RefFieldName: {
-                ref.object = this.resolve(state, ref.object);
+                ref.object = this.resolve(scope, ref.object);
                 return ref;
             }
                 
@@ -76,25 +60,25 @@ export class Resolve {
         }
     }
 
-    private resolveREF<T extends Node & { id: number }, K extends keyof T>(state: State, node: T, field: K) {
+    private resolveREF<T extends Node & { id: number }, K extends keyof T>(scope: Scope, node: T, field: K) {
         const ref = node[field] as any as Ref;
 
         switch (ref.tag) {
             case Tag.RefId: {
-                this.resolveNode(state, this.ctx.get(ref));
+                this.resolveNode(scope, this.ctx.get(ref));
                 break;
             }
                 
             case Tag.RefName: {
                 // Perform a lookup
-                const result = state.scope.lookup(ref.target);
+                const result = scope.lookup(ref.target);
 
                 if (result === null) {
                     this.lookups.push({
                         field: field,
                         symbol: ref.target,
                         node: node,
-                        scope: state.scope,
+                        scope: scope,
                     });
                     return ref;
                 }
@@ -104,9 +88,9 @@ export class Resolve {
             }
 
             case Tag.RefFieldName: {
-                ref.object = this.resolve(state, ref.object);
+                ref.object = this.resolve(scope, ref.object);
                 if (typeof ref.target === 'object') {
-                    (ref as any).target = this.resolve(state, ref.target);
+                    (ref as any).target = this.resolve(scope, ref.target);
                 }
                 break;
             }
@@ -121,7 +105,7 @@ export class Resolve {
         }
     }
 
-    private resolveNode(state: State, node: Node) {
+    private resolveNode(scope: Scope, node: Node) {
         // console.log(node);
         switch (node.tag) {
             // Expressions
@@ -132,13 +116,13 @@ export class Resolve {
                 
             case Tag.Break: {
                 // target
-                this.visit(state, node.value);
+                this.visit(scope, node.value);
                 break;
             }
 
             case Tag.Call: {
-                this.resolveREF(state, node, 'target');
-                this.visit(state, node.args);
+                this.resolveREF(scope, node, 'target');
+                this.visit(scope, node.args);
                 break;
             }
 
@@ -147,37 +131,37 @@ export class Resolve {
             }
 
             case Tag.Construct: {
-                this.resolveREF(state, node, 'target');
-                this.visit(state, node.args);
+                this.resolveREF(scope, node, 'target');
+                this.visit(scope, node.args);
                 break;
             }
 
             case Tag.Continue: {
-                this.visit(state, node.value);
+                this.visit(scope, node.value);
                 break;
             }
                 
             case Tag.Enum: {
-                this.visit(state, node.body);
+                this.visit(scope, node.body);
                 break;
             }
 
             case Tag.ForEach: {
-                const condition = state.create();
+                const condition = scope.push(ScopeType.Inner);
                 this.visit(condition, node.collection);
                 this.visit(condition, node.element);
 
-                const body = condition.create();
+                const body = condition.push(ScopeType.Inner);
                 this.visit(body, node.body);
                 break;
             }
 
             case Tag.Function: {
-                if (node.name && state.mode !== Mode.MEMBERS) {
-                    this.define(state, node.name, node);
+                if (node.name && scope.type !== ScopeType.StructTrait) {
+                    this.define(scope, node.name, node);
                 }
 
-                const inner = state.create();
+                const inner = scope.push(ScopeType.Function);
                 this.visit(inner, node.parameters);
                 this.visit(inner, node.returnType);
                 this.visit(inner, node.body);
@@ -185,72 +169,72 @@ export class Resolve {
             }
 
             case Tag.Get: {
-                this.resolveREF(state, node, 'source');
+                this.resolveREF(scope, node, 'source');
                 break;
             }
 
             case Tag.If: {
                 for (const c of node.cases) {
-                    this.visit(state, c.condition);
-                    this.visit(state, c.body);
+                    this.visit(scope, c.condition);
+                    this.visit(scope, c.body);
                 }
                 break;
             }
 
             case Tag.Match: {
-                this.visit(state, node.value);
+                this.visit(scope, node.value);
                 for (const c of node.cases) {
-                    this.visit(state, c.value);
-                    this.visit(state, c.body);
+                    this.visit(scope, c.value);
+                    this.visit(scope, c.body);
                 }
                 break;
             }
 
             case Tag.Move: {
-                this.visit(state, node.value);
+                this.visit(scope, node.value);
                 break;
             }
 
             case Tag.Return: {
-                this.visit(state, node.value);
+                this.visit(scope, node.value);
                 break;
             }
 
             case Tag.Set: {
-                this.resolveREF(state, node, 'target');
-                this.visit(state, node.source);
+                this.resolveREF(scope, node, 'target');
+                this.visit(scope, node.source);
                 break;
             }
 
             case Tag.Struct: {
-                this.define(state, node.name, node);
-                const body = state.create(Mode.MEMBERS);
+                this.define(scope, node.name, node);
+                const body = scope.push(ScopeType.StructTrait);
                 this.visit(body, node.body);
                 break;
             }
 
             case Tag.Trait: {
-                this.define(state, node.name, node);
-                const body = state.create(Mode.MEMBERS);
+                this.define(scope, node.name, node);
+                const body = scope.push(ScopeType.StructTrait);
                 this.visit(body, node.body);
                 break;
             }
 
             case Tag.Variable: {
-                this.visit(state, node.type);
-                this.define(state, node.name, node);
+                this.visit(scope, node.type);
+                this.define(scope, node.name, node);
                 break;
             }
 
             case Tag.While: {
-                this.visit(state, node.condition);
-                this.visit(state, node.body);
+                this.visit(scope, node.condition);
+                this.visit(scope, node.body);
                 break;
             }
             
             // Refs
             case Tag.RefFieldName: {
-                this.visit(state, node.object);
+                this.visit(scope, node.object);
                 break;
             }
 
@@ -268,16 +252,16 @@ export class Resolve {
         }
     }
 
-    public define(state: State, name: string, node: Node & { id: number }) {
-        state.scope.declare(name, node.id);
+    public define(scope: Scope, name: string, node: Node & { id: number }) {
+        scope.declare(name, node.id);
     }
 }
 
 export function resolveNames(ctx: Ctx) {
     const resolver = new Resolve(ctx);
 
-    const scope = ctx.builtins.scope.push(true);
-    resolver.visit(new State(scope, Mode.DEFAULT), ctx.root);
+    const scope = ctx.builtins.scope.push(ScopeType.Global);
+    resolver.visit(scope, ctx.root);
 
     for (const entry of resolver.lookups) {
         const result = entry.scope.lookup(entry.symbol);
