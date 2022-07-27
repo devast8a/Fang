@@ -26,10 +26,10 @@ export class Ctx {
     }
 
     public get<T extends Node>(ref: Ref<T>): T {
-        if (ref.tag !== Tag.RefId) {
-            throw unimplemented(ref as never);
+        switch (ref.tag) {
+            case Tag.RefGlobal: return this.nodes[ref.targetId] as T;
+            case Tag.RefId:     return this.nodes[ref.target] as T;
+            default: throw unimplemented(ref as never);
         }
-
-        return this.nodes[ref.target] as T;
     }
 }

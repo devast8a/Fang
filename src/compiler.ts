@@ -3,9 +3,9 @@ import { Tag } from './ast/nodes';
 import { Source } from './common/source';
 import { resolveNames } from './stages/NameResolver';
 import { Interpreter } from './interpret/interpret';
-import { serialize } from './ast/serialize';
 import { FangGrammar } from './grammar/grammar';
 import { promises as fs } from 'fs';
+import { formatAst } from './ast/formatter';
 // import { resolve } from './stages/Resolver';
 
 export class Compiler {
@@ -33,7 +33,7 @@ export class Compiler {
                     }
                     switch (node.target.target) {
                         case 'DEBUG_TYPE_CHECK': enableTypeChecking = true; break;
-                        case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.json', serialize(ctx.nodes)); break;
+                        case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatAst(ctx, root)); break;
                     }
                 }
             }
