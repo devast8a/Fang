@@ -33,7 +33,7 @@ export enum Tag {
 
 export type Node =
     | Expr
-    | Ref<any>
+    | Ref<Expr>
 
 export type Type<T extends Node = Node> = Ref<T>;
 export type Local<T extends Node = Node> = RefId<T>;

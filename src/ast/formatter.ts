@@ -35,9 +35,21 @@ export class Formatter {
 
                 return `for ${element} in ${collection} {${body}}`;
             }
+                
+            case Tag.Function: {
+                const name = node.name ?? '<anonymous>'
+                const id = node.id;
+                const body = indent(this.formatBody(node.body));
+
+                return `fn ${name}[${id}]() {${body}}`;
+            }
 
             case Tag.Get: {
                 return this.formatRef(node.source);
+            }
+
+            case Tag.If: {
+                return `if`;
             }
 
             case Tag.Return: {
@@ -48,7 +60,7 @@ export class Formatter {
 
             case Tag.Set: {
                 const target = this.formatRef(node.target);
-                const source = this.formatRef(node.source);
+                const source = this.format(node.source);
 
                 return `${target} = ${source}`
             }
@@ -61,12 +73,20 @@ export class Formatter {
         switch (node.tag) {
             case Tag.Call:           return `${this.formatRef(node.target)}(${this.formatArgs(node.args)})`;
             case Tag.Constant:       return JSON.stringify(node.value);
-            case Tag.Function:       return node.name ?? `<anonymous function>`;
+            case Tag.Function:       return node.name ?? `<anonymous>`;
             case Tag.Get:            return `${this.formatRef(node.source)}`;
             case Tag.Variable:       return node.name;
-            case Tag.RefId:          return `${this.formatRef(this.ctx.get(node))}[L${node.target}]`;
+
+            case Tag.RefId: {
+                const targetNode = this.ctx.get(node);
+                const target = this.formatRef(targetNode);
+
+                return targetNode.tag === Tag.Get ? target : `${target}[${node.target}]`;
+            }
+
             case Tag.RefName:        return `${node.target}[?]`;
-            case Tag.RefGlobal:      return `${this.formatRef(this.ctx.get(node))}[G${node.targetId}]`;
+            case Tag.RefGlobal:      return `${this.formatRef(this.ctx.get(node))}[${node.targetId}^G]`;
+            case Tag.RefUpvalue:     return `${this.formatRef(this.ctx.get(node))}[${node.targetId}^${node.distance}]`;
 
             default: throw unimplemented(node as never);
         }
