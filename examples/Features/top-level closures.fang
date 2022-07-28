@@ -1,0 +1,5 @@
+# Closures. (In top level)
+#   First-class functions that capture their environment
+val value = 123
+val closure = fn() => value
+return closure() == 123

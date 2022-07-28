@@ -1,4 +1,4 @@
-import { Node, Ref, Tag } from '../ast/nodes';
+import { Node, Ref, RefGlobal, Tag } from '../ast/nodes';
 import { Scope, ScopeType } from "../ast/Scope";
 import { Ctx } from '../ast/context';
 import { unimplemented, unreachable } from '../utils';
@@ -66,6 +66,12 @@ export class Resolve {
         switch (ref.tag) {
             case Tag.RefId: {
                 this.resolveNode(scope, this.ctx.get(ref));
+
+                if (scope.type === ScopeType.Global) {
+                    node[field] = new RefGlobal(ref.target) as any;
+                    break;
+                }
+
                 break;
             }
                 

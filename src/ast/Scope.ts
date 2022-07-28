@@ -55,10 +55,7 @@ export class Scope {
             const id = ids[ids.length - 1];
 
             if (current.type === ScopeType.Global) {
-                // TODO: Return RefGlobal
-                //  Declaring and assigning a variable at the same time produces a Set node that directly references the
-                //    variable with RefId. This causes breakage in top-level code that refers to nodes with RefGlobal
-                return new RefId(id);
+                return new RefGlobal(id);
             } else if (distance === 0) {
                 return new RefId(id);
             } else {
