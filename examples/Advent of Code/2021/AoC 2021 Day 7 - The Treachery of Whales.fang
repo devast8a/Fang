@@ -1,0 +1,54 @@
+# ##DEBUG_PRINT_AST
+
+struct SelectResult {
+    val key: num
+    val value: num
+}
+
+fn select(seq, compare, map) {
+
+    mut bestVal = seq[0]
+    mut bestMap = map(bestVal)
+
+    for nextVal in seq {
+        val nextMap = map(nextVal)
+
+        if compare(nextMap, bestMap) {
+            bestVal = nextVal
+            bestMap = nextMap
+        }
+    }
+
+    return SelectResult{bestMap, bestVal}
+}
+
+fn id(value) => value
+
+struct Seq {
+    fn min(seq: Seq) => select(seq, infix<, id).value
+    fn max(seq: Seq) => select(seq, infix>, id).value
+    fn minBy(seq: Seq, by) => select(seq, infix<, by)
+    fn maxBy(seq: Seq, by) => select(seq, infix>, by)
+
+    fn sumBy(input: Seq, by: Transform) {
+        mut output = 0
+        for value in input {
+            output = output + by(value)
+        }
+        return output
+    }
+}
+
+fn solve(cost) {
+    val positions = [16,1,2,0,4,2,7,1,2,14]
+    val targets = Seq.min(positions) .. Seq.max(positions)
+
+    return Seq.minBy(targets, fn(target) =>
+        Seq.sumBy(positions, fn(position) =>
+            cost(position, target)
+        )
+    ).key
+}
+
+return solve(fn(x, y) => Math.abs(x - y)) == 37 and
+    solve(fn(x, y) => Math.abs(x - y) * Math.abs(x - y)+1 / 2) == 168
