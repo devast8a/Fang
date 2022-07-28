@@ -2,4 +2,4 @@ fn foo(f: fn(u32)->u32) {
     return f(10)
 }
 
-return foo(fn(a) => a * 2)
+return foo(fn(a) => a * 2) == 20

@@ -1,0 +1,11 @@
+# Symbol Shadowing
+#   Allows a name to be reused for different symbols.
+#   Not to be confused with overloading where a symbol has multiple definitions that are selected between.
+val shadowed = 456
+
+fn getShadowed() {
+    val shadowed = 123
+    return shadowed
+}
+
+return getShadowed() == 123

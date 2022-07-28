@@ -1,0 +1,6 @@
+# Arbitrary Declaration Order.
+#   Allows symbols to be defined after the symbol is used without any forward declaration
+fn before() => after()
+fn after() => 123
+
+return before() == 123

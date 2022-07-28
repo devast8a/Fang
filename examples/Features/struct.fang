@@ -3,7 +3,5 @@ struct Foo {
     val y: u32
 }
 
-fn main() {
-    val foo = Foo{1, 2}
-    print(foo)
-}
+val foo = Foo{1, 2}
+return foo.x == 1 and foo.y == 2

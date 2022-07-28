@@ -1,0 +1,9 @@
+# Closures.
+#   First-class functions that capture their environment
+fn makeClosure() {
+    val value = 123
+    return fn() => value
+}
+val closure = makeClosure()
+
+return closure() == 123

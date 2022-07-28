@@ -1,0 +1,8 @@
+# Nested Declarations.
+#   Allows symbols to be defined in the definition of other symbols.
+fn outer() {
+    fn inner() => 123
+    return inner()
+}
+
+return outer() == 123
