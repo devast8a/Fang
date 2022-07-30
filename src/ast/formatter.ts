@@ -87,6 +87,7 @@ export class Formatter {
             case Tag.RefName:        return `${node.target}[?]`;
             case Tag.RefGlobal:      return `${this.formatRef(this.ctx.get(node))}[${node.targetId}^G]`;
             case Tag.RefUpvalue:     return `${this.formatRef(this.ctx.get(node))}[${node.targetId}^${node.distance}]`;
+            case Tag.RefIds:         return `${this.formatRef(this.ctx.get(node))}[${node.target.join(",")}]`;
 
             default: throw unimplemented(node as never);
         }

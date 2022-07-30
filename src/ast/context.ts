@@ -30,6 +30,7 @@ export class Ctx {
             case Tag.RefGlobal:  return this.nodes[ref.targetId] as T;
             case Tag.RefUpvalue: return this.nodes[ref.targetId] as T;
             case Tag.RefId:      return this.nodes[ref.target] as T;
+            case Tag.RefIds:     return this.nodes[ref.target[0]] as T;
             default: throw unimplemented(ref as never);
         }
     }
