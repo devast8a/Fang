@@ -1,5 +1,5 @@
 import { Ctx } from '../ast/context';
-import { RefId, Tag, Function, Ref, Struct, Variable } from '../ast/nodes';
+import { RefId, Tag, Function, Ref, Struct, Variable, Trait } from '../ast/nodes';
 import { Scope } from "../ast/Scope";
 import { unimplemented } from '../utils';
 import { VmEnvironment } from './VmEnvironment';
@@ -21,6 +21,7 @@ export class Interpreter {
             switch (node.tag) {
                 case Tag.Function: this.globals[id] = this.buildFn(node); break;
                 case Tag.Struct: this.globals[id] = this.buildStruct(node); break;
+                case Tag.Trait: this.globals[id] = this.buildStruct(node); break;
             }
         }
 
@@ -30,6 +31,7 @@ export class Interpreter {
             switch (node.tag) {
                 case Tag.Function: this.globals[id] = this.buildFn(node); break;
                 case Tag.Struct: this.globals[id] = this.buildStruct(node); break;
+                case Tag.Trait: this.globals[id] = this.buildStruct(node); break;
             }
         }
     }
@@ -298,7 +300,7 @@ export class Interpreter {
         }
     }
 
-    private buildStruct(struct: Struct): any {
+    private buildStruct(struct: Struct | Trait): any {
         const ctx = this.ctx;
 
         function constructor(this: any, ...args: any[]) {
