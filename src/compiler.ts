@@ -6,6 +6,7 @@ import { Interpreter } from './interpret/interpret';
 import { FangGrammar } from './grammar/grammar';
 import { promises as fs } from 'fs';
 import { formatAst } from './ast/formatter';
+import { handleTypes } from './stages/TypeSystem';
 // import { resolve } from './stages/Resolver';
 
 export class Compiler {
@@ -23,7 +24,7 @@ export class Compiler {
 
         const scope = resolveNames(ctx);
 
-        for (const { target } of root) {
+        for (const { targetId: target } of root) {
             const node = ctx.nodes[target];
 
             switch (node.tag) {
@@ -41,6 +42,7 @@ export class Compiler {
 
         if (enableTypeChecking) {
             console.log("Type checking enabled")
+            handleTypes(ctx);
         }
 
         return new Interpreter(ctx, root, scope);

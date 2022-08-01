@@ -21,14 +21,14 @@ export enum Tag {
     While,
 
     // Ref
-    RefFieldId,
+    RefField,
     RefFieldName,
     RefGlobal,
-    RefId,
+    RefLocal,
     RefIds,
     RefInfer,
     RefName,
-    RefUpvalue,
+    RefUp,
 }
 
 export type Node =
@@ -36,7 +36,7 @@ export type Node =
     | Ref<Expr>
 
 export type Type<T extends Node = Node> = Ref<T>;
-export type Local<T extends Node = Node> = RefId<T>;
+export type Local<T extends Node = Node> = RefLocal<T>;
 
 // =============================================================================
 export type Expr =
@@ -275,46 +275,13 @@ export class While {
 export type Ref<T extends Node = Node> =
     | RefFieldName<T>
     | RefGlobal<T>
-    | RefId<T>
+    | RefLocal<T>
     | RefIds<T>
     | RefInfer
     | RefName<T>
-    | RefUpvalue<T>
+    | RefUp<T>
+    | RefField<T>
 
-export class RefFieldId<T extends Node = Node> {
-    readonly tag = Tag.RefFieldId
-
-    constructor(
-        readonly object: Ref,
-        readonly target: number,
-    ) { }
-}
-
-export class RefFieldName<T extends Node = Node> {
-    readonly tag = Tag.RefFieldName
-
-    constructor(
-        public object: Ref,
-        readonly target: string,
-    ) { }
-}
-
-export class RefGlobal<T extends Node = Node> {
-    readonly tag = Tag.RefGlobal
-
-    constructor(
-        public targetId: number,
-    ) { }
-}
-
-// Reference a single symbol
-export class RefId<T extends Node = Node> {
-    readonly tag = Tag.RefId
-
-    constructor(
-        readonly target: number,
-    ) { }
-}
 
 // Reference a collection of symbols (ie. Overload resolution hasn't happened)
 export class RefIds<T extends Node = Node> {
@@ -330,6 +297,15 @@ export class RefInfer {
     readonly tag = Tag.RefInfer
 }
 
+export class RefFieldName<T extends Node = Node> {
+    readonly tag = Tag.RefFieldName
+
+    constructor(
+        public object: Ref,
+        readonly target: string,
+    ) { }
+}
+
 export class RefName<T extends Node = Node> {
     readonly tag = Tag.RefName
 
@@ -338,11 +314,44 @@ export class RefName<T extends Node = Node> {
     ) { }
 }
 
-export class RefUpvalue<T extends Node = Node> {
-    readonly tag = Tag.RefUpvalue;
+
+
+
+
+export class RefGlobal<T extends Node = Node> {
+    readonly tag = Tag.RefGlobal
+
+    constructor(
+        public targetId: number,
+    ) { }
+}
+
+// Reference a single symbol
+export class RefLocal<T extends Node = Node> {
+    readonly tag = Tag.RefLocal
+
+    constructor(
+        readonly targetId: number,
+    ) { }
+}
+
+export class RefUp<T extends Node = Node> {
+    readonly tag = Tag.RefUp;
 
     constructor(
         readonly targetId: number,
         readonly distance: number,
     ) { }
 }
+
+export class RefField<T extends Node = Node> {
+    readonly tag = Tag.RefField
+
+    constructor(
+        readonly objectRef: Ref,
+        readonly targetId: number,
+    ) { }
+}
+
+
+// References 2.0

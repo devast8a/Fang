@@ -35,7 +35,7 @@ export class Resolve {
 
     private resolve(scope: Scope, ref: Ref) {
         switch (ref.tag) {
-            case Tag.RefId: {
+            case Tag.RefLocal: {
                 this.resolveNode(scope, this.ctx.get(ref));
                 return ref;
             }
@@ -64,11 +64,11 @@ export class Resolve {
         const ref = node[field] as any as Ref;
 
         switch (ref.tag) {
-            case Tag.RefId: {
+            case Tag.RefLocal: {
                 this.resolveNode(scope, this.ctx.get(ref));
 
                 if (scope.type === ScopeType.Global) {
-                    node[field] = new RefGlobal(ref.target) as any;
+                    node[field] = new RefGlobal(ref.targetId) as any;
                     break;
                 }
 
@@ -169,7 +169,7 @@ export class Resolve {
 
                 const inner = scope.push(ScopeType.Function);
                 this.visit(inner, node.parameters);
-                this.visit(inner, node.returnType);
+                this.resolveREF(scope, node, 'returnType');
                 this.visit(inner, node.body);
                 break;
             }
@@ -227,7 +227,7 @@ export class Resolve {
             }
 
             case Tag.Variable: {
-                this.visit(scope, node.type);
+                this.resolveREF(scope, node, 'type');
                 this.define(scope, node.name, node);
                 break;
             }
@@ -245,11 +245,12 @@ export class Resolve {
             }
 
             case Tag.RefGlobal:
-            case Tag.RefId:
+            case Tag.RefLocal:
             case Tag.RefIds:
             case Tag.RefInfer:
             case Tag.RefName:
-            case Tag.RefUpvalue:
+            case Tag.RefUp:
+            case Tag.RefField:
                 break;
 
             default: {
@@ -259,7 +260,7 @@ export class Resolve {
     }
 
     public define(scope: Scope, name: string, node: Node & { id: number }) {
-        scope.declare(name, node.id);
+        scope.declare(name, node.id, node.tag !== Tag.Variable);
     }
 }
 

@@ -1,6 +1,6 @@
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { Node, Ref, RefId, VariableFlags } from '../ast/nodes'
+import { Node, Ref, RefLocal, VariableFlags } from '../ast/nodes'
 import { unimplemented } from '../utils'
 import { list, either, opt, Rules, seq, Builder, star } from './generator'
 
@@ -10,8 +10,8 @@ const { rule, def } = Rules<Ctx>()
 // Define these at the top of the file because they are used commonly throughout the file.
 
 // == Core Rules ==
-const Atom = rule<RefId>()  // Simple expression, no spaces, unless delimited. eg. "(a + b)" is ok
-const Expr = rule<RefId>()  // Any expression.
+const Atom = rule<RefLocal>()  // Simple expression, no spaces, unless delimited. eg. "(a + b)" is ok
+const Expr = rule<RefLocal>()  // Any expression.
 const Type = rule<Ref>()    // A type expression.
 const Symbol = rule<Ref>()
 
@@ -61,7 +61,7 @@ const Body = rule(
     (ctx, list) => list
 )
 
-const BodyX = rule<RefId[]>();
+const BodyX = rule<RefLocal[]>();
 BodyX.add(seq(N_, Body).get(1));
 BodyX.add(
     () => def(_, '=>', N_, Expr),
@@ -304,15 +304,15 @@ Expr.add(Move, addNode);
 {
     const Operator  = /[~!@#$%^&*+=|?/:.\-\\<>]+/
     const LogicalOp = either(['and', 'or'])
-    const Logical   = rule<RefId>() // x or y
-    const Spaced    = rule<RefId>() // x + y
-    const Unary     = rule<RefId>() // x++
-    const Compact   = rule<RefId>() // x+y
+    const Logical   = rule<RefLocal>() // x or y
+    const Spaced    = rule<RefLocal>() // x + y
+    const Unary     = rule<RefLocal>() // x++
+    const Compact   = rule<RefLocal>() // x+y
 
-    const B = (ctx: Ctx, left: RefId, ls: any, op: string, rs: any, right: RefId) =>
+    const B = (ctx: Ctx, left: RefLocal, ls: any, op: string, rs: any, right: RefLocal) =>
         ctx.add(new Nodes.Call(ref(`infix${op}`), [left, right]))
 
-    const U = (ctx: Ctx, type: string, op: string, value: RefId) =>
+    const U = (ctx: Ctx, type: string, op: string, value: RefLocal) =>
         ctx.add(new Nodes.Call(ref(type + op), [value]))
 
     Expr.add(Logical)
