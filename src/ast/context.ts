@@ -1,10 +1,10 @@
-import { Node, Tag, RefLocal, Ref } from './nodes';
-import { unimplemented } from '../utils';
+import { Node, LocalRef, Ref, Distance } from './nodes';
 import { Builtins, populateBuiltins } from '../builtins';
 
 export class Ctx {
     public readonly builtins: Builtins;
-    public root: RefLocal[] = [];
+    public root: LocalRef[] = [];
+    public LOG = false;
 
     private constructor(
         public readonly nodes: Node[],
@@ -22,19 +22,10 @@ export class Ctx {
         (node as any).id = id;
         this.nodes.push(node);
 
-        return new RefLocal<T>(id);
+        return new Ref<T>(null, id, Distance.Local);
     }
 
     public get<T extends Node>(ref: Ref<T>): T {
-        switch (ref.tag) {
-            case Tag.RefField:
-            case Tag.RefGlobal:
-            case Tag.RefLocal:
-            case Tag.RefUp:
-                return this.nodes[ref.targetId] as T;
-
-            case Tag.RefIds:     return this.nodes[ref.target[0]] as T;
-            default: throw unimplemented(ref as never);
-        }
+        return this.nodes[ref.id] as T;
     }
 }

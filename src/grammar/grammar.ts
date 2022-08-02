@@ -1,6 +1,6 @@
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { Node, Ref, RefLocal, VariableFlags } from '../ast/nodes'
+import { Node, Ref, LocalRef, VariableFlags, Distance } from '../ast/nodes'
 import { unimplemented } from '../utils'
 import { list, either, opt, Rules, seq, Builder, star } from './generator'
 
@@ -10,10 +10,10 @@ const { rule, def } = Rules<Ctx>()
 // Define these at the top of the file because they are used commonly throughout the file.
 
 // == Core Rules ==
-const Atom = rule<RefLocal>()  // Simple expression, no spaces, unless delimited. eg. "(a + b)" is ok
-const Expr = rule<RefLocal>()  // Any expression.
+const Atom = rule<LocalRef>()  // Simple expression, no spaces, unless delimited. eg. "(a + b)" is ok
+const Expr = rule<LocalRef>()  // Any expression.
 const Type = rule<Ref>()    // A type expression.
-const Symbol = rule<Ref>()
+const Symbol = rule<Ref<any>>()
 
 Type.add(Symbol)
 
@@ -37,17 +37,17 @@ const Comma     = either([NL, seq(',', _)])
 
 // == Identifier ==
 const Identifier = /[_a-zA-Z][_a-zA-Z0-9]*/
-Symbol.add(Identifier, (ctx, name) => new Nodes.RefName(name))
+Symbol.add(Identifier, (ctx, name) => ref(name));
 
 const Name = rule<string>();
 Name.add(Identifier, (ctx, name) => name);
 
 function infer() {
-    return new Nodes.RefInfer();
+    return new Nodes.Ref(null, null, Distance.Unknown);
 }
 
 function ref(name: string) {
-    return new Nodes.RefName<any>(name);
+    return new Nodes.Ref<any>(null, name, Distance.Unknown);
 }
 
 function addNode(ctx: Ctx, node: Node) {
@@ -61,7 +61,7 @@ const Body = rule(
     (ctx, list) => list
 )
 
-const BodyX = rule<RefLocal[]>();
+const BodyX = rule<LocalRef[]>();
 BodyX.add(seq(N_, Body).get(1));
 BodyX.add(
     () => def(_, '=>', N_, Expr),
@@ -205,7 +205,7 @@ Atom.add(Get, addNode);
 const IndexBracket = rule(
     def(Atom, '[', Expr, ']'),
     (ctx, target, left, field, right) =>
-        new Nodes.RefFieldName(target, field as any),
+        new Nodes.Ref(target, field as any, Distance.Unknown),
 );
 
 Symbol.add(IndexBracket);
@@ -213,7 +213,7 @@ Symbol.add(IndexBracket);
 // == Index Dot ==
 const IndexDot = rule(
     () => def(Atom, Dot, Name),
-    (ctx, target, op, field) => new Nodes.RefFieldName(target, field)
+    (ctx, target, op, field) => new Nodes.Ref(target, field, Distance.Unknown)
 )
 
 Symbol.add(IndexDot);
@@ -304,15 +304,15 @@ Expr.add(Move, addNode);
 {
     const Operator  = /[~!@#$%^&*+=|?/:.\-\\<>]+/
     const LogicalOp = either(['and', 'or'])
-    const Logical   = rule<RefLocal>() // x or y
-    const Spaced    = rule<RefLocal>() // x + y
-    const Unary     = rule<RefLocal>() // x++
-    const Compact   = rule<RefLocal>() // x+y
+    const Logical   = rule<LocalRef>() // x or y
+    const Spaced    = rule<LocalRef>() // x + y
+    const Unary     = rule<LocalRef>() // x++
+    const Compact   = rule<LocalRef>() // x+y
 
-    const B = (ctx: Ctx, left: RefLocal, ls: any, op: string, rs: any, right: RefLocal) =>
+    const B = (ctx: Ctx, left: LocalRef, ls: any, op: string, rs: any, right: LocalRef) =>
         ctx.add(new Nodes.Call(ref(`infix${op}`), [left, right]))
 
-    const U = (ctx: Ctx, type: string, op: string, value: RefLocal) =>
+    const U = (ctx: Ctx, type: string, op: string, value: LocalRef) =>
         ctx.add(new Nodes.Call(ref(type + op), [value]))
 
     Expr.add(Logical)
@@ -338,9 +338,9 @@ Expr.add(Move, addNode);
     Compact.add(def(Compact, Operator, Atom), (ctx, left, op, right) => B(ctx, left, null, op, null, right))
     Compact.add(Atom)
 
-    Symbol.add(def('infix',   Operator), (ctx, l, r) => new Nodes.RefName(l + r))
-    Symbol.add(def('postfix', Operator), (ctx, l, r) => new Nodes.RefName(l + r))
-    Symbol.add(def('prefix', Operator), (ctx, l, r) => new Nodes.RefName(l + r))
+    Symbol.add(def('infix',   Operator), (ctx, l, r) => ref(l + r))
+    Symbol.add(def('postfix', Operator), (ctx, l, r) => ref(l + r))
+    Symbol.add(def('prefix', Operator), (ctx, l, r) => ref(l + r))
     Name.add(def('infix',   Operator), (ctx, l, r) => l + r)
     Name.add(def('postfix', Operator), (ctx, l, r) => l + r)
     Name.add(def('prefix', Operator), (ctx, l, r) => l + r)

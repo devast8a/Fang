@@ -1,4 +1,4 @@
-import { RefGlobal, RefLocal, RefIds, RefUp } from './nodes';
+import { Distance, Ref } from './nodes';
 
 class Sym {
     constructor(
@@ -37,7 +37,7 @@ export class Scope {
     public lookup(symbol: string) {
         let start: Scope = this;
         let current: Scope | null = this;
-        let distance = 0;
+        let distance = Distance.Local as number; // Distance.Local is zero
         let sym: Sym | undefined;
 
         // Search for the symbol
@@ -70,18 +70,11 @@ export class Scope {
             start = start.parent!;
         }
 
-        if (sym.all && sym.ids.length > 1) {
-            return new RefIds(sym.ids);
-        } else {
-            const id = sym.ids[sym.ids.length - 1];
-            if (current.type === ScopeType.Global) {
-                return new RefGlobal(id);
-            } else if (distance === 0) {
-                return new RefLocal(id);
-            } else {
-                return new RefUp(id, distance);
-            }
-        }
+        return new Ref(
+            null,
+            sym.all && sym.ids.length > 1 ? sym.ids : sym.ids[0],
+            current.type === ScopeType.Global ? Distance.Global : distance,
+        );
     }
 }
 

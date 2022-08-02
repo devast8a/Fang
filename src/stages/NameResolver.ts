@@ -1,4 +1,4 @@
-import { Node, Ref, RefGlobal, Tag } from '../ast/nodes';
+import { Distance, Node, Ref, Tag } from '../ast/nodes';
 import { Scope, ScopeType } from "../ast/Scope";
 import { Ctx } from '../ast/context';
 import { unimplemented, unreachable } from '../utils';
@@ -23,90 +23,65 @@ export class Resolve {
             return;
         }
 
+        // Errors about ref not having an id indicate that .resolve should have been used rather than .visit
         if (visitable instanceof Array) {
             for (const ref of visitable) {
-                this.resolve(scope, ref);
+                this.resolveNode(scope, this.ctx.get(ref));
             }
             return;
-        } else {
-            this.resolve(scope, visitable);
         }
+
+        this.resolveNode(scope, this.ctx.get(visitable));
     }
 
-    private resolve(scope: Scope, ref: Ref) {
-        switch (ref.tag) {
-            case Tag.RefLocal: {
-                this.resolveNode(scope, this.ctx.get(ref));
-                return ref;
-            }
-                
-            case Tag.RefName: {
-                // Perform a lookup
-                return ref;
-            }
-
-            case Tag.RefFieldName: {
-                ref.object = this.resolve(scope, ref.object);
-                return ref;
-            }
-                
-            case Tag.RefInfer: {
-                return ref;
-            }
-
-            default: {
-                throw unimplemented(ref as never);
-            }
-        }
-    }
-
-    private resolveREF<T extends Node & { id: number }, K extends keyof T>(scope: Scope, node: T, field: K) {
+    private resolve<T extends Node & { id: number }, K extends keyof T>(scope: Scope, node: T, field: K) {
         const ref = node[field] as any as Ref;
 
-        switch (ref.tag) {
-            case Tag.RefLocal: {
+        switch (typeof ref.target) {
+            case 'string': {
+                if (ref.object !== null) {
+                    this.resolveNode(scope, this.ctx.get(ref.object));
+                    return;
+                }
+
+                const target = scope.lookup(ref.target);
+
+                if (target === null) {
+                    this.lookups.push({ scope, node, field, symbol: ref.target });
+                } else {
+                    node[field] = target as any;
+                }
+                return;
+            }
+                
+            case 'number': {
+                if (ref.object !== null) {
+                    this.resolveNode(scope, this.ctx.get(ref.object));
+                    return;
+                }
+
                 this.resolveNode(scope, this.ctx.get(ref));
 
-                if (scope.type === ScopeType.Global) {
-                    node[field] = new RefGlobal(ref.targetId) as any;
-                    break;
+                if (ref.distance === Distance.Local && scope.type === ScopeType.Global) {
+                    node[field] = new Ref(ref.object, ref.target, Distance.Global) as any;
                 }
-
-                break;
+                return;
             }
                 
-            case Tag.RefName: {
-                // Perform a lookup
-                const result = scope.lookup(ref.target);
-
-                if (result === null) {
-                    this.lookups.push({
-                        field: field,
-                        symbol: ref.target,
-                        node: node,
-                        scope: scope,
-                    });
-                    return ref;
+            case 'object': {
+                if (ref.object !== null) {
+                    this.resolveNode(scope, this.ctx.get(ref.object));
                 }
 
-                node[field] = result as any;
-                break;
-            }
-
-            case Tag.RefFieldName: {
-                ref.object = this.resolve(scope, ref.object);
-                if (typeof ref.target === 'object') {
-                    (ref as any).target = this.resolve(scope, ref.target);
+                const target = ref.target as Ref | null;
+                if (target !== null) {
+                    this.resolveNode(scope, this.ctx.get(target));
                 }
-                break;
+                return;
             }
                 
-            case Tag.RefInfer: {
-                break;
-            }
-
             default: {
-                throw unimplemented(ref as never);
+                throw unimplemented('Unhandled ref type');
             }
         }
     }
@@ -127,7 +102,7 @@ export class Resolve {
             }
 
             case Tag.Call: {
-                this.resolveREF(scope, node, 'target');
+                this.resolve(scope, node, 'target');
                 this.visit(scope, node.args);
                 break;
             }
@@ -137,7 +112,7 @@ export class Resolve {
             }
 
             case Tag.Construct: {
-                this.resolveREF(scope, node, 'target');
+                this.resolve(scope, node, 'target');
                 this.visit(scope, node.args);
                 break;
             }
@@ -169,13 +144,13 @@ export class Resolve {
 
                 const inner = scope.push(ScopeType.Function);
                 this.visit(inner, node.parameters);
-                this.resolveREF(scope, node, 'returnType');
+                this.resolve(scope, node, 'returnType');
                 this.visit(inner, node.body);
                 break;
             }
 
             case Tag.Get: {
-                this.resolveREF(scope, node, 'source');
+                this.resolve(scope, node, 'source');
                 break;
             }
 
@@ -207,7 +182,7 @@ export class Resolve {
             }
 
             case Tag.Set: {
-                this.resolveREF(scope, node, 'target');
+                this.resolve(scope, node, 'target');
                 this.visit(scope, node.source);
                 break;
             }
@@ -227,8 +202,12 @@ export class Resolve {
             }
 
             case Tag.Variable: {
-                this.resolveREF(scope, node, 'type');
+                this.resolve(scope, node, 'type');
                 this.define(scope, node.name, node);
+
+                if (this.ctx.LOG) {
+                    console.log(scope);
+                }
                 break;
             }
 
@@ -237,21 +216,6 @@ export class Resolve {
                 this.visit(scope, node.body);
                 break;
             }
-            
-            // Refs
-            case Tag.RefFieldName: {
-                this.visit(scope, node.object);
-                break;
-            }
-
-            case Tag.RefGlobal:
-            case Tag.RefLocal:
-            case Tag.RefIds:
-            case Tag.RefInfer:
-            case Tag.RefName:
-            case Tag.RefUp:
-            case Tag.RefField:
-                break;
 
             default: {
                 throw unreachable(node);

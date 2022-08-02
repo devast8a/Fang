@@ -1,6 +1,6 @@
 import * as Nodes from './ast/nodes';
 import { Ctx } from './ast/context';
-import { RefLocal, VariableFlags } from './ast/nodes';
+import { LocalRef, VariableFlags } from './ast/nodes';
 import { Scope, ScopeType } from "./ast/Scope";
 
 export type Builtins = ReturnType<typeof populateBuiltins>;
@@ -60,24 +60,24 @@ export function populateBuiltins(ctx: Ctx) {
     };
 }
 
-function mkFunc(ctx: Ctx, scope: Scope, name: string, returnType: RefLocal, parameters: RefLocal[]) {
+function mkFunc(ctx: Ctx, scope: Scope, name: string, returnType: LocalRef, parameters: LocalRef[]) {
     const ps = parameters.map((parameter, index) =>
         ctx.add(new Nodes.Variable(`_${index}`, parameter, VariableFlags.None))
     );
 
     const ref = ctx.add(new Nodes.Function(name, returnType, ps, [], true));
-    scope.declare(name, ref.targetId, false);
+    scope.declare(name, ref.id, false);
     return ref;
 }
 
-function mkType(ctx: Ctx, scope: Scope, name: string): RefLocal {
+function mkType(ctx: Ctx, scope: Scope, name: string): LocalRef {
     const ref = ctx.add(new Nodes.Struct(name, []));
-    scope.declare(name, ref.targetId, false);
+    scope.declare(name, ref.id, false);
     return ref;
 }
 
-function mkConst(ctx: Ctx, scope: Scope, type: RefLocal, name: string, value: any): RefLocal {
+function mkConst(ctx: Ctx, scope: Scope, type: LocalRef, name: string, value: any): LocalRef {
     const ref = ctx.add(new Nodes.Constant(type, value));
-    scope.declare(name, ref.targetId, false);
+    scope.declare(name, ref.id, false);
     return ref;
 }

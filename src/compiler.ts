@@ -5,7 +5,7 @@ import { resolveNames } from './stages/NameResolver';
 import { Interpreter } from './interpret/interpret';
 import { FangGrammar } from './grammar/grammar';
 import { promises as fs } from 'fs';
-import { formatAst } from './ast/formatter';
+import { formatNodes } from './ast/formatter';
 import { handleTypes } from './stages/TypeSystem';
 // import { resolve } from './stages/Resolver';
 
@@ -20,21 +20,30 @@ export class Compiler {
         const root = parser.parse(ctx, source.content);
         ctx.root = root;
 
+        for (const ref of root) {
+            const node = ctx.nodes[ref.id];
+
+            switch (node.tag) {
+                case Tag.BlockAttribute: {
+                    switch (node.target.target) {
+                        case 'DEBUG_ENABLE_LOGGING': ctx.LOG = true; break;
+                    }
+                }
+            }
+        }
+
         let enableTypeChecking = false;
 
         const scope = resolveNames(ctx);
 
-        for (const { targetId: target } of root) {
-            const node = ctx.nodes[target];
+        for (const ref of root) {
+            const node = ctx.nodes[ref.id];
 
             switch (node.tag) {
                 case Tag.BlockAttribute: {
-                    if (node.target.tag !== Tag.RefName) {
-                        break;
-                    }
                     switch (node.target.target) {
                         case 'DEBUG_TYPE_CHECK': enableTypeChecking = true; break;
-                        case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatAst(ctx, root)); break;
+                        case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatNodes(ctx, root)); break;
                     }
                 }
             }

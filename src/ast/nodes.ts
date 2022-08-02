@@ -1,3 +1,5 @@
+import { unreachable } from '../utils';
+
 export enum Tag {
     // Expr
     BlockAttribute,
@@ -19,27 +21,13 @@ export enum Tag {
     Trait,
     Variable,
     While,
-
-    // Ref
-    RefField,
-    RefFieldName,
-    RefGlobal,
-    RefLocal,
-    RefIds,
-    RefInfer,
-    RefName,
-    RefUp,
 }
 
-export type Node =
-    | Expr
-    | Ref<Expr>
-
 export type Type<T extends Node = Node> = Ref<T>;
-export type Local<T extends Node = Node> = RefLocal<T>;
+export type LocalRef<T extends Node = Node> = Ref<T>;
 
 // =============================================================================
-export type Expr =
+export type Node =
     | BlockAttribute
     | Break
     | Call
@@ -77,7 +65,7 @@ export class Break {
 
     constructor(
         readonly target: Ref | null,
-        readonly value: Local | null,
+        readonly value: LocalRef | null,
     ) { }
 }
 
@@ -87,7 +75,7 @@ export class Call {
 
     constructor(
         readonly target: Ref<Function>,
-        readonly args: readonly Local[],
+        readonly args: readonly LocalRef[],
     ) { }
 }
 
@@ -107,7 +95,7 @@ export class Construct {
 
     constructor(
         readonly target: Ref<Struct>,
-        readonly args: readonly Local[],
+        readonly args: readonly LocalRef[],
     ) { }
 }
 
@@ -117,7 +105,7 @@ export class Continue {
 
     constructor(
         readonly target: Ref | null,
-        readonly value: Local | null,
+        readonly value: LocalRef | null,
     ) { }
 }
 
@@ -127,7 +115,7 @@ export class Enum {
 
     constructor(
         readonly name: string,
-        readonly body: Local[],
+        readonly body: LocalRef[],
     ) { }
 }
 
@@ -136,9 +124,9 @@ export class ForEach {
     readonly id = id();
 
     constructor(
-        readonly element: Local,
-        readonly collection: Local,
-        readonly body: Local[],
+        readonly element: LocalRef,
+        readonly collection: LocalRef,
+        readonly body: LocalRef[],
     ) {}
 }
 
@@ -149,8 +137,8 @@ export class Function {
     constructor(
         readonly name: string | null,
         readonly returnType: Type,
-        readonly parameters: readonly Local<Variable>[],
-        readonly body: Local[],
+        readonly parameters: readonly LocalRef<Variable>[],
+        readonly body: LocalRef[],
         readonly external = false,
     ) { }
 }
@@ -175,8 +163,8 @@ export class If {
 
 export class IfCase {
     constructor(
-        readonly condition: Local | null,
-        readonly body: Local[],
+        readonly condition: LocalRef | null,
+        readonly body: LocalRef[],
     ) { }
 }
 
@@ -185,15 +173,15 @@ export class Match {
     readonly id = id();
 
     constructor(
-        readonly value: Local,
+        readonly value: LocalRef,
         readonly cases: MatchCase[],
     ) { }
 }
 
 export class MatchCase {
     constructor(
-        readonly value: Local,
-        readonly body: Local[],
+        readonly value: LocalRef,
+        readonly body: LocalRef[],
     ) { }
 }
 
@@ -202,7 +190,7 @@ export class Move {
     readonly id = id();
 
     constructor(
-        readonly value: Local,
+        readonly value: LocalRef,
     ) { }
 }
 
@@ -211,7 +199,7 @@ export class Return {
     readonly id = id();
 
     constructor(
-        readonly value: Local | null,
+        readonly value: LocalRef | null,
     ) { }
 }
 
@@ -221,7 +209,7 @@ export class Set {
 
     constructor(
         readonly target: Ref<Variable>,
-        readonly source: Local,
+        readonly source: LocalRef,
     ) { }
 }
 
@@ -231,7 +219,7 @@ export class Struct {
 
     constructor(
         readonly name: string,
-        readonly body: Local[],
+        readonly body: LocalRef[],
     ) { }
 }
 
@@ -241,7 +229,7 @@ export class Trait {
 
     constructor(
         readonly name: string,
-        readonly body: Local[],
+        readonly body: LocalRef[],
     ) { }
 }
 
@@ -266,92 +254,33 @@ export class While {
     readonly id = id();
 
     constructor(
-        readonly condition: Local,
-        readonly body: Local[],
+        readonly condition: LocalRef,
+        readonly body: LocalRef[],
     ) {}
 }
 
 // =============================================================================
-export type Ref<T extends Node = Node> =
-    | RefFieldName<T>
-    | RefGlobal<T>
-    | RefLocal<T>
-    | RefIds<T>
-    | RefInfer
-    | RefName<T>
-    | RefUp<T>
-    | RefField<T>
-
-
-// Reference a collection of symbols (ie. Overload resolution hasn't happened)
-export class RefIds<T extends Node = Node> {
-    readonly tag = Tag.RefIds
+export class Ref<T = Node> {
+    // Include T in Ref's structure for typescript's structural type system
+    private _type!: T;
 
     constructor(
-        readonly target: number[],
+        readonly object: Ref | null,
+        readonly target: string | number | number[] | null,
+        readonly distance: number | Distance,
     ) { }
+
+    get id() {
+        if (typeof this.target !== 'number') {
+            throw unreachable('Ref must have number as a target');
+        }
+
+        return this.target;
+    }
 }
 
-// Used to mark that a type should be inferred
-export class RefInfer {
-    readonly tag = Tag.RefInfer
+export enum Distance {
+    Global  = 'Global',
+    Local   = 0,
+    Unknown = 'Unknown',
 }
-
-export class RefFieldName<T extends Node = Node> {
-    readonly tag = Tag.RefFieldName
-
-    constructor(
-        public object: Ref,
-        readonly target: string,
-    ) { }
-}
-
-export class RefName<T extends Node = Node> {
-    readonly tag = Tag.RefName
-
-    constructor(
-        readonly target: string,
-    ) { }
-}
-
-
-
-
-
-export class RefGlobal<T extends Node = Node> {
-    readonly tag = Tag.RefGlobal
-
-    constructor(
-        public targetId: number,
-    ) { }
-}
-
-// Reference a single symbol
-export class RefLocal<T extends Node = Node> {
-    readonly tag = Tag.RefLocal
-
-    constructor(
-        readonly targetId: number,
-    ) { }
-}
-
-export class RefUp<T extends Node = Node> {
-    readonly tag = Tag.RefUp;
-
-    constructor(
-        readonly targetId: number,
-        readonly distance: number,
-    ) { }
-}
-
-export class RefField<T extends Node = Node> {
-    readonly tag = Tag.RefField
-
-    constructor(
-        readonly objectRef: Ref,
-        readonly targetId: number,
-    ) { }
-}
-
-
-// References 2.0

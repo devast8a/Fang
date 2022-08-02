@@ -1,5 +1,5 @@
 import { Ctx } from '../ast/context';
-import { RefLocal, Tag, Function, Ref, Struct, Variable, Trait } from '../ast/nodes';
+import { LocalRef, Tag, Function, Ref, Struct, Variable, Trait, Distance } from '../ast/nodes';
 import { Scope } from "../ast/Scope";
 import { unimplemented } from '../utils';
 import { VmEnvironment } from './VmEnvironment';
@@ -11,11 +11,11 @@ export class Interpreter {
 
     constructor(
         private ctx: Ctx,
-        private root: RefLocal[],
+        private root: LocalRef[],
         private scope: Scope,
     ) {
         for (const ref of root) {
-            const id = ref.targetId;
+            const id = ref.id;
             const node = this.ctx.get(ref);
 
             switch (node.tag) {
@@ -36,7 +36,7 @@ export class Interpreter {
         }
     }
 
-    private evaluate(ref: RefLocal | null, env: VmEnvironment): any {
+    private evaluate(ref: LocalRef | null, env: VmEnvironment): any {
         if (ref === null) {
             return null;
         }
@@ -90,7 +90,7 @@ export class Interpreter {
                 const collection = Value.unwrap(this.evaluate(node.collection, env));
 
                 for (const element of collection) {
-                    env.locals[node.element.targetId] = element;
+                    env.locals[node.element.id] = element;
                     const body = this.evaluateBody(node.body, env);
 
                     if (Value.isExit(body)) {
@@ -145,11 +145,11 @@ export class Interpreter {
             }
 
             case Tag.Struct: {
-                return this.globals[ref.targetId];
+                return this.globals[ref.id];
             }
                 
             case Tag.Trait: {
-                return this.globals[ref.targetId];
+                return this.globals[ref.id];
             }
                 
             case Tag.While: {
@@ -175,13 +175,13 @@ export class Interpreter {
         }
 
         for (let i = 0; i < args.length; i++) {
-            env.locals[fn.parameters[i].targetId] = args[i];
+            env.locals[fn.parameters[i].id] = args[i];
         }
 
         return Value.unwrap(this.evaluateBody(fn.body, env));
     }
 
-    private evaluateBody(body: RefLocal[], env: VmEnvironment) {
+    private evaluateBody(body: LocalRef[], env: VmEnvironment) {
         for (const ref of body) {
             const result = this.evaluate(ref, env);
 
@@ -199,76 +199,48 @@ export class Interpreter {
 
         const result = this.scope.lookup(name);
 
-        if (result === null || result.tag !== Tag.RefLocal) {
+        if (result === null) {
             return null;
         }
 
-        return this.globals[result.targetId];
+        return this.globals[result.id];
     }
 
-    private resolve(ref: Ref, env: VmEnvironment): {target: any, member: any} {
-        switch (ref.tag) {
-            case Tag.RefGlobal: {
-                return { target: this.globals, member: ref.targetId };
+    private resolve(ref: Ref, env: VmEnvironment): { target: any, member: any } {
+        if (ref.object !== null) {
+            const obj = this.evaluate(ref.object, env);
+
+            // Hack bracket indexing
+            if (ref.target as any instanceof Ref) {
+                return { target: obj, member: this.evaluate(ref.target as any, env) };
             }
 
-            case Tag.RefLocal: {
-                if (env.locals[ref.targetId] !== undefined) {
-                    return { target: env.locals, member: ref.targetId };
-                }
+            return { target: obj, member: ref.target };
+        }
 
-                if (this.globals[ref.targetId] !== undefined) {
-                    return { target: this.globals, member: ref.targetId };
-                }
-
-                return {target: env.locals, member: ref.targetId}
+        if (typeof ref.target === 'string') {
+            if (externals[ref.target] === undefined) {
+                throw new Error(`Could not resolve ${ref.target}`);
             }
 
-            // TODO: Replace with lookup in VmEnvironment. Blocked on resolving RefGlobal
-            case Tag.RefUp: {
-                try {
-                    return env.lookup(ref.targetId, ref.distance);
-                }
-                catch (e) {
-                    console.log(this.ctx.nodes[ref.targetId]);
-                    throw e;
-                }
-            }
-                
-            case Tag.RefName: {
-                if (isOperator(ref.target)) {
-                    return {
-                        member: 'fn',
-                        target: { fn: operator(ref.target) },
-                    };
-                }
+            return {target: externals, member: ref.target}
+        }
 
-                if (externals[ref.target] === undefined) {
-                    throw unimplemented(`External identifier: ${ref.target}`);
-                }
+        switch (ref.distance) {
+            case Distance.Global: return { target: this.globals, member: ref.target };
 
-                return { target: externals, member: ref.target };
+            case Distance.Local: {
+                const id = ref.target as number;
+                if (env.locals[id] !== undefined) return { target: env.locals, member: id };
+                if (this.globals[id] !== undefined) return { target: this.globals, member: id };
+                return { target: env.locals, member: id };
             }
                 
-            case Tag.RefFieldName: {
-                const object = this.evaluate(ref.object as RefLocal, env);
-
-                if ((ref.target as any) instanceof RefLocal) {
-                    const target = this.evaluate(ref.target as any, env);
-                    return { target: object, member: target };
-                }
-
-                return { target: object, member: ref.target };
+            case Distance.Unknown: {
+                throw new Error('???');
             }
                 
-            case Tag.RefField: {
-                const object = this.evaluate(ref.objectRef as RefLocal, env);
-                const target = (this.ctx.get(ref) as any).name;
-
-                return { target: object, member: target };
-            }
-                
-            default: throw unimplemented(ref as never);
+            default: return env.lookup(ref.target as any, ref.distance);
         }
     }
 
@@ -334,7 +306,7 @@ export class Interpreter {
                 }
 
                 case Tag.Set: {
-                    const left = this.ctx.get(node.target as RefLocal);
+                    const left = this.ctx.get(node.target as LocalRef);
                     const right = this.ctx.get(node.source);
 
                     if (left.tag === Tag.Variable && right.tag === Tag.Constant) {
