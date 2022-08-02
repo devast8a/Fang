@@ -34,4 +34,4 @@ for i in 0 .. series.length-size {
     }
 }
 
-return max
+return max == 23514624000

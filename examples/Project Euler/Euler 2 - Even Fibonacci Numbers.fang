@@ -14,4 +14,4 @@ while current < 4_000_000 {
     }
 }
 
-return sum
+return sum == 4613732

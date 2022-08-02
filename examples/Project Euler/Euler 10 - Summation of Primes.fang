@@ -15,7 +15,7 @@ for candidate in 2..largest {
     }
 }
 
-return sum(primes)
+return sum(primes) == 142913828922
 
 # TODO: Expose as a library and import
 fn sum(ns: List_Num) {

@@ -1,4 +1,4 @@
-return sumN(100)**2 - sumNSquared(100)
+return (sumN(100)**2 - sumNSquared(100)) == 25164150
 
 # TODO: Expose as a library and import
 # The sum of the first n natural numbers. https://oeis.org/A000217

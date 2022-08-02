@@ -23,4 +23,4 @@ while i < sqrt {
     i = i + 1
 }
 
-return largest
+return largest == 6857

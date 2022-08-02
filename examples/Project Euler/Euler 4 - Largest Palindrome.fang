@@ -9,4 +9,4 @@ for x in 1..999 {
     }
 }
 
-return largest
+return largest == 906609

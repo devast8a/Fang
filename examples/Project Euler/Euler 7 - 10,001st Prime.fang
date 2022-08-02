@@ -15,4 +15,4 @@ for candidate in 2..largest {
     }
 }
 
-return primes[10_000]
+return primes[10_000] == 104743

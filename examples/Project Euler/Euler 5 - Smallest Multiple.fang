@@ -2,7 +2,7 @@ mut prev = 1
 for i in 1..20 {
     prev = lcm(prev, i)
 }
-return prev
+return prev == 232792560
 
 # TODO: Expose as a library and import
 fn gcd(a: Num, b: Num) {
