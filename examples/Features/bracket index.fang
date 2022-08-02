@@ -1,0 +1,10 @@
+# Failure of this test indicates a problem with indexing into lists
+fn main() {
+    val list = List{}
+    list.push(0)
+    list.push(1)
+    list.push(2)
+    list.push(3)
+
+    return list[2] == 2
+}
