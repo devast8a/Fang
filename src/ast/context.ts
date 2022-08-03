@@ -1,10 +1,9 @@
-import { Node, LocalRef, Ref, Distance } from './nodes';
+import { Node, LocalRef, Ref, Distance, RefById, RefType } from './nodes';
 import { Builtins, populateBuiltins } from '../builtins';
 
 export class Ctx {
     public readonly builtins: Builtins;
     public root: LocalRef[] = [];
-    public LOG = false;
 
     private constructor(
         public readonly nodes: Node[],
@@ -22,10 +21,14 @@ export class Ctx {
         (node as any).id = id;
         this.nodes.push(node);
 
-        return new Ref<T>(null, id, Distance.Local);
+        return new RefById<T>(null, id, Distance.Local);
     }
 
     public get<T extends Node>(ref: Ref<T>): T {
+        if (ref.type !== RefType.Id) {
+            throw new Error('ref must be RefById');
+        }
+
         return this.nodes[ref.id] as T;
     }
 }

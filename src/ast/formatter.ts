@@ -1,9 +1,9 @@
-import { unimplemented } from '../utils';
+import { unimplemented, unreachable } from '../utils';
 import { Ctx } from './context';
-import { Distance, Ref, Tag } from './nodes';
+import { Distance, Ref, RefType, Tag } from './nodes';
 
 export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
-    if (typeof ref.target !== 'number') {
+    if (ref.type !== RefType.Id) {
         return formatRef(ctx, ref);
     }
     const node = ctx.get(ref);
@@ -118,40 +118,52 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
     }
 }
 
-export function formatDistance(ref: Ref) {
-    switch (ref.distance) {
-        case Distance.Global:   return `^G`;
-        case Distance.Local:    return ``;
-        case Distance.Unknown:  return `^?`;
-        default:                return `^${ref.distance}`;
+export function formatDistance(ctx: Ctx, ref: Ref) {
+    switch (ref.type) {
+        case RefType.Id:
+        case RefType.Ids:
+            switch (ref.distance) {
+                case Distance.Global: return `^G`;
+                case Distance.Local:  return ``;
+                default:              return `^${ref.distance}`
+            }
+
+        case RefType.Expr:
+        case RefType.Infer:
+        case RefType.Name:
+            return ``;
     }
 }
 
 export function formatRef(ctx: Ctx, ref: Ref): string {
-    const distance = formatDistance(ref);
-
     const object = ref.object === null ? '' : formatNode(ctx, ref.object) + '.';
+    const distance = formatDistance(ctx, ref);
 
-    switch (typeof ref.target) {
-        case 'number': {
-            const node = ctx.nodes[ref.target];
-            const name = (node as any).name ?? '<unnamed>';
-            return `${object}${name}[${ref.target}${distance}]`
+    switch (ref.type) {
+        case RefType.Expr: {
+            const target = formatNode(ctx, ref.values[0]);
+            return `${object}[${target}]`;
         }
 
-        case 'string': {
-            const dist = ref.distance === Distance.Unknown ? '' : distance;
-            return `${object}${ref.target}[?${dist}]`;
+        case RefType.Id: {
+            const target = (ctx.get(ref) as any).name ?? '<anonymous>';
+            return `${object}${target}[${ref.id}${distance}]`;
+        }
+
+        case RefType.Ids: {
+            const target = (ctx.get(ref) as any).name ?? '<anonymous>';
+            return `${object}${target}[${ref.ids.join(',')}${distance}]`;
+        }
+
+        case RefType.Infer: {
+            return `${object}<infer>`;
+        }
+
+        case RefType.Name: {
+            return `${object}${ref.name}[?]`;
         }
     }
-
-    // HACK
-    if (ref.target as any instanceof Ref) {
-        const target = formatNode(ctx, ref.target as any);
-        return `${object}%[${target}]`;
-    }
-
-    throw unimplemented('Unable to format Ref')
+    throw unreachable(ref);
 }
 
 interface Options {

@@ -1,6 +1,6 @@
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { Node, Ref, LocalRef, VariableFlags, Distance } from '../ast/nodes'
+import { Node, Ref, LocalRef, VariableFlags, Distance, RefType } from '../ast/nodes'
 import { unimplemented } from '../utils'
 import { list, either, opt, Rules, seq, Builder, star } from './generator'
 
@@ -43,11 +43,11 @@ const Name = rule<string>();
 Name.add(Identifier, (ctx, name) => name);
 
 function infer() {
-    return new Nodes.Ref(null, null, Distance.Unknown);
+    return new Nodes.RefInfer(null);
 }
 
 function ref(name: string) {
-    return new Nodes.Ref<any>(null, name, Distance.Unknown);
+    return new Nodes.RefByName<any>(null, name);
 }
 
 function addNode(ctx: Ctx, node: Node) {
@@ -205,7 +205,7 @@ Atom.add(Get, addNode);
 const IndexBracket = rule(
     def(Atom, '[', Expr, ']'),
     (ctx, target, left, field, right) =>
-        new Nodes.Ref(target, field as any, Distance.Unknown),
+        new Nodes.RefByExpr(target, [field])
 );
 
 Symbol.add(IndexBracket);
@@ -213,7 +213,8 @@ Symbol.add(IndexBracket);
 // == Index Dot ==
 const IndexDot = rule(
     () => def(Atom, Dot, Name),
-    (ctx, target, op, field) => new Nodes.Ref(target, field, Distance.Unknown)
+    (ctx, target, op, field) =>
+        new Nodes.RefByName(target, field)
 )
 
 Symbol.add(IndexDot);

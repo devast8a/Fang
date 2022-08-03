@@ -1,4 +1,4 @@
-import { Distance, Node, Ref, Tag } from '../ast/nodes';
+import { Distance, Node, Ref, RefById, RefType, Tag } from '../ast/nodes';
 import { Scope, ScopeType } from "../ast/Scope";
 import { Ctx } from '../ast/context';
 import { unimplemented, unreachable } from '../utils';
@@ -37,52 +37,58 @@ export class Resolve {
     private resolve<T extends Node & { id: number }, K extends keyof T>(scope: Scope, node: T, field: K) {
         const ref = node[field] as any as Ref;
 
-        switch (typeof ref.target) {
-            case 'string': {
-                if (ref.object !== null) {
-                    this.resolveNode(scope, this.ctx.get(ref.object));
+        if (ref.object === null) {
+            // With no context
+            switch (ref.type) {
+                case RefType.Expr: {
+                    throw new Error('Can not RefByExpr on an empty context.');
+                }
+                    
+                case RefType.Id: {
+                    this.resolveNode(scope, this.ctx.nodes[ref.id]);
+
+                    if (ref.distance === Distance.Local && scope.type === ScopeType.Global) {
+                        node[field] = new RefById(ref.object, ref.id, Distance.Global) as any;
+                    }
                     return;
                 }
-
-                const target = scope.lookup(ref.target);
-
-                if (target === null) {
-                    this.lookups.push({ scope, node, field, symbol: ref.target });
-                } else {
-                    node[field] = target as any;
+                    
+                case RefType.Ids: {
+                    throw unimplemented(ref as never);
                 }
-                return;
-            }
-                
-            case 'number': {
-                if (ref.object !== null) {
-                    this.resolveNode(scope, this.ctx.get(ref.object));
+                    
+                case RefType.Infer: {
                     return;
                 }
+                    
+                case RefType.Name: {
+                    const target = scope.lookup(ref.name);
 
-                this.resolveNode(scope, this.ctx.get(ref));
+                    if (target === null) {
+                        this.lookups.push({ scope, node, field, symbol: ref.name });
+                    } else {
+                        node[field] = target as any;
+                    }
+                    return;
+                }
+            }
+            throw unreachable(ref);
+        } else {
+            this.resolveNode(scope, this.ctx.get(ref.object));
 
-                if (ref.distance === Distance.Local && scope.type === ScopeType.Global) {
-                    node[field] = new Ref(ref.object, ref.target, Distance.Global) as any;
+            switch (ref.type) {
+                case RefType.Expr: {
+                    this.resolveNode(scope, this.ctx.get(ref.values[0]));
+                    return;
                 }
-                return;
+                    
+                case RefType.Id:
+                case RefType.Ids:
+                case RefType.Infer:
+                case RefType.Name:
+                    return;
             }
-                
-            case 'object': {
-                if (ref.object !== null) {
-                    this.resolveNode(scope, this.ctx.get(ref.object));
-                }
-
-                const target = ref.target as Ref | null;
-                if (target !== null) {
-                    this.resolveNode(scope, this.ctx.get(target));
-                }
-                return;
-            }
-                
-            default: {
-                throw unimplemented('Unhandled ref type');
-            }
+            throw unreachable(ref);
         }
     }
 
@@ -204,10 +210,6 @@ export class Resolve {
             case Tag.Variable: {
                 this.resolve(scope, node, 'type');
                 this.define(scope, node.name, node);
-
-                if (this.ctx.LOG) {
-                    console.log(scope);
-                }
                 break;
             }
 

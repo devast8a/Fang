@@ -1,4 +1,4 @@
-import { Distance, Ref } from './nodes';
+import { Distance, Ref, RefById, RefByIds, RefType } from './nodes';
 
 class Sym {
     constructor(
@@ -70,11 +70,13 @@ export class Scope {
             start = start.parent!;
         }
 
-        return new Ref(
-            null,
-            sym.all && sym.ids.length > 1 ? sym.ids : sym.ids[0],
-            current.type === ScopeType.Global ? Distance.Global : distance,
-        );
+        const d = current.type === ScopeType.Global ? Distance.Global : distance;
+
+        if (sym.all && sym.ids.length > 1) {
+            return new RefByIds(null, sym.ids, d);
+        } else {
+            return new RefById(null, sym.ids[0], d);
+        }
     }
 }
 

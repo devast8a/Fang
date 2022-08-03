@@ -1,5 +1,5 @@
 import { Ctx as Ctx } from './ast/context';
-import { Tag } from './ast/nodes';
+import { RefType, Tag } from './ast/nodes';
 import { Source } from './common/source';
 import { resolveNames } from './stages/NameResolver';
 import { Interpreter } from './interpret/interpret';
@@ -20,28 +20,18 @@ export class Compiler {
         const root = parser.parse(ctx, source.content);
         ctx.root = root;
 
-        for (const ref of root) {
-            const node = ctx.nodes[ref.id];
-
-            switch (node.tag) {
-                case Tag.BlockAttribute: {
-                    switch (node.target.target) {
-                        case 'DEBUG_ENABLE_LOGGING': ctx.LOG = true; break;
-                    }
-                }
-            }
-        }
-
         let enableTypeChecking = false;
 
         const scope = resolveNames(ctx);
 
         for (const ref of root) {
-            const node = ctx.nodes[ref.id];
+            const node = ctx.get(ref);
 
             switch (node.tag) {
                 case Tag.BlockAttribute: {
-                    switch (node.target.target) {
+                    const target = node.target.type === RefType.Name ? node.target.name : '';
+
+                    switch (target) {
                         case 'DEBUG_TYPE_CHECK': enableTypeChecking = true; break;
                         case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatNodes(ctx, root)); break;
                     }

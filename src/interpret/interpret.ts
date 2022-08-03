@@ -1,5 +1,5 @@
 import { Ctx } from '../ast/context';
-import { LocalRef, Tag, Function, Ref, Struct, Variable, Trait, Distance } from '../ast/nodes';
+import { LocalRef, Tag, Function, Ref, Struct, Variable, Trait, Distance, RefType } from '../ast/nodes';
 import { Scope } from "../ast/Scope";
 import { unimplemented } from '../utils';
 import { VmEnvironment } from './VmEnvironment';
@@ -199,7 +199,7 @@ export class Interpreter {
 
         const result = this.scope.lookup(name);
 
-        if (result === null) {
+        if (result === null || result.type === RefType.Ids) {
             return null;
         }
 
@@ -207,40 +207,48 @@ export class Interpreter {
     }
 
     private resolve(ref: Ref, env: VmEnvironment): { target: any, member: any } {
-        if (ref.object !== null) {
-            const obj = this.evaluate(ref.object, env);
+        if (ref.object === null) {
+            // With no context
+            switch (ref.type) {
+                case RefType.Id: {
+                    switch (ref.distance) {
+                        case Distance.Global: {
+                            return { target: this.globals, member: ref.id };
+                        }
 
-            // Hack bracket indexing
-            if (ref.target as any instanceof Ref) {
-                return { target: obj, member: this.evaluate(ref.target as any, env) };
+                        case Distance.Local: {
+                            const id = ref.id as number;
+                            if (env.locals[id] !== undefined) return { target: env.locals, member: id };
+                            if (this.globals[id] !== undefined) return { target: this.globals, member: id };
+                            return { target: env.locals, member: id };
+                        }
+                            
+                        default: {
+                            return env.lookup(ref.id, ref.distance);
+                        }
+                    }
+                }
+                    
+                case RefType.Name: {
+                    if (externals[ref.name] === undefined) {
+                        throw new Error(`Could not resolve ${ref.name}`);
+                    }
+
+                    return { target: externals, member: ref.name };
+                }
+
+                default: {
+                    throw unimplemented(ref as never);
+                }
             }
+        } else {
+            const object = this.evaluate(ref.object as any, env);
 
-            return { target: obj, member: ref.target };
-        }
-
-        if (typeof ref.target === 'string') {
-            if (externals[ref.target] === undefined) {
-                throw new Error(`Could not resolve ${ref.target}`);
+            switch (ref.type) {
+                case RefType.Name: return { target: object, member: ref.name };
+                case RefType.Expr: return { target: object, member: this.evaluate(ref.values[0] as any, env) };
+                default: throw unimplemented(ref as never);
             }
-
-            return {target: externals, member: ref.target}
-        }
-
-        switch (ref.distance) {
-            case Distance.Global: return { target: this.globals, member: ref.target };
-
-            case Distance.Local: {
-                const id = ref.target as number;
-                if (env.locals[id] !== undefined) return { target: env.locals, member: id };
-                if (this.globals[id] !== undefined) return { target: this.globals, member: id };
-                return { target: env.locals, member: id };
-            }
-                
-            case Distance.Unknown: {
-                throw new Error('???');
-            }
-                
-            default: return env.lookup(ref.target as any, ref.distance);
         }
     }
 

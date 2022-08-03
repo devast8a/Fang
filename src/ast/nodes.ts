@@ -24,7 +24,7 @@ export enum Tag {
 }
 
 export type Type<T extends Node = Node> = Ref<T>;
-export type LocalRef<T extends Node = Node> = Ref<T>;
+export type LocalRef<T extends Node = Node> = RefById<T>;
 
 // =============================================================================
 export type Node =
@@ -260,27 +260,74 @@ export class While {
 }
 
 // =============================================================================
-export class Ref<T = Node> {
-    // Include T in Ref's structure for typescript's structural type system
-    private _type!: T;
+export type Ref<T extends Node = Node> =
+    | RefByExpr<T>
+    | RefById<T>
+    | RefByIds<T>
+    | RefByName<T>
+    | RefInfer<T>
+    ;
+
+export class RefByExpr<T extends Node = Node> {
+    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
+    readonly type = RefType.Expr;
 
     constructor(
         readonly object: Ref | null,
-        readonly target: string | number | number[] | null,
+        readonly values: Ref[],
+    ) { }
+}
+
+export class RefById<T extends Node = Node> {
+    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
+    readonly type = RefType.Id;
+
+    constructor(
+        readonly object: Ref | null,
+        readonly id: number,
         readonly distance: number | Distance,
     ) { }
+}
 
-    get id() {
-        if (typeof this.target !== 'number') {
-            throw unreachable('Ref must have number as a target');
-        }
+export class RefByIds<T extends Node = Node> {
+    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
+    readonly type = RefType.Ids;
 
-        return this.target;
-    }
+    constructor(
+        readonly object: Ref | null,
+        readonly ids: number[],
+        readonly distance: number | Distance,
+    ) { }
+}
+
+export class RefByName<T extends Node = Node> {
+    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
+    readonly type = RefType.Name;
+
+    constructor(
+        readonly object: Ref | null,
+        readonly name: string,
+    ) { }
+}
+
+export class RefInfer<T extends Node = Node> {
+    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
+    readonly type = RefType.Infer;
+
+    constructor(
+        readonly object: Ref | null,
+    ) { }
+}
+
+export enum RefType {
+    Expr,
+    Id,
+    Ids,
+    Name,
+    Infer,
 }
 
 export enum Distance {
     Global  = 'Global',
     Local   = 0,
-    Unknown = 'Unknown',
 }
