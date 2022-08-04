@@ -1,8 +1,8 @@
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { Node, Ref, LocalRef, VariableFlags, Distance, RefType } from '../ast/nodes'
+import { Node, Ref, LocalRef, VariableFlags } from '../ast/nodes'
 import { unimplemented } from '../utils'
-import { list, either, opt, Rules, seq, Builder, star } from './generator'
+import { list, either, opt, Rules, seq, star } from './generator'
 
 const { rule, def } = Rules<Ctx>()
 

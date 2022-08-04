@@ -21,6 +21,13 @@ export enum Tag {
     Trait,
     Variable,
     While,
+
+    // Ref
+    RefByExpr,
+    RefById,
+    RefByIds,
+    RefByName,
+    RefInfer,
 }
 
 export type Type<T extends Node = Node> = Ref<T>;
@@ -55,7 +62,7 @@ export class BlockAttribute {
     readonly id = id();
 
     constructor(
-        readonly target: Ref,
+        readonly attribute: Ref,
     ) { }
 }
 
@@ -64,7 +71,7 @@ export class Break {
     readonly id = id();
 
     constructor(
-        readonly target: Ref | null,
+        readonly loop: Ref | null,
         readonly value: LocalRef | null,
     ) { }
 }
@@ -74,7 +81,7 @@ export class Call {
     readonly id = id();
 
     constructor(
-        readonly target: Ref<Function>,
+        readonly func: Ref<Function>,
         readonly args: readonly LocalRef[],
     ) { }
 }
@@ -94,7 +101,7 @@ export class Construct {
     readonly id = id();
 
     constructor(
-        readonly target: Ref<Struct>,
+        readonly type: Ref<Struct>,
         readonly args: readonly LocalRef[],
     ) { }
 }
@@ -104,7 +111,7 @@ export class Continue {
     readonly id = id();
 
     constructor(
-        readonly target: Ref | null,
+        readonly loop: Ref | null,
         readonly value: LocalRef | null,
     ) { }
 }
@@ -269,8 +276,8 @@ export type Ref<T extends Node = Node> =
     ;
 
 export class RefByExpr<T extends Node = Node> {
-    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
-    readonly type = RefType.Expr;
+    private _type!: RefType<T>;
+    readonly tag = Tag.RefByExpr;
 
     constructor(
         readonly object: Ref | null,
@@ -279,8 +286,8 @@ export class RefByExpr<T extends Node = Node> {
 }
 
 export class RefById<T extends Node = Node> {
-    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
-    readonly type = RefType.Id;
+    private _type!: RefType<T>;
+    readonly tag = Tag.RefById;
 
     constructor(
         readonly object: Ref | null,
@@ -290,8 +297,8 @@ export class RefById<T extends Node = Node> {
 }
 
 export class RefByIds<T extends Node = Node> {
-    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
-    readonly type = RefType.Ids;
+    private _type!: RefType<T>;
+    readonly tag = Tag.RefByIds;
 
     constructor(
         readonly object: Ref | null,
@@ -301,8 +308,8 @@ export class RefByIds<T extends Node = Node> {
 }
 
 export class RefByName<T extends Node = Node> {
-    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
-    readonly type = RefType.Name;
+    private _type!: RefType<T>;
+    readonly tag = Tag.RefByName;
 
     constructor(
         readonly object: Ref | null,
@@ -311,23 +318,28 @@ export class RefByName<T extends Node = Node> {
 }
 
 export class RefInfer<T extends Node = Node> {
-    private _type!: T;  // Include T in Ref's structure for typescript's structural type system
-    readonly type = RefType.Infer;
+    private _type!: RefType<T>;
+    readonly tag = Tag.RefInfer;
 
     constructor(
         readonly object: Ref | null,
     ) { }
 }
 
-export enum RefType {
-    Expr,
-    Id,
-    Ids,
-    Name,
-    Infer,
-}
-
 export enum Distance {
     Global  = 'Global',
     Local   = 0,
 }
+
+// Because of TypeScript's structural type system, types are equivalent if their structure is equivalent.
+// This is a problem because references don't use their generic type parameter in their structure,
+//     resulting in Ref<Function> being equivalent to Ref<Struct> [1].
+//
+// So we use `_type!: RefType<T>` as a hack.
+// - Use of RefType<T> just acts as a bookmark to direct towards this comment.
+// - Use of T (aliased through RefType<T>) in the type ensures that Ref<Function> is not equivalent to Ref<Struct>.
+// - Use of '!' overrides Strict Property Initialization errors [2].
+//
+// [1]: https://github.com/Microsoft/TypeScript/wiki/FAQ#generics
+// [2]: https://www.typescriptlang.org/tsconfig/strictPropertyInitialization.html
+type RefType<T> = T;

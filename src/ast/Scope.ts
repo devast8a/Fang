@@ -1,4 +1,4 @@
-import { Distance, Ref, RefById, RefByIds, RefType } from './nodes';
+import { Distance, RefById, RefByIds } from './nodes';
 
 class Sym {
     constructor(

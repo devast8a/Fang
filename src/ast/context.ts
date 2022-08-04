@@ -1,4 +1,4 @@
-import { Node, LocalRef, Ref, Distance, RefById, RefType } from './nodes';
+import { Node, LocalRef, Ref, Distance, RefById, Tag } from './nodes';
 import { Builtins, populateBuiltins } from '../builtins';
 
 export class Ctx {
@@ -25,7 +25,7 @@ export class Ctx {
     }
 
     public get<T extends Node>(ref: Ref<T>): T {
-        if (ref.type !== RefType.Id) {
+        if (ref.tag !== Tag.RefById) {
             throw new Error('ref must be RefById');
         }
 

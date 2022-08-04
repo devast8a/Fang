@@ -1,16 +1,16 @@
-import { unimplemented, unreachable } from '../utils';
+import { unreachable } from '../utils';
 import { Ctx } from './context';
-import { Distance, Ref, RefType, Tag } from './nodes';
+import { Distance, Ref, Tag } from './nodes';
 
 export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
-    if (ref.type !== RefType.Id) {
+    if (ref.tag !== Tag.RefById) {
         return formatRef(ctx, ref);
     }
     const node = ctx.get(ref);
 
     switch (node.tag) {
         case Tag.BlockAttribute: {
-            const target = formatRef(ctx, node.target);
+            const target = formatRef(ctx, node.attribute);
 
             return `##${target}`;
         }
@@ -20,7 +20,7 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
             
         case Tag.Call: {
-            const target = formatNode(ctx, node.target);
+            const target = formatNode(ctx, node.func);
             const args   = formatNodes(ctx, node.args, {join: ', ', declaration: false});
 
             return `${target}(${args})`;
@@ -31,7 +31,7 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
             
         case Tag.Construct: {
-            const target = formatNode(ctx, node.target);
+            const target = formatNode(ctx, node.type);
             const args   = formatNodes(ctx, node.args, {join: ', ', declaration: false});
 
             return `${target}{${args}}`;
@@ -119,18 +119,18 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
 }
 
 export function formatDistance(ctx: Ctx, ref: Ref) {
-    switch (ref.type) {
-        case RefType.Id:
-        case RefType.Ids:
+    switch (ref.tag) {
+        case Tag.RefById:
+        case Tag.RefByIds:
             switch (ref.distance) {
                 case Distance.Global: return `^G`;
                 case Distance.Local:  return ``;
                 default:              return `^${ref.distance}`
             }
 
-        case RefType.Expr:
-        case RefType.Infer:
-        case RefType.Name:
+        case Tag.RefByExpr:
+        case Tag.RefByName:
+        case Tag.RefInfer:
             return ``;
     }
 }
@@ -139,28 +139,28 @@ export function formatRef(ctx: Ctx, ref: Ref): string {
     const object = ref.object === null ? '' : formatNode(ctx, ref.object) + '.';
     const distance = formatDistance(ctx, ref);
 
-    switch (ref.type) {
-        case RefType.Expr: {
+    switch (ref.tag) {
+        case Tag.RefByExpr: {
             const target = formatNode(ctx, ref.values[0]);
             return `${object}[${target}]`;
         }
 
-        case RefType.Id: {
+        case Tag.RefById: {
             const target = (ctx.get(ref) as any).name ?? '<anonymous>';
             return `${object}${target}[${ref.id}${distance}]`;
         }
 
-        case RefType.Ids: {
+        case Tag.RefByIds: {
             const target = (ctx.get(ref) as any).name ?? '<anonymous>';
             return `${object}${target}[${ref.ids.join(',')}${distance}]`;
         }
 
-        case RefType.Infer: {
-            return `${object}<infer>`;
+        case Tag.RefByName: {
+            return `${object}${ref.name}[?]`;
         }
 
-        case RefType.Name: {
-            return `${object}${ref.name}[?]`;
+        case Tag.RefInfer: {
+            return `${object}<infer>`;
         }
     }
     throw unreachable(ref);

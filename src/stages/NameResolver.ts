@@ -1,4 +1,4 @@
-import { Distance, Node, Ref, RefById, RefType, Tag } from '../ast/nodes';
+import { Distance, Node, Ref, RefById, Tag } from '../ast/nodes';
 import { Scope, ScopeType } from "../ast/Scope";
 import { Ctx } from '../ast/context';
 import { unimplemented, unreachable } from '../utils';
@@ -39,12 +39,12 @@ export class Resolve {
 
         if (ref.object === null) {
             // With no context
-            switch (ref.type) {
-                case RefType.Expr: {
+            switch (ref.tag) {
+                case Tag.RefByExpr: {
                     throw new Error('Can not RefByExpr on an empty context.');
                 }
                     
-                case RefType.Id: {
+                case Tag.RefById: {
                     this.resolveNode(scope, this.ctx.nodes[ref.id]);
 
                     if (ref.distance === Distance.Local && scope.type === ScopeType.Global) {
@@ -53,15 +53,15 @@ export class Resolve {
                     return;
                 }
                     
-                case RefType.Ids: {
+                case Tag.RefByIds: {
                     throw unimplemented(ref as never);
                 }
                     
-                case RefType.Infer: {
+                case Tag.RefInfer: {
                     return;
                 }
                     
-                case RefType.Name: {
+                case Tag.RefByName: {
                     const target = scope.lookup(ref.name);
 
                     if (target === null) {
@@ -76,16 +76,16 @@ export class Resolve {
         } else {
             this.resolveNode(scope, this.ctx.get(ref.object));
 
-            switch (ref.type) {
-                case RefType.Expr: {
+            switch (ref.tag) {
+                case Tag.RefByExpr: {
                     this.resolveNode(scope, this.ctx.get(ref.values[0]));
                     return;
                 }
                     
-                case RefType.Id:
-                case RefType.Ids:
-                case RefType.Infer:
-                case RefType.Name:
+                case Tag.RefById:
+                case Tag.RefByIds:
+                case Tag.RefInfer:
+                case Tag.RefByName:
                     return;
             }
             throw unreachable(ref);
@@ -108,7 +108,7 @@ export class Resolve {
             }
 
             case Tag.Call: {
-                this.resolve(scope, node, 'target');
+                this.resolve(scope, node, 'func');
                 this.visit(scope, node.args);
                 break;
             }
@@ -118,7 +118,7 @@ export class Resolve {
             }
 
             case Tag.Construct: {
-                this.resolve(scope, node, 'target');
+                this.resolve(scope, node, 'type');
                 this.visit(scope, node.args);
                 break;
             }

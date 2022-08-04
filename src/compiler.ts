@@ -1,5 +1,5 @@
 import { Ctx as Ctx } from './ast/context';
-import { RefType, Tag } from './ast/nodes';
+import { Tag } from './ast/nodes';
 import { Source } from './common/source';
 import { resolveNames } from './stages/NameResolver';
 import { Interpreter } from './interpret/interpret';
@@ -29,7 +29,7 @@ export class Compiler {
 
             switch (node.tag) {
                 case Tag.BlockAttribute: {
-                    const target = node.target.type === RefType.Name ? node.target.name : '';
+                    const target = node.attribute.tag === Tag.RefByName ? node.attribute.name : '';
 
                     switch (target) {
                         case 'DEBUG_TYPE_CHECK': enableTypeChecking = true; break;

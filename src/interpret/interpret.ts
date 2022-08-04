@@ -1,5 +1,5 @@
 import { Ctx } from '../ast/context';
-import { LocalRef, Tag, Function, Ref, Struct, Variable, Trait, Distance, RefType } from '../ast/nodes';
+import { LocalRef, Tag, Function, Ref, Struct, Variable, Trait, Distance } from '../ast/nodes';
 import { Scope } from "../ast/Scope";
 import { unimplemented } from '../utils';
 import { VmEnvironment } from './VmEnvironment';
@@ -52,7 +52,7 @@ export class Interpreter {
             }
 
             case Tag.Call: {
-                const { target, member } = this.resolve(node.target, env);
+                const { target, member } = this.resolve(node.func, env);
                 const args = node.args.map(arg => Value.unwrap(this.evaluate(arg, env)))
 
                 if (typeof (target[member]) !== 'function') {
@@ -70,7 +70,7 @@ export class Interpreter {
             }
 
             case Tag.Construct: {
-                const { target, member } = this.resolve(node.target, env);
+                const { target, member } = this.resolve(node.type, env);
                 const args = node.args.map(arg => Value.unwrap(this.evaluate(arg, env)));
 
                 // TODO: Remove this hack
@@ -199,7 +199,7 @@ export class Interpreter {
 
         const result = this.scope.lookup(name);
 
-        if (result === null || result.type === RefType.Ids) {
+        if (result === null || result.tag === Tag.RefByIds) {
             return null;
         }
 
@@ -209,8 +209,8 @@ export class Interpreter {
     private resolve(ref: Ref, env: VmEnvironment): { target: any, member: any } {
         if (ref.object === null) {
             // With no context
-            switch (ref.type) {
-                case RefType.Id: {
+            switch (ref.tag) {
+                case Tag.RefById: {
                     switch (ref.distance) {
                         case Distance.Global: {
                             return { target: this.globals, member: ref.id };
@@ -229,7 +229,7 @@ export class Interpreter {
                     }
                 }
                     
-                case RefType.Name: {
+                case Tag.RefByName: {
                     if (externals[ref.name] === undefined) {
                         throw new Error(`Could not resolve ${ref.name}`);
                     }
@@ -244,9 +244,9 @@ export class Interpreter {
         } else {
             const object = this.evaluate(ref.object as any, env);
 
-            switch (ref.type) {
-                case RefType.Name: return { target: object, member: ref.name };
-                case RefType.Expr: return { target: object, member: this.evaluate(ref.values[0] as any, env) };
+            switch (ref.tag) {
+                case Tag.RefByName: return { target: object, member: ref.name };
+                case Tag.RefByExpr: return { target: object, member: this.evaluate(ref.values[0] as any, env) };
                 default: throw unimplemented(ref as never);
             }
         }
