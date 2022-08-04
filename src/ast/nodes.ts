@@ -30,6 +30,9 @@ export enum Tag {
     RefInfer,
 }
 
+export function isRef(o: Node | Ref): o is Ref { return o.tag >= Tag.RefByExpr; }
+export function isNode(o: Node | Ref): o is Node { return o.tag < Tag.RefByExpr; }
+
 export type Type<T extends Node = Node> = Ref<T>;
 export type LocalRef<T extends Node = Node> = RefById<T>;
 

@@ -36,6 +36,7 @@ async function run(directory: string) {
             } catch (e) {
                 if (e instanceof Error) {
                     console.log(`${name}: ${chalk.redBright(e.message)}`)
+                    console.log(e.stack);
                 } else {
                     console.log(`${name}: ${chalk.redBright('<unknown error>')}`)
                 }

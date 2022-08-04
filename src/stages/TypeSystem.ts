@@ -1,152 +1,165 @@
 import { Ctx } from '../ast/context';
-// import { Formatter } from '../ast/formatter';
-import { Function, Node, Ref, Struct, Tag } from '../ast/nodes';
-import { unimplemented } from '../utils';
+import { formatNode } from '../ast/formatter';
+import { isRef, Node, Ref, Tag } from '../ast/nodes';
+import { unimplemented, unreachable } from '../utils';
 
-// class TypeSystem {
-//     readonly fmt: Formatter;
-//     readonly types: Array<Node | null>
-// 
-//     constructor(readonly ctx: Ctx) {
-//         this.fmt = new Formatter(ctx);
-//         this.types = new Array(ctx.nodes.length).fill(null);
-//     }
-// 
-//     process() {
-//         const ctx = this.ctx;
-//         const types = this.types;
-//         const fmt = this.fmt;
-//         const nodes = this.ctx.nodes;
-// 
-//         for (let id = 0; id < nodes.length; id++) {
-//             const node = nodes[id];
-// 
-//             switch (node.tag) {
-//                 case Tag.BlockAttribute: {
-//                     types[id] = null;
-//                     break;
-//                 }
-// 
-//                 case Tag.Struct: {
-//                     types[id] = node;
-//                     break;
-//                 }
-// 
-//                 case Tag.Function: {
-//                     types[id] = node;
-//                     break;
-//                 }
-// 
-//                 case Tag.Constant: {
-//                     types[id] = node.type;
-//                     break;
-//                 }
-//                     
-//                 case Tag.Call: {
-//                     // Lookup the call
-//                     if (node.target.tag === Tag.RefIds) {
-//                         const args = node.args.map(arg => types[arg.targetId]!);
-// 
-//                         console.log(args.map(arg => fmt.formatRef(arg)));
-// 
-//                         // Check for the best call
-//                         for (const fnId of node.target.target) {
-//                             const fn = ctx.nodes[fnId] as Function;
-//                             
-//                             const params = fn.parameters.map(arg => types[arg.targetId]!);
-// 
-//                             if (ctx.get(params[0] as any) === ctx.get(args[0] as any)) {
-//                                 (node as any).target = new RefLocal(fnId);
-//                             }
-// 
-//                             console.log(params.map(param => fmt.formatRef(param)));
-//                         }
-//                     }
-// 
-//                     const target = ctx.get(node.target);
-//                     types[id] = target.returnType;
-//                     break;
-//                 }
-// 
-//                 case Tag.Return: {
-//                     types[id] = node.value === null ? null : types[node.value.targetId];
-//                     break;
-//                 }
-// 
-//                 case Tag.Variable: {
-//                     types[id] = node.type;
-//                     break;
-//                 }
-//                     
-//                 case Tag.Get: {
-//                     types[id] = null;
-// 
-//                     switch (node.source.tag) {
-//                         case Tag.RefLocal:      types[id] = types[node.source.targetId]; break;
-//                         case Tag.RefUp: types[id] = types[node.source.targetId]; break;
-//                         case Tag.RefGlobal:  types[id] = types[node.source.targetId]; break;
-//                     
-//                         case Tag.RefFieldName: {
-//                             // Get the type of left
-//                             const type = this.ctx.get(this.getType(node.source.object) as any) as Struct;
-// 
-//                             for (const ref of type.body) {
-//                                 const member = this.ctx.get(ref);
-//                                 if (member.tag === Tag.Variable && member.name === node.source.target) {
-//                                     types[id] = member.type;
-//                                     // Overwrite the node.
-//                                     (node as any).source = new RefField(node.source.object, member.id);
-//                                 }
-//                             }
-//                         }
-//                     }
-// 
-//                     break;
-//                 }
-// 
-//                 case Tag.Set: {
-//                     const variable = ctx.get(node.target);
-//                     
-//                     if (variable.type.tag === Tag.RefInfer) {
-//                         (variable as any).type = types[node.source.targetId];
-//                         types[variable.id] = types[node.source.targetId];
-//                     }
-// 
-//                     types[id] = types[node.source.targetId];
-// 
-//                     break;
-//                 }
-// 
-//                 case Tag.Construct: {
-//                     types[id] = node.target;
-//                     break;
-//                 }
-// 
-//                 default: {
-//                     console.log(Tag[node.tag]);
-//                 }
-//             }
-//         }
-// 
-//         console.log('==================================================')
-//         console.log(fmt.formatBody(ctx.root));
-//         console.log('--------------------------------------------------')
-// 
-//         for (let id = ctx.builtins.count; id < nodes.length; id++) {
-//             const node = nodes[id];
-//             const type = types[id];
-// 
-//             console.log(`${fmt.formatRef(node)} :: ${type === null ? '<unknown>' : fmt.formatRef(type)}`);
-//         }
-//         console.log('==================================================')
-//     }
-// 
-//     getType<T>(ref: Ref<T>) {
-//         throw unimplemented(ref as never);
-//     }
-// }
+export class TypeSystemState {
+    public readonly types: Array<Node | null>;
 
-export function handleTypes(ctx: Ctx) {
-    // const ts = new TypeSystem(ctx);
-    // ts.process();
+    public constructor(
+        readonly ctx: Ctx,
+    ) {
+        this.types = new Array(ctx.nodes.length).fill(null);
+    }
+
+    public get(expr: Node | Ref): Node | null {
+        if (isRef(expr)) {
+            switch (expr.tag) {
+                case Tag.RefById: {
+                    return this.types[expr.id];
+                }
+
+                case Tag.RefByIds: {
+                    return this.types[expr.ids[0]];
+                }
+                
+                case Tag.RefByName: {
+                    // Unresolved symbol
+                    if (expr.object === null) {
+                        return null;
+                    }
+
+                    const member = this.member(expr.object, expr.name);
+                    if (member === null) {
+                        return null;
+                    }
+
+                    return this.types[member.id];
+                }
+                
+                case Tag.RefByExpr: {
+                    throw unimplemented('RefByExpr');
+                }
+                
+                case Tag.RefInfer: {
+                    return null;
+                }
+            }
+
+            throw unreachable(expr);
+        }
+
+        return this.types[expr.id];
+    }
+
+    public set(expr: Node, type: Node | Ref | null) {
+        if (type === null) {
+            return null;
+        }
+
+        type = isRef(type) ? this.ctx.get(type) : type;
+        this.types[expr.id] = type;
+        return type;
+    }
+
+    public member(expr: Ref, name: string) {
+        const struct = this.get(expr);
+
+        if (struct === null) {
+            return null;
+        }
+    
+        switch (struct.tag) {
+            case Tag.Struct: {
+                for (const memberId of struct.body) {
+                    const member = this.ctx.get(memberId);
+
+                    if (member.tag === Tag.Variable && member.name === name) {
+                        return member;
+                    }
+                }
+
+                return null;
+            }
+                
+            default: {
+                throw unimplemented(struct as any);
+            }
+        }
+    }
+}
+
+export function processTypes(ctx: Ctx) {
+    const types = new TypeSystemState(ctx);
+
+    for (const node of ctx.nodes) {
+        switch (node.tag) {
+            case Tag.BlockAttribute: {
+                // TODO: Implement block attribute
+                break;
+            }
+                
+            case Tag.Call: {
+                types.set(node, ctx.get(node.func).returnType);
+                break;
+            }
+                
+            case Tag.Constant: {
+                types.set(node, node.type);
+                break;
+            }
+                
+            case Tag.Construct: {
+                types.set(node, node.type);
+                break;
+            }
+
+            case Tag.Function: {
+                types.set(node, node);
+                break;
+            }
+                
+            case Tag.Get: {
+                types.set(node, types.get(node.source));
+                break;
+            }
+                
+            case Tag.Set: {
+                types.set(node, types.get(node.source));
+
+                const target = ctx.get(node.target);
+                if (types.get(target) === null) {
+                    types.set(target, types.get(node.source));
+                }
+                break;
+            }
+
+            case Tag.Struct: {
+                types.set(node, node);
+                break;
+            }
+
+            case Tag.Variable: {
+                if (node.type.tag === Tag.RefInfer) {
+                    break;
+                }
+
+                types.set(node, node.type);
+                break;
+            }
+
+            default: {
+                console.log(Tag[node.tag]);
+                break;
+            }
+        }
+    }
+
+    console.group('Types');
+    for (const node of ctx.nodes.slice(ctx.builtins.count)) {
+        const type = types.types[node.id];
+
+        console.log(formatNode(ctx, node), '::', type === null ? '<unknown type>' : formatNode(ctx, type));
+    }
+    console.groupEnd();
 }

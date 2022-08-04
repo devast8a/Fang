@@ -6,7 +6,7 @@ import { Interpreter } from './interpret/interpret';
 import { FangGrammar } from './grammar/grammar';
 import { promises as fs } from 'fs';
 import { formatNodes } from './ast/formatter';
-import { handleTypes } from './stages/TypeSystem';
+import { processTypes } from './stages/TypeSystem';
 // import { resolve } from './stages/Resolver';
 
 export class Compiler {
@@ -41,7 +41,7 @@ export class Compiler {
 
         if (enableTypeChecking) {
             console.log("Type checking enabled")
-            handleTypes(ctx);
+            processTypes(ctx);
         }
 
         return new Interpreter(ctx, root, scope);
