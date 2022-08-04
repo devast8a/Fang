@@ -1,5 +1,3 @@
-# ##DEBUG_PRINT_AST
-
 struct SelectResult {
     val key: num
     val value: num
