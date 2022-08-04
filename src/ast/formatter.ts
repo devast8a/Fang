@@ -1,13 +1,28 @@
 import { unreachable } from '../utils';
 import { Ctx } from './context';
-import { Distance, Ref, Tag } from './nodes';
+import { Distance, Node, Ref, Tag } from './nodes';
 
-export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
+
+export function formatNodeRef(ctx: Ctx, ref: Ref, declaration = false): string {
     if (ref.tag !== Tag.RefById) {
         return formatRef(ctx, ref);
     }
-    const node = ctx.get(ref);
 
+    if (!declaration) {
+        switch (ctx.get(ref).tag) {
+            case Tag.Function:
+            case Tag.Struct:
+            case Tag.Trait:
+            case Tag.Variable: 
+                return formatRef(ctx, ref);
+        }
+    }
+
+    return formatNode(ctx, ctx.get(ref), declaration);
+}
+
+
+export function formatNode(ctx: Ctx, node: Node, declaration = false): string {
     switch (node.tag) {
         case Tag.BlockAttribute: {
             const target = formatRef(ctx, node.attribute);
@@ -20,10 +35,10 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
             
         case Tag.Call: {
-            const target = formatNode(ctx, node.func);
+            const func = formatNodeRef(ctx, node.func);
             const args   = formatNodes(ctx, node.args, {join: ', ', declaration: false});
 
-            return `${target}(${args})`;
+            return `${func}(${args})`;
         }
 
         case Tag.Constant: {
@@ -31,14 +46,14 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
             
         case Tag.Construct: {
-            const target = formatNode(ctx, node.type);
+            const type = formatNodeRef(ctx, node.type);
             const args   = formatNodes(ctx, node.args, {join: ', ', declaration: false});
 
-            return `${target}{${args}}`;
+            return `${type}{${args}}`;
         }
             
         case Tag.Function: {
-            if (!declaration) return formatRef(ctx, ref);
+            if (!declaration) return node.name ?? '<anonymous>';
 
             const name = `${node.name}[#${node.id}]`;
             const ps   = formatNodes(ctx, node.parameters, { join: ', ' });
@@ -48,8 +63,8 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
 
         case Tag.ForEach: {
-            const element    = formatNode(ctx, node.element);
-            const collection = formatNode(ctx, node.collection);
+            const element    = formatNodeRef(ctx, node.element);
+            const collection = formatNodeRef(ctx, node.collection);
             const body       = formatNodes(ctx, node.body, {indented: true});
 
             return `for ${element} in ${collection} {${body}}`;
@@ -60,27 +75,27 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
 
         case Tag.If: {
-            const cond = formatNode(ctx, node.cases[0].condition!);
+            const cond = formatNodeRef(ctx, node.cases[0].condition!);
             const body = formatNodes(ctx, node.cases[0].body, {indented: true});
 
             return `if ${cond} {${body}}`;
         }
 
         case Tag.Return: {
-            const value = node.value === null ? '' : formatNode(ctx, node.value);
+            const value = node.value === null ? '' : formatNodeRef(ctx, node.value);
 
             return `return ${value}`;
         }
 
         case Tag.Set: {
-            const target = formatNode(ctx, node.target);
-            const source = formatNode(ctx, node.source);
+            const target = formatNodeRef(ctx, node.target);
+            const source = formatNodeRef(ctx, node.source);
 
             return `${target} = ${source}`;
         }
 
         case Tag.Struct: {
-            if (!declaration) return formatRef(ctx, ref);
+            if (!declaration) return node.name ?? '<anonymous>';
 
             const body = formatNodes(ctx, node.body, {indented: true});
             const name = `${node.name}[#${node.id}]`;
@@ -89,7 +104,7 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
 
         case Tag.Trait: {
-            if (!declaration) return formatRef(ctx, ref);
+            if (!declaration) return node.name ?? '<anonymous>';
 
             const body = formatNodes(ctx, node.body, {indented: true});
             const name = `${node.name}[#${node.id}]`;
@@ -98,7 +113,7 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
 
         case Tag.Variable: {
-            if (!declaration) return formatRef(ctx, ref);
+            if (!declaration) return node.name ?? '<anonymous>';
 
             const name = `${node.name}[#${node.id}]`;
 
@@ -106,7 +121,7 @@ export function formatNode(ctx: Ctx, ref: Ref, declaration = false): string {
         }
 
         case Tag.While: {
-            const cond = formatNode(ctx, node.condition)
+            const cond = formatNodeRef(ctx, node.condition)
             const body = formatNodes(ctx, node.body, {indented: true});
 
             return `while ${cond} {${body}}`;
@@ -136,12 +151,12 @@ export function formatDistance(ctx: Ctx, ref: Ref) {
 }
 
 export function formatRef(ctx: Ctx, ref: Ref): string {
-    const object = ref.object === null ? '' : formatNode(ctx, ref.object) + '.';
+    const object = ref.object === null ? '' : formatNodeRef(ctx, ref.object) + '.';
     const distance = formatDistance(ctx, ref);
 
     switch (ref.tag) {
         case Tag.RefByExpr: {
-            const target = formatNode(ctx, ref.values[0]);
+            const target = formatNodeRef(ctx, ref.values[0]);
             return `${object}[${target}]`;
         }
 
@@ -183,7 +198,7 @@ export function formatNodes(ctx: Ctx, nodes: readonly Ref[], options?: Options) 
         join: '\n',
     }, options);
 
-    const result = nodes.map(ref => formatNode(ctx, ref, declaration)).join(join);
+    const result = nodes.map(ref => formatNodeRef(ctx, ref, declaration)).join(join);
     return indented ? indent(result) : result;
 }
 
