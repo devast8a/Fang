@@ -14,17 +14,6 @@ export class Interpreter {
         private root: LocalRef[],
         private scope: Scope,
     ) {
-        for (const ref of root) {
-            const id = ref.id;
-            const node = this.ctx.get(ref);
-
-            switch (node.tag) {
-                case Tag.Function: this.globals[id] = this.buildFn(node); break;
-                case Tag.Struct: this.globals[id] = this.buildStruct(node); break;
-                case Tag.Trait: this.globals[id] = this.buildStruct(node); break;
-            }
-        }
-
         for (let id = 0; id < ctx.nodes.length; id++) {
             const node = ctx.nodes[id];
 
@@ -32,6 +21,20 @@ export class Interpreter {
                 case Tag.Function: this.globals[id] = this.buildFn(node); break;
                 case Tag.Struct: this.globals[id] = this.buildStruct(node); break;
                 case Tag.Trait: this.globals[id] = this.buildStruct(node); break;
+                case Tag.Extend: {
+                    if (node.target.tag !== Tag.RefById) {
+                        break;
+                    }
+
+                    const prototype = this.globals[node.target.id].prototype;
+                    for (const ref of node.body) {
+                        const member = ctx.get(ref);
+
+                        switch (member.tag) {
+                            case Tag.Function: prototype[member.name!] = this.buildFn(member); break;
+                        }
+                    }
+                }
             }
         }
     }
@@ -83,6 +86,10 @@ export class Interpreter {
 
             case Tag.Continue: {
                 return new Control(Type.Continue, Value.unwrap(this.evaluate(node.value, env)))
+            }
+
+            case Tag.Extend: {
+                return null;
             }
 
             case Tag.ForEach: {
@@ -245,8 +252,18 @@ export class Interpreter {
             const object = this.evaluate(ref.object as any, env);
 
             switch (ref.tag) {
-                case Tag.RefByName: return { target: object, member: ref.name };
-                case Tag.RefByExpr: return { target: object, member: this.evaluate(ref.values[0] as any, env) };
+                case Tag.RefByExpr: {
+                    return { target: object, member: this.evaluate(ref.values[0] as any, env) };
+                }
+                    
+                case Tag.RefById: {
+                    return { target: object, member: (this.ctx.nodes[ref.id] as any).name };
+                }
+
+                case Tag.RefByName: {
+                    return { target: object, member: ref.name };
+                }
+
                 default: throw unimplemented(ref as never);
             }
         }

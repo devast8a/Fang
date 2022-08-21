@@ -1,6 +1,6 @@
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { Node, Ref, LocalRef, VariableFlags } from '../ast/nodes'
+import { Node, Ref, LocalRef, VariableFlags, RefById, Distance } from '../ast/nodes'
 import { unimplemented } from '../utils'
 import { list, either, opt, Rules, seq, star } from './generator'
 
@@ -99,7 +99,12 @@ Type.add(Call, addNode);
 const Construct = rule(
     () => def(Symbol, ConstructArguments),
     (ctx, target, args) => new Nodes.Construct(target, args),
-)
+);
+
+Construct.add(
+    () => def(Generic, ConstructArguments),
+    (ctx, target, args) => new Nodes.Construct(new RefById(null, target.id, Distance.Global), args),
+);
 
 const ConstructArguments = star('{', N_, Expr, Comma, '}').elements;
 
@@ -134,12 +139,23 @@ const ForEach = rule(
 
 Expr.add(ForEach, addNode);
 
+// == Extend ==
+const Extend = rule(
+    () => def('extend', __, Identifier, __, 'impl', __, Identifier, N_, Body),
+
+    (ctx, n1, n2, target, n4, n5, n6, n7, n8, body) => {
+        return new Nodes.Extend(ref(target), body);
+    }
+)
+
+Expr.add(Extend, addNode);
+
 // == Function ==
 const Function = rule(
     () => {
         const keyword    = 'fn'
         const name       = seq(__, Name).get(1)
-        const parameters = star('(', _, Parameter, Comma, ')').elements
+        const parameters = star('(', N_, Parameter, Comma, ')').elements
         const returnType = seq(_, '->', _, Type).get(3)
 
         return def(keyword, opt(name), parameters, opt(returnType), opt(BodyX))
@@ -165,6 +181,22 @@ const Parameter = rule(() => {
 }, (ctx, keyword, name, type, value) => {
     return ctx.add(new Nodes.Variable(name, type ?? infer(), getVariableFlags(keyword)));
 })
+
+// == Generic ==
+const Generic = rule(
+    () => def(Type, GenericArguments),
+    (ctx, type, args) => {
+        return new Nodes.Call(type as any, args as any);
+    }
+)
+
+Atom.add(Generic, addNode);
+Type.add(Generic, addNode);
+
+const GenericArguments = rule(
+    () => star('<', _, Type, Comma, '>'),
+    (ctx, args) => args.elements
+);
 
 // == Get ==
 const Get = rule(
@@ -227,8 +259,8 @@ const Dot = either([
 
 // == Literal Float ==
 const LiteralFloat = rule(
-    /[0-9_]+\.[0-9_]+/,
-    (ctx, number) => new Nodes.Constant(ctx.builtins.f64, parseFloat(number.replace(/_/g, '')))
+    seq(/[0-9_]+/, '.', /[0-9_]+/),
+    (ctx, number) => new Nodes.Constant(ctx.builtins.f64, parseFloat(number.join('').replace(/_/g, '')))
 )
 
 Atom.add(LiteralFloat, addNode);
@@ -375,6 +407,19 @@ const Set = rule(
     () => def(Symbol, _, '=', _, Expr),
     (ctx, target, n2, op, n4, value) => new Nodes.Set(target, value),
 );
+
+Expr.add(
+    () => def(Expr, _, '-->', _, either(['val', 'mut']), __, Identifier),
+    (ctx, value, n2, op, n4, keyword, n6, target) => {
+        const v = ctx.add(new Nodes.Variable(target, infer(), getVariableFlags(keyword)));
+        return ctx.add(new Nodes.Set(v, value));
+    }
+)
+
+Set.add(
+    () => def(Expr, _, '-->', _, Symbol),
+    (ctx, value, n2, op, n4, target) => new Nodes.Set(target, value),
+)
 
 Expr.add(Set, addNode);
 

@@ -1,5 +1,3 @@
-import { unreachable } from '../utils';
-
 export enum Tag {
     // Expr
     BlockAttribute,
@@ -9,6 +7,7 @@ export enum Tag {
     Construct,
     Continue,
     Enum,
+    Extend,
     ForEach,
     Function,
     Get,
@@ -31,7 +30,7 @@ export enum Tag {
 }
 
 export function isRef(o: Node | Ref): o is Ref { return o.tag >= Tag.RefByExpr; }
-export function isNode(o: Node | Ref): o is Node { return o.tag < Tag.RefByExpr; }
+export function isNode(o: Node | Ref): o is Node { return !isRef(o); }
 
 export type Type<T extends Node = Node> = Ref<T>;
 export type LocalRef<T extends Node = Node> = RefById<T>;
@@ -45,6 +44,7 @@ export type Node =
     | Construct
     | Continue
     | Enum
+    | Extend
     | ForEach
     | Function
     | Get
@@ -58,11 +58,12 @@ export type Node =
     | Variable
     | While
 
+// This function is a hack to give a
 const id = () => undefined as any as number;
 
 export class BlockAttribute {
     readonly tag = Tag.BlockAttribute
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly attribute: Ref,
@@ -71,7 +72,7 @@ export class BlockAttribute {
 
 export class Break {
     readonly tag = Tag.Break
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly loop: Ref | null,
@@ -81,7 +82,7 @@ export class Break {
 
 export class Call {
     readonly tag = Tag.Call
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly func: Ref<Function>,
@@ -91,7 +92,7 @@ export class Call {
 
 export class Constant<Value> {
     readonly tag = Tag.Constant
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly type: Type,
@@ -101,17 +102,17 @@ export class Constant<Value> {
 
 export class Construct {
     readonly tag = Tag.Construct;
-    readonly id = id();
+    readonly id = id()
 
     constructor(
-        readonly type: Ref<Struct>,
+        readonly type: Ref,
         readonly args: readonly LocalRef[],
     ) { }
 }
 
 export class Continue {
     readonly tag = Tag.Continue
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly loop: Ref | null,
@@ -121,7 +122,7 @@ export class Continue {
 
 export class Enum {
     readonly tag = Tag.Enum
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly name: string,
@@ -129,24 +130,34 @@ export class Enum {
     ) { }
 }
 
+export class Extend {
+    readonly tag = Tag.Extend
+    readonly id = id()
+
+    constructor(
+        readonly target: Ref,
+        readonly body: LocalRef[],
+    ) { }
+}
+
 export class ForEach {
     readonly tag = Tag.ForEach
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly element: LocalRef,
         readonly collection: LocalRef,
         readonly body: LocalRef[],
-    ) {}
+    ) { }
 }
 
 export class Function {
     readonly tag = Tag.Function
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly name: string | null,
-        readonly returnType: Type,
+        public returnType: Type,
         readonly parameters: readonly LocalRef<Variable>[],
         readonly body: LocalRef[],
         readonly external = false,
@@ -155,7 +166,7 @@ export class Function {
 
 export class Get {
     readonly tag = Tag.Get
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         public source: Ref,
@@ -164,7 +175,7 @@ export class Get {
 
 export class If {
     readonly tag = Tag.If
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly cases: readonly IfCase[],
@@ -180,7 +191,7 @@ export class IfCase {
 
 export class Match {
     readonly tag = Tag.Match
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly value: LocalRef,
@@ -197,7 +208,7 @@ export class MatchCase {
 
 export class Move {
     readonly tag = Tag.Move
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly value: LocalRef,
@@ -206,7 +217,7 @@ export class Move {
 
 export class Return {
     readonly tag = Tag.Return
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly value: LocalRef | null,
@@ -215,7 +226,7 @@ export class Return {
 
 export class Set {
     readonly tag = Tag.Set
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly target: Ref<Variable>,
@@ -225,7 +236,7 @@ export class Set {
 
 export class Struct {
     readonly tag = Tag.Struct
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly name: string,
@@ -235,7 +246,7 @@ export class Struct {
 
 export class Trait {
     readonly tag = Tag.Trait
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly name: string,
@@ -245,12 +256,12 @@ export class Trait {
 
 export class Variable {
     readonly tag = Tag.Variable
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly name: string,
-        readonly type: Type,
-        readonly flags: VariableFlags,
+        public type: Type,
+        public flags: VariableFlags,
     ) { }
 }
 export enum VariableFlags {
@@ -261,7 +272,7 @@ export enum VariableFlags {
 
 export class While {
     readonly tag = Tag.While
-    readonly id = id();
+    readonly id = id()
 
     constructor(
         readonly condition: LocalRef,

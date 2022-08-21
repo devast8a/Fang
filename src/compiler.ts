@@ -7,6 +7,7 @@ import { FangGrammar } from './grammar/grammar';
 import { promises as fs } from 'fs';
 import { formatNodes } from './ast/formatter';
 import { processTypes } from './stages/TypeSystem';
+import { serialize } from './ast/serialize';
 // import { resolve } from './stages/Resolver';
 
 export class Compiler {
@@ -22,8 +23,6 @@ export class Compiler {
 
         let enableTypeChecking = false;
 
-        const scope = resolveNames(ctx);
-
         for (const ref of root) {
             const node = ctx.get(ref);
 
@@ -34,11 +33,13 @@ export class Compiler {
                     switch (target) {
                         case 'DEBUG_TYPE_CHECK': enableTypeChecking = true; break;
                         case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatNodes(ctx, root)); break;
+                        case 'DEBUG_PRINT_AST2': await fs.writeFile('serialized.out', serialize(ctx.nodes)); break;
                     }
                 }
             }
         }
 
+        const scope = resolveNames(ctx);
         if (enableTypeChecking) {
             console.log("Type checking enabled")
             processTypes(ctx);

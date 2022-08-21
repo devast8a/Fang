@@ -133,6 +133,12 @@ export class Resolve {
                 break;
             }
 
+            case Tag.Extend: {
+                this.resolve(scope, node, 'target');
+                this.visit(scope, node.body);
+                break;
+            }
+
             case Tag.ForEach: {
                 const condition = scope.push(ScopeType.Inner);
                 this.visit(condition, node.collection);

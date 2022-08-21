@@ -192,6 +192,10 @@ export abstract class Matcher<
             if (pattern.keywords.length > 0) {
                 const keywords = {} as any;
                 for (const keyword of pattern.keywords) {
+                    if (keyword.matcher === '>' || keyword.matcher === '<') {
+                        continue;
+                    }
+
                     keywords[keyword.id] = keyword.matcher;
                 }
 

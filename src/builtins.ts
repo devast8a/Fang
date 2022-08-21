@@ -8,7 +8,7 @@ export type Builtins = ReturnType<typeof populateBuiltins>;
 export function populateBuiltins(ctx: Ctx) {
     const scope = new Scope(null, new Map(), new Map(), ScopeType.Global);
 
-    // const List    = mkType(ctx, scope, 'List');
+    const List    = mkType(ctx, scope, 'Lst');
     // const Math    = mkType(ctx, scope, 'Math');
     // const Num     = mkType(ctx, scope, 'Num');
     //const String  = mkType(ctx, scope, 'String');
@@ -47,10 +47,11 @@ export function populateBuiltins(ctx: Ctx) {
 
     return {
         count: ctx.nodes.length,
-        // List,
+        List,
         // Math,
         // Num,
         //String,
+        nothing,
         bool,
         f64,
         str,
