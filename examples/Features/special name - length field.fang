@@ -1,0 +1,5 @@
+struct Field {
+    val length = 100
+}
+
+return Field{}.length == 100

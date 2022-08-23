@@ -1,0 +1,5 @@
+struct Method {
+    fn length() => 100
+}
+
+return Method{}.length() == 100

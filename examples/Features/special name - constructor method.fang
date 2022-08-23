@@ -1,0 +1,5 @@
+struct Field {
+    fn constructor() => 100
+}
+
+return Field{}.constructor() == 100
