@@ -1,0 +1,10 @@
+##DEBUG_TYPE_CHECK
+##DEBUG_PRINT_AST
+
+struct Length {
+    fn test(value: str) => value.size
+    fn test(value: u32) => value
+}
+
+return Length.test('hello') == 5 and
+    Length.test(400) == 400

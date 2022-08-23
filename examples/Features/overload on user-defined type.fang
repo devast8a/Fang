@@ -1,0 +1,23 @@
+##DEBUG_TYPE_CHECK
+
+struct Vec2 {
+    val x: u32
+    val y: u32
+}
+
+struct Vec3 {
+    val x: u32
+    val y: u32
+    val z: u32
+}
+
+fn sum(vec: Vec2) {
+    return vec.x + vec.y
+}
+
+fn sum(vec: Vec3) {
+    return vec.x + vec.y + vec.z
+}
+
+return sum(Vec2{1, 2}) == 3 and
+    sum(Vec3{4, 5, 6}) == 15

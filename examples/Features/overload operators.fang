@@ -1,0 +1,10 @@
+##DEBUG_TYPE_CHECK
+
+fn infix++(left: u32, right: u32) =>
+    (left + right)**2
+
+fn infix++(left: str, right: str) =>
+    left + ' and ' + right
+
+return 3++7 == 100 and
+    'cat'++'dog' == 'cat and dog'

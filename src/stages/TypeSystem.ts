@@ -1,7 +1,56 @@
 import { Ctx } from '../ast/context';
 import { formatNode } from '../ast/formatter';
-import { Distance, isRef, Node, Ref, RefById, Tag } from '../ast/nodes';
-import { unimplemented, unreachable } from '../utils';
+import { Distance, Function, isRef, Node, Ref, RefById, RefByIds, Tag } from '../ast/nodes';
+import { assert, unimplemented, unreachable } from '../utils';
+
+type List<T> = readonly T[];
+
+function matchOverload(targets: List<Node>, source: List<Node>): boolean {
+    if (targets.length !== source.length) {
+        return false;
+    }
+
+    for (let i = 0; i < targets.length; i++) {
+        if (targets[i] !== source[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function resolveOverload(types: TypeSystemState, functions: RefByIds<Function>, argumentTypes: readonly Node[]) {
+    console.log(`Resolving overload: `, argumentTypes);
+    for (const id of functions.ids) {
+        const fn = types.ctx.nodes[id];
+        assert(fn instanceof Function);
+
+        const parameterTypes = getTypes(types, fn.parameters);
+        console.log(`> `, parameterTypes);
+
+        if (matchOverload(parameterTypes, argumentTypes)) {
+            console.log(`> SELECTED`);
+            return new RefById(functions.object, id, functions.distance);
+        }
+    }
+
+    return null;
+}
+
+function getTypes(types: TypeSystemState, refs: List<RefById>) {
+    return refs.map(id => {
+        const type = types.get(id);
+
+        if (type === null) {
+            // This error indicates one of:
+            //  - The expression relies on a return type of a function that has not been processed
+            //  - The invariant was broken 'all expressions in a function are topologically sorted'
+            throw new Error('A requested type has not yet been resolved');
+        }
+
+        return type;
+    })
+}
 
 export function processTypes(ctx: Ctx) {
     const types = new TypeSystemState(ctx);
@@ -35,8 +84,15 @@ export function processTypes(ctx: Ctx) {
             }
                 
             case Tag.Call: {
-                // FIX UP
                 types.typeof(node, 'func');
+
+                if (node.func.tag === Tag.RefByIds) {
+                    const fn = resolveOverload(types, node.func, getTypes(types, node.args));
+
+                    // Overload has been resolved.
+                    (node as any).func = fn;
+                }
+
                 types.set(node, ctx.get(node.func).returnType);
                 break;
             }
@@ -164,11 +220,18 @@ export class TypeSystemState {
                     return null;
                 }
 
+                const methods = [];
                 for (const memberRef of object.body) {
                     const member = this.ctx.get(memberRef);
                     if ((member as any).name === ref.name) {
-                        node[field] = new RefById(ref.object, member.id, Distance.Local) as any;
+                        methods.push(member.id);
                     }
+                }
+
+                if (methods.length === 1) {
+                    (node as any)[field] = new RefById(ref.object, methods[0], Distance.Local);
+                } else if (methods.length > 1) {
+                    (node as any)[field] = new RefByIds(ref.object, methods, Distance.Local);
                 }
 
                 return null;
