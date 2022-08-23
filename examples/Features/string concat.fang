@@ -1,0 +1,3 @@
+# Strings can be joined together with the `+` operator
+val statement = 'Hello, ' + 'world!'
+return statement == 'Hello, world!'

@@ -1,4 +1,5 @@
 import { inspect } from 'util';
+import { assert } from '../utils';
 
 export class VmString {
     constructor(readonly value: string) { }
@@ -33,5 +34,18 @@ export class VmString {
 
     [inspect.custom]() {
         return this.value;
+    }
+
+    ['infix+'](right: any) {
+        if (right instanceof VmString) {
+            return VmString.from(this.value + right.value);
+        }
+
+        if (typeof right === 'string') {
+            return VmString.from(this.value + right);
+        }
+
+        // TODO: Create a better error system
+        throw new Error('Strings do not support infix+ with right hand side');
     }
 }
