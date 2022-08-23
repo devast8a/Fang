@@ -21,8 +21,7 @@ export class Compiler {
         const root = parser.parse(ctx, source.content);
         ctx.root = root;
 
-        let enableTypeChecking = false;
-
+        const scope = resolveNames(ctx);
         for (const ref of root) {
             const node = ctx.get(ref);
 
@@ -31,18 +30,12 @@ export class Compiler {
                     const target = node.attribute.tag === Tag.RefByName ? node.attribute.name : '';
 
                     switch (target) {
-                        case 'DEBUG_TYPE_CHECK': enableTypeChecking = true; break;
+                        case 'DEBUG_TYPE_CHECK': processTypes(ctx); break;
                         case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatNodes(ctx, root)); break;
                         case 'DEBUG_PRINT_AST2': await fs.writeFile('serialized.out', serialize(ctx.nodes)); break;
                     }
                 }
             }
-        }
-
-        const scope = resolveNames(ctx);
-        if (enableTypeChecking) {
-            console.log("Type checking enabled")
-            processTypes(ctx);
         }
 
         return new Interpreter(ctx, root, scope);
