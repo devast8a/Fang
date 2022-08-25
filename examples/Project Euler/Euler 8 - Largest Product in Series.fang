@@ -24,7 +24,7 @@ val series = [
 
 mut max = 0
 
-for i in 0 .. series.length-size {
+for i in 0 .. series.size-size {
     mut product = 1
     for ii in i .. i+size {
         product = product * series[ii]
