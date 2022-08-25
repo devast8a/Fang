@@ -236,18 +236,27 @@ export class TypeSystemState {
                     return null;
                 }
 
-                const methods = [];
+                const members = [];
                 for (const memberRef of object.body) {
                     const member = this.ctx.get(memberRef);
+
                     if ((member as any).name === ref.name) {
-                        methods.push(member.id);
+                        members.push(member.id);
+                    }
+
+                    if (member.tag === Tag.Set) {
+                        const target = this.ctx.get(member.target);
+
+                        if (target.name === ref.name) {
+                            members.push(target.id);
+                        }
                     }
                 }
 
-                if (methods.length === 1) {
-                    (node as any)[field] = new RefById(ref.object, methods[0], Distance.Local);
-                } else if (methods.length > 1) {
-                    (node as any)[field] = new RefByIds(ref.object, methods, Distance.Local);
+                if (members.length === 1) {
+                    (node as any)[field] = new RefById(ref.object, members[0], Distance.Local);
+                } else if (members.length > 1) {
+                    (node as any)[field] = new RefByIds(ref.object, members, Distance.Local);
                 }
 
                 return null;
