@@ -1,0 +1,7 @@
+struct Foo {
+    val x: u32
+    val y: u32
+}
+
+val foo = Foo{10, 20}
+return foo.x == 10 and foo.y == 20

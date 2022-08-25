@@ -1,5 +1,5 @@
 struct Field {
-    val length = 100
+    val length: u32
 }
 
-return Field{}.length == 100
+return Field{100}.length == 100

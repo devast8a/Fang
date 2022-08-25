@@ -1,7 +1,7 @@
 struct Length {
-    fn test(value: str) => value.size
-    fn test(value: u32) => value
+    fn test(value: str) => 1
+    fn test(value: u32) => 2
 }
 
-return Length.test('hello') == 5 and
-    Length.test(400) == 400
+return Length.test('hello') == 1 and
+    Length.test(400) == 2

@@ -1,5 +1,5 @@
 struct Field {
-    val constructor = 100
+    val constructor: u32
 }
 
-return Field{}.constructor == 100
+return Field{100}.constructor == 100
