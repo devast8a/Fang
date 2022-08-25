@@ -4,6 +4,8 @@ import * as Path from 'path';
 import { Compiler } from '.';
 import chalk from 'chalk';
 
+let SHOW_ERROR = true;
+
 async function run(directory: string) {
     const files = await fs.readdir(directory);
 
@@ -36,7 +38,11 @@ async function run(directory: string) {
             } catch (e) {
                 if (e instanceof Error) {
                     console.log(`${name}: ${chalk.redBright(e.message)}`)
-                    console.log(e.stack);
+                    
+                    if (SHOW_ERROR) {
+                        console.log(e.stack);
+                        SHOW_ERROR = false;
+                    }
                 } else {
                     console.log(`${name}: ${chalk.redBright('<unknown error>')}`)
                 }

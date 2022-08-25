@@ -1,0 +1,7 @@
+struct Foo {
+    fn static_method(arg: u32) {
+        return arg
+    }
+}
+
+return Foo.static_method(100) == 100

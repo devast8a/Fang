@@ -1,0 +1,8 @@
+struct Foo {
+    fn method(self) {
+        return 100
+    }
+}
+
+val foo = Foo{}
+return foo.method() == 100

@@ -4,6 +4,7 @@ import { Builtins, populateBuiltins } from '../builtins';
 export class Ctx {
     public readonly builtins: Builtins;
     public root: LocalRef[] = [];
+    public LOGGING = 0;
 
     private constructor(
         public readonly nodes: Node[],

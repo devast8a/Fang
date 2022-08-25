@@ -1,0 +1,5 @@
+fn infix+%%+(left: u32, right: u32) {
+    return left + right
+}
+
+return (100 +%%+ 200) == 300

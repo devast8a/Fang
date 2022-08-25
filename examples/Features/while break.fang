@@ -1,0 +1,12 @@
+# The "break" keyword allows you to break from a loop early
+mut count = 0
+mut value = 0
+while count < 10 {
+    count = count + 1
+    value = value + 1
+
+    if count == 5 {
+        break
+    }
+}
+return value == 5

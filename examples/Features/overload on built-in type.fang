@@ -1,19 +1,12 @@
 ##DEBUG_TYPE_CHECK
 
-fn length(value: u32) {
-    mut length = 0
-
-    while value >= 1 {
-        value = value // 10
-        length = length + 1
-    }
-
-    return length
+fn foo(value: u32) {
+    return value + 100
 }
 
-fn length(str: str) {
-    return str.size
+fn foo(str: str) {
+    return 30
 }
 
-return length(1234) == 4 and
-    length('Hello world!') == 12
+return foo(50) == 150 and
+    foo('Hello world!') == 30

@@ -1,0 +1,8 @@
+struct Foo {
+    fn static_method(self, arg: u32) {
+        return arg
+    }
+}
+
+val foo = Foo{}
+return foo.static_method(123) == 123

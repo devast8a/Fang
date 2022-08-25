@@ -1,5 +1,3 @@
-##DEBUG_TYPE_CHECK
-
 fn infix++(left: u32, right: u32) =>
     (left + right)**2
 

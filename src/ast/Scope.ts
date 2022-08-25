@@ -9,10 +9,10 @@ class Sym {
 
 export class Scope {
     public constructor(
-        private readonly parent: Scope | null,
+        public readonly parent: Scope | null,
 
-        private readonly symbols: Map<string, Sym>,
-        private readonly cache: Map<string, Sym>,
+        public readonly symbols: Map<string, Sym>,
+        public readonly cache: Map<string, Sym>,
 
         public readonly type: ScopeType,
     ) { }

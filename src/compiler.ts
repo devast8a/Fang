@@ -2,13 +2,12 @@ import { Ctx as Ctx } from './ast/context';
 import { Tag } from './ast/nodes';
 import { Source } from './common/source';
 import { resolveNames } from './stages/NameResolver';
-import { Interpreter } from './interpret/interpret';
+import { Interpreter } from './interpreter/Interpreter';
 import { FangGrammar } from './grammar/grammar';
 import { promises as fs } from 'fs';
 import { formatNodes } from './ast/formatter';
 import { processTypes } from './stages/TypeSystem';
 import { serialize } from './ast/serialize';
-// import { resolve } from './stages/Resolver';
 
 export class Compiler {
     public static async compileFile(path: string) {
@@ -22,6 +21,7 @@ export class Compiler {
         ctx.root = root;
 
         const scope = resolveNames(ctx);
+
         for (const ref of root) {
             const node = ctx.get(ref);
 
@@ -30,7 +30,22 @@ export class Compiler {
                     const target = node.attribute.tag === Tag.RefByName ? node.attribute.name : '';
 
                     switch (target) {
-                        case 'DEBUG_TYPE_CHECK': processTypes(ctx); break;
+                        case 'DEBUG_LOGGING': ctx.LOGGING = 1; break;
+                    }
+                }
+            }
+        }
+
+        processTypes(ctx);
+
+        for (const ref of root) {
+            const node = ctx.get(ref);
+
+            switch (node.tag) {
+                case Tag.BlockAttribute: {
+                    const target = node.attribute.tag === Tag.RefByName ? node.attribute.name : '';
+
+                    switch (target) {
                         case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatNodes(ctx, root)); break;
                         case 'DEBUG_PRINT_AST2': await fs.writeFile('serialized.out', serialize(ctx.nodes)); break;
                     }

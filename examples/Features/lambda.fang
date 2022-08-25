@@ -1,0 +1,4 @@
+# Closures.
+#   First-class functions that capture their environment
+val lambda = fn() => 123
+return lambda() == 123

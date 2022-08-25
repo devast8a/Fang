@@ -85,6 +85,7 @@ export class Call {
     readonly id = id()
 
     constructor(
+        // TODO: Switch to Ref - Calls can target non-functions (closures, parameters, etc...)
         readonly func: Ref<Function>,
         readonly args: readonly LocalRef[],
     ) { }

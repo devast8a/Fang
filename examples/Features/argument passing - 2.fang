@@ -1,0 +1,5 @@
+fn func(a: u32, b: u32) {
+    return a + 20 + b*2
+}
+
+return func(10, 3) == 36

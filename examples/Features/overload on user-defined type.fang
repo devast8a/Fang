@@ -1,5 +1,3 @@
-##DEBUG_TYPE_CHECK
-
 struct Vec2 {
     val x: u32
     val y: u32

@@ -1,0 +1,7 @@
+fn foo() {
+    return 100
+}
+
+fn bar() => 200
+
+return foo() == 100 and bar() == 200

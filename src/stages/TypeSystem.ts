@@ -20,16 +20,16 @@ function matchOverload(targets: List<Node>, source: List<Node>): boolean {
 }
 
 function resolveOverload(types: TypeSystemState, functions: RefByIds<Function>, argumentTypes: readonly Node[]) {
-    console.log(`Resolving overload: `, argumentTypes);
+    //console.log(`Resolving overload: `, argumentTypes);
     for (const id of functions.ids) {
         const fn = types.ctx.nodes[id];
         assert(fn instanceof Function);
 
         const parameterTypes = getTypes(types, fn.parameters);
-        console.log(`> `, parameterTypes);
+        //console.log(`> `, parameterTypes);
 
         if (matchOverload(parameterTypes, argumentTypes)) {
-            console.log(`> SELECTED`);
+            //console.log(`> SELECTED`);
             return new RefById(functions.object, id, functions.distance);
         }
     }
@@ -93,7 +93,20 @@ export function processTypes(ctx: Ctx) {
                     (node as any).func = fn;
                 }
 
-                types.set(node, ctx.get(node.func).returnType);
+                // TODO: Fix after node.func is marked as Ref rather than Ref<Function>
+                const fn = ctx.get(node.func) as Node;
+
+                switch (fn.tag) {
+                    case Tag.Function: types.set(node, ctx.get(node.func).returnType); break;
+                    case Tag.Variable: types.set(node, types.get(fn)); break;
+                    default: throw unimplemented(fn as never);
+                }
+                
+                if (ctx.LOGGING === 1) {
+                    //console.log(types.get(fn));
+                    debug(types, node);
+                }
+
                 break;
             }
                 
@@ -143,9 +156,12 @@ export function processTypes(ctx: Ctx) {
             case Tag.Set: {
                 types.set(node, types.get(node.source));
 
-                const target = ctx.get(node.target);
-                if (types.get(target) === null) {
-                    types.set(target, types.get(node.source));
+                // TODO: This is a hack to get RefByExpr working.
+                if (node.target.tag !== Tag.RefByExpr) {
+                    const target = ctx.get(node.target);
+                    if (types.get(target) === null) {
+                        types.set(target, types.get(node.source));
+                    }
                 }
                 break;
             }
@@ -337,4 +353,11 @@ export class TypeSystemState {
 
 function mkRef(node: Node) {
     return new RefById(null, node.id, Distance.Global);
+}
+
+function debug(types: TypeSystemState, node: Node) {
+    const type = types.types[node.id];
+    const ctx = types.ctx;
+
+    console.log(formatNode(ctx, node), '::', type === null ? '<null>' : formatNode(ctx, type));
 }
