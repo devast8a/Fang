@@ -34,8 +34,8 @@ export function evaluate(env: Environment, ref: Ref | null, mode = ControlMode.V
         case Tag.Call: {
             const object = node.func.object === null ? null : evaluate(env, node.func.object);
             const fn     = env.get(node.func);
-            const args   = node.args.map(arg => evaluate(env, arg));
-
+            const args = node.args.map(arg => evaluate(env, arg));
+            
             assert(fn instanceof VmFunction || fn instanceof NativeFunction);
 
             return fn.call(object, args);

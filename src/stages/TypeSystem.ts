@@ -26,6 +26,10 @@ function resolveOverload(types: TypeSystemState, functions: RefByIds<Function>, 
 
         const parameterTypes = getTypes(types, fn.parameters);
 
+        if (types.ctx.get(fn.parameters[0]).name === 'self') {
+            parameterTypes.shift();
+        }
+
         if (matchOverload(parameterTypes, argumentTypes)) {
             return new RefById(functions.object, id, functions.distance);
         }

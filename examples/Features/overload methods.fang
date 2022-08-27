@@ -1,0 +1,9 @@
+struct Foo {
+    fn foo(self, value: str) => 1
+    fn foo(self, value: u32) => 2
+}
+
+val f = Foo{}
+
+return f.foo('hello') == 1 and
+    f.foo(400) == 2
