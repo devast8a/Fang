@@ -16,7 +16,7 @@ function replace(this: any, key: string, value: any) {
     }
 
     if (key === 'tag') {
-        return Tag[value];
+        //return Tag[value];
     }
 
     return value;

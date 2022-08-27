@@ -1,8 +1,8 @@
 import { Ctx } from '../ast/context';
-import { Tag, Ref, LocalRef, RefById } from '../ast/nodes';
+import { Tag, Ref, LocalRef, RefById, Struct } from '../ast/nodes';
 import { Scope } from '../ast/Scope';
 import { assert, unimplemented } from '../utils';
-import { Control, ControlType } from './Control';
+import { Control, ControlMode, ControlType } from './Control';
 import { Environment } from './Environment';
 import { VmFunction } from './vm/VmFunction';
 import { VmInstance } from './vm/VmInstance';
@@ -11,8 +11,10 @@ import { VmStruct } from './vm/VmStruct';
 import { NativeInstance } from './native/NativeInstance';
 import { NativeStruct } from './native/NativeStruct';
 import { BuiltinList } from './builtins/BuiltinList';
+import { BuiltinMath } from './builtins/BuiltinMath';
 
-export function evaluate(env: Environment, ref: Ref | null): Control | any {
+export function evaluate(env: Environment, ref: Ref | null, mode = ControlMode.Value): any
+{
     if (ref === null) {
         return null;
     }
@@ -26,13 +28,13 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
 
         case Tag.Break: {
             const value = evaluate(env, node.value);
-            return new Control(ControlType.Break, value);
+            return Control.create(mode, ControlType.Break, value);
         }
 
         case Tag.Call: {
             const object = node.func.object === null ? null : evaluate(env, node.func.object);
-            const fn = env.get(node.func);
-            const args = node.args.map(arg => evaluate(env, arg));
+            const fn     = env.get(node.func);
+            const args   = node.args.map(arg => evaluate(env, arg));
 
             assert(fn instanceof VmFunction || fn instanceof NativeFunction);
 
@@ -55,7 +57,7 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
 
         case Tag.Continue: {
             const value = evaluate(env, node.value);
-            return new Control(ControlType.Continue, value);
+            return Control.create(mode, ControlType.Continue, value);
         }
 
         case Tag.Extend: {
@@ -68,12 +70,11 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
 
             for (const element of collection) {
                 env.values[node.element.id] = element;
-
                 const control = evaluateBody(env, node.body);
 
                 // TODO: Target continue/break feature
-                if (control === null || control.type === ControlType.Continue) continue;
-                if (control.type === ControlType.Break) break;
+                if (control.type === ControlType.Break)  return control.value;
+                if (control.type === ControlType.Return) return Control.pass(mode, control);
             }
 
             return null;
@@ -118,7 +119,8 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
         case Tag.If: {
             for (const c of node.cases) {
                 if (c.condition === null || evaluate(env, c.condition)) {
-                    return evaluateBody(env, c.body);
+                    const control = evaluateBody(env, c.body);
+                    return Control.pass(mode, control);
                 }
             }
 
@@ -127,7 +129,7 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
             
         case Tag.Return: {
             const value = evaluate(env, node.value);
-            return new Control(ControlType.Return, value);
+            return Control.create(mode, ControlType.Return, value);
         }
             
         case Tag.Set: {
@@ -137,12 +139,13 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
                 // Referring to a field of some object
                 const object = evaluate(env, node.target.object);
                 const values = node.target.values.map(value => evaluate(env, value));
-                const value = evaluate(env, node.source);
+                const value  = evaluate(env, node.source);
 
                 assert(object instanceof VmInstance || object instanceof NativeInstance,
                     'target object must be an instance');
 
-                return object.setIndex(values, value);
+                object.setIndex(values, value);
+                return null;
             }
 
             // Must be resolved.
@@ -151,7 +154,7 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
             if (node.target.object === null) {
                 const source = evaluate(env, node.source);
                 env.set(node.target, source);
-                return source;
+                return null;
             } else {
                 // Referring to a field of some object
                 const object = evaluate(env, node.target.object);
@@ -159,7 +162,8 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
 
                 assert(object instanceof VmInstance || object instanceof NativeInstance, 'target object must be an instance');
 
-                return object.setField(source.id, source);
+                object.setField(source.id, source);
+                return null;
             }
         }
             
@@ -181,8 +185,8 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
                 const control = evaluateBody(env, node.body);
 
                 // TODO: Target continue/break feature
-                if (control === null || control.type === ControlType.Continue) continue;
-                if (control.type === ControlType.Break) break;
+                if (control.type === ControlType.Break)  return control.value;
+                if (control.type === ControlType.Return) return Control.pass(mode, control);
             }
 
             return null;
@@ -196,14 +200,14 @@ export function evaluate(env: Environment, ref: Ref | null): Control | any {
 
 function evaluateBody(env: Environment, body: RefById[]) {
     for (const ref of body) {
-        const control = evaluate(env, ref);
+        const control = evaluate(env, ref, ControlMode.Control);
 
         if (control instanceof Control) {
             return control;
         }
     }
 
-    return null;
+    return new Control(ControlType.End, null);
 }
 
 export class Interpreter {
@@ -242,29 +246,10 @@ export class Interpreter {
                 }
                     
                 case Tag.Struct: {
-                    if (node.name === 'List') {
-                        const prototype = BuiltinList.prototype as { [field: string]: any };
-                        const mapping = new Map();
-
-                        // Setup all of the Native functions that call the right handler.
-                        for (const ref of node.body) {
-                            const member = global.ctx.get(ref);
-
-                            if (member.tag === Tag.Function && member.name !== null) {
-                                values[member.id] = new NativeFunction(prototype[member.name])
-                            }
-
-                            if (member.tag === Tag.Variable) {
-                                mapping.set(member.id, member.name);
-                            }
-                        }
-
-                        values[id] = new NativeStruct(global, node, BuiltinList, mapping);
-
-                    } else {
-                        values[id] = new VmStruct(global, node);
+                    switch (node.name) {
+                        case 'List': setup(global, node, BuiltinList); break;
+                        default: values[id] = new VmStruct(global, node); break;
                     }
-                    break;
                 }
             }
         }
@@ -289,6 +274,26 @@ export class Interpreter {
 
         return null;
     }
+}
+
+function setup(env: Environment, struct: Struct, builtin: any) {
+    const prototype = builtin.prototype as { [field: string]: any };
+    const mapping = new Map();
+
+    // Setup all of the Native functions that call the right handler.
+    for (const ref of struct.body) {
+        const member = env.ctx.get(ref);
+
+        if (member.tag === Tag.Function && member.name !== null) {
+            env.values[member.id] = new NativeFunction(prototype[member.name])
+        }
+
+        if (member.tag === Tag.Variable) {
+            mapping.set(member.id, member.name);
+        }
+    }
+
+    env.values[struct.id] = new NativeStruct(env, struct, builtin, mapping);
 }
 
 function getExternal(name: string) {
@@ -320,6 +325,8 @@ function getExternal(name: string) {
         case 'infix==': return (a: any, b: any) => a === b;
         case 'infix!=': return (a: any, b: any) => a !== b;
 
+        case 'Math_sqrt': return (a: any) => Math.sqrt(a);
+
         case 'infix..': return (a: any, b: any) => {
             const values = [];
             for (let i = a; i <= b; i++) {
@@ -332,9 +339,8 @@ function getExternal(name: string) {
         case 'infixor': return (a: any, b: any) => a || b;
         case 'infixand': return (a: any, b: any) => a && b;
 
-        case 'push': return (self: any, args: any) => {
-            console.log(self, args);
-        };
+        case 'push': return () => {};
+        case 'sqrt': return () => {};
 
         case 'print': return (...args: any[]) => {
             console.log(...args);

@@ -17,9 +17,11 @@ export function populateBuiltins(ctx: Ctx) {
     const List = (function() {
         const list = new Struct('List', ctx, scope);
         list.field('size', u32);
-        list.method('push', nothing, []);
+        list.method('push', [], nothing);
         return list.end();
     })();
+
+    mkFunc(ctx, scope, 'Math_sqrt', u32, [u32]);
 
     mkConst(ctx, scope, bool, 'true', true);
     mkConst(ctx, scope, bool, 'false', false);
@@ -54,9 +56,8 @@ export function populateBuiltins(ctx: Ctx) {
     return {
         count: ctx.nodes.length,
         List,
-        // Math,
-        // Num,
-        //String,
+        Math,
+
         nothing,
         bool,
         f64,
@@ -86,7 +87,7 @@ class Struct {
         return ref;
     }
 
-    method(name: string, returnType: Ref, parameters: Ref[]) {
+    method(name: string, parameters: Ref[], returnType: Ref) {
         const ps = parameters.map((parameter, index) =>
             this.ctx.add(new Nodes.Variable(`_${index}`, parameter, VariableFlags.None))
         );

@@ -1,35 +1,35 @@
 export enum Tag {
     // Expr
-    BlockAttribute,
-    Break,
-    Call,
-    Constant,
-    Construct,
-    Continue,
-    Enum,
-    Extend,
-    ForEach,
-    Function,
-    Get,
-    If,
-    Match,
-    Move,
-    Return,
-    Set,
-    Struct,
-    Trait,
-    Variable,
-    While,
+    BlockAttribute = 'BlockAttribute',
+    Break = 'Break',
+    Call = 'Call',
+    Constant = 'Constant',
+    Construct = 'Construct',
+    Continue = 'Continue',
+    Enum = 'Enum',
+    Extend = 'Extend',
+    ForEach = 'ForEach',
+    Function = 'Function',
+    Get = 'Get',
+    If = 'If',
+    Match = 'Match',
+    Move = 'Move',
+    Return = 'Return',
+    Set = 'Set',
+    Struct = 'Struct',
+    Trait = 'Trait',
+    Variable = 'Variable',
+    While = 'While',
 
     // Ref
-    RefByExpr,
-    RefById,
-    RefByIds,
-    RefByName,
-    RefInfer,
+    RefByExpr = 'RefByExpr',
+    RefById = 'RefById',
+    RefByIds = 'RefByIds',
+    RefByName = 'RefByName',
+    RefInfer = 'RefInfer',
 }
 
-export function isRef(o: Node | Ref): o is Ref { return o.tag >= Tag.RefByExpr; }
+export function isRef(o: Node | Ref): o is Ref { return o.tag.startsWith('Ref'); }
 export function isNode(o: Node | Ref): o is Node { return !isRef(o); }
 
 export type Type<T extends Node = Node> = Ref<T>;

@@ -1,5 +1,5 @@
 import { Function } from '../../ast/nodes';
-import { Control } from '../Control';
+import { Control, ControlMode } from '../Control';
 import { evaluate } from '../Interpreter';
 import { Environment } from '../Environment';
 
@@ -32,7 +32,7 @@ export class VmFunction {
         }
 
         for (const ref of this.fn.body) {
-            const control = evaluate(env, ref);
+            const control = evaluate(env, ref, ControlMode.Control);
 
             if (control instanceof Control) {
                 return control.value;
