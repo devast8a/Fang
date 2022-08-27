@@ -1,0 +1,13 @@
+mut position = 0
+
+val value = for i in 1..10 {
+    position = 1
+
+    for i in 1..10 {
+        return 'Inside Foreach'
+    }
+
+    position = 2
+}
+
+return value == 'Inside Foreach'

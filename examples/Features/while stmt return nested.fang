@@ -1,0 +1,16 @@
+# The "continue" keyword allows you to restart the loop early
+mut position = 0
+
+val value = while true {
+    position = 1
+
+    while true {
+        return 'Inside While'
+        break
+    }
+
+    position = 2
+    break
+}
+
+return value == 'Inside While'

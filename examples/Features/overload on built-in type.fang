@@ -1,5 +1,3 @@
-##DEBUG_TYPE_CHECK
-
 fn foo(value: u32) {
     return value + 100
 }

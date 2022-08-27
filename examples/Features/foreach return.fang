@@ -1,0 +1,5 @@
+val value = for value in 1..10 {
+    return 'Inside Foreach'
+}
+
+return value == 'Inside Foreach'

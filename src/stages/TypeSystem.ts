@@ -20,16 +20,13 @@ function matchOverload(targets: List<Node>, source: List<Node>): boolean {
 }
 
 function resolveOverload(types: TypeSystemState, functions: RefByIds<Function>, argumentTypes: readonly Node[]) {
-    //console.log(`Resolving overload: `, argumentTypes);
     for (const id of functions.ids) {
         const fn = types.ctx.nodes[id];
         assert(fn instanceof Function);
 
         const parameterTypes = getTypes(types, fn.parameters);
-        //console.log(`> `, parameterTypes);
 
         if (matchOverload(parameterTypes, argumentTypes)) {
-            //console.log(`> SELECTED`);
             return new RefById(functions.object, id, functions.distance);
         }
     }
@@ -100,11 +97,6 @@ export function processTypes(ctx: Ctx) {
                     case Tag.Function: types.set(node, ctx.get(node.func).returnType); break;
                     case Tag.Variable: types.set(node, types.get(fn)); break;
                     default: throw unimplemented(fn as never);
-                }
-                
-                if (ctx.LOGGING === 1) {
-                    //console.log(types.get(fn));
-                    debug(types, node);
                 }
 
                 break;

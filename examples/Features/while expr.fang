@@ -1,0 +1,7 @@
+# The "continue" keyword allows you to restart the loop early
+
+val value = while true {
+    return 'inside while'
+}
+
+return value == 'inside while'

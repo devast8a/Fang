@@ -1,0 +1,6 @@
+fn foo(num: u32) => num + 1
+
+foo(100)
+
+# Should throw an error
+# foo('hello')

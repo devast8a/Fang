@@ -1,0 +1,7 @@
+val value = if 2 == 5 {
+    return 'First Branch'
+} else {
+    return 'Else Branch'
+}
+
+return value == 'Else Branch'
