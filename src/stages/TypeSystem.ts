@@ -5,52 +5,159 @@ import { assert, unimplemented, unreachable } from '../utils';
 
 type List<T> = readonly T[];
 
-function matchOverload(targets: List<Node>, source: List<Node>): boolean {
-    if (targets.length !== source.length) {
-        return false;
-    }
+export function processType(types: TypeSystemState, node: Node) {
+    const ctx = types.ctx;
 
-    for (let i = 0; i < targets.length; i++) {
-        if (targets[i] !== source[i]) {
-            return false;
+    switch (node.tag) {
+        case Tag.BlockAttribute: {
+            // TODO: Implement block attribute
+            break;
+        }
+            
+        case Tag.Break: {
+            break;
+        }
+
+        case Tag.Call: {
+            types.typeof(node, 'func');
+
+            if (node.func.tag === Tag.RefByIds) {
+                const fn = resolveOverload(types, node.func, getTypes(types, node.args));
+
+                // Overload has been resolved.
+                (node as any).func = fn;
+            }
+
+            // TODO: Fix after node.func is marked as Ref rather than Ref<Function>
+            const fn = ctx.get(node.func) as Node;
+
+            switch (fn.tag) {
+                case Tag.Function: types.set(node, ctx.get(node.func).returnType); break;
+                case Tag.Variable: types.set(node, types.get(fn)); break;
+                default: throw unimplemented(fn as never);
+            }
+
+            break;
+        }
+            
+        case Tag.Constant: {
+            types.set(node, node.type);
+            break;
+        }
+            
+        case Tag.Continue: {
+            break;
+        }
+
+        case Tag.Construct: {
+            types.set(node, node.type);
+            break;
+        }
+
+        case Tag.ForEach: {
+            // TODO: Support element.
+            for (const ref of node.body) {
+                processType(types, ctx.get(ref));
+            }
+            break;
+        }
+
+        case Tag.Function: {
+            types.set(node, node);
+
+            if (node.returnType.tag === Tag.RefInfer) {
+                node.returnType = ctx.builtins.nothing;
+
+                if (node.body.length > 0) {
+                    const lastNode = ctx.get(node.body[node.body.length - 1]);
+
+                    if (lastNode.tag === Tag.Return) {
+                        const type = types.get(lastNode);
+                        if (type === null) {
+                            //console.log(type);
+                            break;
+                        }
+                        node.returnType = mkRef(type);
+                    }
+                }
+            }
+            break;
+        }
+            
+        case Tag.Get: {
+            types.typeof(node, 'source');
+            types.set(node, types.get(node.source));
+            break;
+        }
+            
+        case Tag.If: {
+            for (const c of node.cases) {
+                if (c.condition !== null) {
+                    processType(types, ctx.get(c.condition));
+                }
+
+                for (const ref of c.body) {
+                    processType(types, ctx.get(ref));
+                }
+            }
+
+            break;
+        }
+            
+        case Tag.Move: {
+            break;
+        }
+            
+        case Tag.Return: {
+            types.set(node, node.value === null ? ctx.builtins.nothing : types.get(node.value));
+            break;
+        }
+            
+        case Tag.Set: {
+            types.set(node, types.get(node.source));
+
+            // TODO: This is a hack to get RefByExpr working.
+            if (node.target.tag !== Tag.RefByExpr) {
+                const target = ctx.get(node.target);
+                if (types.get(target) === null) {
+                    types.set(target, types.get(node.source));
+                }
+            }
+            break;
+        }
+
+        case Tag.Struct: {
+            types.set(node, node);
+            break;
+        }
+
+        case Tag.Trait: {
+            types.set(node, node);
+            break;
+        }
+
+        case Tag.Variable: {
+            if (node.type.tag === Tag.RefInfer) {
+                break;
+            }
+
+            types.set(node, node.type);
+            break;
+        }
+            
+        case Tag.While: {
+            processType(types, ctx.get(node.condition));
+
+            for (const ref of node.body) {
+                processType(types, ctx.get(ref));
+            }
+            break;
+        }
+
+        default: {
+            throw unimplemented(node as never);
         }
     }
-
-    return true;
-}
-
-function resolveOverload(types: TypeSystemState, functions: RefByIds<Function>, argumentTypes: readonly Node[]) {
-    for (const id of functions.ids) {
-        const fn = types.ctx.nodes[id];
-        assert(fn instanceof Function);
-
-        const parameterTypes = getTypes(types, fn.parameters);
-
-        if (types.ctx.get(fn.parameters[0]).name === 'self') {
-            parameterTypes.shift();
-        }
-
-        if (matchOverload(parameterTypes, argumentTypes)) {
-            return new RefById(functions.object, id, functions.distance);
-        }
-    }
-
-    return null;
-}
-
-function getTypes(types: TypeSystemState, refs: List<RefById>) {
-    return refs.map(id => {
-        const type = types.get(id);
-
-        if (type === null) {
-            // This error indicates one of:
-            //  - The expression relies on a return type of a function that has not been processed
-            //  - The invariant was broken 'all expressions in a function are topologically sorted'
-            throw new Error('A requested type has not yet been resolved');
-        }
-
-        return type;
-    })
 }
 
 export function processTypes(ctx: Ctx) {
@@ -78,123 +185,8 @@ export function processTypes(ctx: Ctx) {
     }
 
     for (const node of ctx.nodes) {
-        switch (node.tag) {
-            case Tag.BlockAttribute: {
-                // TODO: Implement block attribute
-                break;
-            }
-                
-            case Tag.Call: {
-                types.typeof(node, 'func');
-
-                if (node.func.tag === Tag.RefByIds) {
-                    const fn = resolveOverload(types, node.func, getTypes(types, node.args));
-
-                    // Overload has been resolved.
-                    (node as any).func = fn;
-                }
-
-                // TODO: Fix after node.func is marked as Ref rather than Ref<Function>
-                const fn = ctx.get(node.func) as Node;
-
-                switch (fn.tag) {
-                    case Tag.Function: types.set(node, ctx.get(node.func).returnType); break;
-                    case Tag.Variable: types.set(node, types.get(fn)); break;
-                    default: throw unimplemented(fn as never);
-                }
-
-                break;
-            }
-                
-            case Tag.Constant: {
-                types.set(node, node.type);
-                break;
-            }
-                
-            case Tag.Construct: {
-                types.set(node, node.type);
-                break;
-            }
-
-            case Tag.Function: {
-                types.set(node, node);
-
-                if (node.returnType.tag === Tag.RefInfer) {
-                    node.returnType = ctx.builtins.nothing;
-
-                    if (node.body.length > 0) {
-                        const lastNode = ctx.get(node.body[node.body.length - 1]);
-
-                        if (lastNode.tag === Tag.Return) {
-                            const type = types.get(lastNode);
-                            if (type === null) {
-                                //console.log(type);
-                                break;
-                            }
-                            node.returnType = mkRef(type);
-                        }
-                    }
-                }
-                break;
-            }
-                
-            case Tag.Get: {
-                types.typeof(node, 'source');
-                types.set(node, types.get(node.source));
-                break;
-            }
-                
-            case Tag.Return: {
-                types.set(node, node.value === null ? ctx.builtins.nothing : types.get(node.value));
-                break;
-            }
-                
-            case Tag.Set: {
-                types.set(node, types.get(node.source));
-
-                // TODO: This is a hack to get RefByExpr working.
-                if (node.target.tag !== Tag.RefByExpr) {
-                    const target = ctx.get(node.target);
-                    if (types.get(target) === null) {
-                        types.set(target, types.get(node.source));
-                    }
-                }
-                break;
-            }
-
-            case Tag.Struct: {
-                types.set(node, node);
-                break;
-            }
-
-            case Tag.Trait: {
-                types.set(node, node);
-                break;
-            }
-
-            case Tag.Variable: {
-                if (node.type.tag === Tag.RefInfer) {
-                    break;
-                }
-
-                types.set(node, node.type);
-                break;
-            }
-
-            default: {
-                //console.log(Tag[node.tag]);
-                break;
-            }
-        }
+        processType(types, node);
     }
-
-    // console.group('Types');
-    // for (const node of ctx.nodes.slice(ctx.builtins.count)) {
-    //     const type = types.types[node.id];
-
-    //     console.log(formatNode(ctx, node), '::', type === null ? '<unknown type>' : formatNode(ctx, type));
-    // }
-    // console.groupEnd();
 }
 
 export class TypeSystemState {
@@ -360,9 +352,50 @@ function mkRef(node: Node) {
     return new RefById(null, node.id, Distance.Global);
 }
 
-function debug(types: TypeSystemState, node: Node) {
-    const type = types.types[node.id];
-    const ctx = types.ctx;
+function matchOverload(targets: List<Node>, source: List<Node>): boolean {
+    if (targets.length !== source.length) {
+        return false;
+    }
 
-    console.log(formatNode(ctx, node), '::', type === null ? '<null>' : formatNode(ctx, type));
+    for (let i = 0; i < targets.length; i++) {
+        if (targets[i] !== source[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function resolveOverload(types: TypeSystemState, functions: RefByIds<Function>, argumentTypes: readonly Node[]) {
+    for (const id of functions.ids) {
+        const fn = types.ctx.nodes[id];
+        assert(fn instanceof Function);
+
+        const parameterTypes = getTypes(types, fn.parameters);
+
+        if (types.ctx.get(fn.parameters[0]).name === 'self') {
+            parameterTypes.shift();
+        }
+
+        if (matchOverload(parameterTypes, argumentTypes)) {
+            return new RefById(functions.object, id, functions.distance);
+        }
+    }
+
+    return null;
+}
+
+function getTypes(types: TypeSystemState, refs: List<RefById>) {
+    return refs.map(id => {
+        const type = types.get(id);
+
+        if (type === null) {
+            // This error indicates one of:
+            //  - The expression relies on a return type of a function that has not been processed
+            //  - The invariant was broken 'all expressions in a function are topologically sorted'
+            throw new Error('A requested type has not yet been resolved');
+        }
+
+        return type;
+    })
 }
