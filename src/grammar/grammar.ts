@@ -173,7 +173,7 @@ const Parameter = rule(() => {
         seq('mut', __),
     ]).get(0);
 
-    const name = Identifier;
+    const name = Identifier
     const type = seq(_, ':', _, Type).get(3)
     const value = seq(_, '=', _, Expr)
 
@@ -423,17 +423,30 @@ Set.add(
 
 Expr.add(Set, addNode);
 
+// == Error ==
+const Error = rule(
+    () => {
+        const keyword = seq('error', __)
+        const name = Identifier
+
+        return def(keyword, name)
+    },
+    (ctx, keyword, name) => new Nodes.Struct(name, [])
+)
+Expr.add(Error, addNode)
+
 // == Struct ==
 const Struct = rule(
     () => {
         const keyword = 'struct'
         const name = seq(__, Identifier).get(1)
         const impls = list(seq(_, 'impl', __, Expr).get(3)).get('elements')
+        const generic = seq(_, 'generic', star('<', N_, Identifier, Comma, '>').get('elements')).get(2)
         const body = seq(N_, Body).get(1)
 
-        return def(keyword, name, opt(impls), opt(body))
+        return def(keyword, name, opt(generic), opt(impls), opt(body))
     },
-    (ctx, keyword, name, impls, body) =>
+    (ctx, keyword, name, generic, impls, body) =>
         new Nodes.Struct(name, body ?? [])
 )
 
@@ -454,7 +467,17 @@ const Trait = rule(
 
 Expr.add(Trait, addNode);
 
+// == Error ==
+const TypeDecl = rule(
+    () => {
+        const keyword = seq('type', __)
+        const name = Identifier
 
+        return def(keyword, name)
+    },
+    (ctx, keyword, name) => new Nodes.Struct(name, [])
+)
+Expr.add(TypeDecl, addNode)
 
 // == Variable ==
 const Variable = rule(() => {
