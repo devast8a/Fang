@@ -1,521 +1,405 @@
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
-import { Node, Ref, LocalRef, VariableFlags, RefById, Distance } from '../ast/nodes'
-import { unimplemented } from '../utils'
-import { list, either, opt, Rules, seq, star } from './generator'
+import { ANY, CONFIG, LIST, OPT, REP, SEQ, Syntax, TOKEN } from '../parser-generator'
 
-const { rule, def } = Rules<Ctx>()
+type Node = Nodes.LocalRef
+const Node = Nodes.LocalRef
 
-// ------------------------------------------------------------------------------------------------
-// Define these at the top of the file because they are used commonly throughout the file.
+const UNDEF = () => undefined as any
+const $ = CONFIG<Ctx>()
 
-// == Core Rules ==
-const Atom = rule<LocalRef>()  // Simple expression, no spaces, unless delimited. eg. "(a + b)" is ok
-const Expr = rule<LocalRef>()  // Any expression.
-const Type = rule<Ref>()    // A type expression.
-const Symbol = rule<Ref<any>>()
+export const Grammar = new Syntax('Root', $.any)
+Grammar.match(() => LIST(OPT(N), Stmt, ExpressionSeparator))
 
-Type.add(Symbol)
-
-export const FangGrammar = rule(
-    () => def(N_, list(Expr, Semicolon), N_),
-    (ctx, n1, list, n3) => list.elements
-)
-
-// == Whitespace ==
-const comment = /#+(?:[ \t]+[ -~]*)?/                   // Comment (Attributes complicate this)
-const __  = /[ \t]+/                                    // Required space
-const _   = opt(__)                                     // Optional space
-const N__ = list(either([__, comment, '\n']))           // Required space, comments, or newlines
-const N_  = opt(N__)                                    // Optional space, comments, or newlines
-const NL  = seq(list(seq(_, opt(comment), '\n')), _)    // Required newlines
-
-// == Separators ==
-//  Newlines are allowed where ever these separators are allowed
-const Semicolon = either([NL, seq(';', _)])
-const Comma     = either([NL, seq(',', _)])
-
-// == Identifier ==
-const Identifier = /[_a-zA-Z][_a-zA-Z0-9]*/
-Symbol.add(Identifier, (ctx, name) => ref(name));
-
-const Name = rule<string>();
-Name.add(Identifier, (ctx, name) => name);
-
-function infer() {
-    return new Nodes.RefInfer(null);
+function add(parameters: {context: Ctx, value: Nodes.Node}) {
+    return parameters.context.add(parameters.value)
 }
 
-function ref(name: string) {
-    return new Nodes.RefByName<any>(null, name);
-}
-
-function addNode(ctx: Ctx, node: Node) {
-    return ctx.add(node);
-}
-
-// ------------------------------------------------------------------------------------------------
-// == Body ==
-const Body = rule(
-    star('{', N_, Expr, Semicolon, '}').elements,
-    (ctx, list) => list
-)
-
-const BodyX = rule<LocalRef[]>();
-BodyX.add(seq(N_, Body).get(1));
-BodyX.add(
-    () => def(_, '=>', N_, Expr),
-    (ctx, n1, n2, n3, body) => [ctx.add(new Nodes.Return(body))]
-)
-
-// == Block Attributes ==
-const BlockAttribute = rule(
-    () => def('##', Symbol),
-    (ctx, n1, target) => new Nodes.BlockAttribute(target),
-);
-
-Expr.add(BlockAttribute, addNode);
-
-// == Break ==
-const Break = rule(
-    () => def('break'),
-    (ctx, n1) => new Nodes.Break(null, null),
-);
-
-Expr.add(Break, addNode);
-
-// == Call ==
-const Call = rule(
-    () => def(Symbol, CallArguments),
-    (ctx, target, args) => new Nodes.Call(target, args),
-);
-
-const CallArguments = star('(', N_, Expr, Comma, ')').elements;
-
-Atom.add(Call, addNode);
-Type.add(Call, addNode);
-
-// == Construct ==
-const Construct = rule(
-    () => def(Symbol, ConstructArguments),
-    (ctx, target, args) => new Nodes.Construct(target, args),
-);
-
-Construct.add(
-    () => def(Generic, ConstructArguments),
-    (ctx, target, args) => new Nodes.Construct(new RefById(null, target.id, Distance.Global), args),
-);
-
-const ConstructArguments = star('{', N_, Expr, Comma, '}').elements;
-
-Atom.add(Construct, addNode);
-
-// == Continue ==
-const Continue = rule(
-    () => def('continue'),
-    (ctx, n1) => new Nodes.Continue(null, null),
-)
-
-Expr.add(Continue, addNode);
-
-// == Enum ==
-const Enum = rule(
-    () => def('enum', __, Identifier, N_, Body),
-    (ctx, n1, n2, name, n4, body) => new Nodes.Enum(name, body),
-)
-
-Expr.add(Enum, addNode);
-
-// == For Each ==
-const ForEach = rule(
-    () => def('for', __, Identifier, __, 'in', __, Expr, N_, Body),
-
-    (ctx, n1, n2, name, n4, n5, n6, collection, n8, body) => {
-        const variable = ctx.add(new Nodes.Variable(name, infer(), VariableFlags.None));
-        
-        return new Nodes.ForEach(variable, collection, body)
-    }
-)
-
-Expr.add(ForEach, addNode);
-
-// == Extend ==
-const Extend = rule(
-    () => def('extend', __, Identifier, __, 'impl', __, Identifier, N_, Body),
-
-    (ctx, n1, n2, target, n4, n5, n6, n7, n8, body) => {
-        return new Nodes.Extend(ref(target), body);
-    }
-)
-
-Expr.add(Extend, addNode);
-
-// == Function ==
-const Function = rule(
-    () => {
-        const keyword    = 'fn'
-        const name       = seq(__, Name).get(1)
-        const parameters = star('(', N_, Parameter, Comma, ')').elements
-        const returnType = seq(_, '->', _, Type).get(3)
-
-        return def(keyword, opt(name), parameters, opt(returnType), opt(BodyX))
-    },
-    (ctx, keyword, name, parameters, returnType, body) =>
-        new Nodes.Function(name, returnType ?? infer(), parameters, body ?? [])
-)
-
-Expr.add(Function, addNode)
-Type.add(Function, addNode)
-
-const Parameter = rule(() => {
-    const keyword = either([
-        seq('own', __),
-        seq('mut', __),
-    ]).get(0);
-
-    const name = Identifier
-    const type = seq(_, ':', _, Type).get(3)
-    const value = seq(_, '=', _, Expr)
-
-    return def(opt(keyword), name, opt(type), opt(value))
-}, (ctx, keyword, name, type, value) => {
-    return ctx.add(new Nodes.Variable(name, type ?? infer(), getVariableFlags(keyword)));
-})
-
-// == Generic ==
-const Generic = rule(
-    () => def(Type, GenericArguments),
-    (ctx, type, args) => {
-        return new Nodes.Call(type as any, args as any);
-    }
-)
-
-Atom.add(Generic, addNode);
-Type.add(Generic, addNode);
-
-const GenericArguments = rule(
-    () => star('<', _, Type, Comma, '>'),
-    (ctx, args) => args.elements
-);
-
-// == Get ==
-const Get = rule(
-    def(Symbol),
-    (ctx, ref) => new Nodes.Get(ref),
-)
-
-Atom.add(Get, addNode);
-
-// == If ==
-{
-    const Elif = list(seq(N_, 'else', __, 'if', BodyX))
-    const Else = seq(N_, 'else', BodyX)
-
-    const If = rule(
-        def('if', __, Expr, BodyX, opt(Elif), opt(Else)),
-        (ctx, kw, s1, condition, body, x, final) => {
-            const cases = [];
-
-            // If case
-            cases.push(new Nodes.IfCase(condition, body));
-
-            // Else case
-            const f = final;
-            if (f !== null) {
-                cases.push(new Nodes.IfCase(null, f[2]))
-            }
-            
-
-            return new Nodes.If(cases);
-        }
-    )
-
-    Expr.add(If, addNode);
-}
-
-// == Index Bracket ==
-const IndexBracket = rule(
-    def(Atom, '[', Expr, ']'),
-    (ctx, target, left, field, right) =>
-        new Nodes.RefByExpr(target, [field])
-);
-
-Symbol.add(IndexBracket);
-
-// == Index Dot ==
-const IndexDot = rule(
-    () => def(Atom, Dot, Name),
-    (ctx, target, op, field) =>
-        new Nodes.RefByName(target, field)
-)
-
-Symbol.add(IndexDot);
-
-const Dot = either([
-    '.',
-    seq('.', NL),
-    seq(NL, '.'),
-])
-
-// == Literal Float ==
-const LiteralFloat = rule(
-    seq(/[0-9_]+/, '.', /[0-9_]+/),
-    (ctx, number) => new Nodes.Constant(ctx.builtins.f64, parseFloat(number.join('').replace(/_/g, '')))
-)
-
-Atom.add(LiteralFloat, addNode);
-
-// == Literal Integer ==
-// TODO: Convert to new style
-{
-    const processor = (offset: number, base: number) =>
-        (ctx: Ctx, number: string) =>
-            ctx.add(new Nodes.Constant(
-                ctx.builtins.u32,
-                parseInt(number.replace(/_/g, '').slice(offset), base)
-            ))
-
-    Atom.add(/0x[0-9a-fA-F_]+/, processor(2, 16))
-    Atom.add(/0o[0-7_]+/,       processor(2, 8))
-    Atom.add(/0b[0-1_]+/,       processor(2, 2))
-    Atom.add(/[0-9_]+/,         processor(0, 10))
-}
-
-// == Literal List ==
-// TODO: Convert to new style
-Atom.add(
-    star('[', N_, /[0-9_]+/, Comma, ']').elements,
-    (ctx, values) => ctx.add(new Nodes.Constant(infer(), values.map(number => parseInt(number))))
-)
-
-// == Literal String ==
-// TODO: Convert to new style
-Atom.add(
-    /'(?:[^\\']+|\\['])+'/,
-    (ctx, value) => {
-        // Remove starting and ending '
-        value = value.slice(1, -1);
-        value = value.replace(/\\./, value => {
-            switch (value[1]) {
-                case 'n':  return '\n'
-                case '\'': return '\''
-                default: throw unimplemented('Escape')
-            }
-        })
-
-        return ctx.add(new Nodes.Constant(ctx.builtins.str, value));
-    },
-)
-
-// == Match ==
-const Match = rule(
-    () => def('match', __, Expr, N_, MatchCases),
-    (ctx, n1, n2, value, n4, cases) => new Nodes.Match(value, cases),
-)
-
-const MatchCases = rule(
-    () => star('{', N_, MatchCase, Semicolon, '}').elements,
-    (ctx, list) => list,
-);
-
-const MatchCase = rule(
-    def('case', __, Expr, BodyX),
-    (ctx, n1, n2, value, body) => new Nodes.MatchCase(value, body),
-);
-
-Expr.add(Match, addNode);
-
-// == Move ==
-const Move = rule(
-    def('move', __, Expr),
-    (ctx, n1, n2, value) => new Nodes.Move(value),
-)
-
-Expr.add(Move, addNode);
-
-// == Operators ==
-{
-    const Operator  = /[~!@#$%^&*+=|?/:.\-\\<>]+/
-    const LogicalOp = either(['and', 'or'])
-    const Logical   = rule<LocalRef>() // x or y
-    const Spaced    = rule<LocalRef>() // x + y
-    const Unary     = rule<LocalRef>() // x++
-    const Compact   = rule<LocalRef>() // x+y
-
-    const B = (ctx: Ctx, left: LocalRef, ls: any, op: string, rs: any, right: LocalRef) =>
-        ctx.add(new Nodes.Call(ref(`infix${op}`), [left, right]))
-
-    const U = (ctx: Ctx, type: string, op: string, value: LocalRef) =>
-        ctx.add(new Nodes.Call(ref(type + op), [value]))
-
-    Expr.add(Logical)
-
-    // x and/or y
-    Logical.add(def(Logical, __, LogicalOp, __, Spaced), B)
-    Logical.add(def(Logical, NL, LogicalOp, __, Spaced), B)
-    Logical.add(def(Logical, __, LogicalOp, NL, Spaced), B)
-    Logical.add(Spaced)
-
-    // x + y
-    Spaced.add(def(Spaced, __, Operator, __, Unary), B)
-    Spaced.add(def(Spaced, NL, Operator, __, Unary), B)
-    Spaced.add(def(Spaced, __, Operator, NL, Unary), B)
-    Spaced.add(Unary)
-
-    // x++
-    Unary.add(def(Operator, Atom), (ctx, op, value) => U(ctx, 'prefix', op, value))
-    Unary.add(def(Atom, Operator), (ctx, value, op) => U(ctx, 'postfix', op, value))
-    Unary.add(Compact)
-
-    // x+y
-    Compact.add(def(Compact, Operator, Atom), (ctx, left, op, right) => B(ctx, left, null, op, null, right))
-    Compact.add(Atom)
-
-    Symbol.add(def('infix',   Operator), (ctx, l, r) => ref(l + r))
-    Symbol.add(def('postfix', Operator), (ctx, l, r) => ref(l + r))
-    Symbol.add(def('prefix', Operator), (ctx, l, r) => ref(l + r))
-    Name.add(def('infix',   Operator), (ctx, l, r) => l + r)
-    Name.add(def('postfix', Operator), (ctx, l, r) => l + r)
-    Name.add(def('prefix', Operator), (ctx, l, r) => l + r)
-}
-
-// == Parentheses ==
-const Parentheses = rule(
-    () => seq('(', _, Expr, _, ')').get(2),
-    (ctx, body) => body
-)
-
-Atom.add(Parentheses)
-
-// == Return ==
-const Return = rule<Nodes.Return>();
-
-Return.add(
-    () => def('return'),
-    (ctx, n1) => new Nodes.Return(null)
-);
-
-Return.add(
-    () => def('return', __, Expr),
-    (ctx, n1, n2, value) => new Nodes.Return(value),
-);
-
-Expr.add(Return, addNode);
-
-// == Set ==
-const Set = rule(
-    () => def(Symbol, _, '=', _, Expr),
-    (ctx, target, n2, op, n4, value) => new Nodes.Set(target, value),
-);
-
-Expr.add(
-    () => def(Expr, _, '-->', _, either(['val', 'mut']), __, Identifier),
-    (ctx, value, n2, op, n4, keyword, n6, target) => {
-        const v = ctx.add(new Nodes.Variable(target, infer(), getVariableFlags(keyword)));
-        return ctx.add(new Nodes.Set(v, value));
-    }
-)
-
-Set.add(
-    () => def(Expr, _, '-->', _, Symbol),
-    (ctx, value, n2, op, n4, target) => new Nodes.Set(target, value),
-)
-
-Expr.add(Set, addNode);
-
-// == Error ==
-const Error = rule(
-    () => {
-        const keyword = seq('error', __)
-        const name = Identifier
-
-        return def(keyword, name)
-    },
-    (ctx, keyword, name) => new Nodes.Struct(name, [])
-)
-Expr.add(Error, addNode)
-
-// == Struct ==
-const Struct = rule(
-    () => {
-        const keyword = 'struct'
-        const name = seq(__, Identifier).get(1)
-        const impls = list(seq(_, 'impl', __, Expr).get(3)).get('elements')
-        const generic = seq(_, 'generic', star('<', N_, Identifier, Comma, '>').get('elements')).get(2)
-        const body = seq(N_, Body).get(1)
-
-        return def(keyword, name, opt(generic), opt(impls), opt(body))
-    },
-    (ctx, keyword, name, generic, impls, body) =>
-        new Nodes.Struct(name, body ?? [])
-)
-
-Expr.add(Struct, addNode)
-
-// == Trait ==
-const Trait = rule(
-    () => {
-        const keyword = 'trait'
-        const name = seq(__, Identifier).get(1)
-        const body = seq(N_, Body).get(1)
-
-        return def(keyword, name, opt(body))
-    },
-    (ctx, keyword, name, body) =>
-        new Nodes.Trait(name, body ?? [])
-)
-
-Expr.add(Trait, addNode);
-
-// == Error ==
-const TypeDecl = rule(
-    () => {
-        const keyword = seq('type', __)
-        const name = Identifier
-
-        return def(keyword, name)
-    },
-    (ctx, keyword, name) => new Nodes.Struct(name, [])
-)
-Expr.add(TypeDecl, addNode)
-
-// == Variable ==
-const Variable = rule(() => {
-    const keyword = either([
-        seq('val', __),
-        seq('mut', __),
-    ]).get(0);
-
-    const name = Identifier;
-    const type = seq(_, ':', _, Type).get(3)
-    const value = seq(_, '=', _, Expr)
-
-    return def(keyword, name, opt(type), opt(value))
-}, (ctx, keyword, name, type, value) => {
-    const id = ctx.add(new Nodes.Variable(name, type ?? infer(), getVariableFlags(keyword)))
-
-    const v = value
-    if (v !== null) {
-        return ctx.add(new Nodes.Set(id, v[3]))
-    }
-
-    return id;
-}, 'variable')
-Expr.add(Variable)
-
-// == While ==
-Expr.add(
-    def('while', __, Expr, N_, Body),
-    (ctx, keyword, s1, condition, s2, body) =>
-        ctx.add(new Nodes.While(condition, body))
-)
-
-function getVariableFlags(keyword: string | null) {
-    switch (keyword) {
-        case null: return VariableFlags.None;
-        case 'mut': return VariableFlags.Mutable;
-        case 'own': return VariableFlags.Owns;
-        case 'val': return VariableFlags.None;
-        default: throw unimplemented(keyword);
-    }
+// ============================== Core grammar components ==============================
+// An atom is part of the language that can be used in a binary expression without needing to be wrapped in parentheses
+const Atom = new Syntax('Atom', $(Node))
+Atom.match(() => Literal)
+// ----
+Atom.match(() => Call, add)
+Atom.match(() => Construct, add)
+Atom.match(() => Get, add)
+Atom.match(() => Parenthesized)
+
+// An expression is part of the language that can be evaluated and returns a value
+const Expr = new Syntax('Expr', $(Node))
+Expr.match(() => Binary)
+Expr.match(() => ControlFlow, add)
+Expr.match(() => Definition, add)
+Expr.match(() => Jumps, add)
+// ----
+Expr.match(() => Copy, add)
+Expr.match(() => Generic, add)
+Expr.match(() => Move, add)
+Expr.match(() => Not, add)
+Expr.match(() => Set, add)
+
+// A statement is part of the language that can be evaluated standalone
+const Stmt = new Syntax('Stmt', $(Node))
+Stmt.match(() => ControlFlow)
+Stmt.match(() => Definition)
+Stmt.match(() => Jumps)
+// ----
+Stmt.match(() => Alias)
+Stmt.match(() => AttributeBlock, add)
+Stmt.match(() => Call, add)
+Stmt.match(() => Set, add)
+
+// ============================== Definition ==============================
+const Definition = new Syntax('Definition', $.any)
+Definition.match(() => Case)
+Definition.match(() => Enum)
+Definition.match(() => Error)
+Definition.match(() => Function)
+Definition.match(() => Struct)
+Definition.match(() => Trait)
+Definition.match(() => Type)
+Definition.match(() => Variable)
+
+// == Case
+const Case = new Syntax('Case', $.any)
+Case.match(() => SEQ('case', _, Identifier))
+
+// == Enum
+const Enum = new Syntax('Enum', $(Nodes.Enum))
+Enum.match(() => SEQ('enum', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
+    r => new Nodes.Enum(r.Symbol, r.Body))
+
+// == Error
+const Error = new Syntax('Error', $(Nodes.Break))
+Error.match(() => SEQ('error', _, Symbol), UNDEF)
+
+// == Function
+const Function = new Syntax('Function', $(Nodes.Function))
+Function.match(() => SEQ('fn', OPT(_, Symbol), Parameters, OPT(ReturnType), OPT(GenericDefinition), OPT(Attributes), OPT(Body)), UNDEF)
+
+const ReturnType = new Syntax('ReturnType', $(Nodes.LocalRef))
+ReturnType.match(() => SEQ(OPT(_), '->', OPT(_), Expr), UNDEF)
+
+const Parameters = new Syntax('Parameters', $(Nodes.Variable))
+Parameters.match(() => LIST('(', OPT(N), Parameter, ArgumentSeparator, ')'), UNDEF)
+
+const Parameter = new Syntax('Parameter', $(Nodes.Variable))
+Parameter.match(() => SEQ(Symbol, VariableType, OPT(VariableValue)), UNDEF)
+Parameter.match(() => SEQ(VariableKeyword, Symbol, OPT(VariableValue)), UNDEF)
+Parameter.match(() => SEQ(Binary), UNDEF)
+
+// == Struct
+const Struct = new Syntax('Struct', $(Nodes.Struct))
+Struct.match(() => SEQ('struct', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)), UNDEF)
+
+// == Trait
+const Trait = new Syntax('Trait', $(Nodes.Trait))
+Trait.match(() => SEQ('trait', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)), UNDEF)
+
+// == Type
+const Type = new Syntax('Type', $.any)
+Type.match(() => SEQ('type', _, Symbol, OPT(VariableValue)), UNDEF)
+
+// == Variable
+const Variable = new Syntax('Variable', $(Nodes.Variable))
+Variable.match(() => SEQ(VariableKeyword, Symbol, OPT(VariableType), OPT(Attributes), OPT(VariableValue)), UNDEF)
+
+const VariableKeyword = new Syntax('VariableKeyword', $.any)
+VariableKeyword.match(() => SEQ('val', _))
+VariableKeyword.match(() => SEQ('mut', _))
+VariableKeyword.match(() => SEQ('own', _))
+
+const VariableType = new Syntax('VariableType', $.any)
+VariableType.match(() => SEQ(OPT(_), ':', OPT(_), Expr))
+
+const VariableValue = new Syntax('VariableValue', $.any)
+VariableValue.match(() => SEQ(OPT(_), '=', OPT(_), Expr))
+
+// ============================== ControlFlow ==============================
+const ControlFlow = new Syntax('ControlFlow', $.any)
+ControlFlow.match(() => ForEach)
+ControlFlow.match(() => If)
+ControlFlow.match(() => Match)
+ControlFlow.match(() => While)
+
+// == For Each
+const ForEach = new Syntax('ForEach', $(Nodes.ForEach))
+ForEach.match(() => SEQ('for', OPT(_, Label), _, Destructure, _, 'in', _, Expr, Body), UNDEF)
+
+// == If
+const If = new Syntax('If', $(Nodes.If))
+If.match(() => SEQ('if', OPT(_, Label), _, Condition, Body, OPT(IfElif), OPT(IfElse)), UNDEF)
+
+const IfElif = new Syntax('IfElif', $(Nodes.If))
+IfElif.match(() => REP(OPT(N), 'else', _, 'if', _, Condition, Body), UNDEF)
+
+const IfElse = new Syntax('IfElse', $(Nodes.If))
+IfElse.match(() => SEQ(OPT(N), 'else', Body), UNDEF)
+
+// == Match
+const Match = new Syntax('Match', $(Nodes.Match))
+Match.match(() => SEQ('match', OPT(_, Label), _, Expr, OPT(N), MatchCases), UNDEF)
+
+const MatchCase = new Syntax('MatchCase', $(Nodes.MatchCase))
+MatchCase.match(() => SEQ('case', _, Destructure, Body), UNDEF)
+
+const MatchCases = new Syntax('MatchCases', $(Nodes.MatchCase))
+MatchCases.match(() => LIST('{', OPT(N), MatchCase, ExpressionSeparator, '}'), UNDEF)
+
+// == While
+const While = new Syntax('While', $(Nodes.While))
+While.match(() => SEQ('while', OPT(_, Label), _, Condition, Body), UNDEF)
+
+// ============================== Jumps ==============================
+const Jumps = new Syntax('Jumps', $.any)
+Jumps.match(() => Break)
+Jumps.match(() => Continue)
+Jumps.match(() => Return)
+
+// == Break
+const Break = new Syntax('Break', $(Nodes.Break))
+Break.match(() => SEQ('break', OPT(_, Label), OPT(_, Expr)), UNDEF)
+
+// == Continue
+const Continue = new Syntax('Continue', $(Nodes.Continue))
+Continue.match(() => SEQ('continue', OPT(_, Label)), UNDEF)
+
+// == Return
+const Return = new Syntax('Return', $(Nodes.Return))
+Return.match(() => SEQ('return', OPT(_, Label), OPT(_, Expr)), UNDEF)
+
+// ============================== Other Expressions ==============================
+// == Alias
+export const Alias = new Syntax('Alias', $.any)
+Alias.match(() => SEQ('alias', _, Expr), UNDEF)
+
+// == Attributes (for scope)
+export const AttributeBlock = new Syntax('AttributeBlock', $(Nodes.BlockAttribute))
+AttributeBlock.match(() => SEQ('##', FullSymbol), UNDEF)
+
+// == Call
+const Call = new Syntax('Call', $(Nodes.Call))
+Call.match(() => SEQ(Atom, LIST('(', OPT(N), Argument, ArgumentSeparator, ')')), UNDEF)
+
+// == Construct
+const Construct = new Syntax('Construct', $(Nodes.Construct))
+Construct.match(() => SEQ(Atom, LIST('{', OPT(N), Argument, ArgumentSeparator, '}')), UNDEF)
+
+// == Move
+const Copy = new Syntax('Copy', $.any)
+Copy.match(() => SEQ('copy', _, Expr), UNDEF)
+
+// == Destroy
+const Destroy = new Syntax('Destruct', $(Nodes.Destruct))
+Destroy.match(() => SEQ('destroy', _, Expr), UNDEF)
+
+// == Generic use
+const Generic = new Syntax('Generic', $.any)
+Construct.match(() => SEQ(Atom, LIST('[', OPT(N), Argument, ArgumentSeparator, ']')), UNDEF)
+
+// == Get
+const Get = new Syntax('Get', $(Nodes.Get))
+Get.match(() => FullSymbol, UNDEF)
+
+// == Indexing
+const Index = new Syntax('Index', $.any)
+Index.match(() => SEQ(Indexable, Dot, Symbol))
+
+const Dot = new Syntax('Dot', $.any)
+Dot.match(() => '.')
+Dot.match(() => SEQ('.', L))
+Dot.match(() => SEQ(L, '.'))
+
+const Indexable = new Syntax('Indexable', $.any)
+Indexable.match(() => Index)
+Indexable.match(() => Symbol)
+Indexable.match(() => Call)
+Indexable.match(() => Construct)
+Indexable.match(() => SEQ(Atom, Operator))
+
+// == Move
+const Move = new Syntax('Move', $(Nodes.Move))
+Move.match(() => SEQ('move', _, Expr), UNDEF)
+
+// == Not
+const Not = new Syntax('Not', $.any)
+Not.match(() => SEQ('not', _, Expr), UNDEF)
+
+// == Parenthesized Expression
+const Parenthesized = new Syntax('Parenthesized', $(Nodes.LocalRef))
+Parenthesized.match(() => SEQ('(', OPT(N), Expr, OPT(N), ')'), UNDEF)
+
+// == Set
+const Set = new Syntax('Set', $.any)
+Set.match(() => SEQ(FullSymbol, _, '=', _, Expr))
+
+// ============================== Binary and Unary Expressions ==============================
+const B = (value: any) => 'BINARY!' as any
+const U = (value: any) => 'UNARY!' as any
+
+const Binary = new Syntax('Binary', $(Nodes.LocalRef))
+Binary.match(() => SEQ(Binary, _, Logic, _, Spaced), B)
+Binary.match(() => SEQ(Binary, L, Logic, _, Spaced), B)
+Binary.match(() => SEQ(Binary, _, Logic, L, Spaced), B)
+Binary.match(() => Spaced)
+
+const Spaced = new Syntax('Spaced', $(Nodes.LocalRef))
+Spaced.match(() => SEQ(Spaced, _, Operator, _, Unary), B)
+Spaced.match(() => SEQ(Spaced, L, Operator, _, Unary), B)
+Spaced.match(() => SEQ(Spaced, _, Operator, L, Unary), B)
+Spaced.match(() => Unary)
+
+const Unary = new Syntax('Unary', $(Nodes.LocalRef))
+Unary.match(() => SEQ(Operator, Atom), U)
+Unary.match(() => SEQ(Atom, Operator), U)
+Unary.match(() => Compact)
+
+const Compact = new Syntax('Compact', $(Nodes.LocalRef))
+Compact.match(() => SEQ(Compact, Operator, Atom), B)
+Compact.match(() => Atom)
+
+const Logic = new Syntax('Logic', $.any)
+Logic.match(() => ANY('and', 'or'))
+
+const Operator = new Syntax('Operator', $.any)
+Operator.match(() => /[~!@#$%^&*+=|?/:\-\\<>]+/)
+Operator.match(() => '..')
+
+// ============================== Literals ==============================
+const Literal = new Syntax('Literal', $.any)
+Literal.match(() => LiteralFloat)
+Literal.match(() => LiteralInteger)
+Literal.match(() => LiteralString)
+
+// Note: The order of float and literal integers as specified in the grammar is important
+//  The parser generator will generate a tokenizer that matches in the order of the tokens in the grammar.
+//  This means that if the regular integer rule is before the hexadecimal integer rule then
+//  0x1000 will get tokenized as "0" "x" "1000" instead of "0x1000"
+
+// == Literal Float
+const LiteralFloat = new Syntax('LiteralFloat', $(Nodes.Constant))
+LiteralFloat.match(() => /[0-9]+.[0-9]+(?:[eE][+-]?[1-9]+)?/, UNDEF)
+
+// == Literal Integer
+const LiteralInteger = new Syntax('LiteralInteger', $(Nodes.Constant))
+LiteralInteger.match(() => /0x[0-9a-fA-F_]+/, UNDEF)
+LiteralInteger.match(() => /0o[0-7_]+/, UNDEF)
+LiteralInteger.match(() => /0b[0-7_]+/, UNDEF)
+LiteralInteger.match(() => /[0-9_]+/, UNDEF)
+
+// == Literal String
+const LiteralString = new Syntax('LiteralString', $(Nodes.Constant))
+LiteralString.match(() => SEQ('\'', StringContent, '\''), UNDEF)
+LiteralString.match(() => SEQ('\'', StringContent, REP(StringInterpolation, StringContent), '\''), UNDEF)
+
+// String interpolation relies heavily on stateful tokenization (see tokenizer configuration)
+const StringContent = new Syntax('StringContent', $<string | null>())
+StringContent.match(() => OPT(TOKEN('STRING_CONTENT')))
+
+const StringInterpolation = new Syntax('StringInterpolation', $(Nodes.Constant))
+StringInterpolation.match(() => SEQ('${', Expr, '}'), UNDEF)
+
+// ============================== Primitives used in larger expressions ==============================
+// == Argument
+const Argument = new Syntax('Argument', $.any)
+Argument.match(() => Expr)
+Argument.match(() => SEQ(Identifier, ':', OPT(_), Expr))
+
+// == Attributes
+const Attributes = new Syntax('Attributes', $.any)
+Attributes.match(() => REP(N, Attribute))
+
+const Attribute = new Syntax('Attribute', $.any)
+Attribute.match(() => SEQ('#', FullSymbol))
+
+// == Body
+const Body = new Syntax('Body', $.any)
+Body.match(() => SEQ(OPT(N), LIST('{', OPT(N), Stmt, ExpressionSeparator, '}')))
+Body.match(() => SEQ(OPT(N), '=>', OPT(_), Expr))
+
+// == Generic definition
+const GenericDefinition = new Syntax('Generic', $.any)
+GenericDefinition.match(() => SEQ(N, 'generic', GenericParameters))
+
+const GenericParameters = new Syntax('GenericParameters', $.any)
+GenericParameters.match(() => LIST('[', OPT(N), GenericParameter, ArgumentSeparator, ']'))
+
+const GenericParameter = new Syntax('GenericParameter', $.any)
+GenericParameter.match(() => Identifier)
+
+// == Identifiers, Names, and Symbols
+const Identifier = new Syntax('Identifier', $.any)
+Identifier.match(() => /[_a-zA-Z][_a-zA-Z0-9]*/)
+
+const Symbol = new Syntax('Symbol', $.any)
+Symbol.match(() => SEQ('${', OPT(N), Expr, OPT(N), '}'))
+Symbol.match(() => Identifier)
+Symbol.match(() => SEQ('infix', Operator))
+Symbol.match(() => SEQ('prefix', Operator))
+Symbol.match(() => SEQ('postfix', Operator))
+
+const FullSymbol = new Syntax('FullSymbol', $.any)
+FullSymbol.match(() => Symbol)
+FullSymbol.match(() => Index)
+
+// == Implements statements
+const Implements = new Syntax('Implements', $.any)
+Implements.match(() => REP(N, 'impl', _, Expr))
+
+// == Labels
+const Label = new Syntax('Label', $.any)
+Label.match(() => SEQ('@', Identifier))
+
+// ============================== Whitespace ==============================
+// == Whitespace
+const comment  = /#+(?:[ \t]+[ -~]*)?/
+const space    = /[ \t]+/
+const newline  = SEQ(OPT(space), OPT(comment), '\n')
+const newlines = SEQ(REP(newline), OPT(space))
+
+// == Shortcuts for common whitespace patterns
+export const _ = space                      // space
+export const N = REP(ANY(_, comment, '\n')) // space, comments, or newlines
+export const L = newlines                   // space, comments, or newlines (with at least one newline)
+
+// == Separators
+export const ExpressionSeparator  = ANY(newlines, SEQ(OPT(_), ';', OPT(_)))
+export const ArgumentSeparator    = ANY(newlines, SEQ(OPT(_), ',', OPT(_)))
+
+// ============================== Destructuring ==============================
+const Destructure = new Syntax('Destructure', $.any)
+
+Destructure.match(() => Expr)
+Destructure.match(() => LIST('{', OPT(N), Destructure, ArgumentSeparator, '}'))
+
+const Condition = new Syntax('Condition', $.any)
+Condition.match(() => Expr)
+
+// ============================== Tokenizer Configuration ==============================
+// We do not need to specify the complete tokenizer configuration here. The parser generator collects and populates the
+//  configuration with tokens used throughout the grammar. We primarily use the tokenizer configuration to setup state
+//  based tokenization (see https://github.com/no-context/moo#states) to handle string interpolation.
+//
+// Tokens specified here are matched by the tokenizer before tokens specified in the grammar, so we also use this to fix
+//  the order of tokenization for some tokens where it would be impractical to order in the grammar (e.g. "." vs "..").
+$.TOKENS = {
+    'main': [
+        // Logic for string interpolation
+        { match: '${', push: 'main' },
+        { match: '{', push: 'main' },
+        { match: '}', pop: 1 },
+        { match: '\'', push: 'string' },
+
+        // Explicitly set tokenization ordering for the following tokens
+        { match: comment, lineBreaks: true },
+        { match: '..' },
+        { match: '.' },
+    ],
+    'string': [
+        // Tokens inside of strings
+        { match: '${', push: 'main' },
+        { match: '\'', pop: 1 },
+        { match: /\\./ },
+        { match: /(?:[^$'\n]|\$[^{\n])+/, token: 'STRING_CONTENT' },
+    ]
 }
