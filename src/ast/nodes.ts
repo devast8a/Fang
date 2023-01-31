@@ -1,3 +1,5 @@
+import { Constructor } from '../common/constructor';
+
 export enum Tag {
     // Expr
     BlockAttribute = 'BlockAttribute',
@@ -6,11 +8,13 @@ export enum Tag {
     Constant = 'Constant',
     Construct = 'Construct',
     Continue = 'Continue',
+    Destruct = 'Destruct',
     Enum = 'Enum',
     Extend = 'Extend',
     ForEach = 'ForEach',
     Function = 'Function',
     Get = 'Get',
+    Group = 'Group',
     If = 'If',
     Match = 'Match',
     Move = 'Move',
@@ -33,9 +37,12 @@ export function isRef(o: Node | Ref): o is Ref { return o.tag.startsWith('Ref');
 export function isNode(o: Node | Ref): o is Node { return !isRef(o); }
 
 export type Type<T extends Node = Node> = Ref<T>;
+
+export const LocalRef: Constructor<LocalRef> = undefined as any;
 export type LocalRef<T extends Node = Node> = RefById<T>;
 
 // =============================================================================
+export const Node: Constructor<Node> = undefined as any;
 export type Node =
     | BlockAttribute
     | Break
@@ -43,11 +50,13 @@ export type Node =
     | Constant<any>
     | Construct
     | Continue
+    | Destruct
     | Enum
     | Extend
     | ForEach
     | Function
     | Get
+    | Group
     | If
     | Match
     | Move
@@ -117,7 +126,15 @@ export class Continue {
 
     constructor(
         readonly loop: Ref | null,
-        readonly value: LocalRef | null,
+    ) { }
+}
+
+export class Destruct {
+    readonly tag = Tag.Destruct;
+    readonly id = id()
+
+    constructor(
+        readonly value: Ref,
     ) { }
 }
 
@@ -171,6 +188,15 @@ export class Get {
 
     constructor(
         public source: Ref,
+    ) { }
+}
+
+export class Group {
+    readonly tag = Tag.Group
+    readonly id = id()
+
+    constructor(
+        public body: RefById[]
     ) { }
 }
 

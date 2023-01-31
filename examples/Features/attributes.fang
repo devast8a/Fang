@@ -1,0 +1,10 @@
+fn fn_name() #x
+fn fn_name() #x #y #z
+fn fn_name() -> u32 #x
+fn fn_name() -> u32 #x #y #z
+struct struct_name #x {}
+struct struct_name #x #y #z {}
+trait trait_name #x {}
+trait trait_name #x #y #z {}
+val var_name #x = 100
+val var_name: u32 #x

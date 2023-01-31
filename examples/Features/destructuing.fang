@@ -1,0 +1,10 @@
+match test {
+    case value      => 100
+    case val value  => 100
+    case mut value  => 100
+    case own value  => 100
+
+    case Type{x, y}  => 100
+    case Type{val x, mut y}  => 100
+    case {val x, mut y} => 100
+}

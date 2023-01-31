@@ -1,0 +1,68 @@
+struct Sip impl Hasher {
+    type Digest = U32
+    type Options = SipOptions
+
+    val options: SipOptions
+    mut state: SipState
+
+    fn new(options: SipOptions*) {
+        return Sip{
+            options: options
+            state: SipState{options}
+        }
+    }
+
+    fn reset(mut self) {
+        self.state = SipState{self.options}
+    }
+
+    fn update(mut self, buffer: Buffer) {
+        for val message in buffer {
+            compress(self.state, message, self.options.compressionRounds)
+        }
+    }
+
+    fn digest(self, buffer: Buffer) {
+        compress(self.state, buffer, self.options.compressionRounds)
+
+        # Update the state
+        val o = if! output == 16 => U64{0xEE} else => U64{0xFF}
+        v2 ^= o
+
+        compress(self.state, 0, self.options.finalizerRounds)
+
+        return v0 ^ v1 ^ v2 ^ v3
+    }
+}
+
+struct SipState {
+    mut v0: U64
+    mut v1: U64
+    mut v2: U64
+    mut v3: U64
+
+    fn new(options: SipOptions) {
+        val x = options.outputBits == 64 => U64{0xEE} else => U64{0x00}
+
+        return SipState{
+            v0: 0x736f6d6570736575 ^ options.k0
+            v1: 0x646f72616e646f6d ^ options.k1 ^ x
+            v2: 0x6c7967656e657261 ^ options.k0
+            v3: 0x7465646279746573 ^ options.k1
+        }
+    }
+}
+
+struct SipOptions {
+    val k0: U64
+    val k1: U64
+
+    val compressionRounds: Size
+    val finalizerRounds: Size
+    val outputBits: Size
+}
+
+fn Sip_1_3_64() => Sip(1, 3, 64)
+fn Sip_2_4_32() => Sip(2, 4, 32)
+fn Sip_2_4_64() => Sip(2, 4, 64)
+fn Sip_2_4_128() => Sip(2, 4, 128)

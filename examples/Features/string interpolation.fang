@@ -1,0 +1,5 @@
+val basic = 'Hello'
+val empty = ''
+val interpolated = '${basic}, World!'
+val multiple_1 = '${empty}${empty}'
+val multiple_spaced = ' ${empty} ${empty} '

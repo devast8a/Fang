@@ -22,7 +22,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.fang",
-				"match": "\\b(and|break|case|continue|else|enum|fn|for|if|in|impl|infix|match|move|mut|or|own|postfix|prefix|return|struct|trait|val|while)\\b"
+				"match": "\\b(alias|and|break|case|continue|copy|else|enum|fn|for|generic|if|in|impl|infix|match|move|mut|or|own|postfix|prefix|return|struct|trait|type|val|while)\\b"
 			}]
 		},
 		"strings": {

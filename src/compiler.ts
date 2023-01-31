@@ -1,13 +1,13 @@
 import { Ctx as Ctx } from './ast/context';
 import { Tag } from './ast/nodes';
 import { Source } from './common/source';
-import { resolveNames } from './stages/NameResolver';
+import { resolveNames as NameResolver } from './stages/NameResolver';
 import { Interpreter } from './interpreter/Interpreter';
-import { FangGrammar } from './grammar/grammar';
 import { promises as fs } from 'fs';
 import { formatNodes } from './ast/formatter';
-import { processTypes } from './stages/TypeSystem';
+import { processTypes as TypeSystem } from './stages/TypeSystem';
 import { serialize } from './ast/serialize';
+import { LifetimeTracking } from './stages/LifetimeTracking';
 
 export class Compiler {
     public static async compileFile(path: string) {
@@ -15,44 +15,46 @@ export class Compiler {
 
         const ctx = Ctx.createRoot();
 
-        const parser = FangGrammar.toParser();
+        //const parser = FangGrammar.toParser();
 
-        const root = parser.parse(ctx, source.content);
-        ctx.root = root;
+        //const root = parser.parse(ctx, source.content);
+        //ctx.root = root;
 
-        const scope = resolveNames(ctx);
+        //const scope = NameResolver(ctx);
 
-        for (const ref of root) {
-            const node = ctx.get(ref);
+        //for (const ref of root) {
+        //    const node = ctx.get(ref);
 
-            switch (node.tag) {
-                case Tag.BlockAttribute: {
-                    const target = node.attribute.tag === Tag.RefByName ? node.attribute.name : '';
+        //    switch (node.tag) {
+        //        case Tag.BlockAttribute: {
+        //            const target = node.attribute.tag === Tag.RefByName ? node.attribute.name : '';
 
-                    switch (target) {
-                        case 'DEBUG_LOGGING': ctx.LOGGING = 1; break;
-                    }
-                }
-            }
-        }
+        //            switch (target) {
+        //                case 'DEBUG_LOGGING': ctx.LOGGING = 1; break;
+        //            }
+        //        }
+        //    }
+        //}
 
-        processTypes(ctx);
+        //TypeSystem(ctx);
 
-        for (const ref of root) {
-            const node = ctx.get(ref);
+        //for (const ref of root) {
+        //    const node = ctx.get(ref);
 
-            switch (node.tag) {
-                case Tag.BlockAttribute: {
-                    const target = node.attribute.tag === Tag.RefByName ? node.attribute.name : '';
+        //    switch (node.tag) {
+        //        case Tag.BlockAttribute: {
+        //            const target = node.attribute.tag === Tag.RefByName ? node.attribute.name : '';
 
-                    switch (target) {
-                        case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatNodes(ctx, root)); break;
-                        case 'DEBUG_PRINT_AST2': await fs.writeFile('serialized.out', serialize(ctx.nodes)); break;
-                    }
-                }
-            }
-        }
+        //            switch (target) {
+        //                case 'DEBUG_PRINT_AST': await fs.writeFile('serialized.out', formatNodes(ctx, root)); break;
+        //                case 'DEBUG_PRINT_AST2': await fs.writeFile('serialized.out', serialize(ctx.nodes)); break;
+        //                case 'DEBUG_LIFETIME_TRACKING': LifetimeTracking(ctx); break;
+        //            }
+        //        }
+        //    }
+        //}
 
-        return new Interpreter(ctx, root, scope);
+        //return new Interpreter(ctx, root, scope);
+        return undefined as any;
     }
 }

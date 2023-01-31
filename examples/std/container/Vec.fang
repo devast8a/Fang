@@ -1,0 +1,96 @@
+error IndexOutOfBounds
+error VectorEmpty
+
+# Removing unsafe for performance critical code.
+# The idea is to write safe code, as though everything is explicitly checked, and then provide annotations that force
+#   the compiler to remove all explicit checks. (i.e. This is not an optional optimisation, it must be performed at -O0)
+#
+# There are some nice properties of this approach.
+#   - Explicit checks communicate assumptions to readers
+#   - Explicit checks can be enabled to verify assumptions during testing
+#   - Users of the code can enable checks for untrusted dependencies (it still works, just slightly slower)
+#
+# We do need to accept some slightly different semantics.
+# For example, Multiple<T> is a pointer to multiple elements and has the following interface:
+#
+#   trait Multiple<T> {
+#       fn ref(self, index: Size) -> T*
+#       fn swap(self, index: Size, own value: T) -> None
+#   }
+#
+# Writes and reads to an element are all done through 'swap'.
+#   buffer.swap(index, move value)  - Writes value to the specified location
+#   buffer.swap(index, Uninit{})    - Takes a value from a specified location
+#   buffer.ref(index)               - References a value at a specified location
+#
+# The swaps move the decision of whether to destroy the previous value at the location to the caller.
+
+struct Vec generic[T] {
+    mut capacity: Size
+    mut size:     Size
+    
+    mut buffer:   Multiple<T | Uninit>  # A single pointer to multiple elements
+        #Unchecked.bounds               #   Disable tracking of size and checking of indexes
+        #Unchecked.lifetimes            #   Disable tracking of lifetimes
+        #Unchecked.initialization       #   Disable tracking whether values are initialized
+
+    fn get(mut self, index: Size) {
+        if not index < self.size {
+            return IndexOutOfBounds{}
+        }
+
+        val ref = self.buffer.ref(index)?
+
+        match cast(move ref, T*) {
+            case Ok(val ref) => return ref
+            case Err(_)      => return Unchecked.Unreachable{}
+        }
+    }
+
+    fn set(mut self, index: Size, own value: T) {
+        if not index < self.size {
+            return IndexOutOfBounds{}
+        }
+
+        val prev = self.buffer.swap(index, move value)?
+
+        match cast(move prev, T) {
+            case Ok(val prev) => destroy prev
+            case Err(_)       => return Unchecked.Unreachable{}
+        }
+    }
+
+    fn pop(mut self) {
+        if not self.size > 0 {
+            return VectorEmpty{}
+        }
+
+        self.size -= 1
+
+        val value = self.buffer.swap(self.size, Uninit{})?
+
+        match cast(move value, T) {
+            case Ok(val value) => return value
+            case Err(_)        => return Unchecked.Unreachable{}
+        }
+    }
+
+    fn push(mut self, own value: T) {
+        if not self.size < self.capacity {
+            self.resize(self.capacity * 2)
+        }
+
+        val prev = self.buffer.swap(self.size, Uninit{})?
+
+        self.size += 1
+
+        match cast(move prev, Uninit) {
+            case Ok(_)  => return # swapped with an "out of bounds" value - uninit
+            case Err(_) => return Unchecked.Unreachable{}
+        }
+    }
+
+    fn resize(mut self, size: Size) {
+        # TODO: implement...
+    }
+}

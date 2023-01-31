@@ -1,0 +1,20 @@
+trait Hash {
+}
+
+trait Hasher {
+    type Digest
+    type Options
+
+    fn new(Options*) -> Self
+
+    fn reset(mut self) -> None
+    fn update(mut self, Buffer) -> None
+    fn digest(self, Buffer) -> Self.Digest
+
+    fn hash(Buffer, Options) -> Self {
+        # TODO: Chunk the buffer correctly
+        val self = Self.new()
+        self.update(buffer)
+        return self.finalize(Buffer{})
+    }
+}

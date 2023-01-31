@@ -124,10 +124,13 @@ export class Resolve {
             }
 
             case Tag.Continue: {
-                this.visit(scope, node.value);
                 break;
             }
                 
+            case Tag.Destruct: {
+                break;
+            }
+
             case Tag.Enum: {
                 this.visit(scope, node.body);
                 break;
@@ -163,6 +166,10 @@ export class Resolve {
 
             case Tag.Get: {
                 this.resolve(scope, node, 'source');
+                break;
+            }
+                
+            case Tag.Group: {
                 break;
             }
 

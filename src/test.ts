@@ -37,11 +37,20 @@ async function run(directory: string) {
                 }
             } catch (e) {
                 if (e instanceof Error) {
-                    console.log(`${name}: ${chalk.redBright(e.message)}`)
+                    if (e.message.startsWith('Syntax error')) {
+                        const lines = e.message.split('\n')
+                        const line = lines[0].split(' at ')[1]
+                        const content = lines[2].trim()
+                        const token = lines[4].split('"')[1]
+
+                        console.log(`${name}: ${chalk.redBright(`Unexpected token "${token}" at ${line} ${content}`)}`)
+                    } else {
+                        console.log(`${name}: ${chalk.redBright(e.message)}`)
+                    }
                     
                     if (SHOW_ERROR) {
-                        console.log(e.stack);
-                        SHOW_ERROR = false;
+                        console.log(e.stack)
+                        SHOW_ERROR = false
                     }
                 } else {
                     console.log(`${name}: ${chalk.redBright('<unknown error>')}`)

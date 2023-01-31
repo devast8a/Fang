@@ -56,8 +56,7 @@ export function evaluate(env: Environment, ref: Ref | null, mode = ControlMode.V
         }
 
         case Tag.Continue: {
-            const value = evaluate(env, node.value);
-            return Control.create(mode, ControlType.Continue, value);
+            return Control.create(mode, ControlType.Continue, undefined);
         }
 
         case Tag.Extend: {
@@ -116,6 +115,10 @@ export function evaluate(env: Environment, ref: Ref | null, mode = ControlMode.V
             }
         }
             
+        case Tag.Group: {
+            return null;
+        }
+            
         case Tag.If: {
             for (const c of node.cases) {
                 if (c.condition === null || evaluate(env, c.condition)) {
@@ -125,6 +128,10 @@ export function evaluate(env: Environment, ref: Ref | null, mode = ControlMode.V
             }
 
             return null;
+        }
+            
+        case Tag.Move: {
+            return evaluate(env, node.value);
         }
             
         case Tag.Return: {

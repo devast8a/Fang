@@ -16,13 +16,25 @@ export class Ctx {
         return new Ctx([]);
     }
 
-    public add<T extends Node>(node: T) {
+    public add<T extends Node>(node: T | ((ref: RefById<T>) => T)) {
+        if (node === undefined) {
+            return undefined as any
+        }
+
         const id = this.nodes.length;
+        const ref = new RefById<T>(null, id, Distance.Local);
 
-        (node as any).id = id;
-        this.nodes.push(node);
+        if (node instanceof Function) {
+            this.nodes.push(null as any);
+            node = node(ref);
+            (node as any).id = id;
+            this.nodes[id] = node;
+        } else {
+            (node as any).id = id;
+            this.nodes.push(node);
+        }
 
-        return new RefById<T>(null, id, Distance.Local);
+        return ref;
     }
 
     public get<T extends Node>(ref: Ref<T>): T {
@@ -31,5 +43,11 @@ export class Ctx {
         }
 
         return this.nodes[ref.id] as T;
+    }
+
+    public replace(id: number, node: Node) {
+        this.nodes[id] = node;
+        (node as any).id = id;
+        return node;
     }
 }

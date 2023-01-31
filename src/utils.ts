@@ -1,7 +1,7 @@
 import { Node, Tag } from './ast/nodes';
 
 function isNode(value: unknown): value is Node {
-    return typeof (value) === 'object' && value !== null && typeof ((value as any).tag) === 'number';
+    return typeof (value) === 'object' && value !== null && typeof ((value as any).tag) === 'string';
 }
 
 function formatArgs(name: string, format: unknown, value: unknown) {
@@ -9,18 +9,18 @@ function formatArgs(name: string, format: unknown, value: unknown) {
         if (value === undefined) {
             return `${name}: ${format}`;
         } else if (isNode(value)) {
-            return `${name}: ${format.replace(/\{\}/g, Tag[value.tag])}`;
+            return `${name}: ${format.replace(/\{\}/g, value.tag)}`;
         } else {
             return `${name}: ${format.replace(/\{\}/g, value as any)}`;
         }
     } else if (isNode(format)) {
-        return `${name} case ${Tag[format.tag]}`;
+        return `${name} case ${format.tag}`;
     } else {
         return `${name}: ${format}`;
     }
 }
 
-export function unreachable(value: never): never
+export function unreachable(value: never | undefined): never
 export function unreachable(format: string): never
 export function unreachable(format: string, value: never): never
 export function unreachable(format: unknown, value?: unknown): never {

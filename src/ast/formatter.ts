@@ -52,6 +52,10 @@ export function formatNode(ctx: Ctx, node: Node, declaration = false): string {
             return `${type}{${args}}`;
         }
             
+        case Tag.Destruct: {
+            return `destruct ${formatNodeRef(ctx, node.value)}`;
+        }
+            
         case Tag.Function: {
             if (!declaration) return node.name ?? '<anonymous>';
 
@@ -72,6 +76,11 @@ export function formatNode(ctx: Ctx, node: Node, declaration = false): string {
             
         case Tag.Get: {
             return formatRef(ctx, node.source);
+        }
+            
+        case Tag.Group: {
+            const body = formatNodes(ctx, node.body, {join: '; '})
+            return `(${body})`;
         }
 
         case Tag.If: {

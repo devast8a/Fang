@@ -1,0 +1,8 @@
+##DEBUG_LIFETIME_TRACKING[?]
+##DEBUG_PRINT_AST[?]
+struct Value[#80] {}
+struct Ref[#81] {}
+fn use[#84] (val x[#82], val y[#83]) {}
+x[86^G] = Value[80^G]{}
+use[84^G](x[86^G], x[86^G])
+destruct x[86]
