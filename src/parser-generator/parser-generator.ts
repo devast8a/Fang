@@ -30,16 +30,13 @@ export abstract class Rule<Type = any, Named = any> {
 
 export class Result {
     constructor(
+        private rule: Rule,
         private value: any,
         private unpack: (context: any, value: any) => ({ value: any }),
     ) { }
 
     build(context: any) {
         return this.unpack(context, this.value)
-    }
-
-    static value(value: any) {
-        return new Result(value, (_, value) => ({ value }))
     }
 }
 
@@ -57,9 +54,9 @@ export class Syntax<Context = any, Type = any, Name extends string = any> extend
     match(definition: () => Rule<Type>): void
     match(definition: () => (Type extends string ? string | RegExp | number : never)): void
     match<D extends Def>(definition: () => D, transform: Transformer<D, Context, Type>): void
+    match<D extends Def>(definition: { definition: () => D, transform: Transformer<D, Context, Type> }): void
     match(definition: { definition: () => Rule<Type> }): void
     match(definition: { definition: () => (Type extends string ? string | RegExp | number : never) }): void
-    match<D extends Def>(definition: { definition: () => D, transform: Transformer<D, Context, Type> }): void
 
     match(definition: any, transform?: any) {
         // To allow out-of-order definitions, we don't instantiate the subrules here, instead we instantiate them in
@@ -99,8 +96,12 @@ export class Syntax<Context = any, Type = any, Name extends string = any> extend
                 return { [this.name]: value, value: value }
             }
 
-            return RULE(this.id, [subrule], data => new Result(data[0], unpack))
+            return RULE(this.id, [subrule], data => new Result(this, data[0], unpack))
         })
+    }
+
+    toString(): string {
+        return this.name
     }
 }
 
@@ -136,8 +137,13 @@ export class SeqRule<D extends Def[]> extends Rule<GetTypes<D>, GetNames<D>> {
         }
 
         return [
-            RULE(this.id, this.rules, data => new Result(data, unpack))
+            RULE(this.id, this.rules, data => new Result(this, data, unpack))
         ]
+    }
+
+    toString(): string {
+        const rules = this.rules.join(' ')
+        return this.rules.length === 1 ? rules : `(${rules})`
     }
 }
 
@@ -184,9 +190,14 @@ export class OptRule<D extends ReadonlyArray<Def>> extends Rule<
         NULL.value = null
 
         return [
-            RULE(this.id, this.rules, data => new Result(data, unpack)),
-            RULE(this.id, [], data => new Result(NULL, (_, value) => value)),
+            RULE(this.id, this.rules, data => new Result(this, data, unpack)),
+            RULE(this.id, [], data => new Result(this, [NULL], (_, value) => value[0])),
         ]
+    }
+
+    toString(): string {
+        const rules = this.rules.join(' ')
+        return this.rules.length === 1 ? `${rules}?` : `(${rules})?`
     }
 }
 
@@ -226,7 +237,12 @@ export class AnyRule<D extends ReadonlyArray<Def>> extends Rule<
 
         const NULL = NullArgs(this.names)
 
-        return this.rules.map(option => RULE(this.id, [option], (data) => new Result(data[0], unpack)))
+        return this.rules.map(option => RULE(this.id, [option], (data) => new Result(this, data[0], unpack)))
+    }
+
+    toString(): string {
+        const rules = this.rules.join(' | ')
+        return this.rules.length === 1 ? rules : `(${rules})`
     }
 }
 
@@ -277,13 +293,18 @@ export class RepRule<D extends ReadonlyArray<Def>> extends Rule<
         }
 
         return [
-            RULE(this.id, [elements], (data) => new Result(data[0], unpack)),
+            RULE(this.id, [elements], (data) => new Result(this, data[0], unpack)),
 
             RULE(elements, [element]),
             RULE(elements, [elements, element], (data) => [...data[0], data[1]]),
 
             RULE(element, this.rules),
         ]
+    }
+
+    toString(): string {
+        const rules = this.rules.join(' ')
+        return this.rules.length === 1 ? `${rules}*` : `(${rules})*`
     }
 }
 
@@ -368,67 +389,42 @@ export class ListRule<
         const elements = `${this.id}$3`
 
         return [
-            RULE(this.id, [list], data => new Result(data[0], (context, value) => {
-                let start: any
-                let startWs: any
-                let inside: any
-                let end: any
-
-                if (value.length === 2) {
-                    [startWs, inside] = value
-                    start = null
-                    end = null
-                } else {
-                    [start, startWs, inside, end] = value
+            RULE(this.id, [list], data => new Result(this, data[0], (context, value: List<any, any, any, any, any>) => {
+                const list = {
+                    start: value.start?.build(context).value ?? null,
+                    startWs: value.startWs?.build(context).value ?? null,
+                    elements: value.elements.map(v => v.build(context).value),
+                    separators: value.separators.map(v => v.build(context).value),
+                    endWs: value.endWs?.build(context).value ?? null,
+                    end: value.end?.build(context).value ?? null,
                 }
 
-                const elements: any[] = []
-                const separators: any[] = []
-
-                let contents = inside[0]
-                if (contents !== undefined) {
-                    while (contents.length === 3) {
-                        elements.push(contents[2].build(context).value)
-                        separators.push(contents[1].build(context).value)
-                        contents = contents[0]
-                    }
-
-                    elements.push(contents[0].build(context).value)
-
-                    elements.reverse()
-                    separators.reverse()
-                }
-
-                const output = {
-                    start: start === null ? null : start.build(context),
-                    startWs: startWs.build(context),
-                    elements: elements,
-                    separators: separators,
-                    endWs: inside[1] === undefined ? null : inside[1].build(context),
-                    end: end === null ? null : end.build(context),
-                }
-
-                return { value: output }
+                return { value: list }
             })),
 
             this.start !== null && this.end !== null ?
-                RULE(list, [this.start, this.whitespace, contents, this.end]) :
-                RULE(list, [this.whitespace, contents]),
+                RULE(list, [this.start, this.whitespace, contents, this.end], data => ({ start: data[0], startWs: data[1], elements: data[2].elements, separators: data[2].separators, endWs: data[2].endWs, end: data[3] })) :
+                RULE(list, [this.whitespace, contents], data => ({ startWs: data[0], elements: data[1].elements, separators: data[1].separators, endWs: data[1].endWs })),
 
-            RULE(contents, []),
-            RULE(contents, [elements, this.whitespace]),
+            RULE(contents, [], data => ({ elements: [], separators: [], endWs: null })),
+            RULE(contents, [elements, this.whitespace], data => ({ elements: data[0].elements, separators: data[0].separators, endWs: data[1] })),
 
-            RULE(elements, [this.element]),
-            RULE(elements, [elements, this.separator, this.element]),
+            RULE(elements, [this.element], data => ({ elements: data, separators: [] })),
+            RULE(elements, [elements, this.separator, this.element], data => ({ elements: data[0].elements.concat(data[2]), separators: data[0].separators.concat(data[1])})),
         ]
+    }
+
+    toString(): string {
+        return `LIST(...)`
     }
 }
 
 export interface List<Start, Whitespace, Element, Separator, End> {
     start: Start
-    whitespace: Whitespace
+    startWs: Whitespace
     elements: Element[]
     separators: Separator[]
+    endWs: Whitespace
     end: End
 }
 
@@ -446,12 +442,16 @@ export class TokenRule extends Rule<string> {
         return []
     }
 
-    toRules() {
-        return [RULE(this.id, [{ type: this.name }], data => Result.value(data[0].value))]
+    toRules(): NearleyRule[] {
+        return [RULE(this.id, [{ type: this.name }], data => new Result(this, data[0].value, (_, value) => ({ value })))]
     }
 
     toToken() {
         return this.name
+    }
+
+    toString(): string {
+        return `%${this.name}`
     }
 }
 
@@ -466,12 +466,16 @@ export class ConstantRule extends Rule<string> {
         return []
     }
 
-    toRules() {
-        return [RULE(this.id, [{ literal: this.value }], data => Result.value(data[0].value))]
+    toRules(): NearleyRule[] {
+        return [RULE(this.id, [{ type: this.value }], data => new Result(this, data[0].value, (_, value) => ({ value })))]
     }
 
     toToken() {
         return this.value
+    }
+
+    toString(): string {
+        return `'${this.value}'`
     }
 }
 
@@ -486,14 +490,16 @@ export class RegexRule extends Rule<string> {
         return []
     }
 
-    toRules() {
-        return [
-            RULE(this.id, [{ type: this.value.toString() }], data => Result.value(data[0].value))
-        ]
+    toRules(): NearleyRule[] {
+        return [RULE(this.id, [{ type: this.value.toString() }], data => new Result(this, data[0].value, (_, value) => ({ value })))]
     }
 
     toToken() {
         return this.value
+    }
+
+    toString(): string {
+        return `/${this.value}/`
     }
 }
 
@@ -570,18 +576,14 @@ export interface Config<Context, Type> {
 export class Config<Context, Type> {
     private constructor() { }
 
-    readonly any = this as Config<Context, any>
+    readonly undefined = this as Config<Context, any>
 
     TOKENS?: TokenizerStates
 
-    SYNTAX<Name extends string, D extends Def, Type>(definition: {
-        name: Name,
-        definition: () => D,
-        transform: Transformer<D, Context, Type>,
-    }) {
-        const syntax = new Syntax<Context, Type, Name>(definition.name, undefined as any)
-        syntax.match(definition.definition as any, definition.transform as any)
-        return syntax
+    array<T>(): Config<Context, T[]>
+    array<T>(constructor: Constructor<T>): Config<Context, T[]>
+    array<T>(constructor?: Constructor<T>): Config<Context, T[]> {
+        return this as any
     }
 
     // Context and Type are unused in the type and if we don't use them TypeScript's structural type system will
@@ -775,7 +777,9 @@ export class Parser<Context, T> {
         parser.feed(content)
         
         switch (parser.results.length) {
-            default: throw new Error('Ambiguous parse')
+            default: {
+                throw new Error('Ambiguous parse')
+            }
             case 0: throw new Error('Incomplete parse')
             case 1: return parser.results[0].build(context).value
         }
