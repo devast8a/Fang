@@ -3,6 +3,7 @@
  * - Uses moo as the tokenizer, and nearley.js as the parser.
  */
 // TODO: Cleanup use of Result & unpack in the various rules
+// TODO: Add test cases for LIST
 import moo from 'moo'
 import { Parser as NearleyParser } from 'nearley'
 import { Constructor } from '../common/constructor'
@@ -313,11 +314,23 @@ type ArrayifyFields<T> = {[K in keyof T]: T[K][]}
 // Matches a delimited list of elements.
 //  Whitespace refers to the whitespace between the elements and the start and end of the list.
 //  E.g. LIST('(', ' ', 'a', ', ', ')') matches '( a, a, a )'.
+export function LIST<Context, Type, Name extends string>(element: Syntax<Context, Type, Name>, options: ListOptions): Syntax<Context, Type[], `${Name}s`>
 export function LIST<Whitespace extends Def, Element extends Def, Separator extends Def>(whitespace: Whitespace, element: Element, separator: Separator): ListRule<null, Whitespace, Element, Separator, null>
 export function LIST<Start extends Def, Whitespace extends Def, Element extends Def, Separator extends Def, End extends Def>(start: Start, whitespace: Whitespace, element: Element, separator: Separator, end: End): ListRule<Start, Whitespace, Element, Separator, End>
 export function LIST(...args: any[]): any
 {
     switch (args.length) {
+        case 2: {
+            const [element, options] = args
+            const syntax = new Syntax((element.name + "s") as any, element.config as any)
+
+            syntax.match({
+                definition: () => new ListRule(options.start, options.whitespace, element, options.separator, options.end),
+                transform: r => r.value.elements
+            })
+
+            return syntax
+        }
         case 3: {
             const [whitespace, element, separator] = args
             return new ListRule(null, whitespace, element, separator, null)
@@ -426,6 +439,13 @@ export interface List<Start, Whitespace, Element, Separator, End> {
     separators: Separator[]
     endWs: Whitespace
     end: End
+}
+
+export interface ListOptions {
+    readonly start: Def
+    readonly whitespace: Def
+    readonly separator: Def
+    readonly end: Def
 }
 
 export function TOKEN(name: string) {
