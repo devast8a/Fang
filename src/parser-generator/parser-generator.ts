@@ -312,8 +312,15 @@ export class RepRule<D extends ReadonlyArray<Def>> extends Rule<
 type ArrayifyFields<T> = {[K in keyof T]: T[K][]}
 
 // Matches a delimited list of elements.
-//  Whitespace refers to the whitespace between the elements and the start and end of the list.
-//  E.g. LIST('(', ' ', 'a', ', ', ')') matches '( a, a, a )'.
+//  This is intended to match things like parameters, arguments, tuples, statements, etc.
+//
+// There are three usages for LIST
+//  LIST(start, whitespace, element, separator, end) - matches a list of elements with a start and end token.
+//  LIST(whitespace, element, separator)             - matches a list of elements with no start or end token.
+//  LIST(element, options)                           - Shorthand for creating new Syntax for a list of elements.
+//
+// LIST('[', ' ', 'a', ',', ']') matches '[ ]', '[ a ]', '[ a,a ]', '[ a,a,a ]', etc...
+// LIST(' ', 'a', ',') matches ' ', ' a ', ' a,a ', ' a,a,a ', etc...
 export function LIST<Context, Type, Name extends string>(element: Syntax<Context, Type, Name>, options: ListOptions): Syntax<Context, Type[], `${Name}s`>
 export function LIST<Whitespace extends Def, Element extends Def, Separator extends Def>(whitespace: Whitespace, element: Element, separator: Separator): ListRule<null, Whitespace, Element, Separator, null>
 export function LIST<Start extends Def, Whitespace extends Def, Element extends Def, Separator extends Def, End extends Def>(start: Start, whitespace: Whitespace, element: Element, separator: Separator, end: End): ListRule<Start, Whitespace, Element, Separator, End>
@@ -344,7 +351,6 @@ export function LIST(...args: any[]): any
         }
     }
 }
-
 export class ListRule<
     Start      extends Def | null,
     Whitespace extends Def,
@@ -442,10 +448,10 @@ export interface List<Start, Whitespace, Element, Separator, End> {
 }
 
 export interface ListOptions {
-    readonly start: Def
+    readonly start: Def | null
     readonly whitespace: Def
     readonly separator: Def
-    readonly end: Def
+    readonly end: Def | null
 }
 
 export function TOKEN(name: string) {

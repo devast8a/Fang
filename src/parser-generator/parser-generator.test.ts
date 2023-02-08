@@ -257,21 +257,47 @@ describe('parser-generator', () => {
     })
 
     describe('LIST', () => {
-        const rule = LIST('(', OPT(' '), /[a-z]+/, ',', ')')
+        const Name = new Syntax('Name', $<string>())
+        Name.match(() => /[a-z]+/)
+
+        const FULL_LIST = LIST('(', OPT(' '), /[a-z]+/, ',', ')')
+        const PARTIAL_LIST = LIST(OPT(' '), /[a-z]+/, ',')
+        const SHORT_FORM = LIST(Name, { start: null, whitespace: OPT(' '), separator: ',', end: null })
 
         test('matches zero inputs', () => {
-            const result = parse(rule, '()', _ => _.value.elements)
+            const result = parse(FULL_LIST, '()', _ => _.value.elements)
             expect(result).deep.equal([])
         })
 
         test('matches multiple inputs', () => {
-            const result = parse(rule, '(a,b,c)', _ => _.value.elements)
+            const result = parse(FULL_LIST, '(a,b,c)', _ => _.value.elements)
             expect(result).deep.equal(['a', 'b', 'c'])
         })
 
-        test('transformer types with multiple arguments', () => {
-            check_types(rule, _ => [
+        test('matches zero inputs (Partial List)', () => {
+            const result = parse(PARTIAL_LIST, '', _ => _.value.elements)
+            expect(result).deep.equal([])
+        })
+
+        test('matches multiple inputs (Partial List)', () => {
+            const result = parse(PARTIAL_LIST, 'a,b,c', _ => _.value.elements)
+            expect(result).deep.equal(['a', 'b', 'c'])
+        })
+
+        test('matches multiple inputs (Short Form)', () => {
+            const result = parse(SHORT_FORM, 'a,b,c', _ => _.value)
+            expect(result).deep.equal(['a', 'b', 'c'])
+        })
+
+        test('transformer types', () => {
+            check_types(FULL_LIST, _ => [
                 check_type<typeof _.context, Context>,
+                check_type<typeof _.value.start, '('>,
+                check_type<typeof _.value.startWs, ' ' | null>,
+                check_type<typeof _.value.elements, string[]>,
+                check_type<typeof _.value.separators, ','[]>,
+                check_type<typeof _.value.endWs, ' ' | null>,
+                check_type<typeof _.value.end, ')'>,
             ])
         })
     })
