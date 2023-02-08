@@ -51,12 +51,12 @@ export class Syntax<Context = any, Type = any, Name extends string = any> extend
         super()
     }
 
-    match(definition: () => Rule<Type>): void
-    match(definition: () => (Type extends string ? string | RegExp | number : never)): void
-    match<D extends Def>(definition: () => D, transform: Transformer<D, Context, Type>): void
     match<D extends Def>(definition: { definition: () => D, transform: Transformer<D, Context, Type> }): void
     match(definition: { definition: () => Rule<Type> }): void
     match(definition: { definition: () => (Type extends string ? string | RegExp | number : never) }): void
+    match(definition: () => Rule<Type>): void
+    match(definition: () => (Type extends string ? string | RegExp | number : never)): void
+    match<D extends Def>(definition: () => D, transform: Transformer<D, Context, Type>): void
 
     match(definition: any, transform?: any) {
         // To allow out-of-order definitions, we don't instantiate the subrules here, instead we instantiate them in
