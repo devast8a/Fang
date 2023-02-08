@@ -9,7 +9,9 @@ import { Ctx } from '../ast/context'
 const parser = Parser.create(Grammar)
 
 function parse(content: string) {
-    return parser.parse(Ctx.createRoot(), content)
+    const context = Ctx.createRoot()
+    const body = parser.parse(context, content)
+    return { context, body }
 }
 
 describe('grammar', function() {
@@ -52,6 +54,12 @@ describe('grammar', function() {
 
     // --- Operator
     allow('operator double dot',                        `return 10 .. 20`)
+    reject('space on left, no space on right',          `return 10 +20`)
+    reject('no space on left, space on right',          `return 10+ 20`)
+    reject('pre- and post-fix operators',               `return +10+`)
+    allow('infix as a name',                            `return infix++`)
+    allow('prefix as a name',                           `return prefix++`)
+    allow('postfix as a name',                          `return postfix++`)
     
     // --- Indexable
     allow('indexing of call',                           `return foo().bar`)
@@ -90,10 +98,9 @@ describe('grammar', function() {
     allow('immutable variable, untyped, with value',    `val foo = bar`)
     allow('mutable variable, typed, with value',        `mut foo: bar = qux`)
     allow('immutable variable, typed, with value',      `val foo: bar = qux`)
-
 })
 
-describe('grammar / examples', async function (this) {
+describe('grammar/examples', async function (this) {
     const suite = this
 
     async function load(path: string) {

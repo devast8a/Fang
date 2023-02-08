@@ -3,13 +3,11 @@ import * as Nodes from '../ast/nodes'
 import { VariableFlags } from '../ast/nodes'
 import { ANY, CONFIG, LIST, OPT, REP, SEQ, Syntax, TOKEN } from '../parser-generator'
 
-type Ref<T extends Nodes.Node = Nodes.Node> = Nodes.LocalRef<T>
-
 const $ = CONFIG<Ctx>()
 
 const UNDEFINED = () => undefined as any
 
-export const Grammar = new Syntax('Root', $.undefined)
+export const Grammar = new Syntax('Root', $.array(Nodes.LocalRef))
 Grammar.match(() => LIST(OPT(N), Stmt, ExpressionSeparator), r => r.value.elements)
 
 function add(parameters: {context: Ctx, value: Nodes.Node}) {
@@ -18,7 +16,7 @@ function add(parameters: {context: Ctx, value: Nodes.Node}) {
 
 // ============================== Core grammar components ==============================
 // An atom is part of the language that can be used in a binary expression without needing to be wrapped in parentheses
-const Atom = new Syntax('Atom', $<Ref>())
+const Atom = new Syntax('Atom', $<Nodes.LocalRef>())
 Atom.match(() => Literal)
 // ----
 Atom.match(() => Call, add)
@@ -27,7 +25,7 @@ Atom.match(() => Get, add)
 Atom.match(() => Parenthesized)
 
 // An expression is part of the language that can be evaluated in a context expecting a value
-const Expr = new Syntax('Expr', $<Ref>())
+const Expr = new Syntax('Expr', $<Nodes.LocalRef>())
 Expr.match(() => Binary)
 Expr.match(() => ControlFlow, add)
 Expr.match(() => Definition, add)
@@ -40,12 +38,11 @@ Expr.match(() => Not, add)
 //Expr.match(() => Set, add)
 
 // A statement is part of the language that can be evaluated standalone
-const Stmt = new Syntax('Stmt', $<Ref>())
+const Stmt = new Syntax('Stmt', $<Nodes.LocalRef>())
 Stmt.match(() => ControlFlow, add)
 Stmt.match(() => Definition, add)
 Stmt.match(() => Jumps, add)
 // ----
-Stmt.match(() => Alias)
 Stmt.match(() => AttributeBlock, add)
 Stmt.match(() => Call, add)
 Stmt.match(() => Destroy, add)
@@ -53,6 +50,7 @@ Stmt.match(() => Set, add)
 
 // ============================== Definition ==============================
 const Definition = new Syntax('Definition', $(Nodes.Node))
+Definition.match(() => Alias)
 Definition.match(() => Case)
 Definition.match(() => Enum)
 Definition.match(() => Error)
@@ -61,6 +59,13 @@ Definition.match(() => Struct)
 Definition.match(() => Trait)
 Definition.match(() => Type)
 Definition.match(() => Variable)
+
+// == Alias
+const Alias = new Syntax('Alias', $.undefined)
+Alias.match({
+    definition: () => SEQ('alias', _, Expr),
+    transform: UNDEFINED,
+})
 
 // === Case
 const Case = new Syntax('Case', $.undefined)
@@ -73,7 +78,7 @@ Case.match({
 const Enum = new Syntax('Enum', $(Nodes.Enum))
 Enum.match({
     definition: () => SEQ('enum', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
-    transform: r => new Nodes.Enum(r.Symbol, r.Body),
+    transform: r => new Nodes.Enum(r.Symbol ?? '<unnamed>', r.Body),
 })
 
 // === Error
@@ -94,14 +99,14 @@ Function.match({
 const Struct = new Syntax('Struct', $(Nodes.Struct))
 Struct.match({
     definition: () => SEQ('struct', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
-    transform: r => new Nodes.Struct(r.Symbol, r.Body),
+    transform: r => new Nodes.Struct(r.Symbol ?? '<unnamed>', r.Body),
 })
 
 // === Trait
 const Trait = new Syntax('Trait', $(Nodes.Trait))
 Trait.match({
     definition: () => SEQ('trait', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
-    transform: r => new Nodes.Trait(r.Symbol, r.Body),
+    transform: r => new Nodes.Trait(r.Symbol ?? '<unnamed>', r.Body),
 })
 
 // === Type
@@ -209,13 +214,6 @@ Return.match({
 })
 
 // ============================== Other Expressions ==============================
-// == Alias
-const Alias = new Syntax('Alias', $.undefined)
-Alias.match({
-    definition: () => SEQ('alias', _, Expr),
-    transform: UNDEFINED,
-})
-
 // == Attributes (for scope)
 const AttributeBlock = new Syntax('AttributeBlock', $(Nodes.BlockAttribute))
 AttributeBlock.match({
@@ -227,14 +225,14 @@ AttributeBlock.match({
 const Call = new Syntax('Call', $(Nodes.Call))
 Call.match({
     definition: () => SEQ(Atom, LIST('(', OPT(N), Argument, ArgumentSeparator, ')')),
-    transform: UNDEFINED,
+    transform: r => new Nodes.Call(r.Atom as any, r.value[1].elements),
 })
 
 // == Construct
 const Construct = new Syntax('Construct', $(Nodes.Construct))
 Construct.match({
     definition: () => SEQ(Atom, LIST('{', OPT(N), Argument, ArgumentSeparator, '}')),
-    transform: UNDEFINED,
+    transform: r => new Nodes.Construct(r.Atom, r.value[1].elements),
 })
 
 // == Copy
@@ -259,36 +257,18 @@ Generic.match({
 })
 
 // == Get
+// TODO: Could probably cause ambiguity with prefix (Test it)
 const Get = new Syntax('Get', $(Nodes.Get))
 Get.match({
     definition: () => SEQ(FullSymbol),
-    transform: UNDEFINED,
+    transform: r => new Nodes.Get(r.FullSymbol),
 })
-
-// == Indexing
-const Index = new Syntax('Index', $(Nodes.Get))
-Index.match({
-    definition: () => SEQ(Indexable, Dot, Symbol),
-    transform: UNDEFINED,
-})
-
-const Dot = new Syntax('Dot', $.undefined)
-Dot.match(() => '.')
-Dot.match(() => SEQ('.', L))
-Dot.match(() => SEQ(L, '.'))
-
-const Indexable = new Syntax('Indexable', $.undefined)
-Indexable.match(() => Index)
-Indexable.match(() => Symbol)
-Indexable.match(() => Call)
-Indexable.match(() => Construct)
-Indexable.match(() => SEQ(Atom, Operator))
 
 // == Move
 const Move = new Syntax('Move', $(Nodes.Move))
 Move.match({
     definition: () => SEQ('move', _, Expr),
-    transform: UNDEFINED,
+    transform: r => new Nodes.Move(r.Expr),
 })
 
 // == Not
@@ -309,38 +289,56 @@ Parenthesized.match({
 const Set = new Syntax('Set', $(Nodes.Set))
 Set.match({
     definition: () => SEQ(FullSymbol, _, '=', _, Expr),
-    transform: UNDEFINED,
+    transform: r => new Nodes.Set(r.FullSymbol, r.Expr),
 })
 
 // ============================== Binary and Unary Expressions ==============================
-const B = (value: any) => 'BINARY!' as any
-const U = (value: any) => 'UNARY!' as any
+// Expressions in Fang are grouped into four "precedence levels"
+//  1. Logical operators (i.e. and / or)
+//  2. Any binary operator, with spaces around the operator (e.g. 1 + 2 or foo == bar)
+//  3. Any unary operator (e.g. foo* or ++bar)
+//  4. Any binary operator, without spaces around the operator (e.g. 1+2 or foo==bar)
+// Therefore "1+2 * ++3 and 4" is parsed as "((1+2) * (++3)) and 4"
+//
+// Within a precedence level, operators are always parsed left to right.
 
+// == Transformers
+const call = (name: (v: any[]) => string, args: (v: any[]) => any[]) =>
+    (r: { context: Ctx, value: any[] }) =>
+        r.context.add(new Nodes.Call(new Nodes.RefByName(null, name(r.value)), args(r.value)))
+
+const TRANSFORM_SPACED  = call(r => `infix${r[2]}`, r => [r[0], r[4]])
+const TRANSFORM_COMPACT = call(r => `infix${r[1]}`, r => [r[0], r[2]])
+const TRANSFORM_PREFIX  = call(r => `prefix${r[0]}`, r => [r[0]])
+const TRANSFORM_POSTFIX = call(r => `postfix${r[1]}`, r => [r[0]])
+
+// == Expressions
 const Binary = new Syntax('Binary', $(Nodes.LocalRef))
-Binary.match(() => SEQ(Binary, _, Logic, _, Spaced), B)
-Binary.match(() => SEQ(Binary, L, Logic, _, Spaced), B)
-Binary.match(() => SEQ(Binary, _, Logic, L, Spaced), B)
+Binary.match(() => SEQ(Binary, _, Logic, _, Spaced), TRANSFORM_SPACED)
+Binary.match(() => SEQ(Binary, L, Logic, _, Spaced), TRANSFORM_SPACED)
+Binary.match(() => SEQ(Binary, _, Logic, L, Spaced), TRANSFORM_SPACED)
 Binary.match(() => Spaced)
 
 const Spaced = new Syntax('Spaced', $(Nodes.LocalRef))
-Spaced.match(() => SEQ(Spaced, _, Operator, _, Unary), B)
-Spaced.match(() => SEQ(Spaced, L, Operator, _, Unary), B)
-Spaced.match(() => SEQ(Spaced, _, Operator, L, Unary), B)
+Spaced.match(() => SEQ(Spaced, _, Operator, _, Unary), TRANSFORM_SPACED)
+Spaced.match(() => SEQ(Spaced, L, Operator, _, Unary), TRANSFORM_SPACED)
+Spaced.match(() => SEQ(Spaced, _, Operator, L, Unary), TRANSFORM_SPACED)
 Spaced.match(() => Unary)
 
 const Unary = new Syntax('Unary', $(Nodes.LocalRef))
-Unary.match(() => SEQ(Operator, Atom), U)
-Unary.match(() => SEQ(Atom, Operator), U)
+Unary.match(() => SEQ(Operator, Atom), TRANSFORM_PREFIX)
+Unary.match(() => SEQ(Atom, Operator), TRANSFORM_POSTFIX)
 Unary.match(() => Compact)
 
 const Compact = new Syntax('Compact', $(Nodes.LocalRef))
-Compact.match(() => SEQ(Compact, Operator, Atom), B)
+Compact.match(() => SEQ(Compact, Operator, Atom), TRANSFORM_COMPACT)
 Compact.match(() => Atom)
 
-const Logic = new Syntax('Logic', $.undefined)
+// == Operators
+const Logic = new Syntax('Logic', $<string>())
 Logic.match(() => ANY('and', 'or'))
 
-const Operator = new Syntax('Operator', $.undefined)
+const Operator = new Syntax('Operator', $<string>())
 Operator.match(() => /[~!@#$%^&*+=|?/:\-\\<>]+/)
 Operator.match(() => '..')
 
@@ -349,6 +347,13 @@ const Literal = new Syntax('Literal', $.undefined)
 Literal.match(() => LiteralFloat)
 Literal.match(() => LiteralInteger)
 Literal.match(() => LiteralString)
+
+function TRANSFORM_INTEGER(offset: number, base: number) {
+    return (r: { context: Ctx, value: string }) => {
+        const value = r.value.slice(offset).replace(/_/g, '')
+        return r.context.add(new Nodes.Constant(r.context.builtins.u32, parseInt(value, base)))
+    }
+}
 
 // Note: The order of float and literal integers as specified in the grammar is important
 //  The parser generator will generate a tokenizer that matches in the order of the tokens in the grammar.
@@ -361,10 +366,10 @@ LiteralFloat.match(() => /[0-9]+.[0-9]+(?:[eE][+-]?[1-9]+)?/, UNDEFINED)
 
 // == Literal Integer
 const LiteralInteger = new Syntax('LiteralInteger', $(Nodes.Constant))
-LiteralInteger.match(() => /0x[0-9a-fA-F_]+/, UNDEFINED)
-LiteralInteger.match(() => /0o[0-7_]+/, UNDEFINED)
-LiteralInteger.match(() => /0b[0-7_]+/, UNDEFINED)
-LiteralInteger.match(() => /[0-9_]+/, UNDEFINED)
+LiteralInteger.match(() => /0x[0-9a-fA-F_]+/,   TRANSFORM_INTEGER(2, 16))
+LiteralInteger.match(() => /0o[0-7_]+/,         TRANSFORM_INTEGER(2, 8))
+LiteralInteger.match(() => /0b[0-7_]+/,         TRANSFORM_INTEGER(2, 2))
+LiteralInteger.match(() => /[0-9_]+/,           TRANSFORM_INTEGER(0, 10))
 
 // == Literal String
 const LiteralString = new Syntax('LiteralString', $(Nodes.Constant))
@@ -415,19 +420,38 @@ const GenericParameter = new Syntax('GenericParameter', $.undefined)
 GenericParameter.match(() => Identifier)
 
 // == Identifiers, Names, and Symbols
-const Identifier = new Syntax('Identifier', $.undefined)
+const Identifier = new Syntax('Identifier', $<string>())
 Identifier.match(() => /[_a-zA-Z][_a-zA-Z0-9]*/)
 
-const Symbol = new Syntax('Symbol', $.undefined)
-Symbol.match(() => SEQ('${', OPT(N), Expr, OPT(N), '}'))
+const Symbol = new Syntax('Symbol', $<string>())
+//Symbol.match(() => SEQ('${', OPT(N), Expr, OPT(N), '}'))
 Symbol.match(() => Identifier)
-Symbol.match(() => SEQ('infix', Operator))
-Symbol.match(() => SEQ('prefix', Operator))
-Symbol.match(() => SEQ('postfix', Operator))
+Symbol.match(() => SEQ('infix', Operator), r => r.value.join(''))
+Symbol.match(() => SEQ('prefix', Operator), r => r.value.join(''))
+Symbol.match(() => SEQ('postfix', Operator), r => r.value.join(''))
 
-const FullSymbol = new Syntax('FullSymbol', $.undefined)
-FullSymbol.match(() => Symbol)
+const FullSymbol = new Syntax('FullSymbol', $<Nodes.Ref<any>>())
+FullSymbol.match(() => Symbol, r => new Nodes.RefByName(null, r.value))
 FullSymbol.match(() => Index)
+
+// == Indexing
+const Index = new Syntax('Index', $<Nodes.Ref>())
+Index.match({
+    definition: () => SEQ(Indexable, Dot, Symbol),
+    transform: UNDEFINED,
+})
+
+const Indexable = new Syntax('Indexable', $.undefined)
+Indexable.match(() => Index)
+Indexable.match(() => Symbol)
+Indexable.match(() => Call)
+Indexable.match(() => Construct)
+Indexable.match(() => SEQ(Atom, Operator))
+
+const Dot = new Syntax('Dot', $.undefined)
+Dot.match(() => '.')
+Dot.match(() => SEQ('.', L))
+Dot.match(() => SEQ(L, '.'))
 
 // == Implements statements
 const Implements = new Syntax('Implements', $.undefined)
