@@ -1,14 +1,14 @@
 import { Ctx } from '../ast/context'
 import * as Nodes from '../ast/nodes'
 import { VariableFlags } from '../ast/nodes'
-import { ANY, CONFIG, LIST, OPT, REP, SEQ, Syntax, TOKEN } from '../parser-generator'
+import { ANY, CONFIG, LIST, ListOptions, OPT, REP, SEQ, Syntax, TOKEN } from '../parser-generator'
 
 const $ = CONFIG<Ctx>()
 
 const UNDEFINED = () => undefined as any
 
 export const Grammar = new Syntax('Root', $<Nodes.LocalRef[]>())
-Grammar.match(() => LIST(OPT(N), Stmt, ExpressionSeparator), r => r.value.elements)
+Grammar.match(() => LIST(OPT(N), Stmt, Semicolon), r => r.value.elements)
 
 function add(parameters: {context: Ctx, value: Nodes.Node}) {
     return parameters.context.add(parameters.value)
@@ -163,7 +163,7 @@ IfElse.match({
 // === Match
 const Match = new Syntax('Match', $<Nodes.Match>())
 Match.match({
-    definition: () => SEQ('match', OPT(_, Label), _, Expr, OPT(N), MatchCases),
+    definition: () => SEQ('match', OPT(_, Label), _, Expr, OPT(N), LIST(MatchCase, CurlyBlock)),
     transform: r => new Nodes.Match(r.Expr, r.MatchCases),
 })
 
@@ -171,12 +171,6 @@ const MatchCase = new Syntax('MatchCase', $<Nodes.MatchCase>())
 MatchCase.match({
     definition: () => SEQ('case', _, Destructure, Body),
     transform: r => new Nodes.MatchCase(r.Destructure, r.Body),
-})
-
-const MatchCases = new Syntax('MatchCases', $<Nodes.MatchCase[]>())
-MatchCases.match({
-    definition: () => LIST('{', OPT(N), MatchCase, ExpressionSeparator, '}'),
-    transform: r => r.value.elements,
 })
 
 // == While
@@ -224,15 +218,15 @@ AttributeBlock.match({
 // == Call
 const Call = new Syntax('Call', $<Nodes.Call>())
 Call.match({
-    definition: () => SEQ(Atom, LIST('(', OPT(N), Argument, ArgumentSeparator, ')')),
-    transform: r => new Nodes.Call(r.Atom as any, r.value[1].elements),
+    definition: () => SEQ(Atom, LIST(Argument, Round)),
+    transform: r => new Nodes.Call(r.Atom as any, r.Arguments),
 })
 
 // == Construct
 const Construct = new Syntax('Construct', $<Nodes.Construct>())
 Construct.match({
-    definition: () => SEQ(Atom, LIST('{', OPT(N), Argument, ArgumentSeparator, '}')),
-    transform: r => new Nodes.Construct(r.Atom, r.value[1].elements),
+    definition: () => SEQ(Atom, LIST(Argument, Curly)),
+    transform: r => new Nodes.Construct(r.Atom, r.Arguments),
 })
 
 // == Copy
@@ -252,7 +246,7 @@ Destroy.match({
 // == Generic use
 const Generic = new Syntax('Generic', $<any>())
 Generic.match({
-    definition: () => SEQ(Atom, LIST('[', OPT(N), Argument, ArgumentSeparator, ']')),
+    definition: () => SEQ(Atom, LIST(Argument, Square)),
     transform: UNDEFINED,
 })
 
@@ -400,8 +394,8 @@ Attribute.match(() => SEQ('#', FullSymbol))
 // Explicitly use a Block?
 const Body = new Syntax('Body', $<any>())
 Body.match({
-    definition: () => SEQ(OPT(N), LIST('{', OPT(N), Stmt, ExpressionSeparator, '}')),
-    transform: r => r.value[1].elements
+    definition: () => SEQ(OPT(N), LIST(Stmt, CurlyBlock)),
+    transform: r => r.Stmts
 })
 
 Body.match({
@@ -414,7 +408,7 @@ const GenericDefinition = new Syntax('Generic', $<any>())
 GenericDefinition.match(() => SEQ(N, 'generic', GenericParameters))
 
 const GenericParameters = new Syntax('GenericParameters', $<any>())
-GenericParameters.match(() => LIST('[', OPT(N), GenericParameter, ArgumentSeparator, ']'))
+GenericParameters.match(() => LIST(GenericParameter, Square))
 
 const GenericParameter = new Syntax('GenericParameter', $<any>())
 GenericParameter.match(() => Identifier)
@@ -467,8 +461,8 @@ ReturnType.match(() => SEQ(OPT(_), '->', OPT(_), Expr), UNDEFINED)
 
 const Parameters = new Syntax('Parameters', $<any>())
 Parameters.match({
-    definition: () => LIST('(', OPT(N), Parameter, ArgumentSeparator, ')'),
-    transform: r => r.value.elements,
+    definition: () => LIST(Parameter, Round),
+    transform: r => r.Parameters,
 })
 
 const Parameter = new Syntax('Parameter', $<any>())
@@ -500,17 +494,46 @@ export const N = REP(ANY(_, comment, '\n')) // space, comments, or newlines
 export const L = newlines                   // space, comments, or newlines (with at least one newline)
 
 // == Separators
-export const ExpressionSeparator  = ANY(newlines, SEQ(OPT(_), ';', OPT(_)))
-export const ArgumentSeparator    = ANY(newlines, SEQ(OPT(_), ',', OPT(_)))
+export const Semicolon  = ANY(newlines, SEQ(OPT(_), ';', OPT(_)))
+export const Comma    = ANY(newlines, SEQ(OPT(_), ',', OPT(_)))
 
 // ============================== Destructuring ==============================
 const Destructure = new Syntax('Destructure', $<any>())
 
 Destructure.match(() => Expr)
-Destructure.match(() => LIST('{', OPT(N), Destructure, ArgumentSeparator, '}'))
+Destructure.match(() => LIST(Destructure, Curly))
 
 const Condition = new Syntax('Condition', $<any>())
 Condition.match(() => Expr)
+
+// ============================== List Configuration ==============================
+export const CurlyBlock: ListOptions = {
+    start: '{',
+    whitespace: OPT(N),
+    separator: Semicolon,
+    end: '}',
+}
+
+export const Curly: ListOptions = {
+    start: '{',
+    whitespace: OPT(N),
+    separator: Comma,
+    end: '}',
+}
+
+export const Round: ListOptions = {
+    start: '(',
+    whitespace: OPT(N),
+    separator: Comma,
+    end: ')',
+}
+
+export const Square: ListOptions = {
+    start: '[',
+    whitespace: OPT(N),
+    separator: Comma,
+    end: ']',
+}
 
 // ============================== Tokenizer Configuration ==============================
 // We do not need to specify the complete tokenizer configuration here. The parser generator collects and populates the
