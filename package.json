@@ -37,13 +37,13 @@
     "spec": [
       "src/**/*.test.ts"
     ],
-    "extension": "ts"
+    "extension": ["ts", "fang"]
   },
   "scripts": {
     "cli": "node ./build/js/cli.js",
     "lint": "eslint -c .eslintrc.json --ext .ts src",
     "test": "mocha",
-    "test:watch": "mocha --watch",
+    "test:watch": "mocha --watch --reporter min",
     "coverage": "nyc --reporter=lcov --reporter=text-summary npm run test",
     "build": "tsc && node build/js/test.js"
   },
