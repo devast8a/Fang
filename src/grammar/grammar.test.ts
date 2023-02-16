@@ -5,18 +5,19 @@ import { Parser } from '../parser-generator'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import { Ctx } from '../ast/context'
+import { Source } from '../common/source'
 
 const parser = Parser.create(Grammar)
 
-function parse(content: string) {
+function parse(path: string, content: string) {
     const context = Ctx.createRoot()
-    const body = parser.parse(context, content)
+    const body = parser.parse(context, new Source(path, content))
     return { context, body }
 }
 
 describe('grammar', function() {
-    function allow(name: string, code: string)  { test(name, () => parse(code)) }
-    function reject(name: string, code: string) { test(name, () => expect(() => parse(code)).throw()) }
+    function allow(name: string, code: string)  { test(name, () => parse(name, code)) }
+    function reject(name: string, code: string) { test(name, () => expect(() => parse(name, code)).throw()) }
 
     // --- Attributes
     allow('attributes on functions',                    `fn foo() #bar #qux`)
@@ -114,7 +115,7 @@ describe('grammar/examples', async function (this) {
             const content = await fs.readFile(path, 'utf8')
             
             suite.addTest(new Test(path, () => {
-                parse(content)
+                parse(path, content)
             }))
         }
     }

@@ -8,6 +8,7 @@ import moo from 'moo'
 import { Parser as NearleyParser } from 'nearley'
 import { Constructor } from '../common/constructor'
 import { cached } from '../common/decorators'
+import { Source } from '../common/source'
 import { PartialNull, TupleToVariant } from '../common/type-level-utils'
 import { NearleyRule, NearleySymbol, NearleyProcessor, NearleyGrammar } from './nearley'
 
@@ -787,20 +788,21 @@ export class Parser<Context, T> {
         private readonly grammar: NearleyGrammar,
     ) { }
 
-    parse(context: Context, content: string): T {
+    parse(context: Context, source: Source): T {
         const parser = new NearleyParser(this.grammar as any)
             
         Object.assign(parser, {
-            reportError(token: any) {
-                return `Invalid syntax, unexpected "${token.text}"`
+            reportError(token: moo.Token) {
+                return `Invalid syntax, unexpected "${token.text}" at ${source.path}:${token.line}:${token.col}`
             },
 
-            reportLexerError() {
+            reportLexerError(e: any) {
+                console.log(e)
                 return `Invalid syntax`
             },
         })
 
-        parser.feed(content)
+        parser.feed(source.content)
         
         switch (parser.results.length) {
             default: {
@@ -822,9 +824,5 @@ export class Parser<Context, T> {
             ParserStart: root.id,
             ParserRules: rules.map(rule => rule.toRules()).flat(),
         })
-    }
-
-    static parse<Context, Type>(definition: Syntax<Context, Type>, content: string, context: Context): Type {
-        return this.create(definition).parse(context, content)
     }
 }

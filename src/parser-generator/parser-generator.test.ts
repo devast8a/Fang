@@ -2,6 +2,7 @@ import { describe, test } from 'mocha'
 import { Equal } from '../common/type-level-utils'
 import { Syntax, Parser, CONFIG, SEQ, OPT, ANY, REP, Def, Transformer, GetType, LIST } from './parser-generator'
 import { expect } from 'chai'
+import { Source } from '../common/source'
 
 type Context = 'CONTEXT'
 const $ = CONFIG<Context>()
@@ -18,7 +19,7 @@ function parse(definition: Def, input: string, transform?: Transformer<any, any,
     const syntax = new Syntax('syntax', $.undefined)
     syntax.match(() => definition as any, transform as any)
     const parser = Parser.create(syntax)
-    return parser.parse('CONTEXT', input)
+    return parser.parse('CONTEXT', Source.fromString(input))
 }
 
 type True = (left: any, right: any) => true
