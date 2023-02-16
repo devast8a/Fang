@@ -7,7 +7,7 @@ const $ = CONFIG<Ctx>()
 
 const UNDEFINED = () => undefined as any
 
-export const Grammar = new Syntax('Root', $.array(Nodes.LocalRef))
+export const Grammar = new Syntax('Root', $<Nodes.LocalRef[]>())
 Grammar.match(() => LIST(OPT(N), Stmt, ExpressionSeparator), r => r.value.elements)
 
 function add(parameters: {context: Ctx, value: Nodes.Node}) {
@@ -49,7 +49,7 @@ Stmt.match(() => Destroy, add)
 Stmt.match(() => Set, add)
 
 // ============================== Definition ==============================
-const Definition = new Syntax('Definition', $(Nodes.Node))
+const Definition = new Syntax('Definition', $<Nodes.Node>())
 Definition.match(() => Alias)
 Definition.match(() => Case)
 Definition.match(() => Enum)
@@ -61,84 +61,84 @@ Definition.match(() => Type)
 Definition.match(() => Variable)
 
 // == Alias
-const Alias = new Syntax('Alias', $.undefined)
+const Alias = new Syntax('Alias', $<any>())
 Alias.match({
     definition: () => SEQ('alias', _, Expr),
     transform: UNDEFINED,
 })
 
 // === Case
-const Case = new Syntax('Case', $.undefined)
+const Case = new Syntax('Case', $<any>())
 Case.match({
     definition: () => SEQ('case', _, Symbol),
     transform: UNDEFINED,
 })
 
 // === Enum
-const Enum = new Syntax('Enum', $(Nodes.Enum))
+const Enum = new Syntax('Enum', $<Nodes.Enum>())
 Enum.match({
     definition: () => SEQ('enum', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
     transform: r => new Nodes.Enum(r.Symbol ?? '<unnamed>', r.Body),
 })
 
 // === Error
-const Error = new Syntax('Error', $.undefined)
+const Error = new Syntax('Error', $<any>())
 Error.match({
     definition: () => SEQ('error', _, Symbol),
     transform: UNDEFINED,
 })
 
 // === Function
-const Function = new Syntax('Function', $(Nodes.Function))
+const Function = new Syntax('Function', $<Nodes.Function>())
 Function.match({
     definition: () => SEQ('fn', OPT(_, Symbol), Parameters, OPT(ReturnType), OPT(GenericDefinition), OPT(Attributes), OPT(Body)),
     transform: r => new Nodes.Function(r.Symbol, r.ReturnType as any, r.Parameters, r.Body),
 })
 
 // === Struct
-const Struct = new Syntax('Struct', $(Nodes.Struct))
+const Struct = new Syntax('Struct', $<Nodes.Struct>())
 Struct.match({
     definition: () => SEQ('struct', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
     transform: r => new Nodes.Struct(r.Symbol ?? '<unnamed>', r.Body),
 })
 
 // === Trait
-const Trait = new Syntax('Trait', $(Nodes.Trait))
+const Trait = new Syntax('Trait', $<Nodes.Trait>())
 Trait.match({
     definition: () => SEQ('trait', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
     transform: r => new Nodes.Trait(r.Symbol ?? '<unnamed>', r.Body),
 })
 
 // === Type
-const Type = new Syntax('Type', $.undefined)
+const Type = new Syntax('Type', $<any>())
 Type.match({
     definition: () => SEQ('type', _, Symbol, OPT(VariableValue)),
     transform: UNDEFINED,
 })
 
 // === Variable
-const Variable = new Syntax('Variable', $(Nodes.Variable))
+const Variable = new Syntax('Variable', $<Nodes.Variable>())
 Type.match({
     definition: () => SEQ(VariableKeyword, Symbol, OPT(VariableType), OPT(Attributes), OPT(VariableValue)),
     transform: r => new Nodes.Variable(r.Symbol, r.VariableType as any, r.VariableKeyword ?? VariableFlags.None),
 })
 
 // ============================== ControlFlow ==============================
-const ControlFlow = new Syntax('ControlFlow', $(Nodes.Node))
+const ControlFlow = new Syntax('ControlFlow', $<Nodes.Node>())
 ControlFlow.match(() => ForEach)
 ControlFlow.match(() => If)
 ControlFlow.match(() => Match)
 ControlFlow.match(() => While)
 
 // === ForEach
-const ForEach = new Syntax('ForEach', $(Nodes.ForEach))
+const ForEach = new Syntax('ForEach', $<Nodes.ForEach>())
 ForEach.match({
     definition: () => SEQ('for', OPT(_, Label), _, Destructure, _, 'in', _, Expr, Body),
     transform: r => new Nodes.ForEach(r.Destructure, r.Expr, r.Body),
 })
 
 // === If
-const If = new Syntax('If', $(Nodes.If))
+const If = new Syntax('If', $<Nodes.If>())
 If.match({
     definition: () => SEQ('if', OPT(_, Label), _, Condition, Body, OPT(REP(IfElif)), OPT(IfElse)),
     transform: r => new Nodes.If([
@@ -148,66 +148,66 @@ If.match({
     ]),
 })
 
-const IfElif = new Syntax('IfElif', $(Nodes.IfCase))
+const IfElif = new Syntax('IfElif', $<Nodes.IfCase>())
 IfElif.match({
     definition: () => SEQ(OPT(N), 'else', _, 'if', _, Condition, Body),
     transform: r => new Nodes.IfCase(r.Condition, r.Body),
 })
 
-const IfElse = new Syntax('IfElse', $(Nodes.IfCase))
+const IfElse = new Syntax('IfElse', $<Nodes.IfCase>())
 IfElse.match({
     definition: () => SEQ(OPT(N), 'else', Body),
     transform: r => new Nodes.IfCase(null, r.Body),
 })
 
 // === Match
-const Match = new Syntax('Match', $(Nodes.Match))
+const Match = new Syntax('Match', $<Nodes.Match>())
 Match.match({
     definition: () => SEQ('match', OPT(_, Label), _, Expr, OPT(N), MatchCases),
     transform: r => new Nodes.Match(r.Expr, r.MatchCases),
 })
 
-const MatchCase = new Syntax('MatchCase', $(Nodes.MatchCase))
+const MatchCase = new Syntax('MatchCase', $<Nodes.MatchCase>())
 MatchCase.match({
     definition: () => SEQ('case', _, Destructure, Body),
     transform: r => new Nodes.MatchCase(r.Destructure, r.Body),
 })
 
-const MatchCases = new Syntax('MatchCases', $.array(Nodes.MatchCase))
+const MatchCases = new Syntax('MatchCases', $<Nodes.MatchCase[]>())
 MatchCases.match({
     definition: () => LIST('{', OPT(N), MatchCase, ExpressionSeparator, '}'),
     transform: r => r.value.elements,
 })
 
 // == While
-const While = new Syntax('While', $(Nodes.While))
+const While = new Syntax('While', $<Nodes.While>())
 While.match({
     definition: () => SEQ('while', OPT(_, Label), _, Condition, Body),
     transform: r => new Nodes.While(r.Condition, r.Body),
 })
 
 // ============================== Jumps ==============================
-const Jumps = new Syntax('Jumps', $(Nodes.Node))
+const Jumps = new Syntax('Jumps', $<Nodes.Node>())
 Jumps.match(() => Break)
 Jumps.match(() => Continue)
 Jumps.match(() => Return)
 
 // == Break
-const Break = new Syntax('Break', $(Nodes.Break))
+const Break = new Syntax('Break', $<Nodes.Break>())
 Break.match({
     definition: () => SEQ('break', OPT(_, Label), OPT(_, Expr)),
     transform: r => new Nodes.Break(r.Label, r.Expr),
 })
 
 // == Continue
-const Continue = new Syntax('Continue', $(Nodes.Continue))
+const Continue = new Syntax('Continue', $<Nodes.Continue>())
 Continue.match({
     definition: () => SEQ('continue', OPT(_, Label)),
     transform: r => new Nodes.Continue(r.Label),
 })
 
 // == Return
-const Return = new Syntax('Return', $(Nodes.Return))
+const Return = new Syntax('Return', $<Nodes.Return>())
 Return.match({
     definition: () => SEQ('return', OPT(_, Label), OPT(_, Expr)),
     transform: r => new Nodes.Return(r.Expr),
@@ -215,42 +215,42 @@ Return.match({
 
 // ============================== Other Expressions ==============================
 // == Attributes (for scope)
-const AttributeBlock = new Syntax('AttributeBlock', $(Nodes.BlockAttribute))
+const AttributeBlock = new Syntax('AttributeBlock', $<Nodes.BlockAttribute>())
 AttributeBlock.match({
     definition: () => SEQ('##', FullSymbol),
     transform: UNDEFINED,
 })
 
 // == Call
-const Call = new Syntax('Call', $(Nodes.Call))
+const Call = new Syntax('Call', $<Nodes.Call>())
 Call.match({
     definition: () => SEQ(Atom, LIST('(', OPT(N), Argument, ArgumentSeparator, ')')),
     transform: r => new Nodes.Call(r.Atom as any, r.value[1].elements),
 })
 
 // == Construct
-const Construct = new Syntax('Construct', $(Nodes.Construct))
+const Construct = new Syntax('Construct', $<Nodes.Construct>())
 Construct.match({
     definition: () => SEQ(Atom, LIST('{', OPT(N), Argument, ArgumentSeparator, '}')),
     transform: r => new Nodes.Construct(r.Atom, r.value[1].elements),
 })
 
 // == Copy
-const Copy = new Syntax('Copy', $.undefined)
+const Copy = new Syntax('Copy', $<any>())
 Copy.match({
     definition: () => SEQ('copy', _, Expr),
     transform: UNDEFINED,
 })
 
 // == Destroy
-const Destroy = new Syntax('Destroy', $.undefined)
+const Destroy = new Syntax('Destroy', $<any>())
 Destroy.match({
     definition: () => SEQ('destroy', _, Expr),
     transform: UNDEFINED,
 })
 
 // == Generic use
-const Generic = new Syntax('Generic', $.undefined)
+const Generic = new Syntax('Generic', $<any>())
 Generic.match({
     definition: () => SEQ(Atom, LIST('[', OPT(N), Argument, ArgumentSeparator, ']')),
     transform: UNDEFINED,
@@ -258,35 +258,35 @@ Generic.match({
 
 // == Get
 // TODO: Could probably cause ambiguity with prefix (Test it)
-const Get = new Syntax('Get', $(Nodes.Get))
+const Get = new Syntax('Get', $<Nodes.Get>())
 Get.match({
     definition: () => SEQ(FullSymbol),
     transform: r => new Nodes.Get(r.FullSymbol),
 })
 
 // == Move
-const Move = new Syntax('Move', $(Nodes.Move))
+const Move = new Syntax('Move', $<Nodes.Move>())
 Move.match({
     definition: () => SEQ('move', _, Expr),
     transform: r => new Nodes.Move(r.Expr),
 })
 
 // == Not
-const Not = new Syntax('Not', $.undefined)
+const Not = new Syntax('Not', $<any>())
 Not.match({
     definition: () => SEQ('not', _, Expr),
     transform: UNDEFINED,
 })
 
 // == Parenthesized Expression
-const Parenthesized = new Syntax('Parenthesized', $.undefined)
+const Parenthesized = new Syntax('Parenthesized', $<any>())
 Parenthesized.match({
     definition: () => SEQ('(', OPT(N), Expr, OPT(N), ')'),
     transform: r => r.Expr,
 })
 
 // == Set
-const Set = new Syntax('Set', $(Nodes.Set))
+const Set = new Syntax('Set', $<Nodes.Set>())
 Set.match({
     definition: () => SEQ(FullSymbol, _, '=', _, Expr),
     transform: r => new Nodes.Set(r.FullSymbol, r.Expr),
@@ -313,24 +313,24 @@ const TRANSFORM_PREFIX  = call(r => `prefix${r[0]}`, r => [r[0]])
 const TRANSFORM_POSTFIX = call(r => `postfix${r[1]}`, r => [r[0]])
 
 // == Expressions
-const Binary = new Syntax('Binary', $(Nodes.LocalRef))
+const Binary = new Syntax('Binary', $<Nodes.LocalRef>())
 Binary.match(() => SEQ(Binary, _, Logic, _, Spaced), TRANSFORM_SPACED)
 Binary.match(() => SEQ(Binary, L, Logic, _, Spaced), TRANSFORM_SPACED)
 Binary.match(() => SEQ(Binary, _, Logic, L, Spaced), TRANSFORM_SPACED)
 Binary.match(() => Spaced)
 
-const Spaced = new Syntax('Spaced', $(Nodes.LocalRef))
+const Spaced = new Syntax('Spaced', $<Nodes.LocalRef>())
 Spaced.match(() => SEQ(Spaced, _, Operator, _, Unary), TRANSFORM_SPACED)
 Spaced.match(() => SEQ(Spaced, L, Operator, _, Unary), TRANSFORM_SPACED)
 Spaced.match(() => SEQ(Spaced, _, Operator, L, Unary), TRANSFORM_SPACED)
 Spaced.match(() => Unary)
 
-const Unary = new Syntax('Unary', $(Nodes.LocalRef))
+const Unary = new Syntax('Unary', $<Nodes.LocalRef>())
 Unary.match(() => SEQ(Operator, Atom), TRANSFORM_PREFIX)
 Unary.match(() => SEQ(Atom, Operator), TRANSFORM_POSTFIX)
 Unary.match(() => Compact)
 
-const Compact = new Syntax('Compact', $(Nodes.LocalRef))
+const Compact = new Syntax('Compact', $<Nodes.LocalRef>())
 Compact.match(() => SEQ(Compact, Operator, Atom), TRANSFORM_COMPACT)
 Compact.match(() => Atom)
 
@@ -343,7 +343,7 @@ Operator.match(() => /[~!@#$%^&*+=|?/:\-\\<>]+/)
 Operator.match(() => '..')
 
 // ============================== Literals ==============================
-const Literal = new Syntax('Literal', $.undefined)
+const Literal = new Syntax('Literal', $<any>())
 Literal.match(() => LiteralFloat)
 Literal.match(() => LiteralInteger)
 Literal.match(() => LiteralString)
@@ -361,18 +361,18 @@ function TRANSFORM_INTEGER(offset: number, base: number) {
 //  0x1000 will get tokenized as "0" "x" "1000" instead of "0x1000"
 
 // == Literal Float
-const LiteralFloat = new Syntax('LiteralFloat', $(Nodes.Constant))
+const LiteralFloat = new Syntax('LiteralFloat', $<Nodes.Constant>())
 LiteralFloat.match(() => /[0-9]+.[0-9]+(?:[eE][+-]?[1-9]+)?/, UNDEFINED)
 
 // == Literal Integer
-const LiteralInteger = new Syntax('LiteralInteger', $(Nodes.Constant))
+const LiteralInteger = new Syntax('LiteralInteger', $<Nodes.Constant>())
 LiteralInteger.match(() => /0x[0-9a-fA-F_]+/,   TRANSFORM_INTEGER(2, 16))
 LiteralInteger.match(() => /0o[0-7_]+/,         TRANSFORM_INTEGER(2, 8))
 LiteralInteger.match(() => /0b[0-7_]+/,         TRANSFORM_INTEGER(2, 2))
 LiteralInteger.match(() => /[0-9_]+/,           TRANSFORM_INTEGER(0, 10))
 
 // == Literal String
-const LiteralString = new Syntax('LiteralString', $(Nodes.Constant))
+const LiteralString = new Syntax('LiteralString', $<Nodes.Constant>())
 LiteralString.match(() => SEQ('\'', StringContent, '\''), UNDEFINED)
 LiteralString.match(() => SEQ('\'', StringContent, REP(StringInterpolation, StringContent), '\''), UNDEFINED)
 
@@ -380,25 +380,25 @@ LiteralString.match(() => SEQ('\'', StringContent, REP(StringInterpolation, Stri
 const StringContent = new Syntax('StringContent', $<string | null>())
 StringContent.match(() => OPT(TOKEN('STRING_CONTENT')))
 
-const StringInterpolation = new Syntax('StringInterpolation', $(Nodes.Constant))
+const StringInterpolation = new Syntax('StringInterpolation', $<Nodes.Constant>())
 StringInterpolation.match(() => SEQ('${', Expr, '}'), UNDEFINED)
 
 // ============================== Primitives used in larger expressions ==============================
 // == Argument
-const Argument = new Syntax('Argument', $.undefined)
+const Argument = new Syntax('Argument', $<any>())
 Argument.match(() => Expr)
 Argument.match(() => SEQ(Identifier, ':', OPT(_), Expr))
 
 // == Attributes
-const Attributes = new Syntax('Attributes', $.undefined)
+const Attributes = new Syntax('Attributes', $<any>())
 Attributes.match(() => REP(N, Attribute))
 
-const Attribute = new Syntax('Attribute', $.undefined)
+const Attribute = new Syntax('Attribute', $<any>())
 Attribute.match(() => SEQ('#', FullSymbol))
 
 // == Body
 // Explicitly use a Block?
-const Body = new Syntax('Body', $.undefined)
+const Body = new Syntax('Body', $<any>())
 Body.match({
     definition: () => SEQ(OPT(N), LIST('{', OPT(N), Stmt, ExpressionSeparator, '}')),
     transform: r => r.value[1].elements
@@ -410,13 +410,13 @@ Body.match({
 })
 
 // == Generic definition
-const GenericDefinition = new Syntax('Generic', $.undefined)
+const GenericDefinition = new Syntax('Generic', $<any>())
 GenericDefinition.match(() => SEQ(N, 'generic', GenericParameters))
 
-const GenericParameters = new Syntax('GenericParameters', $.undefined)
+const GenericParameters = new Syntax('GenericParameters', $<any>())
 GenericParameters.match(() => LIST('[', OPT(N), GenericParameter, ArgumentSeparator, ']'))
 
-const GenericParameter = new Syntax('GenericParameter', $.undefined)
+const GenericParameter = new Syntax('GenericParameter', $<any>())
 GenericParameter.match(() => Identifier)
 
 // == Identifiers, Names, and Symbols
@@ -441,37 +441,37 @@ Index.match({
     transform: UNDEFINED,
 })
 
-const Indexable = new Syntax('Indexable', $.undefined)
+const Indexable = new Syntax('Indexable', $<any>())
 Indexable.match(() => Index)
 Indexable.match(() => Symbol)
 Indexable.match(() => Call)
 Indexable.match(() => Construct)
 Indexable.match(() => SEQ(Atom, Operator))
 
-const Dot = new Syntax('Dot', $.undefined)
+const Dot = new Syntax('Dot', $<any>())
 Dot.match(() => '.')
 Dot.match(() => SEQ('.', L))
 Dot.match(() => SEQ(L, '.'))
 
 // == Implements statements
-const Implements = new Syntax('Implements', $.undefined)
+const Implements = new Syntax('Implements', $<any>())
 Implements.match(() => REP(N, 'impl', _, Expr))
 
 // == Labels
-const Label = new Syntax('Label', $.undefined)
+const Label = new Syntax('Label', $<any>())
 Label.match(() => SEQ('@', Identifier))
 
 // Other primitives
-const ReturnType = new Syntax('ReturnType', $(Nodes.LocalRef))
+const ReturnType = new Syntax('ReturnType', $<Nodes.LocalRef>())
 ReturnType.match(() => SEQ(OPT(_), '->', OPT(_), Expr), UNDEFINED)
 
-const Parameters = new Syntax('Parameters', $.undefined)
+const Parameters = new Syntax('Parameters', $<any>())
 Parameters.match({
     definition: () => LIST('(', OPT(N), Parameter, ArgumentSeparator, ')'),
     transform: r => r.value.elements,
 })
 
-const Parameter = new Syntax('Parameter', $.undefined)
+const Parameter = new Syntax('Parameter', $<any>())
 Parameter.match(() => SEQ(Symbol, VariableType, OPT(VariableValue)), UNDEFINED)
 Parameter.match(() => SEQ(VariableKeyword, Symbol, OPT(VariableValue)), UNDEFINED)
 Parameter.match(() => SEQ(Binary), UNDEFINED)
@@ -481,10 +481,10 @@ VariableKeyword.match(() => SEQ('val', _), r  => VariableFlags.None)
 VariableKeyword.match(() => SEQ('mut', _), r  => VariableFlags.Mutable)
 VariableKeyword.match(() => SEQ('own', _), r  => VariableFlags.Owns)
 
-const VariableType = new Syntax('VariableType', $.undefined)
+const VariableType = new Syntax('VariableType', $<any>())
 VariableType.match(() => SEQ(OPT(_), ':', OPT(_), Expr))
 
-const VariableValue = new Syntax('VariableValue', $.undefined)
+const VariableValue = new Syntax('VariableValue', $<any>())
 VariableValue.match(() => SEQ(OPT(_), '=', OPT(_), Expr))
 
 // ============================== Whitespace ==============================
@@ -504,12 +504,12 @@ export const ExpressionSeparator  = ANY(newlines, SEQ(OPT(_), ';', OPT(_)))
 export const ArgumentSeparator    = ANY(newlines, SEQ(OPT(_), ',', OPT(_)))
 
 // ============================== Destructuring ==============================
-const Destructure = new Syntax('Destructure', $.undefined)
+const Destructure = new Syntax('Destructure', $<any>())
 
 Destructure.match(() => Expr)
 Destructure.match(() => LIST('{', OPT(N), Destructure, ArgumentSeparator, '}'))
 
-const Condition = new Syntax('Condition', $.undefined)
+const Condition = new Syntax('Condition', $<any>())
 Condition.match(() => Expr)
 
 // ============================== Tokenizer Configuration ==============================

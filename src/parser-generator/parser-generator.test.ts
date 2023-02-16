@@ -16,7 +16,7 @@ Bar.match(() => 'bar')
 function parse<D extends Def>(definition: D, input: string): GetType<D>
 function parse<D extends Def, T>(definition: D, input: string, transform: Transformer<D, Context, T>): T
 function parse(definition: Def, input: string, transform?: Transformer<any, any, any>): any {
-    const syntax = new Syntax('syntax', $.undefined)
+    const syntax = new Syntax('syntax', $<any>())
     syntax.match(() => definition as any, transform as any)
     const parser = Parser.create(syntax)
     return parser.parse('CONTEXT', Source.fromString(input))

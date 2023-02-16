@@ -100,7 +100,7 @@ export class Call {
     ) { }
 }
 
-export class Constant<Value> {
+export class Constant<Value = any> {
     readonly tag = Tag.Constant
     readonly id = id()
 

@@ -597,21 +597,12 @@ export type GetNames<T extends ReadonlyArray<Def>> =
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export interface Config<Context, Type> {
     <T>(): Config<Context, T>
-    <T>(constructor: Constructor<T>): Config<Context, T>
 }
 
 export class Config<Context, Type> {
     private constructor() { }
 
-    readonly undefined = this as Config<Context, any>
-
     TOKENS?: TokenizerStates
-
-    array<T>(): Config<Context, T[]>
-    array<T>(constructor: Constructor<T>): Config<Context, T[]>
-    array<T>(constructor?: Constructor<T>): Config<Context, T[]> {
-        return this as any
-    }
 
     // Context and Type are unused in the type and if we don't use them TypeScript's structural type system will
     //  consider `Config<X>` and `Config<Y>` to be the same type.
