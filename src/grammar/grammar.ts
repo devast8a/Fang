@@ -70,7 +70,7 @@ Alias.match({
 // === Case
 const Case = new Syntax('Case', $<any>())
 Case.match({
-    definition: () => SEQ('case', _, Symbol),
+    definition: () => SEQ('case', _, Symbol, OPT(LIST(Parameter, Round))),
     transform: UNDEFINED,
 })
 
