@@ -19,6 +19,7 @@ function add(parameters: {context: Ctx, value: Nodes.Node}) {
 const Atom = new Syntax('Atom', $<Nodes.LocalRef>())
 Atom.match(() => Literal)
 // ----
+//Atom.match(() => Block, add)
 Atom.match(() => Call, add)
 Atom.match(() => Construct, add)
 Atom.match(() => Get, add)
@@ -33,6 +34,7 @@ Expr.match(() => Jumps, add)
 // ----
 Expr.match(() => Copy, add)
 Expr.match(() => Generic, add)
+//Expr.match(() => MacroCall, add)
 Expr.match(() => Move, add)
 Expr.match(() => Not, add)
 //Expr.match(() => Set, add)
@@ -45,6 +47,7 @@ Stmt.match(() => Jumps, add)
 // ----
 Stmt.match(() => AttributeBlock, add)
 Stmt.match(() => Call, add)
+Stmt.match(() => MacroCall, add)
 Stmt.match(() => Destroy, add)
 Stmt.match(() => Set, add)
 
@@ -63,7 +66,7 @@ Definition.match(() => Variable)
 // == Alias
 const Alias = new Syntax('Alias', $<any>())
 Alias.match({
-    definition: () => SEQ('alias', _, Expr),
+    definition: () => SEQ('alias', _, Expr, _, '=', _, Expr),
     transform: UNDEFINED,
 })
 
@@ -91,7 +94,7 @@ Error.match({
 // === Function
 const Function = new Syntax('Function', $<Nodes.Function>())
 Function.match({
-    definition: () => SEQ('fn', OPT(_, Symbol), Parameters, OPT(ReturnType), OPT(GenericDefinition), OPT(Attributes), OPT(Body)),
+    definition: () => SEQ('fn', OPT(_, Symbol), OPT(Comptime), LIST(Parameter, Round), OPT(ReturnType), OPT(GenericDefinition), OPT(Attributes), OPT(Body)),
     transform: r => new Nodes.Function(r.Symbol, r.ReturnType as any, r.Parameters, r.Body),
 })
 
@@ -119,8 +122,8 @@ Type.match({
 // === Variable
 const Variable = new Syntax('Variable', $<Nodes.Variable>())
 Type.match({
-    definition: () => SEQ(VariableKeyword, Symbol, OPT(VariableType), OPT(Attributes), OPT(VariableValue)),
-    transform: r => new Nodes.Variable(r.Symbol, r.VariableType as any, r.VariableKeyword ?? VariableFlags.None),
+    definition: () => SEQ(VariableKeyword, Destructure, OPT(VariableType), OPT(Attributes), OPT(VariableValue)),
+    transform: r => new Nodes.Variable(undefined as any, r.VariableType as any, r.VariableKeyword ?? VariableFlags.None),
 })
 
 // ============================== ControlFlow ==============================
@@ -133,8 +136,8 @@ ControlFlow.match(() => While)
 // === ForEach
 const ForEach = new Syntax('ForEach', $<Nodes.ForEach>())
 ForEach.match({
-    definition: () => SEQ('for', OPT(_, Label), _, Destructure, _, 'in', _, Expr, Body),
-    transform: r => new Nodes.ForEach(r.Destructure, r.Expr, r.Body),
+    definition: () => SEQ('for', OPT(_, Label), _, Symbol, _, 'in', _, Expr, Body),
+    transform: r => new Nodes.ForEach(r.Symbol as any, r.Expr, r.Body),
 })
 
 // === If
@@ -215,10 +218,17 @@ AttributeBlock.match({
     transform: UNDEFINED,
 })
 
+// == Block
+const Block = new Syntax('Block', $<any>())
+Block.match({
+    definition: () => LIST(Stmt, CurlyBlock),
+    transform: r => undefined as any
+})
+
 // == Call
 const Call = new Syntax('Call', $<Nodes.Call>())
 Call.match({
-    definition: () => SEQ(Atom, LIST(Argument, Round)),
+    definition: () => SEQ(Atom, OPT(Comptime), LIST(Argument, Round)),
     transform: r => new Nodes.Call(r.Atom as any, r.Arguments),
 })
 
@@ -257,6 +267,16 @@ Get.match({
     definition: () => SEQ(FullSymbol),
     transform: r => new Nodes.Get(r.FullSymbol),
 })
+
+// == Macro Call
+const MacroCall = new Syntax('MacroCall', $<Nodes.Call>())
+MacroCall.match({
+    definition: () => SEQ(Atom, Comptime, LIST(OPT(_), MacroArgument, CommaOnly)),
+    transform: r => new Nodes.Call(r.Atom as any, r.value[2].elements),
+})
+
+const MacroArgument = new Syntax('MacroArgument', $<Nodes.LocalRef>())
+    MacroArgument.match(() => Binary)
 
 // == Move
 const Move = new Syntax('Move', $<Nodes.Move>())
@@ -301,6 +321,7 @@ const call = (name: (v: any[]) => string, args: (v: any[]) => any[]) =>
     (r: { context: Ctx, value: any[] }) =>
         r.context.add(new Nodes.Call(new Nodes.RefByName(null, name(r.value)), args(r.value)))
 
+const TRANSFORM_LOGICAL = call(r => `infix_${r[2]}`, r => [r[0], r[4]])
 const TRANSFORM_SPACED  = call(r => `infix${r[2]}`, r => [r[0], r[4]])
 const TRANSFORM_COMPACT = call(r => `infix${r[1]}`, r => [r[0], r[2]])
 const TRANSFORM_PREFIX  = call(r => `prefix${r[0]}`, r => [r[0]])
@@ -308,9 +329,9 @@ const TRANSFORM_POSTFIX = call(r => `postfix${r[1]}`, r => [r[0]])
 
 // == Expressions
 const Binary = new Syntax('Binary', $<Nodes.LocalRef>())
-Binary.match(() => SEQ(Binary, _, Logic, _, Spaced), TRANSFORM_SPACED)
-Binary.match(() => SEQ(Binary, L, Logic, _, Spaced), TRANSFORM_SPACED)
-Binary.match(() => SEQ(Binary, _, Logic, L, Spaced), TRANSFORM_SPACED)
+Binary.match(() => SEQ(Binary, _, Logical, _, Spaced), TRANSFORM_LOGICAL)
+Binary.match(() => SEQ(Binary, L, Logical, _, Spaced), TRANSFORM_LOGICAL)
+Binary.match(() => SEQ(Binary, _, Logical, L, Spaced), TRANSFORM_LOGICAL)
 Binary.match(() => Spaced)
 
 const Spaced = new Syntax('Spaced', $<Nodes.LocalRef>())
@@ -329,17 +350,18 @@ Compact.match(() => SEQ(Compact, Operator, Atom), TRANSFORM_COMPACT)
 Compact.match(() => Atom)
 
 // == Operators
-const Logic = new Syntax('Logic', $<string>())
-Logic.match(() => ANY('and', 'or'))
+const Logical = new Syntax('Logical', $<string>())
+Logical.match(() => ANY('and', 'or'))
 
 const Operator = new Syntax('Operator', $<string>())
-Operator.match(() => /[~!@#$%^&*+=|?/:\-\\<>]+/)
+Operator.match(() => /[~!@#$%^&*+=|?/:\-\\<>.]*[~!@#$%^&*+=|?/\-\\<>]/)
 Operator.match(() => '..')
 
 // ============================== Literals ==============================
 const Literal = new Syntax('Literal', $<any>())
 Literal.match(() => LiteralFloat)
 Literal.match(() => LiteralInteger)
+Literal.match(() => LiteralList)
 Literal.match(() => LiteralString)
 
 function TRANSFORM_INTEGER(offset: number, base: number) {
@@ -364,6 +386,13 @@ LiteralInteger.match(() => /0x[0-9a-fA-F_]+/,   TRANSFORM_INTEGER(2, 16))
 LiteralInteger.match(() => /0o[0-7_]+/,         TRANSFORM_INTEGER(2, 8))
 LiteralInteger.match(() => /0b[0-7_]+/,         TRANSFORM_INTEGER(2, 2))
 LiteralInteger.match(() => /[0-9_]+/,           TRANSFORM_INTEGER(0, 10))
+
+// == Literal List
+const LiteralList = new Syntax('LiteralList', $<any>())
+LiteralList.match({
+    definition: () => LIST(Expr, Square),
+    transform: UNDEFINED,
+})
 
 // == Literal String
 const LiteralString = new Syntax('LiteralString', $<Nodes.Constant>())
@@ -391,7 +420,6 @@ const Attribute = new Syntax('Attribute', $<any>())
 Attribute.match(() => SEQ('#', FullSymbol))
 
 // == Body
-// Explicitly use a Block?
 const Body = new Syntax('Body', $<any>())
 Body.match({
     definition: () => SEQ(OPT(N), LIST(Stmt, CurlyBlock)),
@@ -399,16 +427,17 @@ Body.match({
 })
 
 Body.match({
-    definition: () => SEQ(OPT(N), '=>', OPT(_), Expr),
+    definition: () => SEQ(OPT(N), '=>', OPT(N), Expr),
     transform: UNDEFINED,
 })
 
+// == Compile Time (Comptime)
+const Comptime = new Syntax('Comptime', $<string>())
+Comptime.match(() => '!')
+
 // == Generic definition
 const GenericDefinition = new Syntax('Generic', $<any>())
-GenericDefinition.match(() => SEQ(N, 'generic', GenericParameters))
-
-const GenericParameters = new Syntax('GenericParameters', $<any>())
-GenericParameters.match(() => LIST(GenericParameter, Square))
+GenericDefinition.match(() => SEQ(N, 'generic', LIST(GenericParameter, Square)))
 
 const GenericParameter = new Syntax('GenericParameter', $<any>())
 GenericParameter.match(() => Identifier)
@@ -455,35 +484,33 @@ Implements.match(() => REP(N, 'impl', _, Expr))
 const Label = new Syntax('Label', $<any>())
 Label.match(() => SEQ('@', Identifier))
 
-// Other primitives
+// == Return Type
 const ReturnType = new Syntax('ReturnType', $<Nodes.LocalRef>())
 ReturnType.match(() => SEQ(OPT(_), '->', OPT(_), Expr), UNDEFINED)
 
-const Parameters = new Syntax('Parameters', $<any>())
-Parameters.match({
-    definition: () => LIST(Parameter, Round),
-    transform: r => r.Parameters,
-})
-
+// == Parameter
 const Parameter = new Syntax('Parameter', $<any>())
 Parameter.match(() => SEQ(Symbol, VariableType, OPT(VariableValue)), UNDEFINED)
 Parameter.match(() => SEQ(VariableKeyword, Symbol, OPT(VariableValue)), UNDEFINED)
 Parameter.match(() => SEQ(Binary), UNDEFINED)
 
+// == Variable Keyword
 const VariableKeyword = new Syntax('VariableKeyword', $<VariableFlags>())
 VariableKeyword.match(() => SEQ('val', _), r  => VariableFlags.None)
 VariableKeyword.match(() => SEQ('mut', _), r  => VariableFlags.Mutable)
 VariableKeyword.match(() => SEQ('own', _), r  => VariableFlags.Owns)
 
+// == Variable Type
 const VariableType = new Syntax('VariableType', $<any>())
 VariableType.match(() => SEQ(OPT(_), ':', OPT(_), Expr))
 
+// == Variable Value
 const VariableValue = new Syntax('VariableValue', $<any>())
 VariableValue.match(() => SEQ(OPT(_), '=', OPT(_), Expr))
 
 // ============================== Whitespace ==============================
 // == Whitespace
-const comment  = /#+(?:[ \t]+[ -~]*)?/
+const comment  = ANY(/#+(?:[ \t]+[ -~]*)?/, '#', '##')
 const space    = /[ \t]+/
 const newline  = SEQ(OPT(space), OPT(comment), '\n')
 const newlines = SEQ(REP(newline), OPT(space))
@@ -494,8 +521,9 @@ export const N = REP(ANY(_, comment, '\n')) // space, comments, or newlines
 export const L = newlines                   // space, comments, or newlines (with at least one newline)
 
 // == Separators
-export const Semicolon  = ANY(newlines, SEQ(OPT(_), ';', OPT(_)))
-export const Comma    = ANY(newlines, SEQ(OPT(_), ',', OPT(_)))
+export const Semicolon = ANY(newlines, SEQ(OPT(_), ';', OPT(_)))
+export const Comma     = ANY(newlines, SEQ(OPT(_), ',', OPT(_)))
+export const CommaOnly = SEQ(OPT(_), ',', OPT(_))
 
 // ============================== Destructuring ==============================
 const Destructure = new Syntax('Destructure', $<any>())
@@ -551,7 +579,6 @@ $.TOKENS = {
         { match: '\'', push: 'string' },
 
         // Explicitly set tokenization ordering for the following tokens
-        { match: comment, lineBreaks: true },
         { match: '..' },
         { match: '.' },
     ],

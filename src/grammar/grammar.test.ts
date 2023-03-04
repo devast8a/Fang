@@ -39,8 +39,16 @@ describe('grammar', function() {
     allow('call: calling a call',                       `return foo()()`)
     allow('call: calling an index',                     `return foo.bar()`)
 
+    // --- Comments
+    allow('comment with one hash at EOF',               `#`)
+    allow('comment with two hashes at EOF',             `##`)
+    allow('comment with three hashes at EOF',           `###`)
+    allow('comment with one hash',                      `#\n`)
+    allow('comment with two hashes',                    `##\n`)
+    allow('comment with three hashes',                  `###\n`)
+
     // --- Control Flow Labels
-    allow('labels on foreach',                          `for @label val foo in bar {}`)
+    allow('labels on foreach',                          `for @label foo in bar {}`)
     allow('labels on if',                               `if @label foo {}`)
     allow('labels on match',                            `match @label foo {}`)
     allow('labels on while',                            `while @label foo {}`)
@@ -55,12 +63,12 @@ describe('grammar', function() {
 
     // --- Operator
     allow('operator double dot',                        `return 10 .. 20`)
-    reject('space on left, no space on right',          `return 10 +20`)
-    reject('no space on left, space on right',          `return 10+ 20`)
-    reject('pre- and post-fix operators',               `return +10+`)
     allow('infix as a name',                            `return infix++`)
     allow('prefix as a name',                           `return prefix++`)
     allow('postfix as a name',                          `return postfix++`)
+    reject('space on left, no space on right',          `return 10 +20`)
+    reject('no space on left, space on right',          `return 10+ 20`)
+    reject('pre- and post-fix operators',               `return +10+`)
     
     // --- Indexable
     allow('indexing of call',                           `return foo().bar`)
@@ -72,6 +80,14 @@ describe('grammar', function() {
 
     // --- Literals
     allow('negative numbers',                           `return -10`)
+
+    // --- Parameters named `infix`, `prefix`, and `postfix`
+    allow('parameter named `infix`',                    `fn foo(infix+)`)
+    allow('parameter named `infix` with type',          `fn foo(infix+: u32)`)
+    allow('parameter named `prefix`',                   `fn foo(prefix+)`)
+    allow('parameter named `prefix` with type',         `fn foo(prefix+: u32)`)
+    allow('parameter named `postfix`',                  `fn foo(postfix+)`)
+    allow('parameter named `postfix` with type',        `fn foo(postfix+: u32)`)
 
     // --- Types
     allow('return type to be index expression',         `fn foo() -> bar.qux`)
