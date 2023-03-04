@@ -47,6 +47,12 @@ describe('grammar', function() {
     allow('comment with two hashes',                    `##\n`)
     allow('comment with three hashes',                  `###\n`)
 
+    // --- Comptime
+    allow('comptime foreach',                           `for! x in foo {}`)
+    allow('comptime if',                                `if! true {}`)
+    allow('comptime match',                             `match! true {}`)
+    allow('comptime while',                             `while! true {}`)
+
     // --- Control Flow Labels
     allow('labels on foreach',                          `for @label foo in bar {}`)
     allow('labels on if',                               `if @label foo {}`)

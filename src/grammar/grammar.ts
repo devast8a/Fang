@@ -136,14 +136,14 @@ ControlFlow.match(() => While)
 // === ForEach
 const ForEach = new Syntax('ForEach', $<Nodes.ForEach>())
 ForEach.match({
-    definition: () => SEQ('for', OPT(_, Label), _, Symbol, _, 'in', _, Expr, Body),
+    definition: () => SEQ('for', OPT(Comptime), OPT(_, Label), _, Symbol, _, 'in', _, Expr, Body),
     transform: r => new Nodes.ForEach(r.Symbol as any, r.Expr, r.Body),
 })
 
 // === If
 const If = new Syntax('If', $<Nodes.If>())
 If.match({
-    definition: () => SEQ('if', OPT(_, Label), _, Condition, Body, OPT(REP(IfElif)), OPT(IfElse)),
+    definition: () => SEQ('if', OPT(Comptime), OPT(_, Label), _, Condition, Body, OPT(REP(IfElif)), OPT(IfElse)),
     transform: r => new Nodes.If([
         new Nodes.IfCase(r.Condition, r.Body),
         ... (r.IfElif ?? []),
@@ -166,7 +166,7 @@ IfElse.match({
 // === Match
 const Match = new Syntax('Match', $<Nodes.Match>())
 Match.match({
-    definition: () => SEQ('match', OPT(_, Label), _, Expr, OPT(N), LIST(MatchCase, CurlyBlock)),
+    definition: () => SEQ('match', OPT(Comptime), OPT(_, Label), _, Expr, OPT(N), LIST(MatchCase, CurlyBlock)),
     transform: r => new Nodes.Match(r.Expr, r.MatchCases),
 })
 
@@ -179,7 +179,7 @@ MatchCase.match({
 // == While
 const While = new Syntax('While', $<Nodes.While>())
 While.match({
-    definition: () => SEQ('while', OPT(_, Label), _, Condition, Body),
+    definition: () => SEQ('while', OPT(Comptime), OPT(_, Label), _, Condition, Body),
     transform: r => new Nodes.While(r.Condition, r.Body),
 })
 
