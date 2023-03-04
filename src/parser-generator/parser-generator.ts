@@ -53,11 +53,11 @@ export class Syntax<Context = any, Type = any, Name extends string = any> extend
         super()
     }
 
-    match<D extends Def>(definition: { definition: () => D, transform: Transformer<D, Context, Type> }): void
-    match(definition: { definition: () => Rule<Type> }): void
-    match(definition: { definition: () => (Type extends string ? string | RegExp | number : never) }): void
+    match<D extends Def>(definition: { definition: () => D, transform: Transformer<D, Context, Type>, reject?: (value: any) => boolean }): void
+    match(definition: { definition: () => Rule<Type>, reject?: (value: any) => boolean }): void
+    match(definition: Type extends string ? { definition: () => string | RegExp | number, reject?: (value: any) => boolean } : never): void
     match(definition: () => Rule<Type>): void
-    match(definition: () => (Type extends string ? string | RegExp | number : never)): void
+    match(definition: Type extends string ? () => string | RegExp | number : never): void
     match<D extends Def>(definition: () => D, transform: Transformer<D, Context, Type>): void
 
     match(definition: any, transform?: any) {
@@ -90,12 +90,22 @@ export class Syntax<Context = any, Type = any, Name extends string = any> extend
         this.populate()
 
         return this.rules.map((subrule, index) => {
-            const transform = this.definitions[index].transform
+            const { transform, reject } = this.definitions[index]
 
             const unpack = (context: any, result: Result) => {
                 let value = result.build(context)
                 value = transform === undefined ? value.value : transform(Object.assign({}, value, { context }))
                 return { [this.name]: value, value: value }
+            }
+
+            if (reject) {
+                return RULE(this.id, [subrule], (data, location, rejection_token) => {
+                    if (reject(data[0].value)) {
+                        return rejection_token
+                    }
+
+                    return new Result(this, data[0], unpack)
+                })
             }
 
             return RULE(this.id, [subrule], data => new Result(this, data[0], unpack))
@@ -567,7 +577,8 @@ function NullArgs(names: ReadonlyArray<string>) {
 
 interface SyntaxMatchDefinition {
     definition: () => Def
-    transform: (results: any) => any
+    transform?: (results: any) => any
+    reject?: (results: any) => boolean
 }
 
 export type Def =
@@ -784,7 +795,7 @@ export class Parser<Context, T> {
             
         Object.assign(parser, {
             reportError(token: moo.Token) {
-                return `Invalid syntax, unexpected "${token.text}" at ${source.path}:${token.line}:${token.col}`
+                return `Invalid syntax, unexpected "${token.type ?? token.text}" at ${source.path}:${token.line}:${token.col}`
             },
 
             reportLexerError(e: any) {
