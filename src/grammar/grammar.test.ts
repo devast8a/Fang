@@ -25,6 +25,9 @@ describe('grammar', function() {
     allow('attributes on traits',                       `trait foo #bar #qux`)
     allow('attributes on variables',                    `val foo #bar #qux`)
 
+    allow('attributes (call expression)',               `fn foo() #bar(qux) #zug`)
+    allow('attributes (index expression)',              `fn foo() #bar.qux #zug`)
+
     reject('attributes without space before',           `val foo#bar #qux`)
     reject('attributes without space between',          `val foo #bar#qux`)
 
@@ -64,8 +67,9 @@ describe('grammar', function() {
     allow('labels on return',                           `return @label foo`)
 
     // --- Destructuring
-    //allow('destructuring by name',                      `val {foo, mut bar} = qux`)
-    //allow('destructuring by constructor',               `val Temp{foo, mut bar} = qux`)
+    //allow('destructuring by name',                      `val {foo, bar} = qux`)
+    //allow('destructuring by constructor',               `val Temp{val foo, mut bar} = qux`)
+    //allow('destructuring positionally',                 `val [x, y, z] = qux`)
 
     // --- Operator
     allow('operator double dot',                        `return 10 .. 20`)
@@ -104,13 +108,13 @@ describe('grammar', function() {
     allow('variable type to be call expression',        `val foo: bar()`)
     allow('variable type to be index expression',       `val foo: bar.qux`)
 
-    allow('long parameter to be binary expression',     `fn foo(x: bar | qux)`)
-    allow('long parameter to be call expression',       `fn foo(x: bar())`)
-    allow('long parameter to be index expression',      `fn foo(x: bar.qux)`)
+    allow('named parameter to be binary expression',    `fn foo(x: bar | qux)`)
+    allow('named parameter to be call expression',      `fn foo(x: bar())`)
+    allow('named parameter to be index expression',     `fn foo(x: bar.qux)`)
 
-    allow('short parameter to be binary expression',    `fn foo(bar | qux)`)
-    allow('short parameter to be call expression',      `fn foo(bar())`)
-    allow('short parameter to be index expression',     `fn foo(bar.qux)`)
+    allow('unnamed parameter to be binary expression',  `fn foo(bar | qux)`)
+    allow('unnamed parameter to be call expression',    `fn foo(bar())`)
+    allow('unnamed parameter to be index expression',   `fn foo(bar.qux)`)
 
     // --- Variables
     allow('mutable variable, untyped, no value',        `mut foo`)

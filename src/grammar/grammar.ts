@@ -14,6 +14,10 @@ function add(parameters: {context: Ctx, value: Nodes.Node}) {
     return parameters.context.add(parameters.value)
 }
 
+function Infer() {
+    return new Nodes.RefInfer(null)
+}
+
 // ============================== Core grammar components ==============================
 // An atom is part of the language that can be used in a binary expression without needing to be wrapped in parentheses
 const Atom = new Syntax('Atom', $<Nodes.LocalRef>())
@@ -81,7 +85,7 @@ Case.match({
 const Enum = new Syntax('Enum', $<Nodes.Enum>())
 Enum.match({
     definition: () => SEQ('enum', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
-    transform: r => new Nodes.Enum(r.Symbol ?? '<unnamed>', r.Body),
+    transform: r => new Nodes.Enum(r.Symbol ?? '<unnamed>', r.Body ?? []),
 })
 
 // === Error
@@ -95,21 +99,21 @@ Error.match({
 const Function = new Syntax('Function', $<Nodes.Function>())
 Function.match({
     definition: () => SEQ('fn', OPT(_, Symbol), OPT(Comptime), LIST(Parameter, Round), OPT(ReturnType), OPT(GenericDefinition), OPT(Attributes), OPT(Body)),
-    transform: r => new Nodes.Function(r.Symbol, r.ReturnType as any, r.Parameters, r.Body),
+    transform: r => new Nodes.Function(r.Symbol, r.ReturnType ?? Infer(), r.Parameters, r.Body ?? []),
 })
 
 // === Struct
 const Struct = new Syntax('Struct', $<Nodes.Struct>())
 Struct.match({
     definition: () => SEQ('struct', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
-    transform: r => new Nodes.Struct(r.Symbol ?? '<unnamed>', r.Body),
+    transform: r => new Nodes.Struct(r.Symbol ?? '<unnamed>', r.Body ?? []),
 })
 
 // === Trait
 const Trait = new Syntax('Trait', $<Nodes.Trait>())
 Trait.match({
     definition: () => SEQ('trait', OPT(_, Symbol), OPT(GenericDefinition), OPT(Implements), OPT(Attributes), OPT(Body)),
-    transform: r => new Nodes.Trait(r.Symbol ?? '<unnamed>', r.Body),
+    transform: r => new Nodes.Trait(r.Symbol ?? '<unnamed>', r.Body ?? []),
 })
 
 // === Type
@@ -122,8 +126,8 @@ Type.match({
 // === Variable
 const Variable = new Syntax('Variable', $<Nodes.Variable>())
 Type.match({
-    definition: () => SEQ(VariableKeyword, Destructure, OPT(VariableType), OPT(Attributes), OPT(VariableValue)),
-    transform: r => new Nodes.Variable(undefined as any, r.VariableType as any, r.VariableKeyword ?? VariableFlags.None),
+    definition: () => SEQ(VariableKeyword, Identifier, OPT(VariableType), OPT(Attributes), OPT(VariableValue)),
+    transform: r => new Nodes.Variable(r.Identifier, r.VariableType ?? Infer(), r.VariableKeyword ?? VariableFlags.None),
 })
 
 // ============================== ControlFlow ==============================
@@ -417,10 +421,10 @@ const Attributes = new Syntax('Attributes', $<any>())
 Attributes.match(() => REP(N, Attribute))
 
 const Attribute = new Syntax('Attribute', $<any>())
-Attribute.match(() => SEQ('#', FullSymbol))
+Attribute.match(() => SEQ('#', FullSymbol, OPT(LIST(Argument, Round))))
 
 // == Body
-const Body = new Syntax('Body', $<any>())
+const Body = new Syntax('Body', $<Nodes.LocalRef[]>())
 Body.match({
     definition: () => SEQ(OPT(N), LIST(Stmt, CurlyBlock)),
     transform: r => r.Stmts
@@ -489,20 +493,29 @@ const ReturnType = new Syntax('ReturnType', $<Nodes.LocalRef>())
 ReturnType.match(() => SEQ(OPT(_), '->', OPT(_), Expr), UNDEFINED)
 
 // == Parameter
-const Parameter = new Syntax('Parameter', $<any>())
-Parameter.match(() => SEQ(Symbol, VariableType, OPT(VariableValue)), UNDEFINED)
-Parameter.match(() => SEQ(VariableKeyword, Symbol, OPT(VariableValue)), UNDEFINED)
-Parameter.match(() => SEQ(Binary), UNDEFINED)
+const Parameter = new Syntax('Parameter', $<Nodes.LocalRef<Nodes.Variable>>())
+Parameter.match({
+    definition: () => SEQ(Symbol, VariableType, OPT(VariableValue)),
+    transform: r => r.context.add(new Nodes.Variable(r.Symbol, r.VariableType ?? Infer(), VariableFlags.None))
+})
+Parameter.match({
+    definition: () => SEQ(VariableKeyword, Symbol, OPT(VariableValue)),
+    transform: r => r.context.add(new Nodes.Variable(r.Symbol, Infer(), r.VariableKeyword))
+})
+Parameter.match({
+    definition: () => SEQ(Binary),
+    transform: UNDEFINED
+})
 
 // == Variable Keyword
 const VariableKeyword = new Syntax('VariableKeyword', $<VariableFlags>())
-VariableKeyword.match(() => SEQ('val', _), r  => VariableFlags.None)
-VariableKeyword.match(() => SEQ('mut', _), r  => VariableFlags.Mutable)
-VariableKeyword.match(() => SEQ('own', _), r  => VariableFlags.Owns)
+VariableKeyword.match(() => SEQ('val', _), r => VariableFlags.None)
+VariableKeyword.match(() => SEQ('mut', _), r => VariableFlags.Mutable)
+VariableKeyword.match(() => SEQ('own', _), r => VariableFlags.Owns)
 
 // == Variable Type
-const VariableType = new Syntax('VariableType', $<any>())
-VariableType.match(() => SEQ(OPT(_), ':', OPT(_), Expr))
+const VariableType = new Syntax('VariableType', $<Nodes.LocalRef>())
+VariableType.match(() => SEQ(OPT(_), ':', OPT(_), Expr), r => r.Expr)
 
 // == Variable Value
 const VariableValue = new Syntax('VariableValue', $<any>())
