@@ -490,7 +490,7 @@ Label.match(() => SEQ('@', Identifier))
 
 // == Return Type
 const ReturnType = new Syntax('ReturnType', $<Nodes.LocalRef>())
-ReturnType.match(() => SEQ(OPT(_), '->', OPT(_), Expr), UNDEFINED)
+ReturnType.match(() => SEQ(OPT(_), '->', OPT(_), Expr), r => r.Expr)
 
 // == Parameter
 const Parameter = new Syntax('Parameter', $<Nodes.LocalRef<Nodes.Variable>>())

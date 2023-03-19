@@ -26,15 +26,28 @@ function parse(content: string) {
     }
 }
 
+function derefGet(context: Ctx, node: Nodes.Ref) {
+    // The reason that types have this indirection through `Get` nodes is that types can be expressions
+    //  and expressions that reference an identifier are represented as `Get` nodes.
+    // e.g. `Foo` and `Foo & Bar` are valid types and `Foo` and `Bar` are represented as `Get` nodes.
+    // I don't think this is a good design decision, perhaps we can remove the concept of `Get` nodes entirely?
+    assert.type(node, Nodes.RefById)
+
+    const get = context.get(node)
+    assert.type(get, Nodes.Get)
+
+    return context.get(get.source)
+}
+
 describe('ast', function() {
-    test('functions are parsed into AST nodes correctly', () => {
+    test('functions', () => {
         const { body: [foo] } = parse('fn foo()')
 
         assert(foo.tag === Tag.Function)
         assert(foo.name === 'foo')
     })
 
-    test('parameters are parsed into AST nodes correctly', () => {
+    test('parameters', () => {
         const { context, body: [Foo, func] } = parse('trait Foo; fn func(foo: Foo)')
 
         assert.type(func, Nodes.Function)
@@ -44,10 +57,16 @@ describe('ast', function() {
         assert.equals(foo.name, 'foo')
         assert.equals(foo.flags, VariableFlags.None)
 
-        // TODO: Remove this indirection
-        const foo_type = context.get(foo.type)
-        assert.type(foo_type, Nodes.Get)
+        const fooType = derefGet(context, foo.type)
+        assert.equals(fooType, Foo)
+    })
 
-        assert.equals(context.get(foo_type.source), Foo)
+    test('return types', () => {
+        const { context, body: [Foo, func] } = parse('trait Foo; fn func() -> Foo')
+
+        assert.type(func, Nodes.Function)
+
+        const returnType = derefGet(context, func.returnType)
+        assert.equals(returnType, Foo)
     })
 })
