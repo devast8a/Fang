@@ -7,14 +7,6 @@ import { join } from 'path'
 import { Ctx } from '../ast/context'
 import { Source } from '../common/source'
 
-const parser = Parser.create(Grammar)
-
-function parse(path: string, content: string) {
-    const context = Ctx.createRoot()
-    const body = parser.parse(context, new Source(path, content))
-    return { context, body }
-}
-
 describe('grammar', function() {
     function allow(name: string, code: string)  { test(name, () => parse(name, code)) }
     function reject(name: string, code: string) { test(name, () => expect(() => parse(name, code)).throw()) }
@@ -152,3 +144,11 @@ describe('grammar/examples', async function (this) {
 
     load('examples')
 })
+
+const parser = Parser.create(Grammar)
+
+function parse(path: string, content: string) {
+    const context = Ctx.createRoot()
+    const body = parser.parse(context, new Source(path, content))
+    return { context, body }
+}
