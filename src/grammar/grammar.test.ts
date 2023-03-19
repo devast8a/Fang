@@ -98,6 +98,10 @@ describe('grammar', function() {
     allow('parameter named `prefix` with type',         `fn foo(prefix+: u32)`)
     allow('parameter named `postfix`',                  `fn foo(postfix+)`)
     allow('parameter named `postfix` with type',        `fn foo(postfix+: u32)`)
+    
+    // --- Statements
+    allow('statements to be separated by semicolons',   `val foo = 10; val bar = 20`)
+    reject('statements must not end with semicolons',   `val foo = 10;`)
 
     // --- Types
     allow('return type to be index expression',         `fn foo() -> bar.qux`)
