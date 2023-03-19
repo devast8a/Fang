@@ -1,7 +1,7 @@
 import { Ctx } from '../ast/context';
 import { Destruct, Distance, Group, RefById, Tag, VariableFlags } from '../ast/nodes';
 import { Flags } from '../common/flags';
-import { assert, unimplemented } from '../utils';
+import { assert, unimplemented } from '../common/utils';
 
 function check(state: State, ref: RefById, access: Access, group?: AccessGroup) {
     const ctx = state.ctx;

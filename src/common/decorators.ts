@@ -1,4 +1,4 @@
-import { assert } from '../utils'
+import { assert } from './assert'
 
 export function cached(target: Object, property: string, descriptor: PropertyDescriptor) {
     const original = descriptor.get

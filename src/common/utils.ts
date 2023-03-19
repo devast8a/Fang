@@ -1,4 +1,4 @@
-import { Node, Tag } from './ast/nodes';
+import { Node, Tag } from '../ast/nodes';
 
 function isNode(value: unknown): value is Node {
     return typeof (value) === 'object' && value !== null && typeof ((value as any).tag) === 'string';
@@ -32,12 +32,6 @@ export function unimplemented(format: string): never
 export function unimplemented(format: string, value: never): never
 export function unimplemented(format: unknown, value?: unknown): never {
     throw new Error(formatArgs("Unimplemented", format, value));
-}
-
-export function assert(condition: boolean, reason?: string): asserts condition {
-    if (!condition) {
-        throw new Error(reason ?? "Asserted condition is false");
-    }
 }
 
 export namespace MultiMapUtils {

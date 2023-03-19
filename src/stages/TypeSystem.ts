@@ -1,7 +1,7 @@
 import { Ctx } from '../ast/context';
 import { formatNode } from '../ast/formatter';
 import { Distance, Function, isRef, Node, Ref, RefById, RefByIds, Tag } from '../ast/nodes';
-import { assert, unimplemented, unreachable } from '../utils';
+import { assert, unimplemented, unreachable } from '../common/utils';
 
 type List<T> = readonly T[];
 

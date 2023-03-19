@@ -1,6 +1,6 @@
 import { Ctx } from '../ast/context';
 import { Distance, Node, Ref, RefById } from '../ast/nodes';
-import { assert } from '../utils';
+import { assert } from '../common/utils';
 
 export class Environment {
     private readonly global: Environment;

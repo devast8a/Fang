@@ -1,4 +1,4 @@
-import { unreachable } from '../utils';
+import { unreachable } from '../common/utils';
 
 export enum ControlType {
     Break,

@@ -1,4 +1,4 @@
-import { unimplemented } from '../../utils';
+import { unimplemented } from '../../common/utils';
 
 export class VmInstance {
     constructor(

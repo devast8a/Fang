@@ -1,4 +1,4 @@
-import { MapUtils } from '../utils';
+import { MapUtils } from '../common/utils';
 import { Node, Tag } from './nodes';
 import { Scope } from "./Scope";
 

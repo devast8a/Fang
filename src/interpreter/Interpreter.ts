@@ -1,7 +1,7 @@
 import { Ctx } from '../ast/context';
 import { Tag, Ref, LocalRef, RefById, Struct } from '../ast/nodes';
 import { Scope } from '../ast/Scope';
-import { assert, unimplemented } from '../utils';
+import { assert, unimplemented } from '../common/utils';
 import { Control, ControlMode, ControlType } from './Control';
 import { Environment } from './Environment';
 import { VmFunction } from './vm/VmFunction';

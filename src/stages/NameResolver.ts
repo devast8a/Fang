@@ -1,7 +1,7 @@
 import { Distance, Node, Ref, RefById, Tag } from '../ast/nodes'
 import { Scope, ScopeType } from "../ast/Scope"
 import { Ctx } from '../ast/context'
-import { unimplemented, unreachable } from '../utils'
+import { unimplemented, unreachable } from '../common/utils'
 
 interface Lookup {
     scope: Scope

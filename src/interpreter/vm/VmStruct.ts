@@ -1,5 +1,5 @@
 import { Struct, Tag } from '../../ast/nodes';
-import { assert } from '../../utils';
+import { assert } from '../../common/utils';
 import { Environment } from '../Environment';
 import { evaluate } from '../Interpreter';
 import { VmInstance } from './VmInstance';
