@@ -39,7 +39,7 @@ export class Ctx {
 
     public get<T extends Node>(ref: Ref<T>): T {
         if (ref.tag !== Tag.RefById) {
-            throw new Error('ref must be RefById');
+            throw new Error(`ref must be RefById, got ${ref.tag}`);
         }
 
         return this.nodes[ref.id] as T;
