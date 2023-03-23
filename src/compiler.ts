@@ -2,7 +2,6 @@ import { Ctx as Ctx } from './ast/context';
 import { Tag } from './ast/nodes';
 import { Source } from './common/source';
 import { resolveNames as NameResolver } from './stages/NameResolver';
-import { Interpreter } from './interpreter/Interpreter';
 import { promises as fs } from 'fs';
 import { formatNodes } from './ast/formatter';
 import { processTypes as TypeSystem } from './stages/TypeSystem';

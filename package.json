@@ -45,7 +45,8 @@
     "test": "mocha",
     "test:watch": "mocha --watch --reporter min",
     "coverage": "nyc --reporter=lcov --reporter=text-summary npm run test",
-    "build": "tsc && node build/js/test.js"
+    "build": "tsc && node build/js/test.js",
+    "build:watch": "tsc -w"
   },
   "author": "devast8a",
   "license": "ISC"

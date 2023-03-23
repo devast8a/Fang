@@ -254,7 +254,7 @@ Copy.match({
 const Destroy = new Syntax('Destroy', $<any>())
 Destroy.match({
     definition: () => SEQ('destroy', _, Expr),
-    transform: UNDEFINED,
+    transform: r => new Nodes.Destruct(r.Expr),
 })
 
 // == Generic use
