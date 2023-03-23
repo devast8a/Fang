@@ -1,4 +1,4 @@
-import { Distance, RefById, RefByIds } from './nodes';
+import { Distance, RefById, RefByIds } from './nodes'
 
 class Sym {
     constructor(
@@ -18,64 +18,64 @@ export class Scope {
     ) { }
 
     public push(type: ScopeType) {
-        return new Scope(this, new Map(), new Map(), type);
+        return new Scope(this, new Map(), new Map(), type)
     }
 
     public declare(symbol: string, id: number, all: boolean) {
-        const sym = this.symbols.get(symbol);
+        const sym = this.symbols.get(symbol)
 
         if (sym === undefined) {
-            const sym = new Sym([id], all);
-            this.symbols.set(symbol, sym);
+            const sym = new Sym([id], all)
+            this.symbols.set(symbol, sym)
             // There might already be an entry for cache set. Overwrite it.
-            this.cache.set(symbol, sym);
+            this.cache.set(symbol, sym)
         } else {
-            sym.ids.push(id);
+            sym.ids.push(id)
         }
     }
 
     public lookup(symbol: string) {
-        let start: Scope = this;
-        let current: Scope | null = this;
-        let distance = Distance.Local as number; // Distance.Local is zero
-        let sym: Sym | undefined;
+        let start: Scope = this
+        let current: Scope | null = this
+        let distance = Distance.Local as number // Distance.Local is zero
+        let sym: Sym | undefined
 
         // Search for the symbol
         do {
-            sym = current.symbols.get(symbol);
+            sym = current.symbols.get(symbol)
 
             if (sym !== undefined) {
-                break;
+                break
             }
 
             if (current.type !== ScopeType.Inner) {
-                distance++;
+                distance++
             }
 
-            current = current.parent;
+            current = current.parent
         }
-        while (current !== null);
+        while (current !== null)
 
         // Could not find the symbol
         if (sym === undefined) {
-            return null;
+            return null
         }
 
         // Cache the resolved symbol
         while (start !== current) {
-            start.cache.set(symbol, sym);
+            start.cache.set(symbol, sym)
 
             // We will hit current before we hit null, disable the lint.
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            start = start.parent!;
+            start = start.parent!
         }
 
-        const d = current.type === ScopeType.Global ? Distance.Global : distance;
+        const d = current.type === ScopeType.Global ? Distance.Global : distance
 
         if (sym.all && sym.ids.length > 1) {
-            return new RefByIds(null, sym.ids, d);
+            return new RefByIds(null, sym.ids, d)
         } else {
-            return new RefById(null, sym.ids[0], d);
+            return new RefById(null, sym.ids[0], d)
         }
     }
 }

@@ -1,4 +1,4 @@
-import { Constructor } from '../common/constructor';
+import { Constructor } from '../common/constructor'
 
 export enum Tag {
     // Expr
@@ -33,16 +33,16 @@ export enum Tag {
     RefInfer = 'RefInfer',
 }
 
-export function isRef(o: Node | Ref): o is Ref { return o.tag.startsWith('Ref'); }
-export function isNode(o: Node | Ref): o is Node { return !isRef(o); }
+export function isRef(o: Node | Ref): o is Ref { return o.tag.startsWith('Ref') }
+export function isNode(o: Node | Ref): o is Node { return !isRef(o) }
 
-export type Type<T extends Node = Node> = Ref<T>;
+export type Type<T extends Node = Node> = Ref<T>
 
-export const LocalRef: Constructor<LocalRef> = undefined as any;
-export type LocalRef<T extends Node = Node> = RefById<T>;
+export const LocalRef: Constructor<LocalRef> = undefined as any
+export type LocalRef<T extends Node = Node> = RefById<T>
 
 // =============================================================================
-export const Node: Constructor<Node> = undefined as any;
+export const Node: Constructor<Node> = undefined as any
 export type Node =
     | BlockAttribute
     | Break
@@ -68,7 +68,7 @@ export type Node =
     | While
 
 // This function is a hack to give a
-const id = () => undefined as any as number;
+const id = () => undefined as any as number
 
 export class BlockAttribute {
     readonly tag = Tag.BlockAttribute
@@ -304,7 +304,7 @@ export class While {
     constructor(
         readonly condition: LocalRef,
         readonly body: LocalRef[],
-    ) {}
+    ) { }
 }
 
 // =============================================================================
@@ -314,10 +314,10 @@ export type Ref<T extends Node = Node> =
     | RefByIds<T>
     | RefByName<T>
     | RefInfer<T>
-    ;
+    
 
 export class RefByExpr<T extends Node = Node> {
-    private _type!: RefType<T>;
+    private _type!: RefType<T>
     readonly tag = Tag.RefByExpr;
 
     constructor(
@@ -327,7 +327,7 @@ export class RefByExpr<T extends Node = Node> {
 }
 
 export class RefById<T extends Node = Node> {
-    private _type!: RefType<T>;
+    private _type!: RefType<T>
     readonly tag = Tag.RefById;
 
     constructor(
@@ -338,7 +338,7 @@ export class RefById<T extends Node = Node> {
 }
 
 export class RefByIds<T extends Node = Node> {
-    private _type!: RefType<T>;
+    private _type!: RefType<T>
     readonly tag = Tag.RefByIds;
 
     constructor(
@@ -349,7 +349,7 @@ export class RefByIds<T extends Node = Node> {
 }
 
 export class RefByName<T extends Node = Node> {
-    private _type!: RefType<T>;
+    private _type!: RefType<T>
     readonly tag = Tag.RefByName;
 
     constructor(
@@ -359,7 +359,7 @@ export class RefByName<T extends Node = Node> {
 }
 
 export class RefInfer<T extends Node = Node> {
-    private _type!: RefType<T>;
+    private _type!: RefType<T>
     readonly tag = Tag.RefInfer;
 
     constructor(
@@ -368,8 +368,8 @@ export class RefInfer<T extends Node = Node> {
 }
 
 export enum Distance {
-    Global  = 'Global',
-    Local   = 0,
+    Global = 'Global',
+    Local = 0,
 }
 
 // Because of TypeScript's structural type system, types are equivalent if their structure is equivalent.
@@ -383,4 +383,4 @@ export enum Distance {
 //
 // [1]: https://github.com/Microsoft/TypeScript/wiki/FAQ#generics
 // [2]: https://www.typescriptlang.org/tsconfig/strictPropertyInitialization.html
-type RefType<T> = T;
+type RefType<T> = T
