@@ -799,7 +799,6 @@ export class Parser<Context, T> {
             },
 
             reportLexerError(e: any) {
-                console.log(e)
                 return `Invalid syntax`
             },
         })
