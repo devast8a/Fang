@@ -9,7 +9,7 @@ import { Source } from '../common/source'
 
 describe('grammar', function() {
     function allow(name: string, code: string)  { test(name, () => parse(name, code)) }
-    function reject(name: string, code: string) { test(name, () => expect(() => parse(name, code)).throw()) }
+    function reject(name: string, code: string) { test(name, () => expect(() => parse(name, code)).throws()) }
 
     // --- Attributes
     allow('attributes on functions',                    `fn foo() #bar #qux`)
@@ -79,9 +79,17 @@ describe('grammar', function() {
     allow('indexing of index',                          `return foo.bar.qux`)
     allow('indexing of postfix operator #1',            `return foo*.bar.qux`)
     allow('indexing of postfix operator #2',            `return foo.bar*.qux`)
+    allow('indexing of parenthesized expression',       `return (1 + 2).foo`)
+    allow('indexing of literal float',                  `return 1.2345.foo`)    // TODO: Maybe this should be rejected?
+    allow('indexing of literal integer',                `return 100.foo`)
+    allow('indexing of literal string',                 `return 'foo'.foo`)
 
     // --- Literals
     allow('negative numbers',                           `return -10`)
+    allow('literal integers',                           `return 1000`)
+    allow('literal floats',                             `return 1.2345`)
+    allow('literal strings',                            `return 'foo'`)
+    reject('literal strings (double quotes)',           `return "foo"`)
 
     // --- Parameters named `infix`, `prefix`, and `postfix`
     allow('parameter named `infix`',                    `fn foo(infix+)`)
@@ -146,7 +154,6 @@ describe('grammar/examples', async function (this) {
 })
 
 const parser = Parser.create(Grammar)
-
 function parse(path: string, content: string) {
     const context = Ctx.createRoot()
     const body = parser.parse(context, new Source(path, content))

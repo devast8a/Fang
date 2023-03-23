@@ -21,7 +21,7 @@ function Infer() {
 // ============================== Core grammar components ==============================
 // An atom is part of the language that can be used in a binary expression without needing to be wrapped in parentheses
 const Atom = new Syntax('Atom', $<Nodes.LocalRef>())
-Atom.match(() => Literal)
+Atom.match(() => Literal, add)
 // ----
 //Atom.match(() => Block, add)
 Atom.match(() => Call, add)
@@ -362,16 +362,16 @@ Operator.match(() => /[~!@#$%^&*+=|?/:\-\\<>.]*[~!@#$%^&*+=|?/\-\\<>]/)
 Operator.match(() => '..')
 
 // ============================== Literals ==============================
-const Literal = new Syntax('Literal', $<any>())
-Literal.match(() => LiteralFloat)
+const Literal = new Syntax('Literal', $<Nodes.Node>())
 Literal.match(() => LiteralInteger)
+Literal.match(() => LiteralFloat) // TODO: Apparently putting this *after* LiteralInteger causes it to match first???
 Literal.match(() => LiteralList)
 Literal.match(() => LiteralString)
 
 function TRANSFORM_INTEGER(offset: number, base: number) {
     return (r: { context: Ctx, value: string }) => {
         const value = r.value.slice(offset).replace(/_/g, '')
-        return r.context.add(new Nodes.Constant(r.context.builtins.u32, parseInt(value, base)))
+        return new Nodes.Constant(r.context.builtins.u32, parseInt(value, base))
     }
 }
 
@@ -386,10 +386,10 @@ LiteralFloat.match(() => /[0-9]+.[0-9]+(?:[eE][+-]?[1-9]+)?/, UNDEFINED)
 
 // == Literal Integer
 const LiteralInteger = new Syntax('LiteralInteger', $<Nodes.Constant>())
-LiteralInteger.match(() => /0x[0-9a-fA-F_]+/,   TRANSFORM_INTEGER(2, 16))
-LiteralInteger.match(() => /0o[0-7_]+/,         TRANSFORM_INTEGER(2, 8))
-LiteralInteger.match(() => /0b[0-7_]+/,         TRANSFORM_INTEGER(2, 2))
-LiteralInteger.match(() => /[0-9_]+/,           TRANSFORM_INTEGER(0, 10))
+LiteralInteger.match(() => /0x[0-9a-fA-F_]+/, TRANSFORM_INTEGER(2, 16))
+LiteralInteger.match(() => /0o[0-7_]+/,       TRANSFORM_INTEGER(2, 8))
+LiteralInteger.match(() => /0b[0-7_]+/,       TRANSFORM_INTEGER(2, 2))
+LiteralInteger.match(() => /[0-9_]+/,         TRANSFORM_INTEGER(0, 10))
 
 // == Literal List
 const LiteralList = new Syntax('LiteralList', $<any>())
@@ -400,7 +400,7 @@ LiteralList.match({
 
 // == Literal String
 const LiteralString = new Syntax('LiteralString', $<Nodes.Constant>())
-LiteralString.match(() => SEQ('\'', StringContent, '\''), UNDEFINED)
+LiteralString.match(() => SEQ('\'', StringContent, '\''), r => new Nodes.Constant(r.context.builtins.str, r.value[1]))
 LiteralString.match(() => SEQ('\'', StringContent, REP(StringInterpolation, StringContent), '\''), UNDEFINED)
 
 // String interpolation relies heavily on stateful tokenization (see tokenizer configuration)
@@ -469,10 +469,12 @@ Index.match({
 })
 
 const Indexable = new Syntax('Indexable', $<any>())
-Indexable.match(() => Index)
-Indexable.match(() => Symbol)
 Indexable.match(() => Call)
 Indexable.match(() => Construct)
+Indexable.match(() => Index)
+Indexable.match(() => Literal)
+Indexable.match(() => Parenthesized)
+Indexable.match(() => Symbol)
 Indexable.match(() => SEQ(Atom, Operator))
 
 const Dot = new Syntax('Dot', $<any>())
