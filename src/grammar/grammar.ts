@@ -465,7 +465,7 @@ FullSymbol.match(() => Index)
 const Index = new Syntax('Index', $<Nodes.Ref>())
 Index.match({
     definition: () => SEQ(Indexable, Dot, Symbol),
-    transform: UNDEFINED,
+    transform: r => new Nodes.RefByName(r.Indexable, r.Symbol),
 })
 
 const Indexable = new Syntax('Indexable', $<any>())
