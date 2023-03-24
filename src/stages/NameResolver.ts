@@ -74,7 +74,7 @@ export class Resolve {
             }
             throw unreachable(ref)
         } else {
-            console.log(ref)
+            // TODO: If we cannot resolve ref.object then we need to gracefully fail?
             this.resolveNode(scope, this.ctx.get(ref.object))
 
             switch (ref.tag) {
