@@ -10,6 +10,7 @@ import { Constructor } from '../common/constructor'
 import { cached } from '../common/decorators'
 import { Source } from '../common/source'
 import { PartialNull, TupleToVariant } from '../common/type-level-utils'
+import { MultiMapUtils } from '../common/utils'
 import { NearleyRule, NearleySymbol, NearleyProcessor, NearleyGrammar } from './nearley'
 
 let id = 0
@@ -21,7 +22,7 @@ export abstract class Rule<Type = any, Named = any> {
     }
 
     abstract get children(): ReadonlyArray<Rule>
-    abstract get names(): ReadonlyArray<string>
+    abstract get names(): ReadonlyArray<string> // A list of names from named rules (primarily from `Syntax`)
     abstract toRules(): NearleyRule[]
 
     // Type and Named are unused in the class and if we don't use them TypeScript's structural type system will
@@ -656,25 +657,19 @@ export type Transformer<D extends Def, Context = any, Result = any> =
 
 // =====================================================================================================================
 export namespace Utils {
-    export function addToMap<T>(map: Map<string, T[]>, key: string, value: T) {
-        const values = map.get(key)
+    export function getAllRules(rule: Rule) {
+        const parents = new Map<Rule, Set<Rule>>()
 
-        if (values === undefined) {
-            map.set(key, [value])
-        } else {
-            values.push(value)
-        }
-    }
-
-    export function getAllChildren(rule: Rule) {
         const stack = [rule]
         const seen = new Set<Rule>([rule])
 
         while (stack.length > 0) {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const rule = stack.pop()!
+            const parent = stack.pop()!
 
-            for (const child of rule.children) {
+            for (const child of parent.children) {
+                MultiMapUtils.add(parents, child, parent)
+
                 if (seen.has(child)) {
                     continue
                 }
@@ -684,10 +679,13 @@ export namespace Utils {
             }
         }
 
-        return Array.from(seen)
+        return {
+            rules: Array.from(seen),
+            parents: parents,
+        }
     }
 
-    export function getTokens(rules: ReadonlyArray<Rule>): Tokens {
+    export function getTokenRules(rules: ReadonlyArray<Rule>): Tokens {
         // The previous version of this generator deduplicated Constant and Regex rules
         //  just haven't got around to doing it in this codebase
         const constants = new Map<string, ConstantRule[]>()
@@ -695,9 +693,9 @@ export namespace Utils {
 
         for (const rule of rules) {
             if (rule instanceof RegexRule) {
-                addToMap(patterns, rule.value.toString(), rule)
+                MultiMapUtils.push(patterns, rule.value.toString(), rule)
             } else if (rule instanceof ConstantRule) {
-                addToMap(constants, rule.value.toString(), rule)
+                MultiMapUtils.push(constants, rule.value.toString(), rule)
             }
         }
 
@@ -783,19 +781,55 @@ export namespace Utils {
 
         return moo.states(states, 'main')
     }
+
+    export function getParentSyntaxRule(rule: Rule, parents: Map<Rule, Set<Rule>>): Syntax<any, any> | undefined {
+        while (!(rule instanceof Syntax)) {
+            const parent = parents.get(rule)
+
+            if (parent === undefined || parent.size !== 1) {
+                return undefined
+            }
+
+            rule = Array.from(parent.values())[0]
+        }
+
+        return rule
+    }
+
+    /**
+     * Generates a Map of token patterns to the name of the rule that the pattern is used in.
+     * Useful for producing better error messages e.g. 'unexpected /[a-z]+/' is transformed into 'unexpected identifier'
+     * Will only generate a name if there is exactly one rule that uses the pattern.
+     */
+    export function generateTokenNames(tokens: Tokens, parents: Map<Rule, Set<Rule>>) {
+        const tokenNames = new Map<string, string>()
+        for (const [pattern, rules] of tokens.patterns) {
+            if (rules.length === 1) {
+                const p = Utils.getParentSyntaxRule(rules[0], parents)
+
+                if (p !== undefined) {
+                    tokenNames.set(pattern, p?.name)
+                }
+            }
+        }
+        return tokenNames
+    }
 }
 
 export class Parser<Context, T> {
     private constructor(
         private readonly grammar: NearleyGrammar,
+        private readonly tokenNames: Map<string, string>,
     ) { }
 
     parse(context: Context, source: Source): T {
+        const self = this
         const parser = new NearleyParser(this.grammar as any)
             
         Object.assign(parser, {
             reportError(token: moo.Token) {
-                return `Invalid syntax, unexpected "${token.type ?? token.text}" at ${source.path}:${token.line}:${token.col}`
+                const name = token.type === undefined ? token.text : self.tokenNames.get(token.type) ?? token.type
+                return `Invalid syntax, unexpected "${name}" at ${source.path}:${token.line}:${token.col}`
             },
 
             reportLexerError(e: any) {
@@ -817,13 +851,14 @@ export class Parser<Context, T> {
     static create<Context, T>(syntax: Syntax<Context, T>) {
         const root = toRule(syntax)
 
-        const rules = Utils.getAllChildren(root)
-        const tokens = Utils.getTokens(rules)
+        const {rules, parents} = Utils.getAllRules(root)
+        const tokens = Utils.getTokenRules(rules)
+        const tokenNames = Utils.generateTokenNames(tokens, parents)
 
         return new Parser<Context, T>({
             Lexer: Utils.compileTokenizer(tokens, syntax.config),
             ParserStart: root.id,
             ParserRules: rules.map(rule => rule.toRules()).flat(),
-        })
+        }, tokenNames)
     }
 }
