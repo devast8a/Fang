@@ -550,33 +550,10 @@ const Condition = new Syntax('Condition', $<any>())
 Condition.match(() => Expr)
 
 // ============================== List Configuration ==============================
-export const CurlyBlock: ListOptions = {
-    start: '{',
-    whitespace: OPT(N),
-    separator: Semicolon,
-    end: '}',
-}
-
-export const Curly: ListOptions = {
-    start: '{',
-    whitespace: OPT(N),
-    separator: Comma,
-    end: '}',
-}
-
-export const Round: ListOptions = {
-    start: '(',
-    whitespace: OPT(N),
-    separator: Comma,
-    end: ')',
-}
-
-export const Square: ListOptions = {
-    start: '[',
-    whitespace: OPT(N),
-    separator: Comma,
-    end: ']',
-}
+export const CurlyBlock: ListOptions = { start: '{', whitespace: OPT(N), separator: Semicolon, end: '}' }
+export const Curly: ListOptions      = { start: '{', whitespace: OPT(N), separator: Comma, end: '}' }
+export const Round: ListOptions      = { start: '(', whitespace: OPT(N), separator: Comma, end: ')' }
+export const Square: ListOptions     = { start: '[', whitespace: OPT(N), separator: Comma, end: ']' }
 
 // ============================== Tokenizer Configuration ==============================
 // We do not need to specify the complete tokenizer configuration here. The parser generator collects and populates the
